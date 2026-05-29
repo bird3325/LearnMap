@@ -97,7 +97,7 @@
             </p>
             <div class="form-group">
                 <label for="adminPassword">비밀번호</label>
-                <input type="password" id="adminPassword" class="form-control" placeholder="비밀번호 입력">
+                <input type="password" id="adminPassword" class="form-control" placeholder="비밀번호 입력 (기본값: admin1234)">
             </div>
             <button class="btn-primary" id="btnLogin">로그인</button>
             <div style="text-align: center; margin-top: 16px;">
@@ -321,7 +321,7 @@
     </div>
 
     <!-- Include Kakao SDK dynamically later in script if needed for Admin geocoding -->
-    <script src="admin.js"></script>
+    <script type="module" src="admin.js"></script>
 </body>
 
 </html>
