@@ -1356,6 +1356,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     우리 아이 적합도: <strong style="color:${item.suitability === '상' ? 'var(--success-green)' : (item.suitability === '중' ? 'var(--warning-yellow)' : 'var(--danger-red)')}">${item.suitability}</strong>
                 </div>
             `;
+            compareGrid.appendChild(col);
         });
     }
 });

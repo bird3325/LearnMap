@@ -203,6 +203,14 @@
                 <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
                     현재 서버 데이터베이스에 저장되어 지도에 표시되는 학교 목록입니다.
                 </p>
+
+                <!-- Unsaved Regions Status -->
+                <div style="background: #FFF3CD; border-left: 4px solid var(--warning-yellow); padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 12px;">
+                    <strong style="color: #856404; display: block; margin-bottom: 8px;">⚠️ 미저장 지역 (업데이트 필요)</strong>
+                    <div id="unsavedRegionsContainer" style="color: #856404; max-height: 100px; overflow-y: auto; line-height: 1.6;">
+                        데이터를 분석 중입니다...
+                    </div>
+                </div>
                 <!-- Filters for Stored Schools -->
                 <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
                     <select class="form-control" id="storedRegionFilter"

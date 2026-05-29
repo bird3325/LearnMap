@@ -24,14 +24,25 @@ if (!fs.existsSync(DATA_DIR)) {
 
 // Helper to read configuration
 function readConfig() {
+    let config = { 
+        kakao_app_key: process.env.KAKAO_APP_KEY || '', 
+        neis_api_key: process.env.NEIS_API_KEY || '',
+        naver_client_id: process.env.NAVER_CLIENT_ID || '',
+        naver_client_secret: process.env.NAVER_CLIENT_SECRET || ''
+    };
     try {
         if (fs.existsSync(CONFIG_PATH)) {
-            return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+            const fileConfig = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+            // 환경 변수가 비어있는 경우에만 파일 설정 적용
+            if (fileConfig.kakao_app_key) config.kakao_app_key = fileConfig.kakao_app_key;
+            if (fileConfig.neis_api_key) config.neis_api_key = fileConfig.neis_api_key;
+            if (fileConfig.naver_client_id) config.naver_client_id = fileConfig.naver_client_id;
+            if (fileConfig.naver_client_secret) config.naver_client_secret = fileConfig.naver_client_secret;
         }
     } catch (e) {
         console.error('Error reading config:', e);
     }
-    return { kakao_app_key: '', neis_api_key: '' };
+    return config;
 }
 
 // Helper to save configuration

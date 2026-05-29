@@ -160,7 +160,16 @@ function renderStoredSchoolsList() {
                 <div>
                     <strong style="color: var(--deep-blue); font-size: 13px;">${index + 1}. ${school.school_name}</strong> 
                     <span style="font-size: 11px; color: var(--text-muted); margin-left: 4px;">(${school.school_type})</span>
-                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                    ${(() => {
+                        const updatedDate = school.updated_at || '2025-09-15';
+                        const isOutdated = new Date(updatedDate) < new Date(new Date().setFullYear(new Date().getFullYear() - 1));
+                        if (isOutdated) {
+                            return `<span style="background: var(--danger-red); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 6px; font-size: 10px;">업데이트 필요</span>`;
+                        } else {
+                            return `<span style="background: var(--success-green); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 6px; font-size: 10px;">최신</span>`;
+                        }
+                    })()}
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
                         주소: ${school.address} | 공시 기준일: ${school.updated_at || '2025-09-15'}
                     </div>
                 </div>
@@ -186,9 +195,67 @@ async function loadStoredSchools() {
         
         allStoredSchools = schools;
         renderStoredSchoolsList();
+        renderUnsavedRegions();
 
     } catch (err) {
         storedSchoolsListContainer.innerHTML = `<div style="text-align: center; color: red; padding: 20px 0;">에러 발생: ${err.message}</div>`;
+    }
+}
+
+// 미저장 지역(시/도 및 시/군/구) 계산 및 렌더링
+function renderUnsavedRegions() {
+    const container = document.getElementById('unsavedRegionsContainer');
+    if (!container) return;
+
+    if (!allStoredSchools || allStoredSchools.length === 0) {
+        container.innerHTML = "저장된 데이터가 없어 모든 지역이 미저장 상태입니다.";
+        return;
+    }
+
+    // 1. 저장된 시/도 -> 시/군/구 목록 추출
+    const savedRegions = {};
+    allStoredSchools.forEach(school => {
+        const sido = school.region;
+        if (!sido || !school.address) return;
+        
+        const parts = school.address.split(' ');
+        if (parts.length >= 2) {
+            let sigungu = parts[1];
+            if (!savedRegions[sido]) savedRegions[sido] = new Set();
+            savedRegions[sido].add(sigungu);
+        }
+    });
+
+    // 2. sigunguMap과 비교하여 미저장 항목 산출
+    let unsavedHtml = '';
+    
+    Object.keys(sigunguMap).forEach(sido => {
+        const totalSigungus = sigunguMap[sido].filter(s => s !== '전체');
+        
+        if (totalSigungus.length === 0) {
+            // 세종특별자치시처럼 '전체'만 있는 경우
+            if (!savedRegions[sido] || savedRegions[sido].size === 0) {
+                unsavedHtml += `<div style="margin-bottom: 4px;"><strong>${sido}</strong>: 전체 미저장</div>`;
+            }
+            return;
+        }
+
+        const savedForSido = savedRegions[sido] || new Set();
+        const unsavedForSido = totalSigungus.filter(s => !savedForSido.has(s));
+        
+        if (unsavedForSido.length > 0) {
+            if (unsavedForSido.length === totalSigungus.length) {
+                unsavedHtml += `<div style="margin-bottom: 4px;"><strong>${sido}</strong>: 전체 미저장 (${unsavedForSido.length}개 지역)</div>`;
+            } else {
+                unsavedHtml += `<div style="margin-bottom: 4px;"><strong>${sido}</strong>: ${unsavedForSido.join(', ')}</div>`;
+            }
+        }
+    });
+
+    if (unsavedHtml === '') {
+        container.innerHTML = "<span style='color: var(--success-green); font-weight: bold;'>🎉 모든 지역이 업데이트 되었습니다!</span>";
+    } else {
+        container.innerHTML = unsavedHtml;
     }
 }
 
