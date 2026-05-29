@@ -38,8 +38,8 @@
             <!-- Map Legend (Marker Color Guide) -->
             <div class="map-legend" id="mapLegend" style="position: absolute; bottom: 20px; left: 20px; background: white; border: 1px solid var(--border-color); padding: 12px 16px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); z-index: 10000; font-size: 11px; line-height: 1.6; display: flex; flex-direction: column; gap: 6px; pointer-events: auto; transition: all 0.3s ease;">
                 <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--deep-blue); font-size: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; gap: 20px; cursor: pointer;" onclick="toggleLegend()">
-                    <span>학업성취도 기준 (78.0점)</span>
-                    <button id="btnToggleLegend" style="background: none; border: none; font-size: 10px; cursor: pointer; color: var(--primary-blue); font-weight: 700; padding: 0 4px;">▲</button>
+                    <span id="legendTitleText">학업성취도 기준 (78.0점)</span>
+                    <button id="btnToggleLegend" style="background: none; border: none; font-size: 10px; cursor: pointer; color: var(--primary-blue); font-weight: 700; padding: 0 4px;">▼</button>
                 </div>
                 <div id="legendContent" style="display: flex; flex-direction: column; gap: 6px;">
                     <div style="display: flex; align-items: center; gap: 8px;">
@@ -69,11 +69,11 @@
                     
                     if (content.style.display === 'none') {
                         content.style.display = 'flex';
-                        button.innerText = '▲';
+                        button.innerText = '▼';
                         legend.style.padding = '12px 16px';
                     } else {
                         content.style.display = 'none';
-                        button.innerText = '▼';
+                        button.innerText = '▲';
                         legend.style.padding = '8px 16px';
                     }
                 }
@@ -159,11 +159,6 @@
                         <option value="middle" selected>중학교</option>
                         <option value="high">고등학교</option>
                     </select>
-                    <select class="filter-select" id="radiusFilter">
-                        <option value="1">반경 1km</option>
-                        <option value="3" selected>반경 3km</option>
-                        <option value="5">반경 5km</option>
-                    </select>
                 </div>
             </div>
 
@@ -173,14 +168,30 @@
         </section>
 
         <!-- Academy Sidebar (Initially hidden) -->
-        <section class="academy-sidebar-section" id="academySidebar" style="display: none; background: white; border-right: 1px solid var(--border-color); flex-direction: column; height: 100vh; overflow-y: auto; padding: 20px; box-shadow: -4px 0 15px rgba(0,0,0,0.05); z-index: 10;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-blue); padding-bottom: 12px; margin-bottom: 16px;">
+        <section class="academy-sidebar-section" id="academySidebar" style="display: none; background: white; border-right: 1px solid var(--border-color); flex-direction: column; height: 100vh; overflow: hidden; box-sizing: border-box; padding: 20px; box-shadow: -4px 0 15px rgba(0,0,0,0.05); z-index: 10;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-blue); padding-bottom: 12px; margin-bottom: 8px;">
                 <h2 style="font-size: 16px; color: var(--deep-blue); margin: 0;">주변 학원 리스트</h2>
                 <button onclick="toggleAcademySidebar()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted);">&times;</button>
             </div>
-            <div id="sideAcademyList" style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+            
+            <div style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4; background: #f8f9fa; padding: 8px; border-radius: 6px;">
+                ℹ️ 학교를 중심으로 <strong>반경 1km 이내</strong>
+            </div>
+            
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <select id="academyTypeFilter" style="padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 12px; outline: none; flex: 1; background: var(--bg-primary); box-sizing: border-box; min-width: 0;">
+                    <option value="all">유형 전체</option>
+                    <option value="학원">학원만</option>
+                    <option value="교습소">교습소만</option>
+                </select>
+                <input type="text" id="academyNameFilter" placeholder="학원명/과목 검색" style="padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 12px; outline: none; flex: 2; background: var(--bg-primary); box-sizing: border-box; min-width: 0;">
+            </div>
+
+            <div id="sideAcademyList" style="display: flex; flex-direction: column; gap: 0; font-size: 13px; flex: 1; overflow: hidden;">
                 <!-- Academies populated here -->
             </div>
+            
+            <div id="academyPaginationContainer" style="margin-top: auto; padding-top: 12px;"></div>
         </section>
 
         <!-- Right Section: Sidebar (Details, Child Diagnostic, etc.) -->
@@ -259,12 +270,20 @@
                                 <span style="display: flex; align-items: center; gap: 6px;">💰 창체 활동비: <strong id="schoolBudget">0만원</strong> (년/인)</span>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-blue);"><polyline points="6 9 12 15 18 9"></polyline></svg>
                             </div>
-                            <!-- 창체 활동비 상세 패널 (모달 형태로 변경하여 제거) -->
                             <div style="cursor: pointer; display: flex; align-items: center; justify-content: flex-start; gap: 4px; height: 20px; transition: opacity 0.2s;" onclick="toggleGraduateModal()" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
                                 <span style="display: flex; align-items: center; gap: 6px;">🎓 <span id="schoolGraduateTrendLabel">특목/자사 진학률</span>: <strong id="schoolGraduateTrend">0%</strong></span>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-blue);"><polyline points="6 9 12 15 18 9"></polyline></svg>
                             </div>
-                        </div>
+                            <!-- 전학생·통학 현황 행 (다른 항목과 동일 스타일) -->
+                            <div style="cursor: pointer; display: flex; align-items: center; justify-content: flex-start; gap: 4px; height: 20px; transition: opacity 0.2s;" onclick="toggleStudentStatsModal()" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+                                <span style="display: flex; align-items: center; gap: 6px;">🚌 전학생·통학 현황: <strong id="statTransferSummary">-</strong></span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-blue);"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            </div>
+                            <!-- 학교폭력 통계 행 -->
+                            <div style="cursor: pointer; display: flex; align-items: center; justify-content: flex-start; gap: 4px; height: 20px; transition: opacity 0.2s;" onclick="toggleViolenceStatsModal()" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+                                <span style="display: flex; align-items: center; gap: 6px;">🛡️ 학교폭력 현황: <strong id="statViolenceSummary">-</strong></span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-blue);"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            </div>
                         <div style="margin-top: 8px; font-size: 11px; color: var(--text-muted);" id="schoolCompetitionDesc">경쟁 치열도 상세 조언</div>
                     </div>
 
@@ -386,15 +405,25 @@
             <div id="communityPanel" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.95); z-index: 100; backdrop-filter: blur(5px); flex-direction: column; padding: 24px; overflow-y: auto; transition: opacity 0.3s ease;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-blue); padding-bottom: 12px; margin-bottom: 12px;">
                     <div>
-                        <h2 style="font-size: 18px; color: var(--deep-blue); margin: 0;" id="communityAcademyName">학원명</h2>
-                        <span style="font-size: 12px; color: var(--text-muted);">학부모 커뮤니티 최신 후기</span>
+                        <h2 style="font-size: 18px; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <span id="communityAcademyName">학원명</span>
+                            <span id="communityAcademyType" style="font-size: 11px; padding: 2px 6px; border-radius: 4px; display: none;"></span>
+                            <span id="communityAcademySubject" style="font-size: 11px; font-weight: normal; background: #f5f5f5; color: #616161; padding: 2px 6px; border-radius: 4px; display: none;"></span>
+                        </h2>
+                        <span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">학부모 커뮤니티 최신 후기</span>
                     </div>
                     <button onclick="document.getElementById('communityPanel').style.display='none'; document.getElementById('btnToggleSidebarTop').style.display='flex';" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-muted);">&times;</button>
                 </div>
-                <div style="display: flex; gap: 8px; margin-bottom: 16px;" id="communityFilterContainer">
-                    <button class="community-filter-btn" data-type="all" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--primary-blue); background: var(--primary-blue); color: white; cursor: pointer; font-size: 12px;">전체</button>
-                    <button class="community-filter-btn" data-type="blog" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); background: white; color: var(--text-muted); cursor: pointer; font-size: 12px;">블로그</button>
-                    <button class="community-filter-btn" data-type="cafe" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); background: white; color: var(--text-muted); cursor: pointer; font-size: 12px;">카페</button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div style="display: flex; gap: 8px;" id="communityFilterContainer">
+                        <button class="community-filter-btn" data-type="all" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--primary-blue); background: var(--primary-blue); color: white; cursor: pointer; font-size: 12px;">전체</button>
+                        <button class="community-filter-btn" data-type="real" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); background: white; color: var(--text-muted); cursor: pointer; font-size: 12px;">찐후기</button>
+                        <button class="community-filter-btn" data-type="blog" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); background: white; color: var(--text-muted); cursor: pointer; font-size: 12px;">블로그</button>
+                        <button class="community-filter-btn" data-type="cafe" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); background: white; color: var(--text-muted); cursor: pointer; font-size: 12px;">카페</button>
+                    </div>
+                    <button onclick="window.openReviewModal()" style="padding: 6px 12px; border-radius: 6px; border: none; background: #e3f2fd; color: #1565c0; font-weight: bold; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 4px;">
+                        ✍️ 후기 남기기
+                    </button>
                 </div>
                 <div id="communityReviewsList" style="display: flex; flex-direction: column; gap: 12px;">
                     <!-- Reviews injected here -->
@@ -415,7 +444,7 @@
     </div>
 
     <!-- 창체 활동비 상세 모달 -->
-    <div id="budgetModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) toggleBudgetPanel()">
+    <div id="budgetModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) toggleBudgetPanel()">
         <div style="background: var(--bg-card); border-radius: 16px; padding: 24px; width: 90%; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color); position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
                 <h3 style="font-size: 16px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
@@ -481,7 +510,7 @@
     </div>
 
     <!-- 졸업생 진학률 상세 모달 -->
-    <div id="graduateModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) toggleGraduateModal()">
+    <div id="graduateModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) toggleGraduateModal()">
         <div style="background: var(--bg-card); border-radius: 16px; padding: 24px; width: 90%; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color); position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
                 <h3 style="font-size: 16px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
@@ -495,9 +524,158 @@
             </div>
         </div>
     </div>
-    
+
+    <!-- 전학생·통학 현황 상세 모달 -->
+    <div id="studentStatsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) toggleStudentStatsModal()">
+        <div style="background: var(--bg-card); border-radius: 16px; padding: 24px; width: 90%; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color); position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 style="font-size: 16px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
+                    <span>🚌 전학생·통학 현황 상세</span>
+                </h3>
+                <button onclick="toggleStudentStatsModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='var(--deep-blue)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
+            </div>
+            <div style="font-size: 12px; max-height: 70vh; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 16px;">
+                <!-- 전학생 현황 -->
+                <div>
+                    <div style="font-weight: 700; color: var(--deep-blue); margin-bottom: 8px; font-size: 13px;">📋 전학생 현황 (연간 집계)</div>
+                    <div style="display: flex; gap: 8px;">
+                        <div style="flex:1; background:#e8f5e9; border-radius:8px; padding:12px; text-align:center;">
+                            <div style="font-size:11px; color:#388e3c; margin-bottom:4px;">전입생</div>
+                            <div style="font-size:24px; font-weight:700; color:#2e7d32;" id="statTransferIn">-</div>
+                            <div style="font-size:11px; color:#388e3c;">명</div>
+                        </div>
+                        <div style="flex:1; background:#fff3e0; border-radius:8px; padding:12px; text-align:center;">
+                            <div style="font-size:11px; color:#e65100; margin-bottom:4px;">전출생</div>
+                            <div style="font-size:24px; font-weight:700; color:#bf360c;" id="statTransferOut">-</div>
+                            <div style="font-size:11px; color:#e65100;">명</div>
+                        </div>
+                        <div style="flex:1; background:#e3f2fd; border-radius:8px; padding:12px; text-align:center;">
+                            <div style="font-size:11px; color:#1565c0; margin-bottom:4px;">순증감</div>
+                            <div style="font-size:24px; font-weight:700; color:#0d47a1;" id="statTransferNet">-</div>
+                            <div style="font-size:11px; color:#1565c0;">명</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 거주지 비율 -->
+                <div>
+                    <div style="font-weight: 700; color: var(--deep-blue); margin-bottom: 8px; font-size: 13px;">🏠 거주지 비율 (통학구역 기준)</div>
+                    <div style="height:16px; border-radius:8px; overflow:hidden; margin-bottom:6px;">
+                        <div id="residenceBar" style="height:100%; background: linear-gradient(to right, #1565c0 0%, #1565c0 70%, #e0e0e0 70%, #e0e0e0 100%);"></div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:12px;">
+                        <span style="color:#1565c0;">🏡 관내 거주 <strong id="statResidenceIn">-</strong>%</span>
+                        <span style="color:#757575;">관외 거주 <strong id="statResidenceOut">-</strong>%</span>
+                    </div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">관내: 학교 통학구역 내 거주 학생 비율</div>
+                </div>
+                <!-- 통학 수단 비율 -->
+                <div>
+                    <div style="font-weight: 700; color: var(--deep-blue); margin-bottom: 8px; font-size: 13px;">🚶 통학 수단 비율</div>
+                    <div style="display:flex; height:16px; border-radius:8px; overflow:hidden; margin-bottom:8px;">
+                        <div id="commuteBarWalk" style="background:#4caf50; transition:width 0.4s;"></div>
+                        <div id="commuteBarBus"  style="background:#2196f3; transition:width 0.4s;"></div>
+                        <div id="commuteBarCar"  style="background:#ff9800; transition:width 0.4s;"></div>
+                        <div id="commuteBarEtc"  style="background:#9e9e9e; transition:width 0.4s;"></div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:6px; font-size:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span><span style="color:#4caf50;">●</span> 도보</span>
+                            <div style="flex:1; height:6px; background:#f0f0f0; border-radius:3px; margin:0 8px; overflow:hidden;"><div id="commuteBarWalk2" style="height:100%; background:#4caf50; transition:width 0.4s;"></div></div>
+                            <strong id="statCommuteWalk">-</strong>%
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span><span style="color:#2196f3;">●</span> 대중교통</span>
+                            <div style="flex:1; height:6px; background:#f0f0f0; border-radius:3px; margin:0 8px; overflow:hidden;"><div id="commuteBarBus2" style="height:100%; background:#2196f3; transition:width 0.4s;"></div></div>
+                            <strong id="statCommuteBus">-</strong>%
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span><span style="color:#ff9800;">●</span> 자가용</span>
+                            <div style="flex:1; height:6px; background:#f0f0f0; border-radius:3px; margin:0 8px; overflow:hidden;"><div id="commuteBarCar2" style="height:100%; background:#ff9800; transition:width 0.4s;"></div></div>
+                            <strong id="statCommuteCar">-</strong>%
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span><span style="color:#9e9e9e;">●</span> 기타</span>
+                            <div style="flex:1; height:6px; background:#f0f0f0; border-radius:3px; margin:0 8px; overflow:hidden;"><div id="commuteBarEtc2" style="height:100%; background:#9e9e9e; transition:width 0.4s;"></div></div>
+                            <strong id="statCommuteEtc">-</strong>%
+                        </div>
+                    </div>
+                </div>
+                <div style="font-size:10px; color:var(--text-muted); padding-top:8px; border-top:1px solid var(--border-color);">※ 출처: 학교알리미 수준 집계 데이터 (개인 식별 불가)</div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- 학교폭력 현황 상세 모달 -->
+    <div id="violenceStatsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) toggleViolenceStatsModal()">
+        <div style="background: var(--bg-card); border-radius: 16px; padding: 24px; width: 90%; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color); position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 style="font-size: 16px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
+                    <span>🛡️ 학교폭력 현황 상세</span>
+                </h3>
+                <button onclick="toggleViolenceStatsModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='var(--deep-blue)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
+            </div>
+            <div style="font-size: 12px; max-height: 70vh; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 16px;">
+                <!-- 총 신고건수 -->
+                <div>
+                    <div style="font-weight: 700; color: var(--deep-blue); margin-bottom: 8px; font-size: 13px;">📋 연간 학교폭력 신고 현황</div>
+                    <div style="display: flex; gap: 8px;">
+                        <div style="flex:1; background:#fff8e1; border-radius:8px; padding:12px; text-align:center;">
+                            <div style="font-size:11px; color:#f57f17; margin-bottom:4px;">연간 신고건수</div>
+                            <div style="font-size:24px; font-weight:700; color:#e65100;" id="statViolenceTotal">-</div>
+                            <div style="font-size:11px; color:#f57f17;">건</div>
+                        </div>
+                        <div style="flex:1; background:#f3e5f5; border-radius:8px; padding:12px; text-align:center;">
+                            <div style="font-size:11px; color:#6a1b9a; margin-bottom:4px;">100명당 신고</div>
+                            <div style="font-size:24px; font-weight:700; color:#4a148c;" id="statViolencePer100">-</div>
+                            <div style="font-size:11px; color:#6a1b9a;">건</div>
+                        </div>
+                        <div style="flex:1; background:#e8f5e9; border-radius:8px; padding:12px; text-align:center;">
+                            <div style="font-size:11px; color:#2e7d32; margin-bottom:4px;">처리 완료율</div>
+                            <div style="font-size:24px; font-weight:700; color:#1b5e20;" id="statViolenceResolved">-</div>
+                            <div style="font-size:11px; color:#2e7d32;">%</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 유형별 비율 -->
+                <div>
+                    <div style="font-weight: 700; color: var(--deep-blue); margin-bottom: 8px; font-size: 13px;">📊 폭력 유형별 비율</div>
+                    <div style="display:flex; height:16px; border-radius:8px; overflow:hidden; margin-bottom:10px;">
+                        <div id="violenceBarVerbal"   style="background:#ef5350; transition:width 0.4s;"></div>
+                        <div id="violenceBarCyber"    style="background:#ab47bc; transition:width 0.4s;"></div>
+                        <div id="violenceBarExclude"  style="background:#ffa726; transition:width 0.4s;"></div>
+                        <div id="violenceBarPhysical" style="background:#78909c; transition:width 0.4s;"></div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:6px; font-size:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span><span style="color:#ef5350;">●</span> 언어폭력</span>
+                            <div style="flex:1; height:6px; background:#f0f0f0; border-radius:3px; margin:0 8px; overflow:hidden;"><div id="violenceBarVerbal2" style="height:100%; background:#ef5350; transition:width 0.4s;"></div></div>
+                            <strong id="statViolenceVerbal">-</strong>%
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span><span style="color:#ab47bc;">●</span> 사이버폭력</span>
+                            <div style="flex:1; height:6px; background:#f0f0f0; border-radius:3px; margin:0 8px; overflow:hidden;"><div id="violenceBarCyber2" style="height:100%; background:#ab47bc; transition:width 0.4s;"></div></div>
+                            <strong id="statViolenceCyber">-</strong>%
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span><span style="color:#ffa726;">●</span> 집단따돌림</span>
+                            <div style="flex:1; height:6px; background:#f0f0f0; border-radius:3px; margin:0 8px; overflow:hidden;"><div id="violenceBarExclude2" style="height:100%; background:#ffa726; transition:width 0.4s;"></div></div>
+                            <strong id="statViolenceExclude">-</strong>%
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span><span style="color:#78909c;">●</span> 신체폭력</span>
+                            <div style="flex:1; height:6px; background:#f0f0f0; border-radius:3px; margin:0 8px; overflow:hidden;"><div id="violenceBarPhysical2" style="height:100%; background:#78909c; transition:width 0.4s;"></div></div>
+                            <strong id="statViolencePhysical">-</strong>%
+                        </div>
+                    </div>
+                </div>
+                <div style="font-size:10px; color:var(--text-muted); padding-top:8px; border-top:1px solid var(--border-color);">※ 출처: 학교알리미 수준 집계 데이터 · 건수 0건은 미신고 또는 집계 제외를 의미할 수 있음</div>
+            </div>
+        </div>
+    </div>
+
     <!-- 내신 경쟁 상세 분석 모달 -->
-    <div id="competitionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) toggleCompetitionModal()">
+    <div id="competitionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) toggleCompetitionModal()">
         <div style="background: var(--bg-card); border-radius: 16px; padding: 24px; width: 90%; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color); position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
                 <h3 style="font-size: 16px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
@@ -512,8 +690,40 @@
         </div>
     </div>
 
-
-
+    <!-- Add Review Modal -->
+    <div id="reviewModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99999; justify-content: center; align-items: center;">
+        <div style="background: white; border-radius: 12px; width: 400px; max-width: 90%; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                <h3 style="margin: 0; color: var(--deep-blue); font-size: 16px;">학원 후기 남기기</h3>
+                <button onclick="document.getElementById('reviewModal').style.display='none'" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted);">&times;</button>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">학원명</label>
+                <div id="reviewModalAcademyName" style="font-weight: bold; font-size: 14px; color: var(--text-main);">학원명</div>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">별점</label>
+                <select id="reviewRating" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; outline: none; font-size: 14px;">
+                    <option value="5">⭐⭐⭐⭐⭐ (5점 - 아주 만족해요)</option>
+                    <option value="4">⭐⭐⭐⭐ (4점 - 만족해요)</option>
+                    <option value="3">⭐⭐⭐ (3점 - 보통이에요)</option>
+                    <option value="2">⭐⭐ (2점 - 별로예요)</option>
+                    <option value="1">⭐ (1점 - 비추천해요)</option>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">상세 후기</label>
+                <textarea id="reviewContent" placeholder="원장님 스타일, 학원 분위기, 장단점 등을 자유롭게 작성해주세요." style="width: 100%; height: 100px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; outline: none; font-size: 13px; box-sizing: border-box; resize: none; font-family: inherit;"></textarea>
+            </div>
+            
+            <button onclick="window.submitReview()" style="width: 100%; padding: 12px; background: var(--primary-blue); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: background 0.2s;">등록하기</button>
+        </div>
+    </div>
+    
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script type="module" src="app.js"></script>
 </body>
 </html>

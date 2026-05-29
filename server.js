@@ -255,20 +255,87 @@ app.get('/api/academies/list', async (req, res) => {
     };
 
     try {
-        // 1페이지 먼저 호출해서 total_count 파악
-        const firstUrl = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=AC5&x=${x}&y=${y}&radius=1000&size=15&page=1`;
-        const firstData = await httpsGet(firstUrl, headers);
+        // 1페이지 먼저 호출해서 total_count 파악 (학원 카테고리 + 교습소 키워드)
+        const ac5Url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=AC5&x=${x}&y=${y}&radius=1000&size=15&page=1`;
+        const gyoUrl = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent('교습소')}&x=${x}&y=${y}&radius=1000&size=15&page=1`;
+        
+        const [ac5First, gyoFirst] = await Promise.all([
+            httpsGet(ac5Url, headers),
+            httpsGet(gyoUrl, headers)
+        ]);
+
+        const ac5Total = ac5First.meta ? ac5First.meta.total_count : 0;
+        const gyoTotal = gyoFirst.meta ? gyoFirst.meta.total_count : 0;
+        
+        const ac5Pages = Math.min(Math.ceil(ac5Total / 15), 3); // 최대 3페이지
+        const gyoPages = Math.min(Math.ceil(gyoTotal / 15), 2); // 최대 2페이지
+
+        let allItems = [...(ac5First.documents || []), ...(gyoFirst.documents || [])];
+
+        const pageRequests = [];
+        
+        // 학원 나머지 페이지
+        for (let page = 2; page <= ac5Pages; page++) {
+            pageRequests.push(httpsGet(`https://dapi.kakao.com/v2/local/search/category.json?category_group_code=AC5&x=${x}&y=${y}&radius=1000&size=15&page=${page}`, headers));
+        }
+        // 교습소 나머지 페이지
+        for (let page = 2; page <= gyoPages; page++) {
+            pageRequests.push(httpsGet(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent('교습소')}&x=${x}&y=${y}&radius=1000&size=15&page=${page}`, headers));
+        }
+
+        if (pageRequests.length > 0) {
+            const results = await Promise.all(pageRequests);
+            results.forEach(result => {
+                allItems = allItems.concat(result.documents || []);
+            });
+        }
+
+        // 중복 제거 (id 기준)
+        const uniqueMap = new Map();
+        allItems.forEach(item => {
+            if (!uniqueMap.has(item.id)) {
+                uniqueMap.set(item.id, item);
+            }
+        });
+        
+        const finalItems = Array.from(uniqueMap.values());
+        // totalCount는 두 결과를 합친 값으로 하되 정확하지 않을 수 있으므로 finalItems.length 또는 원래 값으로
+        const totalCount = finalItems.length > (ac5Total + gyoTotal) ? finalItems.length : (ac5Total + gyoTotal);
+
+        res.json({ items: finalItems, total_count: totalCount });
+    } catch (err) {
+        console.error('Kakao List Fetch Error:', err);
+        res.status(500).json({ error: '카카오 검색 API 호출에 실패했습니다.' });
+    }
+});
+
+// 10. GET /api/academies/search - Keyword search around a location
+app.get('/api/academies/search', async (req, res) => {
+    const { query, x, y } = req.query;
+    if (!query || !x || !y) return res.status(400).json({ error: '파라미터가 부족합니다.' });
+
+    const config = readConfig();
+    const appkey = config.kakao_app_key;
+    if (!appkey) return res.status(500).json({ error: '카카오 앱 키가 없습니다.' });
+
+    const headers = {
+        'Authorization': `KakaoAK ${appkey}`,
+        'KA': 'sdk/1.25.3 os/javascript lang/en-US device/Win32 origin/http%3A%2F%2Flocalhost%3A5173'
+    };
+
+    try {
+        const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&category_group_code=AC5&x=${x}&y=${y}&radius=1000&size=15&page=1`;
+        const firstData = await httpsGet(url, headers);
         const totalCount = firstData.meta ? firstData.meta.total_count : 0;
-        const totalPages = Math.min(Math.ceil(totalCount / 15), 3); // 최대 3페이지(45개) 제한
+        const totalPages = Math.min(Math.ceil(totalCount / 15), 3); // 최대 3페이지 제한
 
         let allItems = [...(firstData.documents || [])];
 
-        // 나머지 페이지 병렬 호출
         if (totalPages > 1) {
             const pageRequests = [];
             for (let page = 2; page <= totalPages; page++) {
-                const url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=AC5&x=${x}&y=${y}&radius=1000&size=15&page=${page}`;
-                pageRequests.push(httpsGet(url, headers));
+                const pUrl = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&category_group_code=AC5&x=${x}&y=${y}&radius=1000&size=15&page=${page}`;
+                pageRequests.push(httpsGet(pUrl, headers));
             }
             const results = await Promise.all(pageRequests);
             results.forEach(result => {
@@ -278,9 +345,37 @@ app.get('/api/academies/list', async (req, res) => {
 
         res.json({ items: allItems, total_count: totalCount });
     } catch (err) {
-        console.error('Kakao List Fetch Error:', err);
-        res.status(500).json({ error: '카카오 검색 API 호출에 실패했습니다.' });
+        console.error('Kakao Keyword Search Error:', err);
+        res.status(500).json({ error: '카카오 키워드 검색 API 호출에 실패했습니다.' });
     }
+});
+
+// --- 찐후기 기능 (메모리 기반 저장소, 서버 재시작 시 초기화됨) ---
+const realReviewsData = [];
+
+app.use(express.json()); // JSON 바디 파싱
+
+app.post('/api/reviews', (req, res) => {
+    const { academyName, rating, content } = req.body;
+    if (!academyName || !rating || !content) return res.status(400).json({ error: '필수 항목이 누락되었습니다.' });
+    
+    const newReview = {
+        id: Date.now().toString(),
+        academyName,
+        rating: parseInt(rating, 10),
+        content,
+        createdAt: new Date().toISOString()
+    };
+    realReviewsData.push(newReview);
+    res.json({ success: true, review: newReview });
+});
+
+app.get('/api/reviews', (req, res) => {
+    const { academyName } = req.query;
+    if (!academyName) return res.status(400).json({ error: '학원명이 누락되었습니다.' });
+    
+    const matched = realReviewsData.filter(r => r.academyName === academyName).sort((a, b) => b.id - a.id);
+    res.json({ items: matched, total: matched.length });
 });
 
 // Fallback to serve index.html for unknown SPA routes

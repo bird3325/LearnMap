@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchBtn = document.getElementById('searchBtn');
     const regionFilter = document.getElementById('regionFilter');
     const schoolTypeFilter = document.getElementById('schoolTypeFilter');
-    const radiusFilter = document.getElementById('radiusFilter');
     const pinsContainer = document.getElementById('pinsContainer');
 
     // Sidebar Cards
@@ -76,9 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(onMapAction, 150);
     });
     schoolTypeFilter.addEventListener('change', () => {
-        onMapAction();
-    });
-    radiusFilter.addEventListener('change', () => {
         onMapAction();
     });
 
@@ -217,7 +213,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             map: kakaoMap,
                             averageCenter: true,
                             minLevel: 7,
-                            minClusterSize: 1
+                            minClusterSize: 1,
+                            calculator: [10, 30, 50],
+                            styles: [
+                                { width: '40px', height: '40px', background: 'rgba(51, 204, 255, 0.8)', borderRadius: '20px', color: '#000', textAlign: 'center', fontWeight: 'bold', lineHeight: '40px' },
+                                { width: '45px', height: '45px', background: 'rgba(255, 153, 0, 0.8)', borderRadius: '22.5px', color: '#fff', textAlign: 'center', fontWeight: 'bold', lineHeight: '45px' },
+                                { width: '50px', height: '50px', background: 'rgba(255, 51, 204, 0.8)', borderRadius: '25px', color: '#fff', textAlign: 'center', fontWeight: 'bold', lineHeight: '50px' },
+                                { width: '60px', height: '60px', background: 'rgba(255, 0, 0, 0.8)', borderRadius: '30px', color: '#fff', textAlign: 'center', fontWeight: 'bold', lineHeight: '60px' }
+                            ]
                         });
 
                         // Register Map Interaction events
@@ -308,7 +311,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Sync Filters
         orchestrator.state.filters.schoolType = schoolTypeFilter.value;
-        orchestrator.state.filters.radius = parseInt(radiusFilter.value);
         
         logDiagnostic(`[performSearch] 로컬 DB 검색 시작: "${JSON.stringify(query)}" (필터: ${orchestrator.state.filters.schoolType}, 지역: ${regionFilter.value})`);
         
@@ -354,60 +356,108 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const center = kakaoMap.getCenter();
 
-        // 지도 중심 좌표 기준 지역 필터 자동 동기화 (역지오코딩)
+        // 역지오코딩으로 지도 중심 지역을 파악해 드롭다운과 클러스터를 함께 갱신
+        // (콜백 내부에서 필터 확정 후 클러스터를 그려 타이밍 충돌 방지)
+        const doRender = (regionToUse) => {
+            const zoomLevel = kakaoMap.getLevel();
+            orchestrator.state.filters.schoolType = schoolTypeFilter.value;
+            _renderMapForRegion(zoomLevel, regionToUse);
+        };
+
         if (geocoder) {
             geocoder.coord2RegionCode(center.getLng(), center.getLat(), (result, status) => {
+                let detectedRegion = regionFilter.value; // 기본값: 현재 선택된 값 유지
                 if (status === kakao.maps.services.Status.OK) {
                     for (let i = 0; i < result.length; i++) {
                         if (result[i].region_type === 'H') {
                             const sidoName = result[i].region_1depth_name;
-                            const optionExists = Array.from(regionFilter.options).some(opt => opt.value === sidoName);
-                            if (optionExists && regionFilter.value !== sidoName) {
-                                regionFilter.value = sidoName;
-                                logDiagnostic(`[onMapAction] 지도 중심 이동에 따른 지역 필터 갱신: ${sidoName}`);
+                            const sidoMapping = {
+                                "서울": "서울특별시", "부산": "부산광역시", "대구": "대구광역시",
+                                "인천": "인천광역시", "광주": "광주광역시", "대전": "대전광역시",
+                                "울산": "울산광역시", "경기": "경기도", "충북": "충청북도",
+                                "충남": "충청남도", "전남": "전라남도", "경북": "경상북도",
+                                "경남": "경상남도", "세종": "세종특별자치시", "강원": "강원특별자치도",
+                                "전북": "전북특별자치도", "제주": "제주특별자치도", "경상북도": "경상북도"
+                            };
+                            const mapped = sidoMapping[sidoName] || sidoName;
+                            const optionExists = Array.from(regionFilter.options).some(opt => opt.value === mapped);
+                            if (optionExists) {
+                                detectedRegion = mapped;
+                                if (regionFilter.value !== mapped) {
+                                    regionFilter.value = mapped;
+                                    logDiagnostic(`[geocoder] 지역 필터 자동 갱신: ${mapped}`);
+                                }
                             }
                             break;
                         }
                     }
                 }
+                doRender(detectedRegion);
             });
+        } else {
+            // geocoder 없으면 현재 드롭다운 값 그대로 렌더
+            const zoomLevel = kakaoMap.getLevel();
+            orchestrator.state.filters.schoolType = schoolTypeFilter.value;
+            _renderMapForRegion(zoomLevel, regionFilter.value);
         }
+    }
 
-        const zoomLevel = kakaoMap.getLevel();
-        orchestrator.state.filters.schoolType = schoolTypeFilter.value;
+    // 실제 지도 렌더링 로직 (지역/줌 확정 후 호출)
+    function _renderMapForRegion(zoomLevel, selectedRegion) {
 
         if (zoomLevel >= 7) {
-            logDiagnostic(`[onMapAction] 줌 레벨이 7 이상이므로 클러스터러를 노출합니다. (현재 레벨: ${zoomLevel})`);
-            
-            // Hide individual custom overlays
+            logDiagnostic(`[_renderMapForRegion] 클러스터 모드 (줌: ${zoomLevel}, 지역: ${selectedRegion})`);
+
+            // 클러스터 모드 가이드로 범례 변경
+            const legendTitle = document.getElementById('legendTitleText');
+            const legendContent = document.getElementById('legendContent');
+            if (legendTitle) legendTitle.innerText = '지도 클러스터 가이드 (학교 수)';
+            if (legendContent) legendContent.innerHTML = `
+                <div style="font-size: 11px; color: var(--text-muted); text-align: center; margin-bottom: 8px;">
+                    지도를 <strong>확대(줌 인)</strong>하시면 개별 학교의<br>학업성취도를 확인할 수 있습니다.
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: rgba(51, 204, 255, 0.8);"></span>
+                    <span style="font-weight: 500; color: var(--text-main);">10개 미만</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: rgba(255, 153, 0, 0.8);"></span>
+                    <span style="font-weight: 500; color: var(--text-main);">10 ~ 30개 미만</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: rgba(255, 51, 204, 0.8);"></span>
+                    <span style="font-weight: 500; color: var(--text-main);">30 ~ 50개 미만</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: rgba(255, 0, 0, 0.8);"></span>
+                    <span style="font-weight: 500; color: var(--text-main);">50개 이상</span>
+                </div>
+            `;
+
+            // 개별 핀 숨기기
             mapMarkers.forEach(marker => marker.setMap(null));
             mapMarkers = [];
             currentLoadedSchools = [];
 
-            // Filter all schools in database matching the filters to add to the clusterer
-            const selectedRegion = regionFilter.value;
             let typeLabel = '중학교';
             if (orchestrator.state.filters.schoolType === 'elementary') typeLabel = '초등학교';
             else if (orchestrator.state.filters.schoolType === 'high') typeLabel = '고등학교';
 
-            const filtered = schoolsDatabase.filter(school => {
+            // selectedRegion 인자로 필터링 (드롭다운 값이 아닌 geocoder 확정값 사용)
+            const filteredForCluster = schoolsDatabase.filter(school => {
                 if (!school.lat || !school.lng) return false;
                 if (selectedRegion !== 'all' && school.region !== selectedRegion) return false;
                 if (orchestrator.state.filters.schoolType !== 'all' && school.school_type !== typeLabel) return false;
                 return true;
             });
 
-            // Create standard markers for clusterer
-            const markers = filtered.map(school => {
+            const markers = filteredForCluster.map(school => {
                 const marker = new kakao.maps.Marker({
                     position: new kakao.maps.LatLng(school.lat, school.lng)
                 });
-                
-                // Allow clicking on marker within clusterer (when zoomed in) to select the school
                 kakao.maps.event.addListener(marker, 'click', () => {
                     const summary = orchestrator.selectSchool(school);
                     showSchoolDetails(summary, school);
-                    
                     const sidebar = document.querySelector('.sidebar-section');
                     if (sidebar && sidebar.style.display === 'none') {
                         if (typeof toggleSidebar === 'function') toggleSidebar();
@@ -423,23 +473,45 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Zoom level is <= 6, clear clusterer and render custom overlays for viewport bounds
+        // 줌 레벨 6 이하: 클러스터 해제 후 개별 핀 모드
         if (clusterer) {
             clusterer.clear();
         }
+
+        // 학업성취도 가이드 범례 복구
+        const legendTitle = document.getElementById('legendTitleText');
+        const legendContent = document.getElementById('legendContent');
+        if (legendTitle) legendTitle.innerText = '학업성취도 기준 (78.0점)';
+        if (legendContent) legendContent.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--primary-blue);"></span>
+                <span style="font-weight: 600; color: var(--text-main);">3개 교과 기준 충족 (우수)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--success-green);"></span>
+                <span style="font-weight: 600; color: var(--text-main);">2개 교과 기준 충족</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--warning-yellow);"></span>
+                <span style="font-weight: 600; color: var(--text-main);">1개 교과 기준 충족</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--info-gray);"></span>
+                <span style="font-weight: 600; color: var(--text-muted);">기준 충족 과목 없음</span>
+            </div>
+        `;
 
         const bounds = kakaoMap.getBounds();
         const sw = bounds.getSouthWest();
         const ne = bounds.getNorthEast();
 
-        logDiagnostic(`[onMapAction] 영역 필터링 실행 (중심: Lat ${center.getLat().toFixed(4)}, Lng ${center.getLng().toFixed(4)})`);
+        logDiagnostic(`[_renderMapForRegion] 개별 핀 모드 (지역: ${selectedRegion})`);
 
-        // Filter schools inside current viewport bounds
+        // 뷰포트 내 + 지역 필터 (selectedRegion 인자 사용)
         let filtered = schoolsDatabase.filter(school => {
             if (!school.lat || !school.lng) return false;
 
-            // Region Filter
-            const selectedRegion = regionFilter.value;
+            // Region Filter (인자로 받은 selectedRegion 사용 — geocoder 확정값)
             if (selectedRegion !== 'all' && school.region !== selectedRegion) {
                 return false;
             }
@@ -486,6 +558,8 @@ document.addEventListener('DOMContentLoaded', () => {
         overlayEl.className = 'school-overlay';
         overlayEl.style.cursor = 'pointer';
         overlayEl.style.position = 'absolute';
+        overlayEl.style.width = '0px';
+        overlayEl.style.height = '0px';
         overlayEl.style.zIndex = '999';
         
         // 클릭 시 상세 정보 바인딩
@@ -495,13 +569,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const pinEl = document.createElement('div');
         pinEl.className = `school-pin pin-${school.pin_color}`;
+        // 핀의 뾰족한 끝이 정확히 (0,0)에 위치하도록 마진 조정
+        pinEl.style.left = '-19px';
+        pinEl.style.top = '-46px';
         
         const labelEl = document.createElement('div');
         labelEl.className = 'pin-label';
         labelEl.style.position = 'absolute';
-        labelEl.style.transform = 'translate(-50%, -48px)';
-        labelEl.style.top = '0';
-        labelEl.style.left = '19px';
+        // 핀 바로 위에 라벨이 위치하도록 조정
+        labelEl.style.top = '-46px';
+        labelEl.style.left = '0px';
+        labelEl.style.transform = 'translate(-50%, -100%)';
         labelEl.innerText = school.school_name;
 
         overlayEl.appendChild(pinEl);
@@ -510,8 +588,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const marker = new kakao.maps.CustomOverlay({
             position: coords,
             content: overlayEl,
-            xAnchor: 0.5,
-            yAnchor: 1.0,
+            xAnchor: 0,
+            yAnchor: 0,
             zIndex: 999,
             clickable: true
         });
@@ -635,6 +713,20 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('budgetDetailPanel').style.display = 'none';
         // 창체 상세 데이터 렌더링
         renderBudgetDetail(summary.budget_detail);
+
+        // 전학생·통학 현황 모달 초기화 및 데이터 렌더링
+        const studentStatsModal = document.getElementById('studentStatsModal');
+        if (studentStatsModal) studentStatsModal.style.display = 'none';
+        if (typeof window.renderStudentStats === 'function') {
+            window.renderStudentStats(fullSchool);
+        }
+
+        // 학교폭력 현황 모달 초기화 및 데이터 렌더링
+        const violenceStatsModal = document.getElementById('violenceStatsModal');
+        if (violenceStatsModal) violenceStatsModal.style.display = 'none';
+        if (typeof window.renderViolenceStats === 'function') {
+            window.renderViolenceStats(fullSchool);
+        }
         
         // 경쟁 치열도 상세 미리 렌더링
         renderCompetitionDetail(summary, fullSchool);
@@ -697,7 +789,13 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('schoolAcademies').innerText = '검색 중...';
 
         // 전체 학원 목록 백엔드 API로 가져오기 (가나다 정렬 + 클라이언트 페이지네이션)
-        const PAGE_SIZE = 15;
+        // sideAcademyList의 실제 높이를 측정하여 항목당 높이(약 36px)로 나누어 정확한 노출 개수 계산
+        const listEl = document.getElementById('sideAcademyList');
+        let availableHeight = listEl.clientHeight;
+        if (availableHeight === 0) availableHeight = window.innerHeight - 280; // fallback
+        
+        const ITEM_HEIGHT = 36; // padding 6px*2 + 텍스트 1줄 + border 1px + gap 0 등 대략 36px
+        const PAGE_SIZE = Math.max(Math.floor(availableHeight / ITEM_HEIGHT), 5);
         
         fetch(`/api/academies/list?x=${fullSchool.lng}&y=${fullSchool.lat}`)
             .then(res => res.json())
@@ -707,98 +805,219 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 실제 total_count 업데이트
                 document.getElementById('schoolAcademies').innerText = `${result.total_count}개`;
 
-                const allAcademies = [...(result.items || [])].sort((a, b) =>
+                let allFetchedAcademies = [...(result.items || [])].sort((a, b) =>
                     (a.place_name || '').localeCompare(b.place_name || '', 'ko')
                 );
 
-                const totalPages = Math.ceil(allAcademies.length / PAGE_SIZE);
+                let searchTimeout = null;
 
-                function renderAcademyPage(page) {
-                    academyListContainer.innerHTML = '';
-                    const start = (page - 1) * PAGE_SIZE;
-                    const pageItems = allAcademies.slice(start, start + PAGE_SIZE);
+                async function applyFiltersAndRender() {
+                    const typeFilterEl = document.getElementById('academyTypeFilter');
+                    const nameFilterEl = document.getElementById('academyNameFilter');
+                    
+                    const typeFilter = typeFilterEl ? typeFilterEl.value : 'all';
+                    const nameFilter = nameFilterEl ? nameFilterEl.value.trim().toLowerCase() : '';
 
-                    pageItems.forEach(place => {
-                        const acadName = place.place_name;
+                    let baseList = allFetchedAcademies;
 
-                        const item = document.createElement('div');
-                        item.style.padding = '6px 0px';
-                        item.style.borderBottom = '1px solid var(--border-color)';
-                        item.style.background = 'transparent';
-                        item.style.display = 'flex';
-                        item.style.alignItems = 'center';
-                        item.style.gap = '6px';
-                        item.style.fontWeight = '500';
-                        item.style.cursor = 'pointer';
-                        item.style.transition = 'all 0.2s ease';
-                        item.style.color = 'var(--text-main)';
+                    // 검색어가 있으면 카카오 키워드 API 원격 호출 (반경 1km 이내 검색)
+                    if (nameFilter !== '') {
+                        try {
+                            const url = `/api/academies/search?query=${encodeURIComponent(nameFilter)}&x=${fullSchool.lng}&y=${fullSchool.lat}`;
+                            const res = await fetch(url);
+                            const data = await res.json();
+                            baseList = data.items || [];
+                        } catch (err) {
+                            console.error('Remote academy search error', err);
+                            baseList = [];
+                        }
+                    }
 
-                        const nameSpan = document.createElement('span');
-                        nameSpan.innerText = acadName;
-                        item.appendChild(nameSpan);
+                    let filtered = baseList;
 
-                        item.onmouseover = () => {
-                            item.style.borderBottom = '1px solid var(--primary-blue)';
-                            nameSpan.style.color = 'var(--primary-blue)';
-                        };
-                        item.onmouseout = () => {
-                            item.style.borderBottom = '1px solid var(--border-color)';
-                            nameSpan.style.color = 'var(--text-main)';
-                        };
+                    // 로컬 타입 필터(학원/교습소) 적용
+                    if (typeFilter !== 'all') {
+                        filtered = filtered.filter(place => {
+                            const name = place.place_name || '';
+                            const tLabel = name.includes('교습소') ? '교습소' : '학원';
+                            return tLabel === typeFilter;
+                        });
+                    }
 
-                        item.onclick = () => {
-                            window.currentAcademyForCommunity = acadName;
-                            document.querySelectorAll('.community-filter-btn').forEach(btn => {
-                                btn.style.background = 'white';
-                                btn.style.color = 'var(--text-muted)';
-                                btn.style.borderColor = 'var(--border-color)';
-                            });
-                            const allBtn = document.querySelector('.community-filter-btn[data-type="all"]');
-                            if (allBtn) {
-                                allBtn.style.background = 'var(--primary-blue)';
-                                allBtn.style.color = 'white';
-                                allBtn.style.borderColor = 'var(--primary-blue)';
+                    const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
+
+                    function renderAcademyPage(page) {
+                        academyListContainer.innerHTML = '';
+                        const start = (page - 1) * PAGE_SIZE;
+                        const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+                        pageItems.forEach(place => {
+                            const acadName = place.place_name;
+
+                            let typeLabel = acadName.includes('교습소') ? '교습소' : '학원';
+                            let subjectLabel = '';
+                            if (place.category_name) {
+                                const parts = place.category_name.split('>').map(s => s.trim());
+                                // 상세 과목명은 가장 하위 카테고리를 우선적으로 사용
+                                if (parts.length > 2) {
+                                    subjectLabel = parts[parts.length - 1];
+                                } else if (parts.length === 2) {
+                                    subjectLabel = parts[1];
+                                }
                             }
-                            window.fetchCommunityReviews(acadName, 'all');
-                        };
 
-                        academyListContainer.appendChild(item);
-                    });
+                            const item = document.createElement('div');
+                            item.style.padding = '6px 0px';
+                            item.style.borderBottom = '1px solid var(--border-color)';
+                            item.style.background = 'transparent';
+                            item.style.display = 'flex';
+                            item.style.alignItems = 'center';
+                            item.style.justifyContent = 'space-between';
+                            item.style.gap = '6px';
+                            item.style.fontWeight = '500';
+                            item.style.cursor = 'pointer';
+                            item.style.transition = 'all 0.2s ease';
+                            item.style.color = 'var(--text-main)';
 
-                    // 페이지네이션 버튼 렌더링
-                    let paginationEl = document.getElementById('academyPagination');
-                    if (!paginationEl) {
-                        paginationEl = document.createElement('div');
-                        paginationEl.id = 'academyPagination';
-                        paginationEl.style.display = 'flex';
-                        paginationEl.style.flexWrap = 'wrap';
-                        paginationEl.style.justifyContent = 'center';
-                        paginationEl.style.gap = '4px';
-                        paginationEl.style.marginTop = '12px';
-                        academyListContainer.parentNode.appendChild(paginationEl);
+                            const nameSpan = document.createElement('span');
+                            nameSpan.innerText = acadName;
+
+                            const badgeContainer = document.createElement('div');
+                            badgeContainer.style.display = 'flex';
+                            badgeContainer.style.gap = '4px';
+
+                            let shortSubject = '';
+                            if (subjectLabel) {
+                                shortSubject = subjectLabel.replace('학원', '').replace('교습소', '').replace('전문', '').trim();
+                                if (shortSubject === '') shortSubject = subjectLabel;
+                            }
+
+                            const leftWrapper = document.createElement('div');
+                            leftWrapper.style.display = 'flex';
+                            leftWrapper.style.alignItems = 'center';
+                            leftWrapper.style.gap = '6px';
+                            leftWrapper.appendChild(nameSpan);
+
+                            item.appendChild(leftWrapper);
+                            item.appendChild(badgeContainer);
+
+                            item.onmouseover = () => {
+                                item.style.borderBottom = '1px solid var(--primary-blue)';
+                                nameSpan.style.color = 'var(--primary-blue)';
+                            };
+                            item.onmouseout = () => {
+                                item.style.borderBottom = '1px solid var(--border-color)';
+                                nameSpan.style.color = 'var(--text-main)';
+                            };
+
+                            item.onclick = () => {
+                                window.currentAcademyForCommunity = acadName;
+                                document.querySelectorAll('.community-filter-btn').forEach(btn => {
+                                    btn.style.background = 'white';
+                                    btn.style.color = 'var(--text-muted)';
+                                    btn.style.borderColor = 'var(--border-color)';
+                                });
+                                const allBtn = document.querySelector('.community-filter-btn[data-type="all"]');
+                                if (allBtn) {
+                                    allBtn.style.background = 'var(--primary-blue)';
+                                    allBtn.style.color = 'white';
+                                    allBtn.style.borderColor = 'var(--primary-blue)';
+                                }
+                                window.fetchCommunityReviews(acadName, 'all', shortSubject, typeLabel);
+                            };
+
+                            academyListContainer.appendChild(item);
+                        });
+
+                        let paginationEl = document.getElementById('academyPagination');
+                        if (!paginationEl) {
+                            paginationEl = document.createElement('div');
+                            paginationEl.id = 'academyPagination';
+                            paginationEl.style.display = 'flex';
+                            paginationEl.style.flexWrap = 'wrap';
+                            paginationEl.style.justifyContent = 'center';
+                            paginationEl.style.gap = '4px';
+                            document.getElementById('academyPaginationContainer').appendChild(paginationEl);
+                        }
+                        paginationEl.innerHTML = '';
+
+                        // Pagination block size
+                        const MAX_PAGES = 3;
+                        const currentBlock = Math.ceil(page / MAX_PAGES);
+                        const startPage = (currentBlock - 1) * MAX_PAGES + 1;
+                        const endPage = Math.min(startPage + MAX_PAGES - 1, totalPages);
+
+                        if (startPage > 1) {
+                            const prevBtn = document.createElement('button');
+                            prevBtn.innerText = '<';
+                            prevBtn.style.padding = '4px 10px';
+                            prevBtn.style.border = '1px solid var(--border-color)';
+                            prevBtn.style.borderRadius = '4px';
+                            prevBtn.style.background = 'white';
+                            prevBtn.style.color = 'var(--text-main)';
+                            prevBtn.style.cursor = 'pointer';
+                            prevBtn.style.fontSize = '12px';
+                            prevBtn.onclick = () => renderAcademyPage(startPage - 1);
+                            paginationEl.appendChild(prevBtn);
+                        }
+
+                        for (let i = startPage; i <= endPage; i++) {
+                            const btn = document.createElement('button');
+                            btn.innerText = i;
+                            btn.style.padding = '4px 10px';
+                            btn.style.border = '1px solid var(--border-color)';
+                            btn.style.borderRadius = '4px';
+                            btn.style.background = (i === page) ? 'var(--primary-blue)' : 'white';
+                            btn.style.color = (i === page) ? 'white' : 'var(--text-main)';
+                            btn.style.cursor = 'pointer';
+                            btn.style.fontSize = '12px';
+                            btn.onclick = () => renderAcademyPage(i);
+                            paginationEl.appendChild(btn);
+                        }
+
+                        if (endPage < totalPages) {
+                            const nextBtn = document.createElement('button');
+                            nextBtn.innerText = '>';
+                            nextBtn.style.padding = '4px 10px';
+                            nextBtn.style.border = '1px solid var(--border-color)';
+                            nextBtn.style.borderRadius = '4px';
+                            nextBtn.style.background = 'white';
+                            nextBtn.style.color = 'var(--text-main)';
+                            nextBtn.style.cursor = 'pointer';
+                            nextBtn.style.fontSize = '12px';
+                            nextBtn.onclick = () => renderAcademyPage(endPage + 1);
+                            paginationEl.appendChild(nextBtn);
+                        }
+                    } // end renderAcademyPage
+
+                    if (filtered.length === 0) {
+                        academyListContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">조건에 맞는 검색 결과가 없습니다.</div>';
+                        const paginationEl = document.getElementById('academyPagination');
+                        if(paginationEl) paginationEl.innerHTML = '';
+                    } else {
+                        renderAcademyPage(1);
                     }
-                    paginationEl.innerHTML = '';
+                } // end applyFiltersAndRender
 
-                    for (let i = 1; i <= totalPages; i++) {
-                        const btn = document.createElement('button');
-                        btn.innerText = i;
-                        btn.style.padding = '4px 10px';
-                        btn.style.border = '1px solid var(--border-color)';
-                        btn.style.borderRadius = '4px';
-                        btn.style.background = (i === page) ? 'var(--primary-blue)' : 'white';
-                        btn.style.color = (i === page) ? 'white' : 'var(--text-main)';
-                        btn.style.cursor = 'pointer';
-                        btn.style.fontSize = '12px';
-                        btn.onclick = () => renderAcademyPage(i);
-                        paginationEl.appendChild(btn);
-                    }
+                // 필터 이벤트 리스너 바인딩 (검색의 경우 debounce 적용)
+                const typeFilterEl = document.getElementById('academyTypeFilter');
+                const nameFilterEl = document.getElementById('academyNameFilter');
+                
+                if (typeFilterEl) {
+                    typeFilterEl.onchange = () => applyFiltersAndRender();
+                }
+                
+                if (nameFilterEl) {
+                    nameFilterEl.oninput = () => {
+                        if (searchTimeout) clearTimeout(searchTimeout);
+                        searchTimeout = setTimeout(() => {
+                            applyFiltersAndRender();
+                        }, 400); // 400ms debounce
+                    };
                 }
 
-                if (allAcademies.length === 0) {
-                    academyListContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">주변에 검색된 학원이 없습니다.</div>';
-                } else {
-                    renderAcademyPage(1);
-                }
+                // 최초 렌더링
+                applyFiltersAndRender();
             })
             .catch(err => {
                 console.error('Academy list fetch error:', err);
@@ -1347,13 +1566,13 @@ document.addEventListener('DOMContentLoaded', () => {
             col.className = 'compare-col';
             col.innerHTML = `
                 <div class="compare-school-name">${item.school_name}</div>
-                <div style="font-size:12px;margin-bottom:6px;">학생수: <strong>${item.student_count}</strong></div>
-                <div style="font-size:12px;margin-bottom:6px;">학급 평균: <strong>${item.class_avg_size}</strong></div>
-                <div style="font-size:12px;margin-bottom:6px;">국·영·수 평균: <strong>${item.korean_avg} / ${item.english_avg} / ${item.math_avg}</strong></div>
-                <div style="font-size:12px;margin-bottom:6px;">강점 과목: <strong>${item.strong_subject}</strong></div>
+                <div style="font-size:12px;margin-bottom:6px;">🧑‍🎓 학생수: <strong>${item.student_count}</strong></div>
+                <div style="font-size:12px;margin-bottom:6px;">🏫 학급 평균: <strong>${item.class_avg_size}</strong></div>
+                <div style="font-size:12px;margin-bottom:6px;">📊 국·영·수 평균: <strong>${item.korean_avg} / ${item.english_avg} / ${item.math_avg}</strong></div>
+                <div style="font-size:12px;margin-bottom:6px;">🎯 강점 과목: <strong>${item.strong_subject}</strong></div>
                 <div style="font-size:12px;margin-bottom:6px;">💰 창체 활동비: <strong>${item.extracurricular_budget}만원</strong></div>
                 <div style="font-size:12px;margin-top:8px;border-top:1px solid var(--border-color);padding-top:6px;">
-                    우리 아이 적합도: <strong style="color:${item.suitability === '상' ? 'var(--success-green)' : (item.suitability === '중' ? 'var(--warning-yellow)' : 'var(--danger-red)')}">${item.suitability}</strong>
+                    ✨ 우리 아이 적합도: <strong style="color:${item.suitability === '상' ? 'var(--success-green)' : (item.suitability === '중' ? 'var(--warning-yellow)' : 'var(--danger-red)')}">${item.suitability}</strong>
                 </div>
             `;
             compareGrid.appendChild(col);
@@ -1419,17 +1638,82 @@ window.updateBudgetCompare = function(type) {
 window.currentAcademyForCommunity = '';
 window.currentCommunityFilter = 'all';
 
-window.fetchCommunityReviews = async (acadName, type = 'all') => {
+window.fetchCommunityReviews = async (acadName, type = 'all', subjectLabel = '', typeLabel = '') => {
     const panel = document.getElementById('communityPanel');
     const title = document.getElementById('communityAcademyName');
     const reviewContainer = document.getElementById('communityReviewsList');
     
     title.innerText = acadName;
-    reviewContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">포털 커뮤니티 데이터를 검색 중입니다...</div>';
+
+    // 상세 과목 뱃지 업데이트
+    const subjectEl = document.getElementById('communityAcademySubject');
+    if (subjectEl) {
+        if (subjectLabel) {
+            subjectEl.innerText = subjectLabel;
+            subjectEl.style.display = 'inline-block';
+        } else {
+            subjectEl.style.display = 'none';
+        }
+    }
+
+    // 학원/교습소 유형 뱃지 업데이트
+    const typeEl = document.getElementById('communityAcademyType');
+    if (typeEl) {
+        if (typeLabel) {
+            typeEl.innerText = typeLabel;
+            typeEl.style.display = 'inline-block';
+            typeEl.style.background = typeLabel.includes('교습소') ? '#fff3e0' : '#e3f2fd';
+            typeEl.style.color = typeLabel.includes('교습소') ? '#e65100' : '#1565c0';
+        } else {
+            typeEl.style.display = 'none';
+        }
+    }
+
+    reviewContainer.innerHTML = type === 'real' 
+        ? '<div style="text-align: center; color: var(--text-muted); padding: 20px;">찐후기를 불러오는 중입니다...</div>'
+        : '<div style="text-align: center; color: var(--text-muted); padding: 20px;">포털 커뮤니티 데이터를 검색 중입니다...</div>';
+    
     panel.style.display = 'flex';
     document.getElementById('btnToggleSidebarTop').style.display = 'none';
 
     try {
+        if (type === 'real') {
+            const response = await fetch(`/api/reviews?academyName=${encodeURIComponent(acadName)}`);
+            if (!response.ok) throw new Error('찐후기 조회 중 오류가 발생했습니다.');
+            const data = await response.json();
+            
+            reviewContainer.innerHTML = '';
+            if (data.items && data.items.length > 0) {
+                data.items.forEach(review => {
+                    const reviewItem = document.createElement('div');
+                    reviewItem.style.background = 'white';
+                    reviewItem.style.padding = '12px';
+                    reviewItem.style.borderRadius = '8px';
+                    reviewItem.style.border = '1px solid var(--border-color)';
+                    reviewItem.style.fontSize = '13px';
+                    reviewItem.style.color = 'var(--text-main)';
+                    reviewItem.style.lineHeight = '1.5';
+                    reviewItem.style.boxShadow = '0 2px 8px rgba(0,0,0,0.02)';
+                    
+                    const stars = '⭐'.repeat(review.rating);
+                    const dateStr = new Date(review.createdAt).toLocaleDateString();
+                    
+                    reviewItem.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                            <span style="font-size: 10px; font-weight: 700; color: white; background: #e91e63; border-radius: 4px; padding: 1px 6px; flex-shrink: 0;">찐후기</span>
+                            <span style="font-size: 12px; font-weight: bold; color: #ff9800;">${stars}</span>
+                            <span style="font-size: 11px; color: var(--text-muted); margin-left: auto;">${dateStr}</span>
+                        </div>
+                        <div style="color: var(--text-main); font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-all;">${review.content}</div>
+                    `;
+                    reviewContainer.appendChild(reviewItem);
+                });
+            } else {
+                reviewContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">아직 등록된 찐후기가 없습니다.<br>첫 후기를 남겨주세요!</div>';
+            }
+            return;
+        }
+
         const response = await fetch(`/api/community?q=${encodeURIComponent(acadName)}&type=${type}`);
         if (!response.ok) {
             const err = await response.json();
@@ -1514,6 +1798,148 @@ window.toggleCompetitionModal = function() {
     }
 };
 
+// --- 학교폭력 현황 모달 토글 ---
+window.toggleViolenceStatsModal = function() {
+    const modal = document.getElementById('violenceStatsModal');
+    if (!modal) return;
+    if (modal.style.display === 'none' || modal.style.display === '') {
+        modal.style.display = 'flex';
+    } else {
+        modal.style.display = 'none';
+    }
+};
+
+// --- 학교폭력 데이터 렌더링 ---
+window.renderViolenceStats = function(school) {
+    const vs = school.violence_stats;
+    if (!vs) return;
+
+    // 인라인 요약
+    const summaryEl = document.getElementById('statViolenceSummary');
+    if (summaryEl) {
+        if (vs.total_cases === 0) {
+            summaryEl.innerHTML = `신고 없음 (처리율 ${vs.resolved_rate ?? '-'}%)`;
+            summaryEl.style.color = '#2e7d32';
+        } else {
+            summaryEl.innerHTML = `연 ${vs.total_cases}건 · 100명당 ${vs.per_100 ?? '-'}건`;
+            summaryEl.style.color = vs.total_cases > 3 ? '#c62828' : '#e65100';
+        }
+    }
+
+    // 모달 내 수치
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+    set('statViolenceTotal',    vs.total_cases ?? '-');
+    set('statViolencePer100',   vs.per_100 ?? '-');
+    set('statViolenceResolved', vs.resolved_rate ?? '-');
+
+    // 유형별 비율
+    const t = vs.types || {};
+    const verbal   = t.verbal   ?? 0;
+    const cyber    = t.cyber    ?? 0;
+    const exclude  = t.exclude  ?? 0;
+    const physical = t.physical ?? 0;
+
+    set('statViolenceVerbal',   verbal);
+    set('statViolenceCyber',    cyber);
+    set('statViolenceExclude',  exclude);
+    set('statViolencePhysical', physical);
+
+    // 스택 바
+    const setW = (id, val) => { const el = document.getElementById(id); if (el) el.style.width = val + '%'; };
+    setW('violenceBarVerbal',   verbal);
+    setW('violenceBarCyber',    cyber);
+    setW('violenceBarExclude',  exclude);
+    setW('violenceBarPhysical', physical);
+    // 개별 바
+    setW('violenceBarVerbal2',   verbal);
+    setW('violenceBarCyber2',    cyber);
+    setW('violenceBarExclude2',  exclude);
+    setW('violenceBarPhysical2', physical);
+};
+
+// --- 전학생·통학 현황 모달 토글 ---
+window.toggleStudentStatsModal = function() {
+    const modal = document.getElementById('studentStatsModal');
+    if (!modal) return;
+    if (modal.style.display === 'none' || modal.style.display === '') {
+        modal.style.display = 'flex';
+    } else {
+        modal.style.display = 'none';
+    }
+};
+
+// 하위 호환성 유지 (구 toggleStudentStatsPanel 호출 대응)
+window.toggleStudentStatsPanel = window.toggleStudentStatsModal;
+
+// --- 전학생·통학 데이터 렌더링 ---
+window.renderStudentStats = function(school) {
+    const ts = school.transfer_stats;
+    const rs = school.residence_stats;
+    const cs = school.commute_stats;
+
+    // 인라인 요약값 (전학생·통학 현황: 전입 N / 전출 N)
+    const summaryEl = document.getElementById('statTransferSummary');
+    if (summaryEl && ts) {
+        const net = ts.net ?? 0;
+        const netStr = (net > 0 ? '+' : '') + net;
+        summaryEl.innerHTML = `전입 ${ts.transfer_in ?? '-'}명 / 전출 ${ts.transfer_out ?? '-'}명 (순 ${netStr}명)`;
+    }
+
+    // 모달 내 전학생 현황
+    if (ts) {
+        const inEl  = document.getElementById('statTransferIn');
+        const outEl = document.getElementById('statTransferOut');
+        const netEl = document.getElementById('statTransferNet');
+        if (inEl)  inEl.innerText  = ts.transfer_in  ?? '-';
+        if (outEl) outEl.innerText = ts.transfer_out ?? '-';
+        if (netEl) {
+            const net = ts.net ?? 0;
+            netEl.innerText = (net > 0 ? '+' : '') + net;
+            netEl.style.color = net > 0 ? '#2e7d32' : net < 0 ? '#bf360c' : '#0d47a1';
+        }
+    }
+
+    // 거주지 비율
+    if (rs) {
+        const inPct  = rs.within_district  ?? 0;
+        const outPct = rs.outside_district ?? 0;
+        const inEl  = document.getElementById('statResidenceIn');
+        const outEl = document.getElementById('statResidenceOut');
+        const bar   = document.getElementById('residenceBar');
+        if (inEl)  inEl.innerText  = inPct;
+        if (outEl) outEl.innerText = outPct;
+        if (bar) {
+            bar.style.background = `linear-gradient(to right, #1565c0 0%, #1565c0 ${inPct}%, #e0e0e0 ${inPct}%, #e0e0e0 100%)`;
+        }
+    }
+
+    // 통학 수단 비율
+    if (cs) {
+        const walk = cs.walk ?? 0;
+        const bus  = cs.bus  ?? 0;
+        const car  = cs.car  ?? 0;
+        const etc  = cs.etc  ?? 0;
+
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+        set('statCommuteWalk', walk);
+        set('statCommuteBus',  bus);
+        set('statCommuteCar',  car);
+        set('statCommuteEtc',  etc);
+
+        const setW = (id, val) => { const el = document.getElementById(id); if (el) el.style.width = val + '%'; };
+        // 상단 스택 바
+        setW('commuteBarWalk', walk);
+        setW('commuteBarBus',  bus);
+        setW('commuteBarCar',  car);
+        setW('commuteBarEtc',  etc);
+        // 모달 내 개별 진행 바
+        setW('commuteBarWalk2', walk);
+        setW('commuteBarBus2',  bus);
+        setW('commuteBarCar2',  car);
+        setW('commuteBarEtc2',  etc);
+    }
+};
+
 // Setup filter button listeners
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.community-filter-btn').forEach(btn => {
@@ -1538,3 +1964,46 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
+
+// --- 찐후기 글쓰기 모달 제어 로직 ---
+window.openReviewModal = () => {
+    if (!window.currentAcademyForCommunity) {
+        alert('선택된 학원이 없습니다.');
+        return;
+    }
+    document.getElementById('reviewModalAcademyName').innerText = window.currentAcademyForCommunity;
+    document.getElementById('reviewRating').value = '5';
+    document.getElementById('reviewContent').value = '';
+    document.getElementById('reviewModal').style.display = 'flex';
+};
+
+window.submitReview = async () => {
+    const acadName = window.currentAcademyForCommunity;
+    const rating = document.getElementById('reviewRating').value;
+    const content = document.getElementById('reviewContent').value.trim();
+
+    if (!content) {
+        alert('상세 후기 내용을 입력해주세요.');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/reviews', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ academyName: acadName, rating, content })
+        });
+        
+        if (!response.ok) throw new Error('등록 중 오류가 발생했습니다.');
+        
+        alert('소중한 찐후기가 성공적으로 등록되었습니다!');
+        document.getElementById('reviewModal').style.display = 'none';
+        
+        // 찐후기 탭으로 강제 이동(리프레시)
+        const realBtn = document.querySelector('.community-filter-btn[data-type="real"]');
+        if (realBtn) realBtn.click();
+        
+    } catch(e) {
+        alert(e.message);
+    }
+};

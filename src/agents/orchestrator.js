@@ -26,7 +26,6 @@ export class Orchestrator {
             comparisonList: [], // 최대 3개 학교
             filters: {
                 schoolType: 'middle', // 'middle' | 'high'
-                radius: 3, // km
                 location: { lat: 37.5665, lng: 126.9780 } // default (Seoul)
             }
         };

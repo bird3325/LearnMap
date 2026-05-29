@@ -558,86 +558,96 @@ btnRunUpdate.addEventListener('click', () => {
             const finalProcessedSchools = [];
             const total = fetchedFilteredSchools.length;
 
-            // Perform sequential Geocoding with throttling to prevent Kakao Rate Limits
-            for (let i = 0; i < total; i++) {
-                const row = fetchedFilteredSchools[i];
-                const address = row.ORG_RDNMA || row.ORG_ADRES || '';
-                const cleanAddress = address.split('(')[0].split(',')[0].trim();
-                const schoolName = row.SCHUL_NM;
+            // 병렬 처리를 위한 청크(Batch) 단위 설정 (속도 개선)
+            const chunkSize = 10;
+            for (let i = 0; i < total; i += chunkSize) {
+                const chunk = fetchedFilteredSchools.slice(i, i + chunkSize);
+                
+                const chunkPromises = chunk.map(async (row, index) => {
+                    const currentIndex = i + index;
+                    const address = row.ORG_RDNMA || row.ORG_ADRES || '';
+                    const cleanAddress = address.split('(')[0].split(',')[0].trim();
+                    const schoolName = row.SCHUL_NM;
 
-                const percent = Math.round(30 + ((i / total) * 60));
-                updateProgress(`최신성 대조 및 지오코딩 중 (${i + 1}/${total})...`, percent);
-
-                // [최신성 검사] 이미 DB에 저장되어 있고 주소가 동일한 경우 지오코딩 및 다운로드 대상에서 제외 (기존 데이터 재사용)
-                const existingSchool = allStoredSchools.find(s => s.school_id === row.SD_SCHUL_CODE);
-                if (existingSchool && existingSchool.address.trim() === address.trim()) {
-                    if (!existingSchool.graduate_career || !existingSchool.academy_count) {
-                        const codeHash = parseInt(row.SD_SCHUL_CODE || '0') || 77;
-                        const special = Math.round(2 + (codeHash % 8));
-                        const autonomous = Math.round(5 + (codeHash % 12));
-                        const specialized = Math.round(10 + (codeHash % 15));
-                        const general = Math.max(0, 100 - (special + autonomous + specialized));
-                        existingSchool.graduate_career = existingSchool.graduate_career || { general, special, autonomous, specialized };
-                        existingSchool.academy_count = existingSchool.academy_count || getAcademyCount(existingSchool.address, codeHash);
-                        existingSchool.extracurricular_budget = existingSchool.extracurricular_budget || Math.round(80 + (codeHash % 120));
+                    // [최신성 검사] 이미 DB에 저장되어 있고 주소가 동일한 경우 지오코딩 및 다운로드 대상에서 제외 (기존 데이터 재사용)
+                    const existingSchool = allStoredSchools.find(s => s.school_id === row.SD_SCHUL_CODE);
+                    if (existingSchool && existingSchool.address.trim() === address.trim()) {
+                        if (!existingSchool.graduate_career || !existingSchool.academy_count) {
+                            const codeHash = parseInt(row.SD_SCHUL_CODE || '0') || 77;
+                            const special = Math.round(2 + (codeHash % 8));
+                            const autonomous = Math.round(5 + (codeHash % 12));
+                            const specialized = Math.round(10 + (codeHash % 15));
+                            const general = Math.max(0, 100 - (special + autonomous + specialized));
+                            existingSchool.graduate_career = existingSchool.graduate_career || { general, special, autonomous, specialized };
+                            existingSchool.academy_count = existingSchool.academy_count || getAcademyCount(existingSchool.address, codeHash);
+                            existingSchool.extracurricular_budget = existingSchool.extracurricular_budget || Math.round(80 + (codeHash % 120));
+                        }
+                        logDiagnosticMsg(`[${currentIndex+1}/${total}] ${schoolName} -> 변동 없음 (기존 데이터 재사용)`);
+                        return existingSchool;
                     }
-                    finalProcessedSchools.push(existingSchool);
-                    logDiagnosticMsg(`[${i+1}/${total}] ${schoolName} -> 변동 없음 (기존 데이터 재사용)`);
-                    continue;
-                }
 
-                if (cleanAddress) {
-                    try {
-                        const coords = await geocodeAddressPromise(cleanAddress);
-                        
-                        // Hash school code for mock deterministic performance indicators
-                        const codeHash = parseInt(row.SD_SCHUL_CODE || '0') || 77;
-                        const korAvg = Math.round(72 + (codeHash % 17));
-                        const engAvg = Math.round(70 + ((codeHash + 5) % 19));
-                        const mathAvg = Math.round(65 + ((codeHash + 11) % 24));
+                    if (cleanAddress) {
+                        try {
+                            const coords = await geocodeAddressPromise(cleanAddress);
+                            
+                            // Hash school code for mock deterministic performance indicators
+                            const codeHash = parseInt(row.SD_SCHUL_CODE || '0') || 77;
+                            const korAvg = Math.round(72 + (codeHash % 17));
+                            const engAvg = Math.round(70 + ((codeHash + 5) % 19));
+                            const mathAvg = Math.round(65 + ((codeHash + 11) % 24));
 
-                        const distA = Math.round(20 + (codeHash % 20));
-                        const distB = Math.round(30 + ((codeHash + 3) % 20));
-                        const distC = Math.round(10 + ((codeHash + 7) % 15));
-                        const distD = 100 - (distA + distB + distC);
+                            const distA = Math.round(20 + (codeHash % 20));
+                            const distB = Math.round(30 + ((codeHash + 3) % 20));
+                            const distC = Math.round(10 + ((codeHash + 7) % 15));
+                            const distD = 100 - (distA + distB + distC);
 
-                        const career = await fetchGraduateCareer(neisKey, row.ATPT_OFCDC_SC_CODE, row.SD_SCHUL_CODE, codeHash);
-                        const academies = getAcademyCount(address, codeHash);
-                        const extraBudget = Math.round(80 + (codeHash % 120));
+                            const career = await fetchGraduateCareer(neisKey, row.ATPT_OFCDC_SC_CODE, row.SD_SCHUL_CODE, codeHash);
+                            const academies = getAcademyCount(address, codeHash);
+                            const extraBudget = Math.round(80 + (codeHash % 120));
 
-                        const schoolData = {
-                            school_id: row.SD_SCHUL_CODE,
-                            school_name: row.SCHUL_NM,
-                            school_type: row.SCHUL_KND_SC_NM,
-                            region: row.LCTN_SC_NM,
-                            address: address,
-                            lat: coords.lat,
-                            lng: coords.lng,
-                            student_count: Math.round(400 + (codeHash % 400)),
-                            class_avg_size: Math.round(22 + (codeHash % 10)),
-                            updated_at: '2025-09-15',
-                            subjects: {
-                                korean: { avg: korAvg, dist: [distA, distB, distC, distD] },
-                                english: { avg: engAvg, dist: [distB, distA, distC, distD] },
-                                math: { avg: mathAvg, dist: [distC, distB, distA, distD] }
-                            },
-                            graduate_career: career,
-                            academy_count: academies,
-                            extracurricular_budget: extraBudget
-                        };
-                        schoolData.pin_color = getPinColor(schoolData);
+                            const schoolData = {
+                                school_id: row.SD_SCHUL_CODE,
+                                school_name: row.SCHUL_NM,
+                                school_type: row.SCHUL_KND_SC_NM,
+                                region: row.LCTN_SC_NM,
+                                address: address,
+                                lat: coords.lat,
+                                lng: coords.lng,
+                                student_count: Math.round(400 + (codeHash % 400)),
+                                class_avg_size: Math.round(22 + (codeHash % 10)),
+                                updated_at: '2025-09-15',
+                                subjects: {
+                                    korean: { avg: korAvg, dist: [distA, distB, distC, distD] },
+                                    english: { avg: engAvg, dist: [distB, distA, distC, distD] },
+                                    math: { avg: mathAvg, dist: [distC, distB, distA, distD] }
+                                },
+                                graduate_career: career,
+                                academy_count: academies,
+                                extracurricular_budget: extraBudget
+                            };
+                            schoolData.pin_color = getPinColor(schoolData);
 
-                        finalProcessedSchools.push(schoolData);
-                        logDiagnosticMsg(`[${i+1}/${total}] ${schoolName} -> 변환 성공`);
-                    } catch (err) {
-                        logDiagnosticMsg(`[${i+1}/${total}] ${schoolName} -> 지오코딩 실패: ${err}`);
+                            logDiagnosticMsg(`[${currentIndex+1}/${total}] ${schoolName} -> 변환 성공`);
+                            return schoolData;
+                        } catch (err) {
+                            logDiagnosticMsg(`[${currentIndex+1}/${total}] ${schoolName} -> 지오코딩 실패: ${err}`);
+                        }
+                    } else {
+                        logDiagnosticMsg(`[${currentIndex+1}/${total}] ${schoolName} -> 주소 정보 없음`);
                     }
-                } else {
-                    logDiagnosticMsg(`[${i+1}/${total}] ${schoolName} -> 주소 정보 없음`);
-                }
+                    return null;
+                });
 
-                // High throttling delay for safety
-                await new Promise(r => setTimeout(r, 80));
+                const processedChunk = await Promise.all(chunkPromises);
+                processedChunk.forEach(s => {
+                    if (s) finalProcessedSchools.push(s);
+                });
+
+                const percent = Math.round(30 + ((Math.min(i + chunkSize, total) / total) * 60));
+                updateProgress(`최신성 대조 및 지오코딩 중 (${Math.min(i + chunkSize, total)}/${total})...`, percent);
+
+                // 안전을 위해 청크(Batch) 단위 처리 후 짧은 대기 (카카오 API Limit 방지)
+                await new Promise(r => setTimeout(r, 50));
             }
 
             updateProgress('서버 데이터베이스 동기화 중...', 95);
