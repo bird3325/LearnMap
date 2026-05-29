@@ -277,6 +277,11 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(PORT, () => {
-    console.log(`[Express Backend] Server running on port ${PORT}`);
-});
+// 로컬 환경에서만 서버 구동, Vercel에서는 모듈로 동작
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`[Express Backend] Server running on port ${PORT}`);
+    });
+}
+
+export default app;

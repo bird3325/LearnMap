@@ -295,6 +295,13 @@ btnLogin.addEventListener('click', () => {
     });
 });
 
+// 엔터 키 입력 시 로그인 처리
+adminPassword.addEventListener('keyup', (e) => {
+    if (e.key === 'Enter') {
+        btnLogin.click();
+    }
+});
+
 // 2. LOGOUT Event
 btnLogout.addEventListener('click', logout);
 
