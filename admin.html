@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>학업성취도 지도 - 관리자 패널</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Admin specific custom overrides */
+        .admin-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .admin-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .admin-header h1 {
+            color: var(--deep-blue);
+            font-size: 26px;
+            font-weight: 700;
+        }
+        .admin-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            margin-bottom: 24px;
+        }
+        .progress-container {
+            margin-top: 15px;
+            display: none;
+        }
+        .progress-bar-wrapper {
+            height: 12px;
+            background: #EAEAEA;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--primary-blue);
+            transition: width 0.3s ease;
+        }
+        .log-box {
+            background: #1E1E1E;
+            color: #00FF00;
+            font-family: monospace;
+            font-size: 11px;
+            padding: 12px;
+            border-radius: 8px;
+            height: 150px;
+            overflow-y: auto;
+            margin-top: 15px;
+            border: 1px solid #333;
+        }
+        .nav-btn {
+            display: inline-block;
+            margin-top: 10px;
+            color: var(--primary-blue);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .nav-btn:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1>시스템 관리자 대시보드</h1>
+            <p>API 키 구성 및 학교 데이터베이스 강제 업데이트 관리</p>
+        </div>
+
+        <!-- 1. Login Card -->
+        <div class="admin-card" id="loginCard">
+            <h2 class="card-title">관리자 인증</h2>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                서버 설정을 변경하려면 비밀번호를 입력해 주세요. (기본값: admin1234)
+            </p>
+            <div class="form-group">
+                <label for="adminPassword">비밀번호</label>
+                <input type="password" id="adminPassword" class="form-control" placeholder="비밀번호 입력">
+            </div>
+            <button class="btn-primary" id="btnLogin">로그인</button>
+            <div style="text-align: center; margin-top: 16px;">
+                <a href="/" class="nav-btn">← 지도 메인 페이지로 이동</a>
+            </div>
+        </div>
+
+        <!-- 2. Management Panel (Initially Hidden) -->
+        <div id="managementPanel" style="display: none;">
+            
+            <!-- API Configuration Card -->
+            <div class="admin-card">
+                <h2 class="card-title">API 키 설정 관리</h2>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                    지도 및 나이스 정보 조회를 위한 각 API 서비스 인증 키를 관리합니다.
+                </p>
+                <div class="form-group">
+                    <label for="kakaoAppKey">Kakao Maps JavaScript App Key</label>
+                    <input type="text" id="kakaoAppKey" class="form-control" placeholder="카카오 앱 키를 입력하세요">
+                </div>
+                <div class="form-group">
+                    <label for="neisApiKey">NEIS Open API Key (인증키)</label>
+                    <input type="text" id="neisApiKey" class="form-control" placeholder="나이스 API 키를 입력하세요">
+                    <span style="font-size: 11px; color: var(--text-muted);">* 입력하지 않으면 5개 샘플 제한 모드로 동작합니다.</span>
+                </div>
+                <div class="form-group">
+                    <label for="naverClientId">Naver Search API Client ID</label>
+                    <input type="text" id="naverClientId" class="form-control" placeholder="네이버 Client ID를 입력하세요">
+                </div>
+                <div class="form-group">
+                    <label for="naverClientSecret">Naver Search API Client Secret</label>
+                    <input type="password" id="naverClientSecret" class="form-control" placeholder="네이버 Client Secret을 입력하세요">
+                </div>
+                <button class="btn-primary" id="btnSaveConfig">설정 저장</button>
+            </div>
+
+            <!-- Database Update Card -->
+            <div class="admin-card">
+                <h2 class="card-title">학교 정보 업데이트 실행</h2>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                    나이스 Open API를 호출하고 주소 정보를 위·경도 좌표로 지오코딩하여 서버 JSON 데이터베이스(`schools_seoul.json`)를 동기화합니다.
+                </p>
+                <div class="form-group" style="display: flex; gap: 8px;">
+                    <div style="flex: 1;">
+                        <label for="updateSido">대상 시/도</label>
+                        <select id="updateSido" class="form-control">
+                            <option value="서울특별시">서울특별시</option>
+                            <option value="부산광역시">부산광역시</option>
+                            <option value="대구광역시">대구광역시</option>
+                            <option value="인천광역시">인천광역시</option>
+                            <option value="광주광역시">광주광역시</option>
+                            <option value="대전광역시">대전광역시</option>
+                            <option value="울산광역시">울산광역시</option>
+                            <option value="세종특별자치시">세종특별자치시</option>
+                            <option value="경기도">경기도</option>
+                            <option value="강원특별자치도">강원특별자치도</option>
+                            <option value="충청북도">충청북도</option>
+                            <option value="충청남도">충청남도</option>
+                            <option value="전북특별자치도">전북특별자치도</option>
+                            <option value="전라남도">전라남도</option>
+                            <option value="경상북도">경상북도</option>
+                            <option value="경상남도">경상남도</option>
+                            <option value="제주특별자치도">제주특별자치도</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="updateSigungu">대상 시/군/구</label>
+                        <select id="updateSigungu" class="form-control">
+                            <!-- Dynamically populated -->
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="updateSchoolType">대상 학교급</label>
+                        <select id="updateSchoolType" class="form-control">
+                            <option value="all">학교급 전체</option>
+                            <option value="초등학교">초등학교</option>
+                            <option value="중학교">중학교</option>
+                            <option value="고등학교">고등학교</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn-primary" id="btnRunUpdate" style="background: var(--success-green);">최신 데이터 다운로드 및 서버 업데이트 시작</button>
+
+                <!-- Update Progress Indicator -->
+                <div class="progress-container" id="progressContainer">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin-bottom: 4px;">
+                        <span id="progressStatus">준비 중...</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar-fill" id="progressBarFill"></div>
+                    </div>
+                    <div class="log-box" id="adminLog"></div>
+                </div>
+            </div>
+
+            <!-- Stored Schools List Card -->
+            <div class="admin-card" id="storedSchoolsCard">
+                <h2 class="card-title">현재 저장된 학교 목록 (<span id="storedSchoolsCount">0</span>개)</h2>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                    현재 서버 데이터베이스에 저장되어 지도에 표시되는 학교 목록입니다.
+                </p>
+                <!-- Filters for Stored Schools -->
+                <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+                    <select class="form-control" id="storedRegionFilter" style="flex: 1; min-width: 100px; padding: 6px 10px; font-size: 13px; height: auto;">
+                        <option value="all">지역 전체</option>
+                        <option value="서울특별시">서울특별시</option>
+                        <option value="부산광역시">부산광역시</option>
+                        <option value="대구광역시">대구광역시</option>
+                        <option value="인천광역시">인천광역시</option>
+                        <option value="광주광역시">광주광역시</option>
+                        <option value="대전광역시">대전광역시</option>
+                        <option value="울산광역시">울산광역시</option>
+                        <option value="세종특별자치시">세종특별자치시</option>
+                        <option value="경기도">경기도</option>
+                        <option value="강원특별자치도">강원특별자치도</option>
+                        <option value="충청북도">충청북도</option>
+                        <option value="충청남도">충청남도</option>
+                        <option value="전북특별자치도">전북특별자치도</option>
+                        <option value="전라남도">전라남도</option>
+                        <option value="경상북도">경상북도</option>
+                        <option value="경상남도">경상남도</option>
+                        <option value="제주특별자치도">제주특별자치도</option>
+                    </select>
+                    <select class="form-control" id="storedTypeFilter" style="flex: 1; min-width: 100px; padding: 6px 10px; font-size: 13px; height: auto;">
+                        <option value="all">학교급 전체</option>
+                        <option value="초등학교">초등학교</option>
+                        <option value="중학교">중학교</option>
+                        <option value="고등학교">고등학교</option>
+                    </select>
+                    <input type="text" id="storedSearchInput" class="form-control" placeholder="학교명 검색..." style="flex: 2; min-width: 150px; padding: 6px 10px; font-size: 13px; height: auto;">
+                    <button class="btn-secondary" id="btnSearchSchools" style="width: auto; padding: 6px 12px; font-size: 12px; height: auto; margin: 0; background: var(--primary-blue); color: white;">검색</button>
+                </div>
+                <div id="storedSchoolsListContainer" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: var(--bg-primary); font-size: 12px; line-height: 1.8;">
+                    <div style="text-align: center; color: var(--text-muted); padding: 20px 0;">학교 데이터를 불러오는 중...</div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 30px;">
+                <button class="btn-secondary" id="btnLogout" style="width: auto; padding: 10px 20px;">로그아웃</button>
+                <br>
+                <a href="/" class="nav-btn" style="margin-top: 15px;">← 지도 메인 페이지로 이동</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Dialog for completion -->
+    <div id="updateModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+        <div style="background: white; border-radius: 16px; padding: 30px; max-width: 500px; width: 90%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid var(--border-color);">
+            <div style="font-size: 50px; color: var(--success-green); margin-bottom: 15px;">✓</div>
+            <h3 style="font-size: 20px; color: var(--deep-blue); margin-bottom: 12px; font-weight: 700;">업데이트 완료</h3>
+            <p id="updateModalMessage" style="font-size: 14px; color: var(--text-main); margin-bottom: 16px; line-height: 1.6;"></p>
+            
+            <div style="text-align: left; margin-bottom: 24px;">
+                <div style="font-size: 13px; margin-bottom: 8px;">
+                    <strong style="color: var(--deep-blue);">업데이트 대상 지역:</strong> 
+                    <span id="updateModalRegion" style="font-weight: 600;"></span>
+                </div>
+                <div style="font-size: 12px; font-weight: bold; color: var(--text-muted); margin-bottom: 6px;">동기화된 학교 목록:</div>
+                <div id="updateModalSchoolList" style="max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: var(--bg-primary); font-size: 12px; line-height: 1.8;">
+                    <!-- Dynamically populated school list -->
+                </div>
+            </div>
+            
+            <button class="btn-primary" id="btnConfirmModal" style="background: var(--success-green); width: auto; padding: 10px 40px; margin: 0 auto; display: block;">확인</button>
+        </div>
+    </div>
+
+    <!-- Modal Dialog for confirmation -->
+    <div id="confirmModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+        <div style="background: white; border-radius: 16px; padding: 30px; max-width: 450px; width: 90%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid var(--border-color);">
+            <div style="font-size: 50px; color: var(--primary-blue); margin-bottom: 15px;">?</div>
+            <h3 style="font-size: 20px; color: var(--deep-blue); margin-bottom: 12px; font-weight: 700;">업데이트 시작 확인</h3>
+            <p id="confirmModalMessage" style="font-size: 14px; color: var(--text-main); margin-bottom: 24px; line-height: 1.6;"></p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button class="btn-secondary" id="btnConfirmCancel" style="width: auto; padding: 10px 30px; margin: 0;">취소</button>
+                <button class="btn-primary" id="btnConfirmProceed" style="width: auto; padding: 10px 30px; margin: 0; background: var(--success-green);">시작</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Dialog for alert/warning -->
+    <div id="alertModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+        <div style="background: white; border-radius: 16px; padding: 30px; max-width: 450px; width: 90%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid var(--border-color);">
+            <div style="font-size: 50px; color: #ff3b30; margin-bottom: 15px;">⚠️</div>
+            <h3 style="font-size: 20px; color: var(--deep-blue); margin-bottom: 12px; font-weight: 700;">알림</h3>
+            <p id="alertModalMessage" style="font-size: 14px; color: var(--text-main); margin-bottom: 24px; line-height: 1.6;"></p>
+            <button class="btn-primary" id="btnAlertClose" style="width: auto; padding: 10px 40px; margin: 0 auto; display: block; background: var(--primary-blue);">확인</button>
+        </div>
+    </div>
+
+    <!-- Include Kakao SDK dynamically later in script if needed for Admin geocoding -->
+    <script src="admin.js"></script>
+</body>
+</html>

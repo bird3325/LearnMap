@@ -1,0 +1,16 @@
+{
+  "name": "academic-achievement-map",
+  "version": "1.0.0",
+  "description": "Academic Achievement Map Application",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
