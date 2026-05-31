@@ -22,36 +22,69 @@ if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Helper to read configuration
-function readConfig() {
+const SUPABASE_URL = 'https://khwzgqnwlknawggugznd.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtod3pncW53bGtuYXdnZ3Vnem5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDQzNDksImV4cCI6MjA5NTc4MDM0OX0.P2g3Y_MYV_ca8ZRpfAT93pnEzP4osYWc2tfyBHKb7v4';
+
+// Helper to read configuration from Supabase
+async function readConfig() {
     let config = { 
         kakao_app_key: process.env.KAKAO_APP_KEY || '', 
         neis_api_key: process.env.NEIS_API_KEY || '',
         naver_client_id: process.env.NAVER_CLIENT_ID || '',
-        naver_client_secret: process.env.NAVER_CLIENT_SECRET || ''
+        naver_client_secret: process.env.NAVER_CLIENT_SECRET || '',
+        data_go_kr_key: ''
     };
     try {
-        if (fs.existsSync(CONFIG_PATH)) {
-            const fileConfig = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-            // 환경 변수가 비어있는 경우에만 파일 설정 적용
-            if (fileConfig.kakao_app_key) config.kakao_app_key = fileConfig.kakao_app_key;
-            if (fileConfig.neis_api_key) config.neis_api_key = fileConfig.neis_api_key;
-            if (fileConfig.naver_client_id) config.naver_client_id = fileConfig.naver_client_id;
-            if (fileConfig.naver_client_secret) config.naver_client_secret = fileConfig.naver_client_secret;
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/api_configs?id=eq.1`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        if (response.ok) {
+            const data = await response.json();
+            if (data && data.length > 0) {
+                const dbConfig = data[0];
+                if (dbConfig.kakao_app_key) config.kakao_app_key = dbConfig.kakao_app_key;
+                if (dbConfig.neis_api_key) config.neis_api_key = dbConfig.neis_api_key;
+                if (dbConfig.naver_client_id) config.naver_client_id = dbConfig.naver_client_id;
+                if (dbConfig.naver_client_secret) config.naver_client_secret = dbConfig.naver_client_secret;
+                if (dbConfig.data_go_kr_key) config.data_go_kr_key = dbConfig.data_go_kr_key;
+            }
         }
     } catch (e) {
-        console.error('Error reading config:', e);
+        console.error('Error reading config from Supabase:', e);
     }
     return config;
 }
 
-// Helper to save configuration
-function saveConfig(config) {
+// Helper to save configuration to Supabase
+async function saveConfig(config) {
     try {
-        fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf8');
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/api_configs`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'resolution=merge-duplicates'
+            },
+            body: JSON.stringify({
+                id: 1,
+                kakao_app_key: config.kakao_app_key,
+                neis_api_key: config.neis_api_key,
+                naver_client_id: config.naver_client_id,
+                naver_client_secret: config.naver_client_secret,
+                data_go_kr_key: config.data_go_kr_key
+            })
+        });
+        if (!response.ok) {
+            console.error('Error saving to Supabase:', await response.text());
+            return false;
+        }
         return true;
     } catch (e) {
-        console.error('Error writing config:', e);
+        console.error('Error writing config to Supabase:', e);
         return false;
     }
 }
@@ -72,8 +105,8 @@ app.get('/api/schools', (req, res) => {
 });
 
 // 2. GET /api/config/map-key - Serves Kakao Map Key dynamically
-app.get('/api/config/map-key', (req, res) => {
-    const config = readConfig();
+app.get('/api/config/map-key', async (req, res) => {
+    const config = await readConfig();
     return res.json({ kakao_app_key: config.kakao_app_key || '' });
 });
 
@@ -88,30 +121,33 @@ app.post('/api/admin/login', (req, res) => {
 });
 
 // 4. GET /api/admin/config - Retrieve current key configurations (Requires simple token auth header)
-app.get('/api/admin/config', (req, res) => {
+app.get('/api/admin/config', async (req, res) => {
     const token = req.headers.authorization;
     if (token !== 'session_token_example_12345') {
         return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
     }
-    const config = readConfig();
+    const config = await readConfig();
     return res.json(config);
 });
 
 // 5. POST /api/admin/config - Update Kakao/NEIS keys
-app.post('/api/admin/config', (req, res) => {
+app.post('/api/admin/config', async (req, res) => {
     const token = req.headers.authorization;
     if (token !== 'session_token_example_12345') {
         return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
     }
 
-    const { kakao_app_key, neis_api_key, naver_client_id, naver_client_secret } = req.body;
-    const config = readConfig();
+    const { kakao_app_key, neis_api_key, naver_client_id, naver_client_secret, data_go_kr_key } = req.body;
+    const config = await readConfig();
     config.kakao_app_key = kakao_app_key;
     config.neis_api_key = neis_api_key;
     config.naver_client_id = naver_client_id;
     config.naver_client_secret = naver_client_secret;
+    if (data_go_kr_key !== undefined) {
+        config.data_go_kr_key = data_go_kr_key;
+    }
 
-    if (saveConfig(config)) {
+    if (await saveConfig(config)) {
         return res.json({ success: true, message: '설정이 성공적으로 저장되었습니다.' });
     }
     return res.status(500).json({ success: false, message: '설정 저장 중 오류가 발생했습니다.' });
@@ -169,7 +205,7 @@ app.get('/api/community', async (req, res) => {
     const query = req.query.q;
     if (!query) return res.status(400).json({ error: '검색어가 없습니다.' });
 
-    const config = readConfig();
+    const config = await readConfig();
     const clientId = config.naver_client_id;
     const clientSecret = config.naver_client_secret;
 
@@ -186,8 +222,8 @@ app.get('/api/community', async (req, res) => {
         };
 
         if (type === 'all') {
-            const blogUrl = `https://openapi.naver.com/v1/search/blog.json?query=${encodeURIComponent(query)}&display=25&sort=sim`;
-            const cafeUrl = `https://openapi.naver.com/v1/search/cafearticle.json?query=${encodeURIComponent(query)}&display=25&sort=sim`;
+            const blogUrl = `https://openapi.naver.com/v1/search/blog.json?query=${encodeURIComponent(query)}&display=25&sort=date`;
+            const cafeUrl = `https://openapi.naver.com/v1/search/cafearticle.json?query=${encodeURIComponent(query)}&display=25&sort=date`;
             
             const [blogData, cafeData] = await Promise.all([
                 httpsGet(blogUrl, headers),
@@ -197,14 +233,19 @@ app.get('/api/community', async (req, res) => {
             const blogItems = (blogData.items || []).map(item => ({ ...item, _source: 'blog' }));
             const cafeItems = (cafeData.items || []).map(item => ({ ...item, _source: 'cafe' }));
             const items = [...blogItems, ...cafeItems];
+            items.sort((a, b) => {
+                const dateA = a.postdate || '';
+                const dateB = b.postdate || '';
+                return dateB.localeCompare(dateA);
+            });
             res.json({ items, total: items.length });
         } else if (type === 'cafe') {
-            const url = `https://openapi.naver.com/v1/search/cafearticle.json?query=${encodeURIComponent(query)}&display=50&sort=sim`;
+            const url = `https://openapi.naver.com/v1/search/cafearticle.json?query=${encodeURIComponent(query)}&display=50&sort=date`;
             const data = await httpsGet(url, headers);
             const items = (data.items || []).map(item => ({ ...item, _source: 'cafe' }));
             res.json({ ...data, items });
         } else {
-            const url = `https://openapi.naver.com/v1/search/blog.json?query=${encodeURIComponent(query)}&display=50&sort=sim`;
+            const url = `https://openapi.naver.com/v1/search/blog.json?query=${encodeURIComponent(query)}&display=50&sort=date`;
             const data = await httpsGet(url, headers);
             const items = (data.items || []).map(item => ({ ...item, _source: 'blog' }));
             res.json({ ...data, items });
@@ -223,7 +264,7 @@ app.get('/api/academies/count', async (req, res) => {
     const { x, y } = req.query;
     if (!x || !y) return res.status(400).json({ error: '좌표가 없습니다.' });
 
-    const config = readConfig();
+    const config = await readConfig();
     const appkey = config.kakao_app_key;
     if (!appkey) return res.status(500).json({ error: '카카오 앱 키가 없습니다.' });
 
@@ -245,7 +286,7 @@ app.get('/api/academies/list', async (req, res) => {
     const { x, y } = req.query;
     if (!x || !y) return res.status(400).json({ error: '좌표가 없습니다.' });
 
-    const config = readConfig();
+    const config = await readConfig();
     const appkey = config.kakao_app_key;
     if (!appkey) return res.status(500).json({ error: '카카오 앱 키가 없습니다.' });
 
@@ -314,7 +355,7 @@ app.get('/api/academies/search', async (req, res) => {
     const { query, x, y } = req.query;
     if (!query || !x || !y) return res.status(400).json({ error: '파라미터가 부족합니다.' });
 
-    const config = readConfig();
+    const config = await readConfig();
     const appkey = config.kakao_app_key;
     if (!appkey) return res.status(500).json({ error: '카카오 앱 키가 없습니다.' });
 
@@ -350,32 +391,127 @@ app.get('/api/academies/search', async (req, res) => {
     }
 });
 
-// --- 찐후기 기능 (메모리 기반 저장소, 서버 재시작 시 초기화됨) ---
-const realReviewsData = [];
+// --- Supabase DB 연동 찐후기 기능 ---
 
 app.use(express.json()); // JSON 바디 파싱
 
-app.post('/api/reviews', (req, res) => {
+app.post('/api/reviews', async (req, res) => {
     const { academyName, rating, content } = req.body;
     if (!academyName || !rating || !content) return res.status(400).json({ error: '필수 항목이 누락되었습니다.' });
     
-    const newReview = {
-        id: Date.now().toString(),
-        academyName,
-        rating: parseInt(rating, 10),
-        content,
-        createdAt: new Date().toISOString()
-    };
-    realReviewsData.push(newReview);
-    res.json({ success: true, review: newReview });
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/academy_reviews`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({
+                academyName,
+                rating: parseInt(rating, 10),
+                content
+            })
+        });
+
+        if (!response.ok) {
+            const errBody = await response.text();
+            throw new Error(`Supabase Error: ${response.status} ${errBody}`);
+        }
+
+        const data = await response.json();
+        res.json({ success: true, review: data[0] });
+    } catch (err) {
+        console.error('Review Post Error:', err);
+        res.status(500).json({ error: '리뷰 저장 중 오류가 발생했습니다.' });
+    }
 });
 
-app.get('/api/reviews', (req, res) => {
+app.get('/api/reviews', async (req, res) => {
     const { academyName } = req.query;
     if (!academyName) return res.status(400).json({ error: '학원명이 누락되었습니다.' });
     
-    const matched = realReviewsData.filter(r => r.academyName === academyName).sort((a, b) => b.id - a.id);
-    res.json({ items: matched, total: matched.length });
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/academy_reviews?academyName=eq.${encodeURIComponent(academyName)}&order=created_at.desc`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+
+        if (!response.ok) {
+            const errBody = await response.text();
+            throw new Error(`Supabase Error: ${response.status} ${errBody}`);
+        }
+
+        const data = await response.json();
+        res.json({ items: data, total: data.length });
+    } catch (err) {
+        console.error('Review Get Error:', err);
+        res.status(500).json({ error: '리뷰 조회 중 오류가 발생했습니다.' });
+    }
+});
+
+// --- Real Estate Proxy (MOLIT API) ---
+app.get('/api/realestate', async (req, res) => {
+    const { lawd_cd, deal_ymd } = req.query;
+    if (!lawd_cd || !deal_ymd) return res.status(400).json({ error: 'LAWD_CD and DEAL_YMD are required' });
+
+    const config = await readConfig();
+    const serviceKey = config.data_go_kr_key;
+    if (!serviceKey) return res.status(500).json({ error: '공공데이터포털 API 키가 없습니다.' });
+
+    try {
+        const response = await fetch(`http://openapi.molit.go.kr/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcAptTradeDev?serviceKey=${encodeURIComponent(serviceKey)}&LAWD_CD=${lawd_cd}&DEAL_YMD=${deal_ymd}`);
+        const text = await response.text();
+        res.send(text);
+    } catch (err) {
+        console.error('Real Estate API Error:', err);
+        res.status(500).json({ error: '부동산 API 호출에 실패했습니다.' });
+    }
+});
+
+// --- Academy Fees Proxy (NEIS API) ---
+app.get('/api/academies/fees', async (req, res) => {
+    const { atpt_code, admst_zone_nm } = req.query;
+    if (!atpt_code) return res.status(400).json({ error: 'ATPT_OFCDC_SC_CODE is required' });
+
+    const config = await readConfig();
+    const neisKey = config.neis_api_key;
+    
+    try {
+        let url = `https://open.neis.go.kr/hub/acaInsTiInfo?Type=json&pIndex=1&pSize=1000&ATPT_OFCDC_SC_CODE=${atpt_code}`;
+        if (admst_zone_nm) url += `&ADMST_ZONE_NM=${encodeURIComponent(admst_zone_nm)}`;
+        if (neisKey) url += `&KEY=${neisKey}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+        res.json(data);
+    } catch (err) {
+        console.error('Academy Fees API Error:', err);
+        res.status(500).json({ error: '학원비 API 호출에 실패했습니다.' });
+    }
+});
+
+// 12. GET /api/realestate - Fetch real estate data from MOLIT API
+app.get('/api/realestate', async (req, res) => {
+    const { lawd_cd, deal_ymd } = req.query;
+    if (!lawd_cd || !deal_ymd) return res.status(400).json({ error: '법정동코드(lawd_cd)와 거래년월(deal_ymd)이 필요합니다.' });
+
+    const config = await readConfig();
+    const serviceKey = config.data_go_kr_key;
+    if (!serviceKey) return res.status(500).json({ error: '공공데이터포털 API 키가 설정되지 않았습니다.' });
+
+    try {
+        const url = `http://openapi.molit.go.kr/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcAptTradeDev?serviceKey=${encodeURIComponent(serviceKey)}&pageNo=1&numOfRows=1000&LAWD_CD=${lawd_cd}&DEAL_YMD=${deal_ymd}`;
+        const response = await fetch(url);
+        const xmlText = await response.text();
+        res.type('application/xml').send(xmlText);
+    } catch (err) {
+        console.error('Real Estate API Error:', err);
+        res.status(500).json({ error: '국토교통부 실거래가 API 호출에 실패했습니다.' });
+    }
 });
 
 // Fallback to serve index.html for unknown SPA routes

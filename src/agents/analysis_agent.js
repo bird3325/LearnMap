@@ -225,16 +225,28 @@ export class AnalysisAgent {
         }
 
         // 고교 진학 시뮬레이션 문구 생성
+        // 고교 진학 시뮬레이션 문구 생성
         const career = school.graduate_career || { general: 75, special: 5, autonomous: 10, specialized: 10 };
         const specialCut = career.special;
         const autoCut = career.special + career.autonomous;
 
+        let hsGrade = 5;
+        if (avgPercentile <= 4) hsGrade = 1;
+        else if (avgPercentile <= 11) hsGrade = 2;
+        else if (avgPercentile <= 23) hsGrade = 3;
+        else if (avgPercentile <= 40) hsGrade = 4;
+        else if (avgPercentile <= 60) hsGrade = 5;
+        else if (avgPercentile <= 77) hsGrade = 6;
+        else if (avgPercentile <= 89) hsGrade = 7;
+        else if (avgPercentile <= 96) hsGrade = 8;
+        else hsGrade = 9;
+
         if (avgPercentile <= specialCut) {
-            analysisResult.overall.admission_simulation = `현재 성적 백분위는 상위 ${avgPercentile.toFixed(1)}%로, 이 학교의 특목고 진학률(${specialCut}%) 이내입니다. 영재고/과학고/외고 등 특목고 진학이 유력하며 심화 학습 위주 전략을 추천합니다.`;
+            analysisResult.overall.admission_simulation = `현재 점수 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로, 이 학교의 특목고 진학률(${specialCut}%) 이내입니다. 특목고 진학이 유력하며 심화 학습을 추천합니다.<br><br>일반계 고등학교 진학 시 예상 고교 내신: <strong style="color:var(--primary-blue); font-size:15px;">${hsGrade}등급</strong> (상위 대학교 수시 학종 지원 매우 유리)`;
         } else if (avgPercentile <= autoCut) {
-            analysisResult.overall.admission_simulation = `현재 성적 백분위는 상위 ${avgPercentile.toFixed(1)}%로, 자사고/외고 진학 가이드라인(${autoCut}%)에 위치합니다. 자기소개서 및 생기부 독서활동 관리에 돌입해야 합니다.`;
+            analysisResult.overall.admission_simulation = `현재 점수 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로, 자사/외고 진학 가능권입니다.<br><br>일반계 고등학교 진학 시 예상 고교 내신: <strong style="color:var(--primary-blue); font-size:15px;">${hsGrade}등급</strong> (주요 대학교 수시 교과 및 학종 전형 목표)`;
         } else {
-            analysisResult.overall.admission_simulation = `현재 성적 백분위는 상위 ${avgPercentile.toFixed(1)}%로, 안정적인 일반고 진학군에 해당합니다. 일반고 진학 후 전교권 내신(1~2등급) 선점을 위해 교과별 심화와 서술형 대비에 집중하세요.`;
+            analysisResult.overall.admission_simulation = `현재 점수 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로, 안정적인 일반고 진학군에 해당합니다.<br><br>일반계 고등학교 진학 시 예상 고교 내신: <strong style="color:var(--primary-blue); font-size:15px;">${hsGrade}등급</strong> (등급 상승을 위해 고교 입학 전 심화 서술형 집중 대비 필요)`;
         }
 
         return analysisResult;

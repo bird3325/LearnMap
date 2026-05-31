@@ -14,6 +14,7 @@ const kakaoAppKey = document.getElementById('kakaoAppKey');
 const neisApiKey = document.getElementById('neisApiKey');
 const naverClientId = document.getElementById('naverClientId');
 const naverClientSecret = document.getElementById('naverClientSecret');
+const dataGoKrKey = document.getElementById('dataGoKrKey');
 const btnSaveConfig = document.getElementById('btnSaveConfig');
 
 const updateSido = document.getElementById('updateSido');
@@ -294,6 +295,7 @@ function showPanel() {
         neisApiKey.value = config.neis_api_key || '';
         naverClientId.value = config.naver_client_id || '';
         naverClientSecret.value = config.naver_client_secret || '';
+        if (dataGoKrKey) dataGoKrKey.value = config.data_go_kr_key || '';
         
         // Dynamically load Kakao SDK if App Key exists for Geocoding in Admin page
         if (config.kakao_app_key) {
@@ -301,7 +303,7 @@ function showPanel() {
         }
     })
     .catch(err => {
-        alert(err.message);
+        showAlert(err.message);
         logout();
     });
 }
@@ -339,7 +341,7 @@ function loadKakaoSdkForAdmin(appkey) {
 btnLogin.addEventListener('click', () => {
     const password = adminPassword.value.trim();
     if (!password) {
-        alert('비밀번호를 입력해 주세요.');
+        showAlert('비밀번호를 입력해 주세요.');
         return;
     }
 
@@ -358,7 +360,7 @@ btnLogin.addEventListener('click', () => {
         showPanel();
     })
     .catch(err => {
-        alert(err.message);
+        showAlert(err.message);
     });
 });
 
@@ -378,7 +380,8 @@ btnSaveConfig.addEventListener('click', () => {
         kakao_app_key: kakaoAppKey.value.trim(),
         neis_api_key: neisApiKey.value.trim(),
         naver_client_id: naverClientId.value.trim(),
-        naver_client_secret: naverClientSecret.value.trim()
+        naver_client_secret: naverClientSecret.value.trim(),
+        data_go_kr_key: dataGoKrKey ? dataGoKrKey.value.trim() : ''
     };
 
     fetch('/api/admin/config', {
@@ -392,14 +395,14 @@ btnSaveConfig.addEventListener('click', () => {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            alert('API 설정이 저장되었습니다.');
+            showAlert('API 설정이 저장되었습니다.');
             loadKakaoSdkForAdmin(keys.kakao_app_key);
         } else {
-            alert('저장 실패: ' + data.message);
+            showAlert('저장 실패: ' + data.message);
         }
     })
     .catch(err => {
-        alert('서버 통신 에러: ' + err.message);
+        showAlert('서버 통신 에러: ' + err.message);
     });
 });
 

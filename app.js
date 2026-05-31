@@ -4,6 +4,28 @@ import { Orchestrator } from './src/agents/orchestrator.js';
 document.addEventListener('DOMContentLoaded', () => {
     const orchestrator = new Orchestrator();
 
+    // --- Custom Alert Modal Override ---
+    window.alert = function(message) {
+        let alertModal = document.getElementById('customAlertModal');
+        if (!alertModal) {
+            alertModal = document.createElement('div');
+            alertModal.id = 'customAlertModal';
+            alertModal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:999999; display:flex; justify-content:center; align-items:center; opacity:0; transition:opacity 0.2s; pointer-events:none;';
+            alertModal.innerHTML = `
+                <div style="background:var(--bg-primary, #ffffff); padding:30px 40px; border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.3); text-align:center; max-width:80%; transform:translateY(20px); transition:transform 0.2s; border:1px solid var(--border-color, #eee);">
+                    <div id="customAlertMessage" style="font-size:16px; font-weight:600; color:var(--text-main, #333); margin-bottom:24px; line-height:1.5; white-space:pre-wrap;"></div>
+                    <button onclick="document.getElementById('customAlertModal').style.opacity='0'; document.getElementById('customAlertModal').style.pointerEvents='none'; document.querySelector('#customAlertModal > div').style.transform='translateY(20px)';" style="background:var(--primary-blue, #2563eb); color:white; border:none; border-radius:8px; padding:12px 30px; font-size:15px; font-weight:bold; cursor:pointer; outline:none; transition:background 0.2s;">확인</button>
+                </div>
+            `;
+            document.body.appendChild(alertModal);
+        }
+        document.getElementById('customAlertMessage').innerText = message;
+        alertModal.style.opacity = '1';
+        alertModal.style.pointerEvents = 'auto';
+        alertModal.querySelector('div').style.transform = 'translateY(0)';
+    };
+    // ------------------------------------
+
     // DOM References
     const searchInput = document.getElementById('searchInput');
     const searchBtn = document.getElementById('searchBtn');
@@ -51,6 +73,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const diagnosticSummaryLabel = document.getElementById('diagnosticSummaryLabel');
     const diagnosticSummaryDesc = document.getElementById('diagnosticSummaryDesc');
     const subjectDiagnosisContainer = document.getElementById('subjectDiagnosisContainer');
+
+    // Supabase & Review Elements
+    const SUPABASE_URL = 'https://khwzgqnwlknawggugznd.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtod3pncW53bGtuYXdnZ3Vnem5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDQzNDksImV4cCI6MjA5NTc4MDM0OX0.P2g3Y_MYV_ca8ZRpfAT93pnEzP4osYWc2tfyBHKb7v4';
+    const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+    const btnShowReviews = document.getElementById('btnShowReviews');
 
     // Comparison Overlay Elements
     const compareOverlay = document.getElementById('compareOverlay');
@@ -137,6 +165,146 @@ document.addEventListener('DOMContentLoaded', () => {
     btnCloseCompare.addEventListener('click', () => {
         compareOverlay.style.display = 'none';
     });
+
+    if (btnShowReviews) {
+        btnShowReviews.addEventListener('click', () => {
+            if (!orchestrator.state.selectedSchool) return;
+            document.getElementById('schoolReviewListModal').style.display = 'flex';
+            fetchSchoolReviews(orchestrator.state.selectedSchool.school_id);
+        });
+    }
+
+    let currentSchoolReviewPage = 1;
+    let schoolReviewsData = [];
+    const REVIEWS_PER_PAGE = 4;
+
+    window.goToSchoolReviewPage = function(page) {
+        currentSchoolReviewPage = page;
+        renderSchoolReviewsList();
+    };
+
+    function renderSchoolReviewsList() {
+        const container = document.getElementById('schoolReviewListContainer');
+        if (!schoolReviewsData || schoolReviewsData.length === 0) {
+            container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px 0; font-size: 13px;">아직 등록된 리뷰가 없습니다. 첫 번째 리뷰를 남겨주세요!</div>';
+            return;
+        }
+
+        const totalPages = Math.ceil(schoolReviewsData.length / REVIEWS_PER_PAGE);
+        if (currentSchoolReviewPage < 1) currentSchoolReviewPage = 1;
+        if (currentSchoolReviewPage > totalPages) currentSchoolReviewPage = totalPages;
+
+        const startIndex = (currentSchoolReviewPage - 1) * REVIEWS_PER_PAGE;
+        const endIndex = startIndex + REVIEWS_PER_PAGE;
+        const currentData = schoolReviewsData.slice(startIndex, endIndex);
+
+        let html = currentData.map(review => `
+            <div style="border-bottom: 1px solid var(--border-color); padding: 12px 0; margin-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <strong>${review.nickname || '익명'}</strong>
+                    <span style="color: var(--warning-yellow);">
+                        ${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}
+                    </span>
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
+                    ${new Date(review.created_at).toLocaleDateString()}
+                </div>
+                <div style="font-size: 13px; line-height: 1.5;">
+                    ${review.content.replace(/\n/g, '<br>')}
+                </div>
+            </div>
+        `).join('');
+
+        if (totalPages > 1) {
+            html += '<div style="display: flex; justify-content: center; gap: 8px; margin-top: 16px;">';
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === currentSchoolReviewPage) {
+                    html += `<button style="padding: 4px 10px; background: var(--primary-blue); color: white; border: none; border-radius: 4px; font-size: 12px;">${i}</button>`;
+                } else {
+                    html += `<button onclick="window.goToSchoolReviewPage(${i})" style="padding: 4px 10px; background: #f0f0f0; color: #333; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#e0e0e0'" onmouseout="this.style.background='#f0f0f0'">${i}</button>`;
+                }
+            }
+            html += '</div>';
+        }
+        container.innerHTML = html;
+    }
+
+    async function fetchSchoolReviews(schoolId) {
+        const container = document.getElementById('schoolReviewListContainer');
+        container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px 0; font-size: 13px;">리뷰를 불러오는 중입니다...</div>';
+        
+        if (!supabase) {
+            container.innerHTML = '<div style="text-align: center; color: var(--danger-red); padding: 20px 0; font-size: 13px;">Supabase 클라이언트가 초기화되지 않았습니다.</div>';
+            return;
+        }
+
+        try {
+            const { data, error } = await supabase
+                .from('school_reviews')
+                .select('*')
+                .eq('school_id', schoolId)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            
+            schoolReviewsData = data || [];
+            currentSchoolReviewPage = 1;
+            renderSchoolReviewsList();
+
+        } catch (err) {
+            console.error('Error fetching reviews:', err);
+            container.innerHTML = '<div style="text-align: center; color: var(--danger-red); padding: 20px 0; font-size: 13px;">리뷰를 불러오는데 실패했습니다.</div>';
+        }
+    }
+
+    window.openSchoolReviewForm = function() {
+        document.getElementById('schoolReviewFormModal').style.display = 'flex';
+    };
+
+    window.submitSchoolReview = async function() {
+        if (!orchestrator.state.selectedSchool) {
+            alert('선택된 학교가 없습니다.');
+            return;
+        }
+        if (!supabase) {
+            alert('Supabase 연동이 필요합니다.');
+            return;
+        }
+
+        const nickname = document.getElementById('schoolReviewNickname').value.trim() || '익명';
+        const password = document.getElementById('schoolReviewPassword').value.trim();
+        const rating = parseInt(document.getElementById('schoolReviewRating').value);
+        const content = document.getElementById('schoolReviewContent').value.trim();
+
+        if (!content) {
+            alert('리뷰 내용을 입력해주세요.');
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('school_reviews')
+                .insert([
+                    {
+                        school_id: orchestrator.state.selectedSchool.school_id,
+                        nickname: nickname,
+                        password: password, // In a real app, hash this!
+                        rating: rating,
+                        content: content
+                    }
+                ]);
+
+            if (error) throw error;
+
+            alert('리뷰가 등록되었습니다!');
+            document.getElementById('schoolReviewFormModal').style.display = 'none';
+            document.getElementById('schoolReviewContent').value = '';
+            fetchSchoolReviews(orchestrator.state.selectedSchool.school_id);
+        } catch (err) {
+            console.error('Error submitting review:', err);
+            alert('리뷰 등록에 실패했습니다: ' + err.message);
+        }
+    };
 
     // Sub-agent trigger methods connected to DOM
     orchestrator.childPerformanceDiagnosis = function(scores) {
@@ -539,7 +707,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Global selector callback
     window.selectSchoolById = (schoolId) => {
-        const school = currentLoadedSchools.find(s => s.school_id === schoolId);
+        let school = currentLoadedSchools.find(s => s.school_id === schoolId);
+        if (!school) {
+            school = schoolsDatabase.find(s => s.school_id === schoolId);
+        }
         if (school) {
             const summary = orchestrator.selectSchool(school);
             showSchoolDetails(summary, school);
@@ -693,11 +864,169 @@ document.addEventListener('DOMContentLoaded', () => {
         schoolCardUpdate.innerText = fullSchool.updated_at;
         schoolInsight.innerText = summary.insight;
 
+        if (btnShowReviews) {
+            btnShowReviews.innerText = '💬 찐 학부모 리뷰 보기';
+            if (supabase) {
+                supabase
+                    .from('school_reviews')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('school_id', fullSchool.school_id)
+                    .then(({ count, error }) => {
+                        if (!error && count > 0) {
+                            btnShowReviews.innerText = `💬 찐 학부모 리뷰 보기 (${count})`;
+                        }
+                    });
+            }
+        }
+
         // Populate new parent analysis fields
         document.getElementById('schoolCompetition').innerText = summary.competition_level.label;
         document.getElementById('schoolCompetitionDesc').innerText = summary.competition_level.desc;
         // document.getElementById('schoolAcademies').innerText = `${summary.academy_count}개`; // Will be set by Kakao API
         document.getElementById('schoolBudget').innerText = `${summary.extracurricular_budget}만원`;
+
+        // --- Real Data for Real Estate & Academy Fees ---
+        const rsSale = document.getElementById('realEstateSale');
+        const rsJeonse = document.getElementById('realEstateJeonse');
+        const rsIndex = document.getElementById('realEstateIndex');
+        const acEng = document.getElementById('academyFeeEng');
+        const acMath = document.getElementById('academyFeeMath');
+        
+        if (rsSale) rsSale.innerText = '로딩 중...';
+        if (rsJeonse) rsJeonse.innerText = '로딩 중...';
+        if (acEng) acEng.innerText = '로딩 중...';
+        if (acMath) acMath.innerText = '로딩 중...';
+
+        // 1. 부동산 실거래가 조회 (카카오 좌표 -> 법정동 코드 변환)
+        if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+            const geocoder = new window.kakao.maps.services.Geocoder();
+            geocoder.coord2RegionCode(fullSchool.lng, fullSchool.lat, async (result, status) => {
+                if (status === window.kakao.maps.services.Status.OK) {
+                    const bcode = result.find(r => r.region_type === 'B');
+                    if (bcode && bcode.code) {
+                        const lawdCd = bcode.code.substring(0, 5);
+                        
+                        // 전월 또는 최근 달 기준
+                        const date = new Date();
+                        date.setMonth(date.getMonth() - 1);
+                        const dealYmd = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}`;
+                        
+                        try {
+                            const res = await fetch(`/api/realestate?lawd_cd=${lawdCd}&deal_ymd=${dealYmd}`);
+                            if (!res.ok) throw new Error('API Error');
+                            const xmlText = await res.text();
+                            
+                            // 간단한 XML 파싱
+                            const parser = new DOMParser();
+                            const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+                            const items = xmlDoc.getElementsByTagName("item");
+                            
+                            let saleSum = 0, saleCount = 0;
+                            for (let i = 0; i < items.length; i++) {
+                                const amountNode = items[i].getElementsByTagName("거래금액")[0];
+                                const areaNode = items[i].getElementsByTagName("전용면적")[0];
+                                if (amountNode && areaNode) {
+                                    const area = parseFloat(areaNode.textContent);
+                                    if (area >= 59 && area <= 85) { // 84㎡ 주변
+                                        const amountStr = amountNode.textContent.trim().replace(/,/g, '');
+                                        saleSum += parseInt(amountStr, 10);
+                                        saleCount++;
+                                    }
+                                }
+                            }
+                            
+                            if (saleCount > 0) {
+                                const avgSale = Math.round(saleSum / saleCount);
+                                // avgSale is in 만원 (10,000 KRW)
+                                const uk = Math.floor(avgSale / 10000);
+                                const man = avgSale % 10000;
+                                if (rsSale) rsSale.innerText = `${uk > 0 ? uk + '억 ' : ''}${man > 0 ? man.toLocaleString() + '만원' : ''}`;
+                                if (rsJeonse) rsJeonse.innerText = `${Math.floor(uk * 0.6)}억 ${Math.floor(man * 0.6).toLocaleString()}만원 (추정)`; // 전세는 임시 추정
+                                if (rsIndex) rsIndex.innerText = '실거래가 기준 산출';
+                            } else {
+                                if (rsSale) rsSale.innerText = '해당월 거래 없음';
+                                if (rsJeonse) rsJeonse.innerText = '해당월 거래 없음';
+                            }
+                        } catch (e) {
+                            console.error(e);
+                            if (rsSale) rsSale.innerText = '조회 실패';
+                            if (rsJeonse) rsJeonse.innerText = '조회 실패';
+                        }
+                    }
+                }
+            });
+        }
+
+        // 2. NEIS 학원비 조회
+        const eduCodeMap = {
+            '서울특별시': 'B10', '부산광역시': 'C10', '대구광역시': 'D10', '인천광역시': 'E10',
+            '광주광역시': 'F10', '대전광역시': 'G10', '울산광역시': 'H10', '세종특별자치시': 'I10',
+            '경기도': 'J10', '강원특별자치도': 'K10', '충청북도': 'M10', '충청남도': 'N10',
+            '전북특별자치도': 'P10', '전라남도': 'Q10', '경상북도': 'R10', '경상남도': 'S10', '제주특별자치도': 'T10'
+        };
+        const regionParts = (fullSchool.address || '').split(' ');
+        const sidoName = regionParts[0];
+        const guName = regionParts[1];
+        const atptCode = eduCodeMap[sidoName];
+
+        if (atptCode) {
+            fetch(`/api/academies/fees?atpt_code=${atptCode}&admst_zone_nm=${encodeURIComponent(guName)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.acaInsTiInfo && data.acaInsTiInfo[1] && data.acaInsTiInfo[1].row) {
+                        const academies = data.acaInsTiInfo[1].row;
+                        let engSum = 0, engCount = 0;
+                        let mathSum = 0, mathCount = 0;
+                        
+                        academies.forEach(aca => {
+                            const fields = aca.REALM_SC_NM || '';
+                            const lists = aca.LE_CRSE_LIST_NM || '';
+                            const feeName = aca.LE_CRSE_NM || '';
+                            const feesStr = aca.PSNBY_THCC_CNTNT || '';
+                            
+                            const isEngAca = fields.includes('영어') || lists.includes('영어') || feeName.includes('영어');
+                            const isMathAca = fields.includes('수학') || lists.includes('수학') || feeName.includes('수학');
+                            
+                            if (feesStr) {
+                                const feeItems = feesStr.split(',');
+                                feeItems.forEach(item => {
+                                    const parts = item.split(':');
+                                    if (parts.length === 2) {
+                                        const subject = parts[0].trim();
+                                        const amount = parseInt(parts[1].trim(), 10);
+                                        
+                                        if (!isNaN(amount) && amount > 0) {
+                                            // 과목명에 영어나 수학이 포함되어 있거나, 학원 자체가 영어/수학 전문일 경우
+                                            if (subject.includes('영어') || isEngAca) {
+                                                engSum += amount;
+                                                engCount++;
+                                            } else if (subject.includes('수학') || isMathAca) {
+                                                mathSum += amount;
+                                                mathCount++;
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                        
+                        const engFee = engCount > 0 ? Math.round(engSum / engCount) : 0;
+                        const mathFee = mathCount > 0 ? Math.round(mathSum / mathCount) : 0;
+                        
+                        if (acEng) acEng.innerText = engFee > 0 ? engFee.toLocaleString() + '원' : '데이터 없음';
+                        if (acMath) acMath.innerText = mathFee > 0 ? mathFee.toLocaleString() + '원' : '데이터 없음';
+                    } else {
+                        if (acEng) acEng.innerText = '데이터 없음';
+                        if (acMath) acMath.innerText = '데이터 없음';
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    if (acEng) acEng.innerText = '조회 실패';
+                    if (acMath) acMath.innerText = '조회 실패';
+                });
+        }
+        // ------------------------------------------------
         // 창체 패널 초기화 (닫힘 상태로)
         const budgetModal = document.getElementById('budgetModal');
         if (budgetModal) budgetModal.style.display = 'none';
@@ -1677,53 +2006,57 @@ window.fetchCommunityReviews = async (acadName, type = 'all', subjectLabel = '',
     document.getElementById('btnToggleSidebarTop').style.display = 'none';
 
     try {
-        if (type === 'real') {
-            const response = await fetch(`/api/reviews?academyName=${encodeURIComponent(acadName)}`);
-            if (!response.ok) throw new Error('찐후기 조회 중 오류가 발생했습니다.');
-            const data = await response.json();
-            
-            reviewContainer.innerHTML = '';
-            if (data.items && data.items.length > 0) {
-                data.items.forEach(review => {
-                    const reviewItem = document.createElement('div');
-                    reviewItem.style.background = 'white';
-                    reviewItem.style.padding = '12px';
-                    reviewItem.style.borderRadius = '8px';
-                    reviewItem.style.border = '1px solid var(--border-color)';
-                    reviewItem.style.fontSize = '13px';
-                    reviewItem.style.color = 'var(--text-main)';
-                    reviewItem.style.lineHeight = '1.5';
-                    reviewItem.style.boxShadow = '0 2px 8px rgba(0,0,0,0.02)';
-                    
-                    const stars = '⭐'.repeat(review.rating);
-                    const dateStr = new Date(review.createdAt).toLocaleDateString();
-                    
-                    reviewItem.innerHTML = `
-                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
-                            <span style="font-size: 10px; font-weight: 700; color: white; background: #e91e63; border-radius: 4px; padding: 1px 6px; flex-shrink: 0;">찐후기</span>
-                            <span style="font-size: 12px; font-weight: bold; color: #ff9800;">${stars}</span>
-                            <span style="font-size: 11px; color: var(--text-muted); margin-left: auto;">${dateStr}</span>
-                        </div>
-                        <div style="color: var(--text-main); font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-all;">${review.content}</div>
-                    `;
-                    reviewContainer.appendChild(reviewItem);
-                });
-            } else {
-                reviewContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">아직 등록된 찐후기가 없습니다.<br>첫 후기를 남겨주세요!</div>';
+        let realReviews = [];
+        let portalPosts = [];
+
+        // 1. 찐후기 데이터 가져오기 (전체 탭이거나 찐후기 탭일 때)
+        if (type === 'all' || type === 'real') {
+            try {
+                const res = await fetch(`/api/reviews?academyName=${encodeURIComponent(acadName)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    realReviews = (data.items || []).map(item => ({ ...item, _type: 'real' }));
+                }
+            } catch (err) {
+                console.error('Real review fetch error:', err);
             }
-            return;
         }
 
-        const response = await fetch(`/api/community?q=${encodeURIComponent(acadName)}&type=${type}`);
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || '포털 검색 중 오류가 발생했습니다.');
+        // 2. 포털(블로그/카페) 데이터 가져오기 (전체 탭이거나 블로그/카페 탭일 때)
+        if (type === 'all' || type === 'blog' || type === 'cafe') {
+            try {
+                const res = await fetch(`/api/community?q=${encodeURIComponent(acadName)}&type=${type}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    portalPosts = (data.items || []).map(item => ({ ...item, _type: 'portal' }));
+                } else if (res.status === 401 || res.status === 500) {
+                    const errData = await res.json().catch(() => ({}));
+                    portalPosts = [{ _type: 'error', message: errData.error || '네이버 API 설정이 필요하거나 인증에 실패했습니다. 관리자 페이지를 확인해주세요.' }];
+                }
+            } catch (err) {
+                console.error('Portal fetch error:', err);
+            }
         }
-        const data = await response.json();
-        
+
+        // 3. 데이터 병합 및 날짜순(최신순) 정렬
+        const combinedItems = [...realReviews, ...portalPosts];
+        combinedItems.sort((a, b) => {
+            const getDateString = (item) => {
+                if (item._type === 'real') {
+                    // Supabase created_at format: "2026-05-31T07:40:31Z" -> "20260531"
+                    const dStr = item.created_at || item.createdAt || '';
+                    return dStr.substring(0, 10).replace(/-/g, ''); 
+                }
+                // Naver postdate format: "20260531"
+                return item.postdate || '00000000';
+            };
+            return getDateString(b).localeCompare(getDateString(a));
+        });
+
+        // 4. 화면 렌더링
         reviewContainer.innerHTML = '';
-        if (data.items && data.items.length > 0) {
-            data.items.forEach(post => {
+        if (combinedItems.length > 0) {
+            combinedItems.forEach(item => {
                 const reviewItem = document.createElement('div');
                 reviewItem.style.background = 'white';
                 reviewItem.style.padding = '12px';
@@ -1733,46 +2066,65 @@ window.fetchCommunityReviews = async (acadName, type = 'all', subjectLabel = '',
                 reviewItem.style.color = 'var(--text-main)';
                 reviewItem.style.lineHeight = '1.5';
                 reviewItem.style.boxShadow = '0 2px 8px rgba(0,0,0,0.02)';
+                reviewItem.style.marginBottom = '8px'; // 간격 추가
                 
-                const postTitle = post.title.replace(/<[^>]*>?/gm, '');
-                const postDesc = post.description.replace(/<[^>]*>?/gm, '');
-                
-                const isCafe = post._source === 'cafe';
-
-                // 블로그: postdate 포맷, 카페: cafename 표시
-                let metaLabel = '';
-                if (isCafe) {
-                    metaLabel = post.cafename || '카페';
+                if (item._type === 'real') {
+                    // 찐후기 렌더링
+                    const stars = '⭐'.repeat(item.rating);
+                    const dateStr = new Date(item.created_at || item.createdAt).toLocaleDateString();
+                    reviewItem.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                            <span style="font-size: 10px; font-weight: 700; color: white; background: #e91e63; border-radius: 4px; padding: 1px 6px; flex-shrink: 0;">찐후기</span>
+                            <span style="font-size: 12px; font-weight: bold; color: #ff9800;">${stars}</span>
+                            <span style="font-size: 11px; color: var(--text-muted); margin-left: auto;">${dateStr}</span>
+                        </div>
+                        <div style="color: var(--text-main); font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-all;">${item.content}</div>
+                    `;
+                } else if (item._type === 'error') {
+                    reviewItem.innerHTML = `
+                        <div style="color: var(--danger-red); text-align: center; padding: 10px; font-weight: bold;">
+                            ⚠️ ${item.message}
+                        </div>
+                    `;
                 } else {
-                    let postDate = post.postdate || '';
-                    if (postDate.length === 8) {
-                        postDate = `${postDate.substring(0,4)}.${postDate.substring(4,6)}.${postDate.substring(6,8)}`;
+                    // 포털 커뮤니티 렌더링
+                    const postTitle = item.title.replace(/<[^>]*>?/gm, '');
+                    const postDesc = item.description.replace(/<[^>]*>?/gm, '');
+                    const isCafe = item._source === 'cafe';
+
+                    let metaLabel = '';
+                    if (isCafe) {
+                        metaLabel = item.cafename || '카페';
+                    } else {
+                        let postDate = item.postdate || '';
+                        if (postDate.length === 8) {
+                            postDate = `${postDate.substring(0,4)}.${postDate.substring(4,6)}.${postDate.substring(6,8)}`;
+                        }
+                        metaLabel = postDate;
                     }
-                    metaLabel = postDate;
+
+                    const badgeColor = isCafe ? '#ff6f00' : '#1e88e5';
+                    const badgeLabel = isCafe ? '카페' : '블로그';
+
+                    reviewItem.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 5px;">
+                            <span style="font-size: 10px; font-weight: 700; color: white; background: ${badgeColor}; border-radius: 4px; padding: 1px 6px; flex-shrink: 0;">${badgeLabel}</span>
+                            <span style="font-size: 11px; color: var(--text-muted);">${metaLabel}</span>
+                        </div>
+                        <strong style="display: block; margin-bottom: 4px; font-size: 14px;">
+                            <a href="${item.link}" target="_blank" style="color: var(--deep-blue); text-decoration: none;">${postTitle}</a>
+                        </strong>
+                        <span style="color: var(--text-muted); font-size: 12px; display: block; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">${postDesc}</span>
+                    `;
                 }
-
-                // 소스 뱃지 색상
-                const badgeColor = isCafe ? '#ff6f00' : '#1e88e5';
-                const badgeLabel = isCafe ? '카페' : '블로그';
-
-                reviewItem.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 5px;">
-                        <span style="font-size: 10px; font-weight: 700; color: white; background: ${badgeColor}; border-radius: 4px; padding: 1px 6px; flex-shrink: 0;">${badgeLabel}</span>
-                        <span style="font-size: 11px; color: var(--text-muted);">${metaLabel}</span>
-                    </div>
-                    <strong style="display: block; margin-bottom: 4px; font-size: 14px;">
-                        <a href="${post.link}" target="_blank" style="color: var(--deep-blue); text-decoration: none;">${postTitle}</a>
-                    </strong>
-                    <span style="color: var(--text-muted); font-size: 12px; display: block; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">${postDesc}</span>
-                `;
                 reviewContainer.appendChild(reviewItem);
             });
         } else {
-            reviewContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">관련 학원 커뮤니티 정보가 없습니다.</div>';
+            reviewContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">관련 후기나 커뮤니티 정보가 없습니다.</div>';
         }
     } catch (e) {
         console.error('Community Fetch Error:', e);
-        reviewContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: #d32f2f;">${e.message}</div>`;
+        reviewContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: #d32f2f;">오류가 발생했습니다: ${e.message}</div>`;
     }
 };
 
