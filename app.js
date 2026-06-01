@@ -193,6 +193,56 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // 이사 시뮬레이션 및 동 단위 학군 레이팅 이벤트 바인딩
+    const btnOpenSimulation = document.getElementById('btnOpenSimulation');
+    const simulationModal = document.getElementById('simulationModal');
+    const btnRunSimulation = document.getElementById('btnRunSimulation');
+
+    if (btnOpenSimulation && simulationModal) {
+        btnOpenSimulation.addEventListener('click', () => {
+            simulationModal.style.display = 'flex';
+            document.getElementById('simulationResultPanel').style.display = 'none';
+            initSimulationDropdowns(); // 모달 오픈 시 드롭다운 초기화
+        });
+    }
+
+    if (btnRunSimulation) {
+        btnRunSimulation.addEventListener('click', () => {
+            const sidoA = document.getElementById('simSidoA').value;
+            const gugunA = document.getElementById('simGugunA').value;
+            const dongA = document.getElementById('simDongA').value;
+
+            const sidoB = document.getElementById('simSidoB').value;
+            const gugunB = document.getElementById('simGugunB').value;
+            const dongB = document.getElementById('simDongB').value;
+
+            if (!sidoA || !gugunA || !dongA || !sidoB || !gugunB || !dongB) {
+                alert("두 후보 지역의 시도, 구군, 동을 모두 선택해 주세요.");
+                return;
+            }
+
+            const valA = `${sidoA} ${gugunA} ${dongA}`;
+            const valB = `${sidoB} ${gugunB} ${dongB}`;
+            runMovingSimulation(valA, valB, dongA, dongB);
+        });
+    }
+
+    const dongRatingCheckbox = document.getElementById('dongRatingCheckbox');
+    if (dongRatingCheckbox) {
+        dongRatingCheckbox.addEventListener('change', () => {
+            if (dongRatingCheckbox.checked) {
+                renderDistrictRatings();
+                // 히트맵 시 지도 핀들 임시 제거
+                mapMarkers.forEach(marker => marker.setMap(null));
+                mapMarkers = [];
+                if (clusterer) clusterer.clear();
+            } else {
+                clearDistrictRatings();
+                onMapAction();
+            }
+        });
+    }
+
     function exportSchoolToCSV(school) {
         const headers = ['지표명', '상세 값'];
         const rows = [
@@ -453,6 +503,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let mapMarkers = [];
     let currentLoadedSchools = []; // Cache for currently loaded school data
     let schoolsDatabase = []; // In-memory database of all schools fetched from backend
+    let commuteCircle = null; // 통학 반경 시각화용 원 객체
+    let districtRatingOverlays = []; // 동 단위 학군 레이팅 오버레이 목록
 
     const diagnosticLog = document.getElementById('diagnosticLog');
     function logDiagnostic(msg) {
@@ -824,6 +876,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 실제 지도 렌더링 로직 (지역/줌 확정 후 호출)
     function _renderMapForRegion(zoomLevel, selectedRegion) {
+        // 통학 반경 원 객체 업데이트
+        updateCommuteCircle();
+
+        // 동 단위 학군 레이팅 활성화 체크
+        const dongRatingCheckbox = document.getElementById('dongRatingCheckbox');
+        if (dongRatingCheckbox && dongRatingCheckbox.checked) {
+            renderDistrictRatings();
+            mapMarkers.forEach(marker => marker.setMap(null));
+            mapMarkers = [];
+            if (clusterer) clusterer.clear();
+            return;
+        } else {
+            clearDistrictRatings();
+        }
 
         let typeLabel = '중학교';
         if (orchestrator.state.filters.schoolType === 'elementary') typeLabel = '초등학교';
@@ -2346,6 +2412,474 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             col.appendChild(infoContent);
             compareGrid.appendChild(col);
+        });
+    }
+
+    function updateCommuteCircle() {
+        if (!kakaoMap) return;
+        
+        if (commuteCircle) {
+            commuteCircle.setMap(null);
+            commuteCircle = null;
+        }
+
+        const commuteMode = document.getElementById('commuteRadiusFilter').value;
+        if (commuteMode !== 'off') {
+            const center = kakaoMap.getCenter();
+            const radius = parseFloat(commuteMode);
+
+            commuteCircle = new kakao.maps.Circle({
+                center: center,
+                radius: radius,
+                strokeWeight: 2,
+                strokeColor: 'var(--primary-blue)',
+                strokeOpacity: 0.8,
+                strokeStyle: 'dashed',
+                fillColor: 'var(--light-blue)',
+                fillOpacity: 0.25
+            });
+
+            commuteCircle.setMap(kakaoMap);
+        }
+    }
+
+    function clearDistrictRatings() {
+        districtRatingOverlays.forEach(overlay => overlay.setMap(null));
+        districtRatingOverlays = [];
+    }
+
+    function renderDistrictRatings() {
+        clearDistrictRatings();
+        if (!kakaoMap) return;
+
+        const ratingGroups = {};
+        schoolsDatabase.forEach(school => {
+            if (!school.address || !school.lat || !school.lng) return;
+            const parts = school.address.split(' ');
+            if (parts.length < 3) return;
+            
+            const gu = parts[1];
+            const dong = parts[2];
+            const key = `${gu} ${dong}`;
+
+            const schoolAvg = (school.subjects.korean.avg + school.subjects.english.avg + school.subjects.math.avg) / 3;
+            
+            if (!ratingGroups[key]) {
+                ratingGroups[key] = {
+                    name: dong,
+                    gu: gu,
+                    sum: 0,
+                    count: 0,
+                    lats: 0,
+                    lngs: 0
+                };
+            }
+            ratingGroups[key].sum += schoolAvg;
+            ratingGroups[key].count += 1;
+            ratingGroups[key].lats += school.lat;
+            ratingGroups[key].lngs += school.lng;
+        });
+
+        for (const [key, group] of Object.entries(ratingGroups)) {
+            const avg = Math.round((group.sum / group.count) * 10) / 10;
+            const centerLat = group.lats / group.count;
+            const centerLng = group.lngs / group.count;
+            
+            let color = '#757575';
+            let bgColor = 'rgba(117,117,117,0.45)';
+            if (avg >= 85) {
+                color = 'var(--primary-blue, #2563eb)';
+                bgColor = 'rgba(37,99,235,0.4)';
+            } else if (avg >= 78) {
+                color = 'var(--success-green, #16a34a)';
+                bgColor = 'rgba(22,165,74,0.4)';
+            } else if (avg >= 70) {
+                color = 'var(--warning-yellow, #ca8a04)';
+                bgColor = 'rgba(202,138,4,0.4)';
+            }
+
+            const overlayContent = document.createElement('div');
+            overlayContent.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                width: 60px;
+                height: 60px;
+                border-radius: 50%;
+                background: ${bgColor};
+                border: 2px solid ${color};
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                color: #212529;
+                font-family: var(--font-primary);
+                font-size: 11px;
+                font-weight: bold;
+                text-align: center;
+                backdrop-filter: blur(2px);
+            `;
+            overlayContent.innerHTML = `
+                <div style="font-size: 9.5px; color: #1e293b; text-shadow: 1px 1px 0px white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 54px;">${group.name}</div>
+                <div style="font-size: 11px; color: ${color}; font-weight: 800; text-shadow: 1px 1px 0px white; margin-top: 1px;">${avg}점</div>
+            `;
+
+            const coords = new kakao.maps.LatLng(centerLat, centerLng);
+            const overlay = new kakao.maps.CustomOverlay({
+                position: coords,
+                content: overlayContent,
+                xAnchor: 0.5,
+                yAnchor: 0.5,
+                zIndex: 90
+            });
+
+            overlay.setMap(kakaoMap);
+            districtRatingOverlays.push(overlay);
+        }
+    }
+
+    let districtData = null; // 행정구역 데이터 전역 캐시
+    const simDongCache = {}; // 구군별 동 목록 캐시
+
+    async function initSimulationDropdowns() {
+        const sidoA = document.getElementById('simSidoA');
+        const sidoB = document.getElementById('simSidoB');
+        const gugunA = document.getElementById('simGugunA');
+        const gugunB = document.getElementById('simGugunB');
+        const dongA = document.getElementById('simDongA');
+        const dongB = document.getElementById('simDongB');
+        const simSchoolType = document.getElementById('simSchoolType');
+
+        if (!sidoA || !sidoB || !gugunA || !gugunB || !dongA || !dongB) return;
+
+        // 드롭다운 초기 상태 설정
+        sidoA.innerHTML = '<option value="">시도 선택</option>';
+        sidoB.innerHTML = '<option value="">시도 선택</option>';
+        gugunA.innerHTML = '<option value="">구군 선택</option>';
+        gugunB.innerHTML = '<option value="">구군 선택</option>';
+        dongA.innerHTML = '<option value="">동 선택</option>';
+        dongB.innerHTML = '<option value="">동 선택</option>';
+
+        try {
+            if (!districtData) {
+                const res = await fetch('/src/data/korea-administrative-district.json');
+                const json = await res.json();
+                districtData = json.data;
+            }
+
+            // 시도 목록 채우기
+            const sidos = districtData.map(item => Object.keys(item)[0]);
+            sidos.forEach(sido => {
+                const optA = document.createElement('option');
+                const optB = document.createElement('option');
+                optA.value = sido; optA.innerText = sido;
+                optB.value = sido; optB.innerText = sido;
+                sidoA.appendChild(optA);
+                sidoB.appendChild(optB);
+            });
+
+            // 시도 변경 시 구군 채우기 핸들러
+            const setupSidoChangeHandler = (sidoEl, gugunEl, dongEl) => {
+                sidoEl.addEventListener('change', () => {
+                    const selectedSido = sidoEl.value;
+                    gugunEl.innerHTML = '<option value="">구군 선택</option>';
+                    dongEl.innerHTML = '<option value="">동 선택</option>';
+
+                    if (!selectedSido) return;
+
+                    const sidoItem = districtData.find(item => Object.keys(item)[0] === selectedSido);
+                    if (sidoItem) {
+                        const guguns = sidoItem[selectedSido];
+                        guguns.forEach(gugun => {
+                            const opt = document.createElement('option');
+                            opt.value = gugun;
+                            opt.innerText = gugun;
+                            gugunEl.appendChild(opt);
+                        });
+                    }
+                });
+            };
+
+            // 구군 변경 시 동 채우기 핸들러
+            const setupGugunChangeHandler = (sidoEl, gugunEl, dongEl) => {
+                gugunEl.addEventListener('change', () => {
+                    const selectedSido = sidoEl.value;
+                    const selectedGugun = gugunEl.value;
+                    if (!selectedSido || !selectedGugun) {
+                        dongEl.innerHTML = '<option value="">동 선택</option>';
+                        return;
+                    }
+                    updateDongDropdown(selectedSido, selectedGugun, dongEl);
+                });
+            };
+
+            // 이벤트 바인딩 적용
+            setupSidoChangeHandler(sidoA, gugunA, dongA);
+            setupSidoChangeHandler(sidoB, gugunB, dongB);
+            setupGugunChangeHandler(sidoA, gugunA, dongA);
+            setupGugunChangeHandler(sidoB, gugunB, dongB);
+
+            // 공통 학교급 필터 변경 시 양측 동 목록 갱신
+            if (simSchoolType) {
+                simSchoolType.addEventListener('change', () => {
+                    const sidoAVal = sidoA.value;
+                    const gugunAVal = gugunA.value;
+                    if (sidoAVal && gugunAVal) {
+                        updateDongDropdown(sidoAVal, gugunAVal, dongA);
+                    }
+
+                    const sidoBVal = sidoB.value;
+                    const gugunBVal = gugunB.value;
+                    if (sidoBVal && gugunBVal) {
+                        updateDongDropdown(sidoBVal, gugunBVal, dongB);
+                    }
+                });
+            }
+
+        } catch (e) {
+            console.error('행정구역 데이터 로드 에러:', e);
+            alert('행정구역 데이터를 불러오는 데 실패했습니다.');
+        }
+    }
+
+    async function updateDongDropdown(sido, gugun, dongSelectEl) {
+        const simSchoolTypeVal = document.getElementById('simSchoolType') ? document.getElementById('simSchoolType').value : 'all';
+        const cacheKey = `${sido} ${gugun} ${simSchoolTypeVal}`;
+
+        // 이미 캐시된 데이터가 있다면 즉시 로딩 후 반환
+        if (simDongCache[cacheKey]) {
+            dongSelectEl.innerHTML = '<option value="">동 선택</option>';
+            simDongCache[cacheKey].forEach(dong => {
+                const opt = document.createElement('option');
+                opt.value = dong;
+                opt.innerText = dong;
+                dongSelectEl.appendChild(opt);
+            });
+            return;
+        }
+
+        dongSelectEl.innerHTML = '<option value="">동 로딩 중...</option>';
+
+        // 해당 구군 및 학교급에 속하는 학교들만 추출
+        let filteredSchools = schoolsDatabase.filter(s => {
+            const matchRegion = s.region === sido && s.address && s.address.includes(gugun);
+            if (!matchRegion) return false;
+
+            if (simSchoolTypeVal !== 'all' && s.school_type !== simSchoolTypeVal) {
+                return false;
+            }
+            return true;
+        });
+
+        if (filteredSchools.length === 0) {
+            dongSelectEl.innerHTML = '<option value="">학교 없음</option>';
+            return;
+        }
+
+        // 전체 학교를 대상으로 법정동 역지오코딩 수행 (누락 동 방지)
+        const dongSet = new Set();
+
+        const promises = filteredSchools.map(school => {
+            return new Promise((resolve) => {
+                if (!geocoder || !school.lat || !school.lng) {
+                    resolve();
+                    return;
+                }
+                geocoder.coord2RegionCode(school.lng, school.lat, (result, status) => {
+                    if (status === kakao.maps.services.Status.OK) {
+                        const bRegion = result.find(r => r.region_type === 'B'); // 법정동
+                        if (bRegion && bRegion.region_3depth_name) {
+                            dongSet.add(bRegion.region_3depth_name);
+                        }
+                    }
+                    resolve();
+                });
+            });
+        });
+
+        await Promise.all(promises);
+
+        const sortedDongs = Array.from(dongSet).sort((a, b) => a.localeCompare(b, 'ko'));
+
+        if (sortedDongs.length === 0) {
+            dongSelectEl.innerHTML = '<option value="all">전체</option>';
+        } else {
+            // 캐시 데이터 저장
+            simDongCache[cacheKey] = sortedDongs;
+
+            dongSelectEl.innerHTML = '<option value="">동 선택</option>';
+            sortedDongs.forEach(dong => {
+                const opt = document.createElement('option');
+                opt.value = dong;
+                opt.innerText = dong;
+                dongSelectEl.appendChild(opt);
+            });
+        }
+    }
+
+    function runMovingSimulation(regionA, regionB, labelA, labelB) {
+        if (!regionA || !regionB) {
+            alert("두 후보 지역을 모두 선택해 주세요.");
+            return;
+        }
+
+        const nameA = labelA || regionA;
+        const nameB = labelB || regionB;
+
+        const getCoords = (address) => {
+            return new Promise((resolve) => {
+                if (!geocoder) {
+                    resolve(null);
+                    return;
+                }
+                geocoder.addressSearch(address, (result, status) => {
+                    if (status === kakao.maps.services.Status.OK) {
+                        resolve({
+                            lat: parseFloat(result[0].y),
+                            lng: parseFloat(result[0].x)
+                        });
+                    } else {
+                        resolve(null);
+                    }
+                });
+            });
+        };
+
+        const getDistance = (lat1, lng1, lat2, lng2) => {
+            const R = 6371; // 지구 반경 (km)
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        };
+
+        const resultPanel = document.getElementById('simulationResultPanel');
+        resultPanel.style.display = 'block';
+        resultPanel.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px 0; font-size: 13px;">두 지역의 학교 데이터를 수집하여 학군 분석 중입니다...</div>';
+
+        const simSchoolTypeVal = document.getElementById('simSchoolType') ? document.getElementById('simSchoolType').value : 'all';
+
+        Promise.all([getCoords(regionA), getCoords(regionB)]).then(([coordsA, coordsB]) => {
+            let schoolsA = [];
+            let schoolsB = [];
+
+            if (coordsA) {
+                schoolsA = schoolsDatabase.filter(s => {
+                    if (!s.lat || !s.lng) return false;
+                    if (simSchoolTypeVal !== 'all' && s.school_type !== simSchoolTypeVal) return false;
+                    return getDistance(coordsA.lat, coordsA.lng, s.lat, s.lng) <= 1.8;
+                });
+            } else {
+                // 카카오 API 좌표 실패 시 폴백 (도로명 매치)
+                const term = regionA.split(' ').pop();
+                schoolsA = schoolsDatabase.filter(s => {
+                    if (simSchoolTypeVal !== 'all' && s.school_type !== simSchoolTypeVal) return false;
+                    return s.address && s.address.toLowerCase().includes(term.toLowerCase());
+                });
+            }
+
+            if (coordsB) {
+                schoolsB = schoolsDatabase.filter(s => {
+                    if (!s.lat || !s.lng) return false;
+                    if (simSchoolTypeVal !== 'all' && s.school_type !== simSchoolTypeVal) return false;
+                    return getDistance(coordsB.lat, coordsB.lng, s.lat, s.lng) <= 1.8;
+                });
+            } else {
+                const term = regionB.split(' ').pop();
+                schoolsB = schoolsDatabase.filter(s => {
+                    if (simSchoolTypeVal !== 'all' && s.school_type !== simSchoolTypeVal) return false;
+                    return s.address && s.address.toLowerCase().includes(term.toLowerCase());
+                });
+            }
+
+            if (schoolsA.length === 0 && schoolsB.length === 0) {
+                alert("선택하신 지역 근처의 학교 데이터를 찾을 수 없습니다.");
+                resultPanel.style.display = 'none';
+                return;
+            }
+
+            const calcStats = (schools) => {
+                if (schools.length === 0) return { avg: 0, classSize: 0, budget: 0, violence: 0, count: 0 };
+                let scoreSum = 0;
+                let classSizeSum = 0;
+                let budgetSum = 0;
+                let violenceSum = 0;
+
+                schools.forEach(s => {
+                    const schoolAvg = (s.subjects.korean.avg + s.subjects.english.avg + s.subjects.math.avg) / 3;
+                    scoreSum += schoolAvg;
+                    classSizeSum += s.class_avg_size || 25;
+                    budgetSum += s.extracurricular_budget || 0;
+                    violenceSum += s.violence_stats ? s.violence_stats.total_cases : 0;
+                });
+
+                return {
+                    avg: Math.round((scoreSum / schools.length) * 10) / 10,
+                    classSize: Math.round((classSizeSum / schools.length) * 10) / 10,
+                    budget: Math.round((budgetSum / schools.length)),
+                    violence: Math.round((violenceSum / schools.length) * 10) / 10,
+                    count: schools.length
+                };
+            };
+
+            const statsA = calcStats(schoolsA);
+            const statsB = calcStats(schoolsB);
+
+            resultPanel.innerHTML = `
+                <div style="font-size: 12.5px; font-weight: bold; color: var(--deep-blue); margin-bottom: 12px; background: #e8f4ff; padding: 10px; border-radius: 8px; border-left: 4px solid var(--primary-blue);">
+                    💡 분석 결과: ${nameA} (${statsA.count}개교) vs ${nameB} (${statsB.count}개교)
+                </div>
+                
+                <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 12px; margin-bottom: 16px;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid var(--border-color); background: #f8f9fa; font-weight: bold; color: var(--deep-blue);">
+                            <th style="padding: 10px 6px; text-align: left;">비교 항목</th>
+                            <th style="padding: 10px 6px; color: var(--primary-blue);">${nameA}</th>
+                            <th style="padding: 10px 6px; color: var(--success-green);">${nameB}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 8px 6px; text-align: left; font-weight: 500;">🏫 대상 학교 수</td>
+                            <td style="padding: 8px 6px; font-weight: bold;">${statsA.count}개교</td>
+                            <td style="padding: 8px 6px; font-weight: bold;">${statsB.count}개교</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 8px 6px; text-align: left; font-weight: 500;">📊 학업성취도 평균</td>
+                            <td style="padding: 8px 6px; font-weight: bold; color: var(--primary-blue);">${statsA.avg}점</td>
+                            <td style="padding: 8px 6px; font-weight: bold; color: var(--success-green);">${statsB.avg}점</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 8px 6px; text-align: left; font-weight: 500;">🧑‍🏫 학급 평균 학생수</td>
+                            <td style="padding: 8px 6px;">${statsA.classSize}명</td>
+                            <td style="padding: 8px 6px;">${statsB.classSize}명</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 8px 6px; text-align: left; font-weight: 500;">💰 평균 창체 예산</td>
+                            <td style="padding: 8px 6px;">${statsA.budget}만원</td>
+                            <td style="padding: 8px 6px;">${statsB.budget}만원</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 8px 6px; text-align: left; font-weight: 500;">🛡️ 평균 학교폭력 발생</td>
+                            <td style="padding: 8px 6px; color: ${statsA.violence > 3 ? 'var(--danger-red)' : '#2e7d32'};">${statsA.violence}건/년</td>
+                            <td style="padding: 8px 6px; color: ${statsB.violence > 3 ? 'var(--danger-red)' : '#2e7d32'};">${statsB.violence}건/년</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div style="padding: 12px; background: #fff9db; border-radius: 8px; font-size: 11.5px; color: #856404; line-height: 1.5; border-left: 4px solid #ffe066;">
+                    <strong>💡 학군 이사 종합 조언:</strong><br>
+                    ${statsA.avg > statsB.avg 
+                        ? `전반적인 교과 학업 분위기는 <strong>${nameA}</strong>(평균 ${statsA.avg}점)가 <strong>${nameB}</strong>(평균 ${statsB.avg}점)에 비해 높은 경쟁도를 형성하고 있습니다.`
+                        : `전반적인 교과 학업 분위기는 <strong>${nameB}</strong>(평균 ${statsB.avg}점)가 <strong>${nameA}</strong>(평균 ${statsA.avg}점)에 비해 높은 경쟁도를 형성하고 있습니다.`
+                    }
+                    ${Math.abs(statsA.classSize - statsB.classSize) > 2
+                        ? `<br>학급당 학생 수는 <strong>${statsA.classSize > statsB.classSize ? nameA : nameB}</strong>가 더 과밀한 편이므로 자기주도 학습 보강 여건을 참고하세요.`
+                        : ''
+                    }
+                </div>
+            `;
         });
     }
 });

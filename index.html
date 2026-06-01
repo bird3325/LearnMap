@@ -273,6 +273,17 @@
                                 <span>3년 연속 성적 우상향만 보기</span>
                                 <input type="checkbox" id="trendUpwardCheckbox" style="cursor: pointer;">
                             </div>
+                            
+                            <!-- B2B 확장 및 학군 부동산 연계 패널 -->
+                            <div style="border-top: 1px dashed var(--border-color); padding-top: 10px; margin-top: 6px; display: flex; flex-direction: column; gap: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+                                    <strong>동 단위 학군 레이팅 히트맵</strong>
+                                    <input type="checkbox" id="dongRatingCheckbox" style="cursor: pointer;">
+                                </div>
+                                <button class="btn-secondary" id="btnOpenSimulation" style="padding: 6px 12px; font-size: 11.5px; font-weight: bold; width: 100%; border: 1px solid var(--primary-blue); color: var(--primary-blue); background: white; border-radius: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='var(--light-blue)'" onmouseout="this.style.background='white'">
+                                    🏡 학군 이사 시뮬레이터 실행
+                                </button>
+                            </div>
                         </div>
 
                     </div>
@@ -1032,6 +1043,56 @@
                     <strong style="color: var(--primary-blue); font-size: 13px;">4. 종합 교육환경 스코어</strong>
                     <p style="margin: 4px 0 0 0; color: var(--text-muted);">단순한 시험 점수 외에, 교사 1인당 학생 수, 안전한 환경(학교폭력 발생률), 창의적 체험활동비 등 다각적인 교육 품질을 가중합산하여 산출한 점수입니다.</p>
                 </div>
+            </div>
+        </div>
+    </div>
+    <!-- 이사 시뮬레이션 대시보드 모달 -->
+    <div id="simulationModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) document.getElementById('simulationModal').style.display='none'">
+        <div style="background: white; border-radius: 16px; padding: 24px; width: 95%; max-width: 580px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color); position: relative;" onclick="event.stopPropagation();">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 style="font-size: 16px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
+                    <span>🏡 학군 이사 시뮬레이션 대시보드</span>
+                </h3>
+                <button onclick="document.getElementById('simulationModal').style.display='none'" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1;">&times;</button>
+            </div>
+            
+            <!-- 공통 비교 학교급 선택 -->
+            <div style="margin-bottom: 16px; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; box-sizing: border-box;">
+                <strong style="font-size: 12.5px; color: var(--deep-blue);">🏫 비교 대상 학교급</strong>
+                <select id="simSchoolType" style="padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 6px; outline: none; font-size: 12.5px; background: white; cursor: pointer; width: 140px;">
+                    <option value="all">전체 학교</option>
+                    <option value="초등학교">초등학교</option>
+                    <option value="중학교" selected>중학교</option>
+                    <option value="고등학교">고등학교</option>
+                </select>
+            </div>
+
+            <!-- 지역 선택 셀렉트박스 (시도 / 구군 / 동) -->
+            <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-direction: column;">
+                <!-- 후보 지역 A -->
+                <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <strong style="display: block; font-size: 12px; color: var(--deep-blue); margin-bottom: 8px;">후보 지역 A</strong>
+                    <div style="display: flex; gap: 8px;">
+                        <select id="simSidoA" style="flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; outline: none; font-size: 12.5px; background: white; cursor: pointer; min-width: 0;"></select>
+                        <select id="simGugunA" style="flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; outline: none; font-size: 12.5px; background: white; cursor: pointer; min-width: 0;"></select>
+                        <select id="simDongA" style="flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; outline: none; font-size: 12.5px; background: white; cursor: pointer; min-width: 0;"></select>
+                    </div>
+                </div>
+                <!-- 후보 지역 B -->
+                <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <strong style="display: block; font-size: 12px; color: var(--success-green); margin-bottom: 8px;">후보 지역 B</strong>
+                    <div style="display: flex; gap: 8px;">
+                        <select id="simSidoB" style="flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; outline: none; font-size: 12.5px; background: white; cursor: pointer; min-width: 0;"></select>
+                        <select id="simGugunB" style="flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; outline: none; font-size: 12.5px; background: white; cursor: pointer; min-width: 0;"></select>
+                        <select id="simDongB" style="flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; outline: none; font-size: 12.5px; background: white; cursor: pointer; min-width: 0;"></select>
+                    </div>
+                </div>
+            </div>
+            <button id="btnRunSimulation" style="padding: 10px 16px; width: 100%; border: none; background: var(--primary-blue); color: white; font-weight: bold; border-radius: 8px; cursor: pointer; font-size: 13.5px; transition: background 0.2s; margin-bottom: 16px;" onmouseover="this.style.background='var(--deep-blue)'" onmouseout="this.style.background='var(--primary-blue)'">시뮬레이션 실행</button>
+
+            <!-- 시뮬레이션 결과 대시보드 -->
+            <div id="simulationResultPanel" style="display: none; max-height: 480px; overflow-y: auto; padding-right: 4px;">
+                <!-- 비교 결과 동적 렌더링 -->
             </div>
         </div>
     </div>
