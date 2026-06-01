@@ -48,7 +48,12 @@ export class CompareAgent {
                 strong_subject: subjectLabels[strongSubject],
                 updated_at: school.updated_at,
                 extracurricular_budget: school.extracurricular_budget || 120,
-                suitability: suitability // 상 / 중 / 하 적합도
+                suitability: suitability, // 상 / 중 / 하 적합도
+                weightedAvg: school.weightedAvg,
+                envScore: school.envScore,
+                envScoresDetails: school.envScoresDetails,
+                violence_stats: school.violence_stats,
+                trendData: school.trendData
             };
         });
 

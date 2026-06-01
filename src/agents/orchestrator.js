@@ -65,8 +65,8 @@ export class Orchestrator {
      * 비교 보드에 학교 추가
      */
     addToComparison(school) {
-        if (this.state.comparisonList.length >= 3) {
-            return { success: false, message: "비교는 최대 3개 학교까지 가능합니다." };
+        if (this.state.comparisonList.length >= 4) {
+            return { success: false, message: "비교는 최대 4개 학교까지 가능합니다." };
         }
         
         const exists = this.state.comparisonList.some(s => s.school_id === school.school_id);

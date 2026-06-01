@@ -18,7 +18,23 @@
         </button>
 
         <!-- Left Section: Map View -->
-        <section class="map-section">
+        <section class="map-section" style="position: relative;">
+            <!-- 지도 로딩 오버레이 -->
+            <div id="mapLoadingOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.65); z-index: 10002; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 24px; backdrop-filter: blur(8px); transition: opacity 0.5s ease, visibility 0.5s;">
+                <div style="position: relative; display: flex; justify-content: center; align-items: center; width: 80px; height: 80px;">
+                    <!-- 바깥쪽 천천히 도는 그라데이션 링 -->
+                    <div class="spinner-outer"></div>
+                    <!-- 안쪽 반대로 도는 링 -->
+                    <div class="spinner-inner"></div>
+                    <!-- 센터 심볼 (지도 마크) -->
+                    <div style="position: absolute; font-size: 26px; animation: pulse-scale 2s infinite ease-in-out; display: flex; align-items: center; justify-content: center; user-select: none;">🗺️</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 16px; font-weight: 800; color: var(--deep-blue); letter-spacing: -0.5px; margin-bottom: 6px;">학업성취도 분석 데이터 로딩 중</div>
+                    <div style="font-size: 11px; color: var(--text-muted); font-weight: 500; letter-spacing: -0.2px;">서울시 학교별 학업 지표 및 주변 인프라를 분석하고 있습니다.</div>
+                </div>
+            </div>
+
             <div class="map-canvas" id="mapCanvas">
                 <!-- Mock Map visual design -->
                 <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="position:absolute; top:0; left:0;">
@@ -167,6 +183,100 @@
                         <option value="high">고등학교</option>
                     </select>
                 </div>
+
+                <!-- Parents Advanced Analytics Filter Panel (Accordion) -->
+                <div class="parents-filter-accordion" style="background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; overflow: hidden; font-size: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+                    <div id="btnToggleParentsFilter" style="background: transparent; padding: 12px 16px; font-weight: bold; color: var(--deep-blue); cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span style="font-size: 13px;">⚙️ 학부모 맞춤 분석 & 필터 설정</span>
+                        <span id="parentsFilterIndicator">▼</span>
+                    </div>
+                    <div id="parentsFilterContent" style="display: none; padding: 12px; border-top: 1px solid var(--border-color); flex-direction: column; gap: 10px;">
+                        
+                        <!-- 자녀 수준 기반 추천 (슬라이더 2개) -->
+                        <div style="border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+                            <strong style="color: var(--deep-blue); display: block; margin-bottom: 6px;">🎯 자녀 맞춤 추천 (내신 수준)</strong>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>현재 내신 점수대: <strong id="valCurrentLevel">80점</strong></span>
+                                    <input type="range" id="currentLevelRange" min="50" max="100" value="80" style="width: 120px; cursor: pointer;">
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>목표 추천 레벨: <strong id="valTargetLevel">90점</strong></span>
+                                    <input type="range" id="targetLevelRange" min="50" max="100" value="90" style="width: 120px; cursor: pointer;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 교과별 가중치 필터 -->
+                        <div style="border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+                            <strong style="color: var(--deep-blue); display: block; margin-bottom: 6px;">📊 과목 성취도 가중치 (합산)</strong>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>국어 가중치: <strong id="valWeightKor">1.0</strong></span>
+                                    <input type="range" id="weightKorRange" min="0" max="50" value="10" style="width: 120px; cursor: pointer;">
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>영어 가중치: <strong id="valWeightEng">1.0</strong></span>
+                                    <input type="range" id="weightEngRange" min="0" max="50" value="10" style="width: 120px; cursor: pointer;">
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>수학 가중치: <strong id="valWeightMath">1.0</strong></span>
+                                    <input type="range" id="weightMathRange" min="0" max="50" value="10" style="width: 120px; cursor: pointer;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 종합 교육환경 스코어 가중치 -->
+                        <div style="border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+                            <strong style="color: var(--deep-blue); display: block; margin-bottom: 6px;">🏫 교육환경 종합 스코어 비율 (총 100%)</strong>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>학업 성적: <strong id="valEnvScore">40%</strong></span>
+                                    <input type="range" id="envScoreRange" min="0" max="100" value="40" style="width: 120px; cursor: pointer;">
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>교사 비율: <strong id="valEnvTeacher">30%</strong></span>
+                                    <input type="range" id="envTeacherRange" min="0" max="100" value="30" style="width: 120px; cursor: pointer;">
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>학폭 안전: <strong id="valEnvViolence">20%</strong></span>
+                                    <input type="range" id="envViolenceRange" min="0" max="100" value="20" style="width: 120px; cursor: pointer;">
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>창체 예산: <strong id="valEnvBudget">10%</strong></span>
+                                    <input type="range" id="envBudgetRange" min="0" max="100" value="10" style="width: 120px; cursor: pointer;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 프로필 추천 및 통학 반경 -->
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <strong>👤 추천 프로필</strong>
+                                <select id="profileRecommendFilter" style="padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 11px; outline: none; background: white; cursor: pointer;">
+                                    <option value="none">설정 없음</option>
+                                    <option value="academic">순수 학업 성적형</option>
+                                    <option value="balanced">성적+여건 균형성장형</option>
+                                    <option value="safety">안전/안심 복지형</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <strong>🚌 통학 분석 기준</strong>
+                                <select id="commuteRadiusFilter" style="padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 11px; outline: none; background: white; cursor: pointer;">
+                                    <option value="off">분석 끄기</option>
+                                    <option value="500">도보 10분 (500m)</option>
+                                    <option value="1000">도보 20분 (1km)</option>
+                                    <option value="1500">대중교통 (1.5km)</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+                                <span>3년 연속 성적 우상향만 보기</span>
+                                <input type="checkbox" id="trendUpwardCheckbox" style="cursor: pointer;">
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
             </div>
 
             <!-- School Location pins container -->
@@ -255,7 +365,27 @@
                                 <span style="font-size: 11px; color: var(--text-muted);">전년 대비 <span id="schoolMathChange">→</span></span>
                             </div>
                             <div class="chart-bar-wrapper" id="schoolMathBar"></div>
+                    </div>
+
+                    <!-- 3개년 학업성취도 추세 스파크라인 -->
+                    <div style="background: var(--bg-primary); padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px;">
+                        <strong>📈 최근 3개년 성취도 추이 (국·영·수 평균)</strong>
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
+                            <svg id="trendSparkline" width="160" height="40" style="background: #f8f9fa; border-radius: 4px; border: 1px solid var(--border-color);"></svg>
+                            <div style="text-align: right; font-size: 11px; color: var(--text-muted);">
+                                3년 전: <span id="sparklineStartVal">-점</span><br>
+                                최근: <strong id="sparklineEndVal" style="color: var(--primary-blue);">-점</strong>
+                            </div>
                         </div>
+                    </div>
+
+                    <!-- 종합 교육환경 점수 -->
+                    <div style="background: var(--bg-primary); padding: 12px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid var(--primary-blue); font-size: 13px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong>🏫 종합 교육환경 점수:</strong>
+                            <strong id="totalEnvScoreLabel" style="font-size: 15px; color: var(--primary-blue);">0점</strong>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;" id="totalEnvScoreDesc">성적, 교사비율, 안전, 예산 가중치 기준</div>
                     </div>
 
                     <!-- AI summary insight -->
@@ -300,6 +430,14 @@
                     <span id="schoolInsight">이 학교의 공시 데이터를 분석하고 있습니다.</span>
                 </div>
 
+                <!-- 학습 리스크 진단 카드 -->
+                <div style="background: #fff3e0; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; border-left: 4px solid #ef6c00;">
+                    <strong style="color: #d84315;">⚠️ 학습 리스크 진단</strong><br>
+                    <div id="schoolRiskInsight" style="margin-top: 6px; font-size: 12px; line-height: 1.4; color: #4e342e;">
+                        이 학교의 교과 편차 및 학업 양극화 가능성을 분석 중입니다.
+                    </div>
+                </div>
+
                 <!-- 주변 부동산 및 주거 정보 연동 UI -->
                 <div style="background: var(--bg-primary); padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; border-left: 4px solid var(--success-green);">
                     <strong>🏠 주변 부동산 (전용 84㎡ 기준 추정치)</strong><br>
@@ -324,7 +462,17 @@
                         <button class="btn-primary" id="btnCompareChild" style="flex: 1;">우리 아이와 비교하기</button>
                         <button class="btn-secondary" id="btnCompareBoard" style="flex: 1;">비교 보드 추가</button>
                     </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn-secondary" id="btnExportCSV" style="flex: 1; background: white; border: 1px solid #2e7d32; color: #2e7d32;">📥 CSV 내보내기</button>
+                        <button class="btn-secondary" id="btnShowTutorial" style="flex: 1; background: white; border: 1px solid var(--primary-blue); color: var(--primary-blue);">💡 도움말 가이드</button>
+                    </div>
                     <button class="btn-secondary" id="btnShowReviews" style="background: white; border: 1px solid var(--primary-blue); color: var(--primary-blue); width: 100%;">💬 찐 학부모 리뷰 보기</button>
+                </div>
+                
+                <!-- 데이터 출처 및 공시 정보 -->
+                <div style="margin-top: 14px; font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 8px;">
+                    <span>출처: 학교알리미 (공시 2025)</span>
+                    <a id="btnAlimiLink" href="https://www.schoolinfo.go.kr" target="_blank" style="color: var(--primary-blue); text-decoration: none; font-weight: bold;">학교알리미 바로가기 ↗</a>
                 </div>
             </div>
 
@@ -467,7 +615,7 @@
     <!-- Bottom/Floating School Comparison Board Overlay -->
     <div class="compare-overlay" id="compareOverlay" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 12px;">
-            <h3 style="font-size: 16px; color: var(--deep-blue);">학교 비교 보드 (최대 3개)</h3>
+            <h3 style="font-size: 16px; color: var(--deep-blue);">학교 비교 보드 (최대 4개)</h3>
             <button style="border: none; background: transparent; color: var(--primary-blue); font-weight: bold; cursor: pointer;" id="btnCloseCompare">×</button>
         </div>
         <div class="compare-grid" id="compareGrid">
@@ -856,6 +1004,34 @@
             </div>
             <div id="schoolReviewListContainer" style="overflow-y: auto; flex: 1; padding-right: 8px;">
                 <div style="text-align: center; color: var(--text-muted); padding: 20px 0; font-size: 13px;">리뷰를 불러오는 중입니다...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 도움말 및 평가 제도 튜토리얼 모달 -->
+    <div id="tutorialModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) document.getElementById('tutorialModal').style.display='none'">
+        <div style="background: white; border-radius: 16px; padding: 24px; width: 90%; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color); position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 style="font-size: 15px; font-weight: 700; color: var(--deep-blue); margin: 0;">💡 학업성취도 평가 지표 설명 가이드</h3>
+                <button onclick="document.getElementById('tutorialModal').style.display='none'" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1;">&times;</button>
+            </div>
+            <div style="font-size: 12.5px; line-height: 1.6; color: var(--text-main); display: flex; flex-direction: column; gap: 12px; overflow-y: auto; max-height: 380px; padding-right: 4px;">
+                <div>
+                    <strong style="color: var(--primary-blue); font-size: 13px;">1. 학업성취도 평균(avg)이란?</strong>
+                    <p style="margin: 4px 0 0 0; color: var(--text-muted);">학교별 정기고사(지필평가+수행평가) 점수의 평균입니다. 과목별로 시험 난이도가 다를 수 있으나, 전반적인 면학 분위기와 기초 실력을 대변합니다.</p>
+                </div>
+                <div>
+                    <strong style="color: var(--primary-blue); font-size: 13px;">2. 성취도 분포(A~E등급)</strong>
+                    <p style="margin: 4px 0 0 0; color: var(--text-muted);">90점 이상은 A등급, 60점 미만은 E등급 등 절대평가 기준으로 분류된 학생들의 비율입니다. 우수학생 밀집도(A등급 비율)와 하위권 기초학력 미달 비율(E등급)을 보여줍니다.</p>
+                </div>
+                <div>
+                    <strong style="color: var(--primary-blue); font-size: 13px;">3. 표준편차의 의미 (리스크와 양극화)</strong>
+                    <p style="margin: 4px 0 0 0; color: var(--text-muted);">학생들의 성적이 평균에서 얼마나 흩어져 있는가를 보여주는 값입니다. 편차가 작을수록(15 이하) 학생들 성적이 촘촘하고 평준화되어 있으며, 편차가 클수록(22 이상) 상위권과 하위권의 격차가 극심한 '학습 양극화' 상태를 뜻합니다.</p>
+                </div>
+                <div>
+                    <strong style="color: var(--primary-blue); font-size: 13px;">4. 종합 교육환경 스코어</strong>
+                    <p style="margin: 4px 0 0 0; color: var(--text-muted);">단순한 시험 점수 외에, 교사 1인당 학생 수, 안전한 환경(학교폭력 발생률), 창의적 체험활동비 등 다각적인 교육 품질을 가중합산하여 산출한 점수입니다.</p>
+                </div>
             </div>
         </div>
     </div>
