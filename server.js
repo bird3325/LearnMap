@@ -453,25 +453,6 @@ app.get('/api/reviews', async (req, res) => {
     }
 });
 
-// --- Real Estate Proxy (MOLIT API) ---
-app.get('/api/realestate', async (req, res) => {
-    const { lawd_cd, deal_ymd } = req.query;
-    if (!lawd_cd || !deal_ymd) return res.status(400).json({ error: 'LAWD_CD and DEAL_YMD are required' });
-
-    const config = await readConfig();
-    const serviceKey = config.data_go_kr_key;
-    if (!serviceKey) return res.status(500).json({ error: '공공데이터포털 API 키가 없습니다.' });
-
-    try {
-        const response = await fetch(`http://openapi.molit.go.kr/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcAptTradeDev?serviceKey=${encodeURIComponent(serviceKey)}&LAWD_CD=${lawd_cd}&DEAL_YMD=${deal_ymd}`);
-        const text = await response.text();
-        res.send(text);
-    } catch (err) {
-        console.error('Real Estate API Error:', err);
-        res.status(500).json({ error: '부동산 API 호출에 실패했습니다.' });
-    }
-});
-
 // --- Academy Fees Proxy (NEIS API) ---
 app.get('/api/academies/fees', async (req, res) => {
     const { atpt_code, admst_zone_nm } = req.query;
@@ -504,10 +485,9 @@ app.get('/api/realestate', async (req, res) => {
     if (!serviceKey) return res.status(500).json({ error: '공공데이터포털 API 키가 설정되지 않았습니다.' });
 
     try {
-        const url = `http://openapi.molit.go.kr/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcAptTradeDev?serviceKey=${encodeURIComponent(serviceKey)}&pageNo=1&numOfRows=1000&LAWD_CD=${lawd_cd}&DEAL_YMD=${deal_ymd}`;
-        const response = await fetch(url);
-        const xmlText = await response.text();
-        res.type('application/xml').send(xmlText);
+        const url = `https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=${encodeURIComponent(serviceKey)}&pageNo=1&numOfRows=1000&LAWD_CD=${lawd_cd}&DEAL_YMD=${deal_ymd}`;
+        const responseText = await httpsGet(url);
+        res.type('application/xml').send(responseText);
     } catch (err) {
         console.error('Real Estate API Error:', err);
         res.status(500).json({ error: '국토교통부 실거래가 API 호출에 실패했습니다.' });

@@ -906,34 +906,44 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (bcode && bcode.code) {
                         const lawdCd = bcode.code.substring(0, 5);
                         
-                        // 전월 또는 최근 달 기준
-                        const date = new Date();
-                        date.setMonth(date.getMonth() - 1);
-                        const dealYmd = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}`;
+                        // 최근 1년(12개월) 기준 년월 목록 생성
+                        const dealYmds = [];
+                        for (let i = 1; i <= 12; i++) {
+                            const d = new Date();
+                            d.setMonth(d.getMonth() - i);
+                            const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`;
+                            dealYmds.push(ymd);
+                        }
                         
                         try {
-                            const res = await fetch(`/api/realestate?lawd_cd=${lawdCd}&deal_ymd=${dealYmd}`);
-                            if (!res.ok) throw new Error('API Error');
-                            const xmlText = await res.text();
+                            const requests = dealYmds.map(ymd => 
+                                fetch(`/api/realestate?lawd_cd=${lawdCd}&deal_ymd=${ymd}`)
+                                    .then(res => res.ok ? res.text() : '')
+                                    .catch(() => '')
+                            );
+                            const xmlTexts = await Promise.all(requests);
                             
-                            // 간단한 XML 파싱
                             const parser = new DOMParser();
-                            const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-                            const items = xmlDoc.getElementsByTagName("item");
-                            
                             let saleSum = 0, saleCount = 0;
-                            for (let i = 0; i < items.length; i++) {
-                                const amountNode = items[i].getElementsByTagName("거래금액")[0];
-                                const areaNode = items[i].getElementsByTagName("전용면적")[0];
-                                if (amountNode && areaNode) {
-                                    const area = parseFloat(areaNode.textContent);
-                                    if (area >= 59 && area <= 85) { // 84㎡ 주변
-                                        const amountStr = amountNode.textContent.trim().replace(/,/g, '');
-                                        saleSum += parseInt(amountStr, 10);
-                                        saleCount++;
+                            
+                            xmlTexts.forEach(xmlText => {
+                                if (!xmlText) return;
+                                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+                                const items = xmlDoc.getElementsByTagName("item");
+                                
+                                for (let i = 0; i < items.length; i++) {
+                                    const amountNode = items[i].getElementsByTagName("거래금액")[0] || items[i].getElementsByTagName("dealAmount")[0];
+                                    const areaNode = items[i].getElementsByTagName("전용면적")[0] || items[i].getElementsByTagName("excluUseAr")[0];
+                                    if (amountNode && areaNode) {
+                                        const area = parseFloat(areaNode.textContent);
+                                        if (area >= 59 && area <= 85) { // 84㎡ 주변
+                                            const amountStr = amountNode.textContent.trim().replace(/,/g, '');
+                                            saleSum += parseInt(amountStr, 10);
+                                            saleCount++;
+                                        }
                                     }
                                 }
-                            }
+                            });
                             
                             if (saleCount > 0) {
                                 const avgSale = Math.round(saleSum / saleCount);
@@ -941,16 +951,41 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const uk = Math.floor(avgSale / 10000);
                                 const man = avgSale % 10000;
                                 if (rsSale) rsSale.innerText = `${uk > 0 ? uk + '억 ' : ''}${man > 0 ? man.toLocaleString() + '만원' : ''}`;
-                                if (rsJeonse) rsJeonse.innerText = `${Math.floor(uk * 0.6)}억 ${Math.floor(man * 0.6).toLocaleString()}만원 (추정)`; // 전세는 임시 추정
-                                if (rsIndex) rsIndex.innerText = '실거래가 기준 산출';
+                                
+                                // 평균 전세가는 평균 매매가의 60% 수준으로 계산
+                                const avgJeonse = Math.round(avgSale * 0.6);
+                                const jUk = Math.floor(avgJeonse / 10000);
+                                const jMan = avgJeonse % 10000;
+                                if (rsJeonse) rsJeonse.innerText = `${jUk > 0 ? jUk + '억 ' : ''}${jMan > 0 ? jMan.toLocaleString() + '만원 (추정)' : ''}`;
+                                
+                                // 가성비 지수 동적 계산 (학업성취도 국영수 평균점수 / 억 단위 집값)
+                                const avgScore = (fullSchool.subjects.korean.avg + fullSchool.subjects.english.avg + fullSchool.subjects.math.avg) / 3;
+                                const avgSaleInEok = avgSale / 10000;
+                                const rawIndex = avgScore / avgSaleInEok;
+                                const efficiencyScore = Math.min(100, Math.round(rawIndex * 10));
+                                
+                                let efficiencyGrade = '보통';
+                                if (rawIndex >= 8.5) {
+                                    efficiencyGrade = '최상';
+                                } else if (rawIndex >= 6.5) {
+                                    efficiencyGrade = '우수';
+                                } else if (rawIndex >= 4.5) {
+                                    efficiencyGrade = '보통';
+                                } else {
+                                    efficiencyGrade = '안정';
+                                }
+                                
+                                if (rsIndex) rsIndex.innerText = `${efficiencyScore}점 (${efficiencyGrade})`;
                             } else {
-                                if (rsSale) rsSale.innerText = '해당월 거래 없음';
-                                if (rsJeonse) rsJeonse.innerText = '해당월 거래 없음';
+                                if (rsSale) rsSale.innerText = '최근 1년 거래 없음';
+                                if (rsJeonse) rsJeonse.innerText = '최근 1년 거래 없음';
+                                if (rsIndex) rsIndex.innerText = '분석 불가 (거래 없음)';
                             }
                         } catch (e) {
                             console.error(e);
                             if (rsSale) rsSale.innerText = '조회 실패';
                             if (rsJeonse) rsJeonse.innerText = '조회 실패';
+                            if (rsIndex) rsIndex.innerText = '분석 실패';
                         }
                     }
                 }
