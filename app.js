@@ -166,6 +166,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         setVal('envViolenceRange', 'valEnvViolence', 50);
                         setVal('envBudgetRange', 'valEnvBudget', 10);
                     }
+                } else if (id === 'commuteRadiusFilter') {
+                    if (el.value === 'off') {
+                        commuteCenter = null;
+                        if (commuteCenterMarker) {
+                            commuteCenterMarker.setMap(null);
+                            commuteCenterMarker = null;
+                        }
+                    }
                 }
                 onMapAction();
             });
@@ -504,6 +512,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentLoadedSchools = []; // Cache for currently loaded school data
     let schoolsDatabase = []; // In-memory database of all schools fetched from backend
     let commuteCircle = null; // 통학 반경 시각화용 원 객체
+    let commuteCenter = null; // 통학 분석 기준 중심점 LatLng
+    let commuteCenterMarker = null; // 통학 분석 기준 중심점 마커
+    let lastMapCenter = null; // 마지막 지도 중심 좌표 캐시
+    let lastDetectedRegion = null; // 마지막 감지된 시도 지역명 캐시
     let districtRatingOverlays = []; // 동 단위 학군 레이팅 오버레이 목록
 
     const diagnosticLog = document.getElementById('diagnosticLog');
@@ -585,6 +597,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         kakao.maps.event.addListener(kakaoMap, 'zoom_changed', () => {
                             onMapAction();
+                        });
+                        kakao.maps.event.addListener(kakaoMap, 'click', (mouseEvent) => {
+                            const commuteMode = document.getElementById('commuteRadiusFilter').value;
+                            if (commuteMode !== 'off') {
+                                commuteCenter = mouseEvent.latLng;
+                                onMapAction();
+                            }
                         });
 
                         logDiagnostic('카카오 지도 객체 및 이벤트 바인딩 성공.');
@@ -724,12 +743,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const center = kakaoMap.getCenter();
+        const zoomLevel = kakaoMap.getLevel();
+        orchestrator.state.filters.schoolType = schoolTypeFilter.value;
 
-        // 역지오코딩으로 지도 중심 지역을 파악해 드롭다운과 클러스터를 함께 갱신
-        // (콜백 내부에서 필터 확정 후 클러스터를 그려 타이밍 충돌 방지)
+        // Check if map center actually moved
+        const hasMoved = !lastMapCenter || 
+            Math.abs(lastMapCenter.getLat() - center.getLat()) > 0.0001 || 
+            Math.abs(lastMapCenter.getLng() - center.getLng()) > 0.0001;
+
+        if (!hasMoved && lastDetectedRegion) {
+            // Map did not move: render synchronously using cached region to avoid geocoder latency
+            _renderMapForRegion(zoomLevel, lastDetectedRegion);
+            return;
+        }
+
+        lastMapCenter = center;
+
         const doRender = (regionToUse) => {
-            const zoomLevel = kakaoMap.getLevel();
-            orchestrator.state.filters.schoolType = schoolTypeFilter.value;
+            lastDetectedRegion = regionToUse;
             _renderMapForRegion(zoomLevel, regionToUse);
         };
 
@@ -765,9 +796,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } else {
             // geocoder 없으면 현재 드롭다운 값 그대로 렌더
-            const zoomLevel = kakaoMap.getLevel();
-            orchestrator.state.filters.schoolType = schoolTypeFilter.value;
-            _renderMapForRegion(zoomLevel, regionFilter.value);
+            doRender(regionFilter.value);
         }
     }
 
@@ -841,14 +870,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (profile === 'academic') {
                 if (school.weightedAvg < 75) return false;
             } else if (profile === 'balanced') {
-                if (school.weightedAvg < 68 || teacherScore < 60 || safetyScore < 65) return false;
+                if (school.weightedAvg < 68 || teacherScore < 20 || safetyScore < 50) return false;
             } else if (profile === 'safety') {
                 if (safetyScore < 80 || school.class_avg_size > 28) return false;
             }
 
-            // 6. 통학 분석 기준 반경 필터 (지도 중심 기준 반경 체크)
+            // 6. 통학 분석 기준 반경 필터 (선택된 중심점 기준 반경 체크)
             if (commuteMode !== 'off' && kakaoMap) {
-                const center = kakaoMap.getCenter();
+                let center = commuteCenter;
+                if (!center) {
+                    if (orchestrator.state.selectedSchool && orchestrator.state.selectedSchool.lat) {
+                        center = new kakao.maps.LatLng(orchestrator.state.selectedSchool.lat, orchestrator.state.selectedSchool.lng);
+                    } else {
+                        center = kakaoMap.getCenter();
+                    }
+                }
                 const radius = parseFloat(commuteMode); // 500, 1000, 1500
                 
                 const latDiff = (school.lat - center.getLat()) * 111000;
@@ -2422,10 +2458,25 @@ document.addEventListener('DOMContentLoaded', () => {
             commuteCircle.setMap(null);
             commuteCircle = null;
         }
+        if (commuteCenterMarker) {
+            commuteCenterMarker.setMap(null);
+            commuteCenterMarker = null;
+        }
 
         const commuteMode = document.getElementById('commuteRadiusFilter').value;
         if (commuteMode !== 'off') {
-            const center = kakaoMap.getCenter();
+            let center = commuteCenter;
+            let showMarker = true;
+            if (!center) {
+                if (orchestrator.state.selectedSchool && orchestrator.state.selectedSchool.lat) {
+                    center = new kakao.maps.LatLng(orchestrator.state.selectedSchool.lat, orchestrator.state.selectedSchool.lng);
+                    showMarker = false;
+                } else {
+                    center = kakaoMap.getCenter();
+                    showMarker = false;
+                }
+            }
+
             const radius = parseFloat(commuteMode);
 
             commuteCircle = new kakao.maps.Circle({
@@ -2440,6 +2491,21 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             commuteCircle.setMap(kakaoMap);
+
+            if (showMarker) {
+                const markerImage = new kakao.maps.MarkerImage(
+                    'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png',
+                    new kakao.maps.Size(24, 35),
+                    { offset: new kakao.maps.Point(12, 35) }
+                );
+
+                commuteCenterMarker = new kakao.maps.Marker({
+                    position: center,
+                    map: kakaoMap,
+                    title: '통학 분석 기준 중심점',
+                    image: markerImage
+                });
+            }
         }
     }
 
@@ -2452,21 +2518,57 @@ document.addEventListener('DOMContentLoaded', () => {
         clearDistrictRatings();
         if (!kakaoMap) return;
 
+        const zoomLevel = kakaoMap.getLevel();
+        const isGuLevel = zoomLevel >= 7;
+
+        // 범례 가이드 업데이트 (구 단위 또는 동 단위에 맞춰 타이틀 변경)
+        const legendTitle = document.getElementById('legendTitleText');
+        const legendContent = document.getElementById('legendContent');
+        if (legendTitle) {
+            legendTitle.innerText = isGuLevel ? '구 단위 학군 레이팅 히트맵 가이드' : '동 단위 학군 레이팅 히트맵 가이드';
+        }
+        if (legendContent) {
+            legendContent.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: rgba(37,99,235,0.4); border: 2px solid var(--primary-blue);"></span>
+                    <span style="font-weight: 600; color: var(--text-main);">학군 우수 (85점 이상)</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: rgba(22,165,74,0.4); border: 2px solid var(--success-green);"></span>
+                    <span style="font-weight: 600; color: var(--text-main);">학군 양호 (78점 ~ 85점 미만)</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: rgba(202,138,4,0.4); border: 2px solid var(--warning-yellow);"></span>
+                    <span style="font-weight: 600; color: var(--text-main);">학군 보통 (70점 ~ 78점 미만)</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: rgba(117,117,117,0.45); border: 2px solid #757575;"></span>
+                    <span style="font-weight: 600; color: var(--text-muted);">학군 보완 (70점 미만)</span>
+                </div>
+            `;
+        }
+
+        const bounds = kakaoMap.getBounds();
+        const sw = bounds.getSouthWest();
+        const ne = bounds.getNorthEast();
+
         const ratingGroups = {};
+        // 1. 데이터의 정확성과 일관성을 위해 전체 학교를 대상으로 그룹화 및 평균 점수를 계산합니다. (바운더리에 의해 값이 왜곡되지 않음)
         schoolsDatabase.forEach(school => {
             if (!school.address || !school.lat || !school.lng) return;
+
             const parts = school.address.split(' ');
             if (parts.length < 3) return;
             
             const gu = parts[1];
             const dong = parts[2];
-            const key = `${gu} ${dong}`;
+            const key = isGuLevel ? gu : `${gu} ${dong}`;
 
             const schoolAvg = (school.subjects.korean.avg + school.subjects.english.avg + school.subjects.math.avg) / 3;
             
             if (!ratingGroups[key]) {
                 ratingGroups[key] = {
-                    name: dong,
+                    name: isGuLevel ? gu : dong,
                     gu: gu,
                     sum: 0,
                     count: 0,
@@ -2484,6 +2586,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const avg = Math.round((group.sum / group.count) * 10) / 10;
             const centerLat = group.lats / group.count;
             const centerLng = group.lngs / group.count;
+
+            // 2. 화면 렌더링 시점에만 현재 지도 영역에 노출되는 항목들만 선별하여 오버레이를 생성합니다. (성능 최적화 유지)
+            const latIn = centerLat >= sw.getLat() && centerLat <= ne.getLat();
+            const lngIn = centerLng >= sw.getLng() && centerLng <= ne.getLng();
+            if (!latIn || !lngIn) continue;
             
             let color = '#757575';
             let bgColor = 'rgba(117,117,117,0.45)';
@@ -2499,27 +2606,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const overlayContent = document.createElement('div');
+            const size = isGuLevel ? '70px' : '60px';
+            const fontSize = isGuLevel ? '12px' : '11px';
+            const titleFontSize = isGuLevel ? '11px' : '9.5px';
+            const maxW = isGuLevel ? '64px' : '54px';
+
             overlayContent.style.cssText = `
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
                 align-items: center;
-                width: 60px;
-                height: 60px;
+                width: ${size};
+                height: ${size};
                 border-radius: 50%;
                 background: ${bgColor};
                 border: 2px solid ${color};
                 box-shadow: 0 4px 12px rgba(0,0,0,0.15);
                 color: #212529;
                 font-family: var(--font-primary);
-                font-size: 11px;
+                font-size: ${fontSize};
                 font-weight: bold;
                 text-align: center;
                 backdrop-filter: blur(2px);
             `;
             overlayContent.innerHTML = `
-                <div style="font-size: 9.5px; color: #1e293b; text-shadow: 1px 1px 0px white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 54px;">${group.name}</div>
-                <div style="font-size: 11px; color: ${color}; font-weight: 800; text-shadow: 1px 1px 0px white; margin-top: 1px;">${avg}점</div>
+                <div style="font-size: ${titleFontSize}; color: #1e293b; text-shadow: 1px 1px 0px white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: ${maxW};">${group.name}</div>
+                <div style="font-size: ${fontSize}; color: ${color}; font-weight: 800; text-shadow: 1px 1px 0px white; margin-top: 1px;">${avg}점</div>
             `;
 
             const coords = new kakao.maps.LatLng(centerLat, centerLng);
