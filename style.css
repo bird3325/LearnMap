@@ -66,7 +66,7 @@ body {
     position: absolute;
     top: 20px;
     left: 20px;
-    z-index: 10;
+    z-index: 10100;
     width: 360px;
     max-width: 90%;
     display: flex;
@@ -76,7 +76,7 @@ body {
 
 .search-bar-wrapper {
     display: flex;
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, var(--overlay-bg-alpha, 0.9));
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 12px;
@@ -120,7 +120,7 @@ body {
     padding: 10px 16px;
     border-radius: 12px;
     border: 1px solid rgba(0, 0, 0, 0.1);
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, var(--overlay-bg-alpha, 0.9));
     backdrop-filter: blur(10px);
     font-size: 13px;
     font-weight: 500;
@@ -437,7 +437,7 @@ body {
     bottom: 20px;
     left: 20px;
     width: 66%;
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, var(--overlay-bg-alpha, 0.95));
     backdrop-filter: blur(15px);
     border: 1px solid var(--border-color);
     border-radius: 16px;
