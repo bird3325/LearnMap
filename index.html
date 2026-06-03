@@ -365,6 +365,9 @@
                                 <button class="btn-secondary" id="btnOpenSimulation" style="padding: 6px 12px; font-size: 11.5px; font-weight: bold; width: 100%; border: 1px solid var(--primary-blue); color: var(--primary-blue); background: white; border-radius: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='var(--light-blue)'" onmouseout="this.style.background='white'">
                                     🏡 학군 이사 시뮬레이터 실행
                                 </button>
+                                <button class="btn-secondary" id="btnResetFilters" style="padding: 6px 12px; font-size: 11.5px; font-weight: bold; width: 100%; border: 1px solid var(--border-color); color: var(--text-muted); background: white; border-radius: 6px; cursor: pointer; transition: all 0.2s; margin-top: 4px;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                                    🔄 필터 설정 초기화
+                                </button>
                             </div>
                         </div>
 
@@ -374,6 +377,48 @@
 
             <!-- School Location pins container -->
             <div id="pinsContainer"></div>
+
+            <!-- Bottom/Floating School Comparison Board Overlay -->
+            <div class="compare-overlay" id="compareOverlay" style="display: none; width: calc(100% - 40px); left: 20px; right: 20px; bottom: 20px; max-height: 75vh; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 12px;">
+                    <h3 style="font-size: 16px; color: var(--deep-blue);" id="compareTitleLabel">학교 비교 보드 (최대 5개)</h3>
+                    <button id="btnToggleCompareView" style="background: none; border: 1px solid var(--primary-blue); color: var(--primary-blue); border-radius: 6px; padding: 4px 10px; font-size: 11.5px; font-weight: bold; cursor: pointer; margin-left: auto; margin-right: 16px; transition: all 0.2s;">📊 상세 표 & 레이더 차트 비교</button>
+                    <button style="border: none; background: transparent; color: var(--primary-blue); font-weight: bold; cursor: pointer; font-size: 20px;" id="btnCloseCompare">×</button>
+                </div>
+                
+                <!-- View 1: Original Card Grid -->
+                <div class="compare-grid" id="compareGrid" style="grid-template-columns: repeat(5, 1fr);">
+                    <!-- Dynamic comparison items go here -->
+                </div>
+
+                <!-- View 2: Detailed Table & Radar Chart (Initially hidden) -->
+                <div id="compareDetailedView" style="display: none; flex-direction: column; gap: 16px;">
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                        <!-- Radar Chart Container -->
+                        <div style="flex: 1; min-width: 280px; background: white; border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                            <h4 style="font-size: 13px; font-weight: 700; color: var(--deep-blue); margin-bottom: 10px; width: 100%; text-align: left;">🕸️ 과목별 학업성취도 레이더 차트</h4>
+                            <canvas id="compareRadarCanvas" width="260" height="240" style="max-width: 100%;"></canvas>
+                        </div>
+                        <!-- Table Container -->
+                        <div style="flex: 2; min-width: 400px; background: white; border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; overflow-x: auto;">
+                            <h4 style="font-size: 13px; font-weight: 700; color: var(--deep-blue); margin-bottom: 10px;">📋 학업성취도 및 여건 비교표</h4>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; line-height: 1.5;" id="compareDetailTable">
+                                <!-- Table header and body will be dynamically populated -->
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <!-- 적합도 판정 기준 안내 추가 -->
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 16px; line-height: 1.5; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    ℹ️ <strong>우리 아이 적합도 기준 안내:</strong> 자녀 평균 성적(국/영/수)과 학교 평균 성적(국/영/수)의 편차를 기준으로 계산됩니다.
+                    <div style="margin-top: 4px; display: flex; gap: 16px; flex-wrap: wrap;">
+                        <span>🟢 <strong>상 (편차 +5점 초과)</strong>: 자녀 성적이 학교 평균보다 현저히 높아 학업 소화가 매우 수월한 수준</span>
+                        <span>🟡 <strong>중 (편차 ±5점 이내)</strong>: 자녀 성적이 학교 평균과 유사하여 학업 수준에 잘 부합하는 보통 수준</span>
+                        <span>🔴 <strong>하 (편차 -5점 미만)</strong>: 자녀 성적이 학교 평균보다 낮아 입학 후 집중 보강 학습이 권장되는 수준</span>
+                    </div>
+                    <div style="margin-top: 4px; color: var(--primary-blue); font-weight: bold;">* 각 학교 카드의 적합도 영역이나 상세 비교표의 등급에 마우스를 올리시면 구체적인 점수 편차와 세부 분석 메시지를 볼 수 있습니다.</div>
+                </div>
+            </div>
 
         </section>
 
@@ -429,6 +474,9 @@
                             <span>🏠 우리 집 근처 중학교 수준 분석 (학원가 연계)</span>
                             <span>➔</span>
                         </button>
+                        <button class="btn-secondary" id="btnResetPreset" style="font-size: 12px; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; text-align: center; border: 1px solid var(--border-color); color: var(--text-muted); background: white; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 4px;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                            <span>🔄 탐색 및 필터 초기화</span>
+                        </button>
                     </div>
                     <div style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px; display: none;" id="favoriteSchoolsContainer">
                         <span style="font-size: 11.5px; font-weight: 700; color: var(--deep-blue); text-align: left; display: block; margin-bottom: 6px;">⭐ 관심 저장된 학교 목록</span>
@@ -477,13 +525,14 @@
                                 <span style="font-size: 11px; color: var(--text-muted);">전년 대비 <span id="schoolMathChange">→</span></span>
                             </div>
                             <div class="chart-bar-wrapper" id="schoolMathBar"></div>
+                        </div>
                     </div>
 
                     <!-- 3개년 학업성취도 추세 스파크라인 -->
                     <div style="background: var(--bg-primary); padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px;">
                         <strong>📈 최근 3개년 성취도 추이 (국·영·수 평균)</strong>
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
-                            <svg id="trendSparkline" width="160" height="40" style="background: #f8f9fa; border-radius: 4px; border: 1px solid var(--border-color);"></svg>
+                            <svg id="trendSparkline" width="160" height="55" style="background: #f8f9fa; border-radius: 4px; border: 1px solid var(--border-color);"></svg>
                             <div style="text-align: right; font-size: 11px; color: var(--text-muted);">
                                 3년 전: <span id="sparklineStartVal">-점</span><br>
                                 최근: <strong id="sparklineEndVal" style="color: var(--primary-blue);">-점</strong>
@@ -721,37 +770,7 @@
         </section>
     </div>
 
-    <!-- Bottom/Floating School Comparison Board Overlay -->
-    <div class="compare-overlay" id="compareOverlay" style="display: none; width: 85%; left: 7.5%; max-height: 80vh; overflow-y: auto;">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 12px;">
-            <h3 style="font-size: 16px; color: var(--deep-blue);" id="compareTitleLabel">학교 비교 보드 (최대 5개)</h3>
-            <button id="btnToggleCompareView" style="background: none; border: 1px solid var(--primary-blue); color: var(--primary-blue); border-radius: 6px; padding: 4px 10px; font-size: 11.5px; font-weight: bold; cursor: pointer; margin-left: auto; margin-right: 16px; transition: all 0.2s;">📊 상세 표 & 레이더 차트 비교</button>
-            <button style="border: none; background: transparent; color: var(--primary-blue); font-weight: bold; cursor: pointer; font-size: 20px;" id="btnCloseCompare">×</button>
-        </div>
-        
-        <!-- View 1: Original Card Grid -->
-        <div class="compare-grid" id="compareGrid" style="grid-template-columns: repeat(5, 1fr);">
-            <!-- Dynamic comparison items go here -->
-        </div>
 
-        <!-- View 2: Detailed Table & Radar Chart (Initially hidden) -->
-        <div id="compareDetailedView" style="display: none; flex-direction: column; gap: 16px;">
-            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                <!-- Radar Chart Container -->
-                <div style="flex: 1; min-width: 280px; background: white; border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                    <h4 style="font-size: 13px; font-weight: 700; color: var(--deep-blue); margin-bottom: 10px; width: 100%; text-align: left;">🕸️ 과목별 학업성취도 레이더 차트</h4>
-                    <canvas id="compareRadarCanvas" width="260" height="240" style="max-width: 100%;"></canvas>
-                </div>
-                <!-- Table Container -->
-                <div style="flex: 2; min-width: 400px; background: white; border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; overflow-x: auto;">
-                    <h4 style="font-size: 13px; font-weight: 700; color: var(--deep-blue); margin-bottom: 10px;">📋 학업성취도 및 여건 비교표</h4>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; line-height: 1.5;" id="compareDetailTable">
-                        <!-- Table header and body will be dynamically populated -->
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- 설정 모달 -->
     <div id="settingsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) this.style.display='none'">

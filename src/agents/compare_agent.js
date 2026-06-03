@@ -10,18 +10,46 @@ export class CompareAgent {
      * 최대 3개 학교 비교 테이블 및 자녀 점수 적합도 계산
      */
     generateComparisonMatrix(schools, childScores) {
+        // 자녀 성적 데이터가 유효하지 않으면 DOM에서 직접 읽어오는 Fallback 적용
+        let scores = childScores;
+        if (!scores || scores.korean === null || scores.english === null || scores.math === null) {
+            const elKor = document.getElementById('childKor');
+            const elEng = document.getElementById('childEng');
+            const elMath = document.getElementById('childMath');
+            if (elKor && elEng && elMath) {
+                scores = {
+                    korean: parseInt(elKor.value) || 0,
+                    english: parseInt(elEng.value) || 0,
+                    math: parseInt(elMath.value) || 0
+                };
+            }
+        }
+
         const matrix = schools.map(school => {
             // 자녀 성적 대비 매칭도 계산 (적합도 상/중/하)
             let suitability = '중';
-            if (childScores && childScores.math && childScores.english && childScores.korean) {
+            let diffVal = 0;
+            let suitabilityDesc = '자녀 성적 정보가 올바르게 입력되지 않았습니다.';
+            
+            if (scores && scores.math !== null && scores.english !== null && scores.korean !== null) {
                 const totalAvg = (school.subjects.korean.avg + school.subjects.english.avg + school.subjects.math.avg) / 3;
-                const childAvg = (childScores.korean + childScores.english + childScores.math) / 3;
+                const childAvg = (scores.korean + scores.english + scores.math) / 3;
                 
-                const difference = childAvg - totalAvg;
-                if (difference > 10) {
-                    suitability = '상'; // 자녀 평균이 학교 전체 평균보다 10점 이상 높을 경우 상
-                } else if (difference < -5) {
-                    suitability = '하'; // 자녀 평균이 학교 전체 평균보다 5점 이상 낮을 경우 하
+                diffVal = childAvg - totalAvg;
+                const roundedDiff = Math.abs(Math.round(diffVal * 10) / 10);
+                const roundedChild = Math.round(childAvg * 10) / 10;
+                const roundedSchool = Math.round(totalAvg * 10) / 10;
+                
+                if (diffVal > 5) {
+                    suitability = '상';
+                    suitabilityDesc = `우리 아이 평균(${roundedChild}점)이 학교 평균(${roundedSchool}점)보다 ${roundedDiff}점 높아 학업 소화가 수월한 '상' 수준입니다.`;
+                } else if (diffVal < -5) {
+                    suitability = '하';
+                    suitabilityDesc = `우리 아이 평균(${roundedChild}점)이 학교 평균(${roundedSchool}점)보다 ${roundedDiff}점 낮아 보강 학습이 권장되는 '하' 수준입니다.`;
+                } else {
+                    suitability = '중';
+                    const diffText = diffVal >= 0 ? `${roundedDiff}점 높음` : `${roundedDiff}점 낮음`;
+                    suitabilityDesc = `우리 아이 평균(${roundedChild}점)이 학교 평균(${roundedSchool}점)과 편차 ${diffText} 수준으로 적절히 부합하는 '중' 수준입니다.`;
                 }
             }
 
@@ -49,6 +77,8 @@ export class CompareAgent {
                 updated_at: school.updated_at,
                 extracurricular_budget: school.extracurricular_budget || 120,
                 suitability: suitability, // 상 / 중 / 하 적합도
+                suitabilityDesc: suitabilityDesc, // 상세 설명
+                suitabilityDiff: diffVal, // 격차 점수
                 weightedAvg: school.weightedAvg,
                 envScore: school.envScore,
                 envScoresDetails: school.envScoresDetails,
