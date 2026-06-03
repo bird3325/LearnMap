@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>학업성취도 지도 - 관리자 패널</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         /* Admin specific custom overrides */
         .admin-container {
@@ -253,6 +254,34 @@
                 <div id="storedSchoolsListContainer"
                     style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: var(--bg-primary); font-size: 12px; line-height: 1.8;">
                     <div style="text-align: center; color: var(--text-muted); padding: 20px 0;">학교 데이터를 불러오는 중...</div>
+                </div>
+            </div>
+
+            <!-- 커뮤니티 게시판 리뷰 관리 카드 -->
+            <div class="admin-card" id="reviewsManagementCard">
+                <h2 class="card-title">커뮤니티/리뷰 글 관리</h2>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                    등록된 학부모 학교 리뷰 및 학원 찐후기 데이터를 관리하고 삭제할 수 있습니다.
+                </p>
+
+                <!-- 탭 선택 (학교 리뷰 / 학원 리뷰) -->
+                <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                    <button class="btn-primary" id="btnTabSchoolReviews" style="flex: 1; margin: 0; padding: 8px; font-size: 13px;">🏫 학교 리뷰 관리</button>
+                    <button class="btn-secondary" id="btnTabAcademyReviews" style="flex: 1; margin: 0; padding: 8px; font-size: 13px; background: #f0f0f0; color: #333; border: 1px solid #ccc;">✏️ 학원 리뷰 관리</button>
+                </div>
+
+                <!-- 대상 필터 및 검색창 -->
+                <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+                    <select id="reviewTargetFilter" class="form-control" style="flex: 1; min-width: 150px; padding: 6px 10px; font-size: 13px; height: auto;">
+                        <option value="all">전체 대상 (필터)</option>
+                    </select>
+                    <input type="text" id="reviewSearchInput" class="form-control" placeholder="검색어 입력..." style="flex: 1.5; min-width: 150px; padding: 6px 10px; font-size: 13px; height: auto;">
+                    <button class="btn-primary" id="btnSearchReviews" style="width: auto; padding: 6px 16px; font-size: 13px; height: auto; margin: 0;">검색</button>
+                </div>
+
+                <div id="adminReviewsListContainer"
+                    style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: var(--bg-primary); font-size: 12px; line-height: 1.8;">
+                    <div style="text-align: center; color: var(--text-muted); padding: 20px 0;">리뷰 데이터를 불러오는 중...</div>
                 </div>
             </div>
 

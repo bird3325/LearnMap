@@ -104,9 +104,11 @@ if (updateSido) {
     updateSigunguDropdown();
 }
 
-if (token) {
-    showPanel();
-}
+window.addEventListener('DOMContentLoaded', () => {
+    if (token) {
+        showPanel();
+    }
+});
 
 // Log utility
 function logMsg(msg) {
@@ -121,6 +123,8 @@ function updateProgress(status, percent) {
 }
 
 // Render school list based on filter criteria
+let currentStoredSchoolsLimit = 100;
+
 function renderStoredSchoolsList() {
     if (!storedSchoolsListContainer || !storedSchoolsCount) return;
 
@@ -155,7 +159,10 @@ function renderStoredSchoolsList() {
         return;
     }
 
-    storedSchoolsListContainer.innerHTML = filtered.map((school, index) => {
+    // Limit the items for performance
+    const sliced = filtered.slice(0, currentStoredSchoolsLimit);
+
+    let html = sliced.map((school, index) => {
         return `
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.05); padding: 6px 0;">
                 <div>
@@ -180,6 +187,27 @@ function renderStoredSchoolsList() {
             </div>
         `;
     }).join('');
+
+    if (filtered.length > currentStoredSchoolsLimit) {
+        html += `
+            <div style="text-align: center; padding: 12px 0;">
+                <button id="btnLoadMoreStoredSchools" class="btn-secondary" style="width: auto; padding: 6px 20px; font-size: 12px; margin: 0; background: #e2e8f0; color: #4a5568; border: none; border-radius: 4px; cursor: pointer;">
+                    더 보기 (${sliced.length} / ${filtered.length})
+                </button>
+            </div>
+        `;
+    }
+
+    storedSchoolsListContainer.innerHTML = html;
+
+    // Bind event for Load More button
+    const btnLoadMore = document.getElementById('btnLoadMoreStoredSchools');
+    if (btnLoadMore) {
+        btnLoadMore.addEventListener('click', () => {
+            currentStoredSchoolsLimit += 100;
+            renderStoredSchoolsList();
+        });
+    }
 }
 
 // Load stored schools from database
@@ -262,25 +290,54 @@ function renderUnsavedRegions() {
 
 // Bind search button and filter inputs
 if (btnSearchSchools) {
-    btnSearchSchools.addEventListener('click', renderStoredSchoolsList);
+    btnSearchSchools.addEventListener('click', () => {
+        currentStoredSchoolsLimit = 100;
+        renderStoredSchoolsList();
+    });
 }
 if (storedRegionFilter) {
-    storedRegionFilter.addEventListener('change', renderStoredSchoolsList);
+    storedRegionFilter.addEventListener('change', () => {
+        currentStoredSchoolsLimit = 100;
+        renderStoredSchoolsList();
+    });
 }
 if (storedTypeFilter) {
-    storedTypeFilter.addEventListener('change', renderStoredSchoolsList);
+    storedTypeFilter.addEventListener('change', () => {
+        currentStoredSchoolsLimit = 100;
+        renderStoredSchoolsList();
+    });
 }
 if (storedSearchInput) {
-    storedSearchInput.addEventListener('input', renderStoredSchoolsList);
+    storedSearchInput.addEventListener('input', () => {
+        currentStoredSchoolsLimit = 100;
+        renderStoredSchoolsList();
+    });
 }
 
 // Show Panel and Load Configurations
+let supabaseAdmin = null;
+function initSupabaseAdmin() {
+    if (window.supabase) {
+        const SUPABASE_URL = 'https://khwzgqnwlknawggugznd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtod3pncW53bGtuYXdnZ3Vnem5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDQzNDksImV4cCI6MjA5NTc4MDM0OX0.P2g3Y_MYV_ca8ZRpfAT93pnEzP4osYWc2tfyBHKb7v4';
+        supabaseAdmin = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+}
+
 function showPanel() {
     loginCard.style.display = 'none';
     managementPanel.style.display = 'block';
     
+    // Initialize Supabase client
+    initSupabaseAdmin();
+
     // Load school list
     loadStoredSchools();
+    
+    // Load reviews
+    setTimeout(() => {
+        if (typeof loadReviews === 'function') loadReviews();
+    }, 300);
     
     // Fetch Configuration from server
     fetch('/api/admin/config', {
@@ -783,3 +840,229 @@ function logDiagnosticMsg(msg) {
     console.log('[Admin Update] ' + msg);
     logMsg(msg);
 }
+
+// ==========================================
+// ==========================================
+// 커뮤니티/리뷰 관리 비즈니스 로직 (추가됨)
+// ==========================================
+let currentReviewTab = 'school'; // 'school' | 'academy'
+let allReviews = [];
+
+const btnTabSchoolReviews = document.getElementById('btnTabSchoolReviews');
+const btnTabAcademyReviews = document.getElementById('btnTabAcademyReviews');
+const btnSearchReviews = document.getElementById('btnSearchReviews');
+const reviewSearchInput = document.getElementById('reviewSearchInput');
+const reviewTargetFilter = document.getElementById('reviewTargetFilter');
+const adminReviewsListContainer = document.getElementById('adminReviewsListContainer');
+
+if (btnTabSchoolReviews) {
+    btnTabSchoolReviews.addEventListener('click', () => {
+        currentReviewTab = 'school';
+        btnTabSchoolReviews.className = 'btn-primary';
+        btnTabSchoolReviews.style.background = '';
+        btnTabSchoolReviews.style.color = '';
+        
+        btnTabAcademyReviews.className = 'btn-secondary';
+        btnTabAcademyReviews.style.background = '#f0f0f0';
+        btnTabAcademyReviews.style.color = '#333';
+        btnTabAcademyReviews.style.border = '1px solid #ccc';
+        loadReviews();
+    });
+}
+
+if (btnTabAcademyReviews) {
+    btnTabAcademyReviews.addEventListener('click', () => {
+        currentReviewTab = 'academy';
+        btnTabAcademyReviews.className = 'btn-primary';
+        btnTabAcademyReviews.style.background = '';
+        btnTabAcademyReviews.style.color = '';
+        
+        btnTabSchoolReviews.className = 'btn-secondary';
+        btnTabSchoolReviews.style.background = '#f0f0f0';
+        btnTabSchoolReviews.style.color = '#333';
+        btnTabSchoolReviews.style.border = '1px solid #ccc';
+        loadReviews();
+    });
+}
+
+if (btnSearchReviews) {
+    btnSearchReviews.addEventListener('click', renderReviewsList);
+}
+
+if (reviewSearchInput) {
+    reviewSearchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            renderReviewsList();
+        }
+    });
+}
+
+if (reviewTargetFilter) {
+    reviewTargetFilter.addEventListener('change', renderReviewsList);
+}
+
+// 리뷰 등록된 대상들만 필터링 드롭다운에 채워넣는 함수
+function populateReviewTargetFilter() {
+    if (!reviewTargetFilter) return;
+    
+    const uniqueTargets = new Set();
+    allReviews.forEach(r => {
+        const val = currentReviewTab === 'school' ? r.school_id : r.academyName;
+        if (val) uniqueTargets.add(val);
+    });
+
+    const targetList = Array.from(uniqueTargets);
+    
+    let defaultLabel = currentReviewTab === 'school' ? '전체 학교 (필터)' : '전체 학원 (필터)';
+    let optionsHtml = `<option value="all">${defaultLabel}</option>`;
+    
+    if (currentReviewTab === 'school') {
+        const sortedSchools = targetList.map(schoolId => {
+            const schoolObj = allStoredSchools.find(s => s.school_id === schoolId);
+            return {
+                id: schoolId,
+                name: schoolObj ? schoolObj.school_name : schoolId
+            };
+        }).sort((a, b) => a.name.localeCompare(b.name));
+
+        sortedSchools.forEach(item => {
+            optionsHtml += `<option value="${item.id}">${item.name}</option>`;
+        });
+    } else {
+        const sortedAcademies = targetList.sort((a, b) => a.localeCompare(b));
+        sortedAcademies.forEach(name => {
+            optionsHtml += `<option value="${name}">${name}</option>`;
+        });
+    }
+    
+    reviewTargetFilter.innerHTML = optionsHtml;
+}
+
+async function loadReviews() {
+    if (!adminReviewsListContainer) return;
+    adminReviewsListContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px 0;">리뷰 데이터를 불러오는 중...</div>';
+    
+    if (!supabaseAdmin) {
+        initSupabaseAdmin();
+    }
+    if (!supabaseAdmin) {
+        adminReviewsListContainer.innerHTML = '<div style="text-align: center; color: red; padding: 20px 0;">Supabase 클라이언트를 초기화할 수 없습니다.</div>';
+        return;
+    }
+
+    try {
+        const table = currentReviewTab === 'school' ? 'school_reviews' : 'academy_reviews';
+        const { data, error } = await supabaseAdmin
+            .from(table)
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        
+        allReviews = data || [];
+        populateReviewTargetFilter();
+        renderReviewsList();
+    } catch (err) {
+        console.error('Error loading reviews:', err);
+        adminReviewsListContainer.innerHTML = `<div style="text-align: center; color: red; padding: 20px 0;">데이터 로드 오류: ${err.message}</div>`;
+    }
+}
+
+function renderReviewsList() {
+    if (!adminReviewsListContainer) return;
+    
+    const filterTarget = reviewTargetFilter ? reviewTargetFilter.value : 'all';
+    const searchVal = reviewSearchInput ? reviewSearchInput.value.trim().toLowerCase() : '';
+    
+    let filtered = allReviews;
+
+    // 1. 드롭다운 필터 적용
+    if (filterTarget !== 'all') {
+        filtered = filtered.filter(r => {
+            const targetVal = currentReviewTab === 'school' ? r.school_id : r.academyName;
+            return targetVal === filterTarget;
+        });
+    }
+
+    // 2. 검색어 필터 적용
+    if (searchVal) {
+        filtered = filtered.filter(r => {
+            const nickname = (r.nickname || '익명').toLowerCase();
+            const content = (r.content || '').toLowerCase();
+            const targetName = currentReviewTab === 'school' 
+                ? (r.school_id || '').toLowerCase() 
+                : (r.academyName || '').toLowerCase();
+            return nickname.includes(searchVal) || content.includes(searchVal) || targetName.includes(searchVal);
+        });
+    }
+
+    if (filtered.length === 0) {
+        adminReviewsListContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px 0;">조건에 해당하는 리뷰가 없습니다.</div>';
+        return;
+    }
+
+    adminReviewsListContainer.innerHTML = filtered.map((r, idx) => {
+        const dateStr = r.created_at ? new Date(r.created_at).toLocaleString() : '-';
+        const rawRating = parseInt(r.rating) || 5;
+        const stars = '★'.repeat(rawRating) + '☆'.repeat(Math.max(0, 5 - rawRating));
+        
+        let targetLabel = '';
+        if (currentReviewTab === 'school') {
+            // 학교 ID로 학교 이름 찾기
+            const schoolObj = allStoredSchools.find(s => s.school_id === r.school_id);
+            targetLabel = `<span style="background: #e2e8f0; color: #4a5568; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-right: 6px;">🏫 ${schoolObj ? schoolObj.school_name : r.school_id}</span>`;
+        } else {
+            targetLabel = `<span style="background: #feebc8; color: #c05621; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-right: 6px;">✏️ ${r.academyName}</span>`;
+        }
+
+        return `
+            <div style="border-bottom: 1px solid rgba(0,0,0,0.05); padding: 12px 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 6px;">
+                        ${targetLabel}
+                        <strong style="color: var(--deep-blue); font-size: 13px;">${escapeHtml(r.nickname || '익명')}</strong>
+                        <span style="color: var(--warning-yellow); font-size: 12px;">${stars}</span>
+                        <span style="color: var(--text-muted); font-size: 11px;">(${dateStr})</span>
+                    </div>
+                    <div style="font-size: 12.5px; color: var(--text-main); line-height: 1.5; white-space: pre-wrap; word-break: break-all;">${escapeHtml(r.content || '')}</div>
+                </div>
+                <button class="btn-secondary" onclick="window.deleteReviewConfirm(${r.id})" style="background: var(--danger-red); color: white; border: none; padding: 5px 10px; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 4px; width: auto; margin: 0; align-self: center;">삭제</button>
+            </div>
+        `;
+    }).join('');
+}
+
+// Global confirm wrapper for deleting
+window.deleteReviewConfirm = function(id) {
+    showConfirm('이 리뷰를 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.', async () => {
+        try {
+            const table = currentReviewTab === 'school' ? 'school_reviews' : 'academy_reviews';
+            const { error } = await supabaseAdmin
+                .from(table)
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            
+            showAlert('리뷰가 성공적으로 삭제되었습니다.');
+            loadReviews();
+        } catch (err) {
+            console.error('Failed to delete review:', err);
+            showAlert('리뷰 삭제에 실패했습니다: ' + err.message);
+        }
+    });
+};
+
+// escapeHtml defined if not present
+function escapeHtml(text) {
+    if (!text) return '';
+    return text
+        .toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+window.loadReviews = loadReviews;
+

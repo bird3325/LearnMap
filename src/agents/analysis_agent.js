@@ -249,6 +249,31 @@ export class AnalysisAgent {
             analysisResult.overall.admission_simulation = `현재 점수 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로, 안정적인 일반고 진학군에 해당합니다.<br><br>일반계 고등학교 진학 시 예상 고교 내신: <strong style="color:var(--primary-blue); font-size:15px;">${hsGrade}등급</strong> (등급 상승을 위해 고교 입학 전 심화 서술형 집중 대비 필요)`;
         }
 
+        // 학군지 비교 분석 및 진학 예측 정보 생성
+        const comp = school.subjects ? this.calculateCompetitionLevel(school) : { label: '중', desc: '' };
+        let districtPrediction = '';
+        if (comp.label.includes('최상') || comp.label.includes('상')) {
+            districtPrediction = `이 학교는 주변 타 지역 대비 학업성취도가 월등히 높은 <strong>명문 학군지</strong>(${comp.label})에 속해 있어 내신 경쟁이 대단히 치열합니다. Z-score 추정 백분위는 상위 ${avgPercentile.toFixed(1)}%로, 일반고 진학 시 전교 상위권 유지 가능성은 충분하나 서술형 및 수행평가 감점 방어 대책이 최우선 과제입니다.`;
+        } else {
+            districtPrediction = `이 학교는 무난한 학업 성취 수준을 보이고 있습니다. Z-score 추정 백분위는 상위 ${avgPercentile.toFixed(1)}%이며, 학업 열기가 높은 주요 학군지 학교(강남, 목동 등)로 전학 혹은 고등학교 진학 시 현재보다 백분위가 5%~10% 가량 하락할 수 있어, 방학 중 선행/심화 학습 비율을 30% 이상 높이기를 권장합니다.`;
+        }
+
+        // 과목 격차 분석
+        const subjectsList = ['korean', 'english', 'math'];
+        const validScores = subjectsList.map(s => childScores[s]).filter(v => v !== null && v !== undefined);
+        if (validScores.length >= 2) {
+            const minSubject = subjectsList.reduce((min, s) => {
+                if (childScores[s] === undefined || childScores[s] === null) return min;
+                if (!min || childScores[s] < childScores[min]) return s;
+                return min;
+            }, null);
+            const subjectKorean = { korean: '국어', english: '영어', math: '수학' };
+            if (minSubject && childScores[minSubject] < 80) {
+                districtPrediction += `<br><br>⚠️ <strong>과목 불균형 처방:</strong> 현재 <strong>${subjectKorean[minSubject]}</strong> 과목이 상대적 취약 상태(평균 대비 부족)입니다. 주요 학군지 고교에서는 주요 3개 교과의 균형성이 무너지면 수시 종합 평가에서 매우 불리하므로, 차기 학기 방학 기간 중 취약 과목의 기본 개념 복습 및 심화 문제풀이 비율을 과감히 절반 이상 배정해야 합니다.`;
+            }
+        }
+        analysisResult.overall.district_prediction = districtPrediction;
+
         return analysisResult;
     }
 }

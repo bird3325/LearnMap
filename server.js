@@ -496,6 +496,72 @@ app.get('/api/realestate', async (req, res) => {
     }
 });
 
+// --- Town Talk API ---
+const Towntalk_Path = path.join(__dirname, 'towntalk.json');
+
+function readTowntalk() {
+    if (!fs.existsSync(Towntalk_Path)) {
+        return [];
+    }
+    try {
+        const content = fs.readFileSync(Towntalk_Path, 'utf8');
+        return JSON.parse(content);
+    } catch (e) {
+        console.error('Error reading towntalk file', e);
+        return [];
+    }
+}
+
+function writeTowntalk(data) {
+    try {
+        fs.writeFileSync(Towntalk_Path, JSON.stringify(data, null, 2), 'utf8');
+    } catch (e) {
+        console.error('Error writing towntalk file', e);
+    }
+}
+
+app.get('/api/towntalk', (req, res) => {
+    const { targetId } = req.query;
+    if (!targetId) return res.status(400).json({ error: 'targetId가 필요합니다.' });
+
+    const talkList = readTowntalk();
+    const filtered = talkList.filter(t => t.targetId === targetId);
+    // 최신 순으로 정렬하여 반환
+    filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    res.json(filtered.slice(0, 30));
+});
+
+app.post('/api/towntalk', (req, res) => {
+    const { targetId, nickname, content } = req.body;
+    if (!targetId || !nickname || !content) {
+        return res.status(400).json({ error: '필수 필드가 누락되었습니다.' });
+    }
+
+    // XSS 방지
+    const escape = (str) => {
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    };
+
+    const newTalk = {
+        id: 'talk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        targetId: targetId,
+        nickname: escape(nickname.trim()),
+        content: escape(content.trim()),
+        timestamp: new Date().toISOString()
+    };
+
+    const talkList = readTowntalk();
+    talkList.push(newTalk);
+    writeTowntalk(talkList);
+
+    res.status(201).json(newTalk);
+});
+
 // Fallback to serve index.html for unknown SPA routes
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));

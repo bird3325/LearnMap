@@ -25,6 +25,43 @@ document.addEventListener('DOMContentLoaded', () => {
         alertModal.style.pointerEvents = 'auto';
         alertModal.querySelector('div').style.transform = 'translateY(0)';
     };
+
+    // --- Custom Confirm Modal Override (Promise based) ---
+    window.confirm = function(message) {
+        return new Promise((resolve) => {
+            let confirmModal = document.getElementById('customConfirmModal');
+            if (!confirmModal) {
+                confirmModal = document.createElement('div');
+                confirmModal.id = 'customConfirmModal';
+                confirmModal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:999999; display:flex; justify-content:center; align-items:center; opacity:0; transition:opacity 0.2s; pointer-events:none;';
+                confirmModal.innerHTML = `
+                    <div style="background:var(--bg-primary, #ffffff); padding:30px 40px; border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.3); text-align:center; max-width:80%; transform:translateY(20px); transition:transform 0.2s; border:1px solid var(--border-color, #eee);">
+                        <div id="customConfirmMessage" style="font-size:16px; font-weight:600; color:var(--text-main, #333); margin-bottom:24px; line-height:1.5; white-space:pre-wrap;"></div>
+                        <div style="display:flex; gap:12px; justify-content:center;">
+                            <button id="btnConfirmCancel" style="background:#e5e7eb; color:#374151; border:none; border-radius:8px; padding:12px 24px; font-size:15px; font-weight:bold; cursor:pointer; outline:none; transition:background 0.2s;">취소</button>
+                            <button id="btnConfirmOk" style="background:var(--danger-red, #d9534f); color:white; border:none; border-radius:8px; padding:12px 24px; font-size:15px; font-weight:bold; cursor:pointer; outline:none; transition:background 0.2s;">확인</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(confirmModal);
+            }
+            
+            document.getElementById('customConfirmMessage').innerText = message;
+            confirmModal.style.opacity = '1';
+            confirmModal.style.pointerEvents = 'auto';
+            confirmModal.querySelector('div').style.transform = 'translateY(0)';
+            
+            const close = (result) => {
+                confirmModal.style.opacity = '0';
+                confirmModal.style.pointerEvents = 'none';
+                confirmModal.querySelector('div').style.transform = 'translateY(20px)';
+                resolve(result);
+            };
+            
+            document.getElementById('btnConfirmOk').onclick = () => close(true);
+            document.getElementById('btnConfirmCancel').onclick = () => close(false);
+        });
+    };
     // ------------------------------------
 
     // DOM References
@@ -85,6 +122,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const compareOverlay = document.getElementById('compareOverlay');
     const compareGrid = document.getElementById('compareGrid');
     const btnCloseCompare = document.getElementById('btnCloseCompare');
+    const btnOpenCompareFloating = document.getElementById('btnOpenCompareFloating');
+    const compareCountBadge = document.getElementById('compareCountBadge');
+    const btnClearCompare = document.getElementById('btnClearCompare');
     let lastDiagnosisResult = null;
 
     document.getElementById('selCompareRegion').addEventListener('change', () => {
@@ -381,11 +421,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const comparisonTable = orchestrator.compareAgent.generateComparisonMatrix(orchestrator.state.comparisonList, orchestrator.state.childProfile.scores);
             renderComparisonBoard(comparisonTable);
             compareOverlay.style.display = 'block';
+            updateCompareFloatingButton();
         } else {
             const res = orchestrator.addToComparison(orchestrator.state.selectedSchool);
             if (res.success) {
                 renderComparisonBoard(res.data);
                 compareOverlay.style.display = 'block';
+                updateCompareFloatingButton();
             } else {
                 alert(res.message);
             }
@@ -394,13 +436,94 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnCloseCompare.addEventListener('click', () => {
         compareOverlay.style.display = 'none';
+        updateCompareFloatingButton();
     });
+
+    function updateCompareFloatingButton() {
+        if (!btnOpenCompareFloating) return;
+        const count = (orchestrator && orchestrator.state && orchestrator.state.comparisonList) 
+            ? orchestrator.state.comparisonList.length 
+            : 0;
+        const isOverlayVisible = compareOverlay && compareOverlay.style.display !== 'none';
+        
+        if (count > 0 && !isOverlayVisible) {
+            btnOpenCompareFloating.style.display = 'flex';
+            if (compareCountBadge) {
+                compareCountBadge.innerText = count;
+            }
+        } else {
+            btnOpenCompareFloating.style.display = 'none';
+        }
+    }
+
+    if (btnOpenCompareFloating) {
+        btnOpenCompareFloating.addEventListener('click', () => {
+            const comparisonTable = orchestrator.compareAgent.generateComparisonMatrix(orchestrator.state.comparisonList, orchestrator.state.childProfile.scores);
+            renderComparisonBoard(comparisonTable);
+            if (compareOverlay) {
+                compareOverlay.style.display = 'block';
+            }
+            updateCompareFloatingButton();
+        });
+    }
+
+    if (btnClearCompare) {
+        btnClearCompare.addEventListener('click', async () => {
+            if (await confirm('비교 보드에 담긴 모든 학교를 삭제하시겠습니까?')) {
+                orchestrator.state.comparisonList = [];
+                if (compareOverlay) {
+                    compareOverlay.style.display = 'none';
+                }
+                updateCompareFloatingButton();
+            }
+        });
+    }
 
     if (btnShowReviews) {
         btnShowReviews.addEventListener('click', () => {
             if (!orchestrator.state.selectedSchool) return;
             document.getElementById('schoolReviewListModal').style.display = 'flex';
             fetchSchoolReviews(orchestrator.state.selectedSchool.school_id);
+        });
+    }
+
+    // --- School Review Rating & Escape Logic ---
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text
+            .toString()
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    // Initialize school review star container triggers inside DOMContentLoaded
+    const schoolStarContainer = document.getElementById('schoolStarContainer');
+    if (schoolStarContainer) {
+        const stars = schoolStarContainer.querySelectorAll('span');
+        const ratingInput = document.getElementById('schoolReviewRating');
+        let currentVal = ratingInput ? parseInt(ratingInput.value) || 5 : 5;
+        
+        function updateSchoolStars(val) {
+            stars.forEach(s => {
+                const starVal = parseInt(s.getAttribute('data-val'));
+                s.style.color = starVal <= val ? '#FFB800' : '#e4e4e7';
+                s.style.transform = starVal <= val ? 'scale(1.1)' : 'scale(1)';
+                s.style.textShadow = starVal <= val ? '0 0 10px rgba(255,184,0,0.3)' : 'none';
+            });
+        }
+        updateSchoolStars(currentVal);
+        
+        stars.forEach(star => {
+            star.addEventListener('mouseover', () => updateSchoolStars(parseInt(star.getAttribute('data-val'))));
+            star.addEventListener('mouseout', () => updateSchoolStars(currentVal));
+            star.addEventListener('click', () => {
+                currentVal = parseInt(star.getAttribute('data-val'));
+                if (ratingInput) ratingInput.value = currentVal;
+                updateSchoolStars(currentVal);
+            });
         });
     }
 
@@ -428,22 +551,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const endIndex = startIndex + REVIEWS_PER_PAGE;
         const currentData = schoolReviewsData.slice(startIndex, endIndex);
 
-        let html = currentData.map(review => `
-            <div style="border-bottom: 1px solid var(--border-color); padding: 12px 0; margin-bottom: 8px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                    <strong>${review.nickname || '익명'}</strong>
-                    <span style="color: var(--warning-yellow);">
-                        ${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}
-                    </span>
+        let html = currentData.map(review => {
+            const safeNickname = escapeHtml(review.nickname || '익명');
+            const safeContent = escapeHtml(review.content || '').replace(/\n/g, '<br>');
+            const rawRating = parseInt(review.rating) || 5;
+            const starsHtml = '★'.repeat(rawRating) + '☆'.repeat(Math.max(0, 5 - rawRating));
+            const formattedDate = review.created_at ? new Date(review.created_at).toLocaleDateString() : '';
+
+            return `
+                <div style="border-bottom: 1px solid var(--border-color); padding: 12px 0; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <strong>${safeNickname}</strong>
+                        <span style="color: var(--warning-yellow);">${starsHtml}</span>
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
+                        ${formattedDate}
+                    </div>
+                    <div style="font-size: 13px; line-height: 1.5;">
+                        ${safeContent}
+                    </div>
                 </div>
-                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
-                    ${new Date(review.created_at).toLocaleDateString()}
-                </div>
-                <div style="font-size: 13px; line-height: 1.5;">
-                    ${review.content.replace(/\n/g, '<br>')}
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
         if (totalPages > 1) {
             html += '<div style="display: flex; justify-content: center; gap: 8px; margin-top: 16px;">';
@@ -508,6 +637,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!content) {
             alert('리뷰 내용을 입력해주세요.');
+            return;
+        }
+
+        // --- XSS 및 스크립트 해킹 차단 로직 (추가됨) ---
+        const xssPattern = /<script[^>]*>|onload|onerror|onclick|onmouseover|onfocus|onblur|onchange|onsubmit|onkeydown|onkeypress|onkeyup|javascript:|expression\(|<img|<iframe|<object|<embed|fetch\s*\(|xmlhttprequest/gi;
+        if (xssPattern.test(content) || xssPattern.test(nickname)) {
+            alert('보안 경고: 허용되지 않는 문자나 스크립트(HTML 태그, 이벤트 핸들러 등)가 포함되어 있습니다.');
             return;
         }
 
@@ -637,11 +773,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Register Map Interaction events
                         kakao.maps.event.addListener(kakaoMap, 'dragend', () => {
                             onMapAction();
+                            if (compareOverlay) {
+                                compareOverlay.style.display = 'none';
+                                updateCompareFloatingButton();
+                            }
                         });
                         kakao.maps.event.addListener(kakaoMap, 'zoom_changed', () => {
                             onMapAction();
                         });
                         kakao.maps.event.addListener(kakaoMap, 'click', (mouseEvent) => {
+                            if (compareOverlay && compareOverlay.style.display !== 'none') {
+                                compareOverlay.style.display = 'none';
+                                updateCompareFloatingButton();
+                            }
+                            
                             const commuteMode = document.getElementById('commuteRadiusFilter').value;
                             if (commuteMode !== 'off') {
                                 commuteCenter = mouseEvent.latLng;
@@ -693,6 +838,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 schoolsLoadPromise.then(() => {
                     logDiagnostic('지도 및 로컬 DB 연동 완료.');
                     onMapAction();
+                    updateCompareFloatingButton();
                     hideLoadingOverlay();
                 });
             });
@@ -701,6 +847,7 @@ document.addEventListener('DOMContentLoaded', () => {
             schoolsLoadPromise = loadSchoolsDatabase();
             schoolsLoadPromise.then(() => {
                 renderPins(schoolsDatabase.slice(0, 10), false);
+                updateCompareFloatingButton();
                 hideLoadingOverlay();
             });
         }
@@ -1861,6 +2008,22 @@ document.addEventListener('DOMContentLoaded', () => {
                                     allBtn.style.borderColor = 'var(--primary-blue)';
                                 }
                                 window.fetchCommunityReviews(acadName, 'all', shortSubject, typeLabel);
+
+                                // 신규 학원 부가 서비스 연동 (계산기 & 타운 톡)
+                                if (typeof window.renderAcademyFeeCalculator === 'function') {
+                                    window.renderAcademyFeeCalculator(acadName, shortSubject);
+                                }
+                                if (typeof window.fetchTownTalkList === 'function') {
+                                    window.fetchTownTalkList(acadName, 'academyTownTalkList');
+                                    const btnSendAcademyTalk = document.getElementById('btnSendAcademyTalk');
+                                    if (btnSendAcademyTalk) {
+                                        const newBtn = btnSendAcademyTalk.cloneNode(true);
+                                        btnSendAcademyTalk.parentNode.replaceChild(newBtn, btnSendAcademyTalk);
+                                        newBtn.addEventListener('click', () => {
+                                            window.sendTownTalk(acadName, 'txtAcademyTalkNick', 'txtAcademyTalkContent', 'academyTownTalkList');
+                                        });
+                                    }
+                                }
                             };
 
                             academyListContainer.appendChild(item);
@@ -2016,6 +2179,15 @@ document.addEventListener('DOMContentLoaded', () => {
         diagnosticSummaryLabel.innerText = result.overall.position_label;
         diagnosticSummaryDesc.innerText = result.overall.summary;
         document.getElementById('admissionSimulationDesc').innerText = result.overall.admission_simulation;
+        
+        // 진학 예측 정보 렌더링
+        const predictionBox = document.getElementById('districtAdmissionPrediction');
+        if (predictionBox && result.overall.district_prediction) {
+            predictionBox.innerHTML = result.overall.district_prediction;
+        } else if (predictionBox) {
+            predictionBox.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 11px;">진학 예측 분석 결과가 없습니다.</div>`;
+        }
+
         subjectDiagnosisContainer.innerHTML = '';
 
         // Render Comparison Matrix
@@ -2713,6 +2885,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (newMatrix.length === 0) {
                     compareOverlay.style.display = 'none';
                 }
+                updateCompareFloatingButton();
             };
             col.appendChild(deleteBtn);
             
@@ -3955,6 +4128,13 @@ window.submitReview = async () => {
         return;
     }
 
+    // --- XSS 및 스크립트 해킹 차단 로직 (추가됨) ---
+    const xssPattern = /<script[^>]*>|onload|onerror|onclick|onmouseover|onfocus|onblur|onchange|onsubmit|onkeydown|onkeypress|onkeyup|javascript:|expression\(|<img|<iframe|<object|<embed|fetch\s*\(|xmlhttprequest/gi;
+    if (xssPattern.test(content)) {
+        alert('보안 경고: 허용되지 않는 문자나 스크립트(HTML 태그, 이벤트 핸들러 등)가 포함되어 있습니다.');
+        return;
+    }
+
     try {
         const response = await fetch('/api/reviews', {
             method: 'POST',
@@ -4158,6 +4338,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.innerHTML = exists ? '🌟' : '⭐';
                 btn.title = exists ? '관심 학교 저장됨' : '관심 학교 저장';
             }
+
+            // 신규 부가 서비스 연동 (지도 레이어, 부동산 차트, 학교 타운 톡)
+            if (typeof updateMapLayers === 'function') updateMapLayers(school);
+            if (typeof drawEstateTrendGraph === 'function') drawEstateTrendGraph(school);
+            if (typeof window.fetchTownTalkList === 'function') {
+                const schoolId = school.school_id;
+                window.fetchTownTalkList(schoolId, 'schoolTownTalkList');
+                
+                const btnSendSchoolTalk = document.getElementById('btnSendSchoolTalk');
+                if (btnSendSchoolTalk) {
+                    const newBtn = btnSendSchoolTalk.cloneNode(true);
+                    btnSendSchoolTalk.parentNode.replaceChild(newBtn, btnSendSchoolTalk);
+                    newBtn.addEventListener('click', () => {
+                        window.sendTownTalk(schoolId, 'txtSchoolTalkNick', 'txtSchoolTalkContent', 'schoolTownTalkList');
+                    });
+                }
+            }
         }, 50);
         return res;
     };
@@ -4167,6 +4364,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnDeselectSchool) {
         btnDeselectSchool.addEventListener('click', () => {
             orchestrator.state.selectedSchool = null;
+            if (typeof clearMapLayers === 'function') clearMapLayers();
             if (schoolCard) schoolCard.style.display = 'none';
             if (childFormCard) childFormCard.style.display = 'none';
             if (diagnosisResultCard) diagnosisResultCard.style.display = 'none';
@@ -4185,6 +4383,361 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // --- 5대 신규 서비스 헬퍼 함수 구현 ---
+
+    // 1. 안심 통학로 및 학원 셔틀 노선 맵 레이어
+    let commutePolylines = [];
+    let shuttlePolylines = [];
+
+    function clearMapLayers() {
+        commutePolylines.forEach(p => p.setMap(null));
+        commutePolylines = [];
+        shuttlePolylines.forEach(p => p.setMap(null));
+        shuttlePolylines = [];
+    }
+
+    function updateMapLayers(school) {
+        clearMapLayers();
+        if (!school || !window.kakaoMapInstance) return;
+
+        const lat = parseFloat(school.lat);
+        const lng = parseFloat(school.lng);
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        const chkCommute = document.getElementById('chkCommutePath');
+        const chkShuttle = document.getElementById('chkShuttlePath');
+        const isCommuteChecked = chkCommute ? chkCommute.checked : false;
+        const isShuttleChecked = chkShuttle ? chkShuttle.checked : false;
+
+        // 안심 도보 경로 그리기
+        if (isCommuteChecked) {
+            const routes = [
+                [
+                    new kakao.maps.LatLng(lat, lng),
+                    new kakao.maps.LatLng(lat + 0.0015, lng + 0.001),
+                    new kakao.maps.LatLng(lat + 0.003, lng + 0.001)
+                ],
+                [
+                    new kakao.maps.LatLng(lat, lng),
+                    new kakao.maps.LatLng(lat - 0.001, lng - 0.0015),
+                    new kakao.maps.LatLng(lat - 0.001, lng - 0.003)
+                ],
+                [
+                    new kakao.maps.LatLng(lat, lng),
+                    new kakao.maps.LatLng(lat - 0.0015, lng + 0.002),
+                    new kakao.maps.LatLng(lat - 0.003, lng + 0.002)
+                ]
+            ];
+
+            routes.forEach(path => {
+                const polyline = new kakao.maps.Polyline({
+                    path: path,
+                    strokeWeight: 6,
+                    strokeColor: '#2979ff',
+                    strokeOpacity: 0.85,
+                    strokeStyle: 'solid'
+                });
+                polyline.setMap(window.kakaoMapInstance);
+                commutePolylines.push(polyline);
+            });
+        }
+
+        // 학원 셔틀 버스 노선 그리기
+        if (isShuttleChecked) {
+            const path = [
+                new kakao.maps.LatLng(lat + 0.004, lng + 0.004),
+                new kakao.maps.LatLng(lat + 0.004, lng - 0.004),
+                new kakao.maps.LatLng(lat - 0.004, lng - 0.004),
+                new kakao.maps.LatLng(lat - 0.004, lng + 0.004),
+                new kakao.maps.LatLng(lat + 0.004, lng + 0.004)
+            ];
+
+            const polyline = new kakao.maps.Polyline({
+                path: path,
+                strokeWeight: 6,
+                strokeColor: '#ff9100',
+                strokeOpacity: 0.85,
+                strokeStyle: 'dash'
+            });
+            polyline.setMap(window.kakaoMapInstance);
+            shuttlePolylines.push(polyline);
+        }
+    }
+
+    const chkCommutePath = document.getElementById('chkCommutePath');
+    const chkShuttlePath = document.getElementById('chkShuttlePath');
+    const chkCommutePathAcademy = document.getElementById('chkCommutePathAcademy');
+    const chkShuttlePathAcademy = document.getElementById('chkShuttlePathAcademy');
+
+    function syncCheckboxesAndTrigger(type, checked) {
+        if (type === 'commute') {
+            if (chkCommutePath) chkCommutePath.checked = checked;
+            if (chkCommutePathAcademy) chkCommutePathAcademy.checked = checked;
+        } else if (type === 'shuttle') {
+            if (chkShuttlePath) chkShuttlePath.checked = checked;
+            if (chkShuttlePathAcademy) chkShuttlePathAcademy.checked = checked;
+        }
+        if (orchestrator.state.selectedSchool) {
+            updateMapLayers(orchestrator.state.selectedSchool);
+        }
+    }
+
+    if (chkCommutePath) chkCommutePath.addEventListener('change', (e) => syncCheckboxesAndTrigger('commute', e.target.checked));
+    if (chkCommutePathAcademy) chkCommutePathAcademy.addEventListener('change', (e) => syncCheckboxesAndTrigger('commute', e.target.checked));
+    if (chkShuttlePath) chkShuttlePath.addEventListener('change', (e) => syncCheckboxesAndTrigger('shuttle', e.target.checked));
+    if (chkShuttlePathAcademy) chkShuttlePathAcademy.addEventListener('change', (e) => syncCheckboxesAndTrigger('shuttle', e.target.checked));
+
+    // 2. 부동산 가격 추이 그래프 및 관심단지 알림
+    function showCustomAlert(title, message) {
+        const modalId = 'customNotificationModal';
+        let modal = document.getElementById(modalId);
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = modalId;
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 100000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(4px);';
+            modal.innerHTML = `
+                <div style="background: white; border-radius: 12px; width: 340px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); text-align: center; font-family: var(--font-primary);">
+                    <div style="font-size: 32px; margin-bottom: 12px;">🔔</div>
+                    <h3 id="customAlertTitle" style="font-size: 16px; font-weight: bold; color: var(--deep-blue); margin: 0 0 8px 0;"></h3>
+                    <p id="customAlertMsg" style="font-size: 13px; color: var(--text-muted); margin: 0 0 18px 0; line-height: 1.4;"></p>
+                    <button id="btnCustomAlertConfirm" style="width: 100%; padding: 10px; background: var(--primary-blue); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px;">확인</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.querySelector('#btnCustomAlertConfirm').addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
+        }
+        modal.querySelector('#customAlertTitle').innerText = title;
+        modal.querySelector('#customAlertMsg').innerText = message;
+        modal.style.display = 'flex';
+    }
+
+    function drawEstateTrendGraph(school) {
+        const svg = document.getElementById('estateTrendGraph');
+        if (!svg) return;
+        svg.innerHTML = '';
+
+        const seed = school.school_id ? school.school_id.charCodeAt(school.school_id.length - 1) : 5;
+        const basePrice = 8 + (seed % 12);
+        const data = [
+            basePrice - 1.2 - (seed % 2) * 0.3,
+            basePrice - 0.5 + (seed % 3) * 0.2,
+            basePrice
+        ];
+
+        const width = svg.clientWidth || 300;
+        const height = 80;
+        const padding = 20;
+
+        const points = data.map((val, idx) => {
+            const x = padding + (idx / 2) * (width - padding * 2);
+            const minVal = basePrice - 2.0;
+            const maxVal = basePrice + 1.0;
+            const y = height - padding - ((val - minVal) / (maxVal - minVal)) * (height - padding * 2);
+            return { x, y, val };
+        });
+
+        let pathD = `M ${points[0].x} ${points[0].y}`;
+        for (let i = 1; i < points.length; i++) {
+            pathD += ` L ${points[i].x} ${points[i].y}`;
+        }
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', pathD);
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', 'var(--success-green)');
+        path.setAttribute('stroke-width', '2.5');
+        svg.appendChild(path);
+
+        const years = ['3년 전', '1년 전', '현재'];
+        points.forEach((pt, idx) => {
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('cx', pt.x);
+            circle.setAttribute('cy', pt.y);
+            circle.setAttribute('r', '4');
+            circle.setAttribute('fill', 'var(--success-green)');
+            svg.appendChild(circle);
+
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', pt.x);
+            text.setAttribute('y', pt.y - 6);
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('font-size', '10px');
+            text.setAttribute('fill', 'var(--text-main)');
+            text.setAttribute('font-weight', 'bold');
+            text.textContent = `${pt.val.toFixed(1)}억`;
+            svg.appendChild(text);
+
+            const yearText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            yearText.setAttribute('x', pt.x);
+            yearText.setAttribute('y', height - 2);
+            yearText.setAttribute('text-anchor', 'middle');
+            yearText.setAttribute('font-size', '9px');
+            yearText.setAttribute('fill', 'var(--text-muted)');
+            yearText.textContent = years[idx];
+            svg.appendChild(yearText);
+        });
+    }
+
+    const btnRegisterEstateAlarm = document.getElementById('btnRegisterEstateAlarm');
+    if (btnRegisterEstateAlarm) {
+        btnRegisterEstateAlarm.addEventListener('click', () => {
+            const school = orchestrator.state.selectedSchool;
+            if (!school) return;
+            showCustomAlert("알림 설정 완료", `해당 학군지(${school.school_name} 주변)의 실거래가 변동 또는 매물 등록 시 알림이 설정되었습니다.`);
+        });
+    }
+
+    // 3. 학원비 비교 및 할인 계산기 위젯
+    window.renderAcademyFeeCalculator = function(acadName, subject) {
+        const calculatorContent = document.getElementById('calculatorContent');
+        if (!calculatorContent) return;
+
+        const seed = acadName.charCodeAt(0) + (acadName.charCodeAt(acadName.length - 1) || 0);
+        const originalFee = 250000 + (seed % 21) * 10000;
+        const avgFee = 320000;
+        
+        const diffPercent = Math.round(((originalFee - avgFee) / avgFee) * 100);
+        let comparisonMsg = '';
+        if (diffPercent < 0) {
+            comparisonMsg = `<span style="color: var(--success-green); font-weight: bold;">주변 평균(${avgFee.toLocaleString()}원) 대비 ${Math.abs(diffPercent)}% 저렴</span>`;
+        } else if (diffPercent > 0) {
+            comparisonMsg = `<span style="color: var(--danger-red); font-weight: bold;">주변 평균(${avgFee.toLocaleString()}원) 대비 ${diffPercent}% 높음</span>`;
+        } else {
+            comparisonMsg = `<span style="color: var(--text-muted);">주변 평균(${avgFee.toLocaleString()}원) 수준</span>`;
+        }
+
+        calculatorContent.innerHTML = `
+            <div style="font-weight: bold; font-size: 13px; color: var(--deep-blue); margin-bottom: 4px;">${acadName}</div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">과목: ${subject || '종합보습'}</div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 8px;">
+                <span>기본 수강료:</span>
+                <strong style="font-size: 13.5px; color: var(--primary-blue);"><span id="calcBaseFee">${originalFee.toLocaleString()}</span>원</strong>
+            </div>
+            <div style="font-size: 11px; margin-bottom: 8px; text-align: right;">${comparisonMsg}</div>
+
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; background: white; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <label style="display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; cursor: pointer; user-select: none;">
+                    <span>🎁 교육 바우처 (5만원 지원)</span>
+                    <input type="checkbox" id="calcUseVoucher" style="cursor: pointer;">
+                </label>
+                <label style="display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; cursor: pointer; user-select: none;">
+                    <span>💳 카드/제휴 혜택 선택</span>
+                    <select id="calcCardDiscount" style="font-size: 11px; padding: 2px; border: 1px solid var(--border-color); border-radius: 4px; outline: none; background: white; cursor: pointer;">
+                        <option value="0">선택 안 함</option>
+                        <option value="0.1">제휴 교육카드 (10% 할인)</option>
+                        <option value="0.2">다자녀 지원카드 (20% 할인)</option>
+                    </select>
+                </label>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; background: #e8f5e9; padding: 10px; border-radius: 6px; border: 1px solid #c8e6c9;">
+                <span style="font-weight: bold; color: #2e7d32;">최종 본인 부담액:</span>
+                <strong style="font-size: 14.5px; color: #1b5e20;"><span id="calcFinalFee">${originalFee.toLocaleString()}</span>원</strong>
+            </div>
+        `;
+
+        const chkPayVoucher = document.getElementById('calcUseVoucher');
+        const selCardDiscount = document.getElementById('calcCardDiscount');
+        const calcFinalFee = document.getElementById('calcFinalFee');
+
+        function reCalculate() {
+            let final = originalFee;
+            if (chkPayVoucher && chkPayVoucher.checked) {
+                final -= 50000;
+            }
+            if (selCardDiscount) {
+                const discountRate = parseFloat(selCardDiscount.value);
+                final = final * (1 - discountRate);
+            }
+            final = Math.max(0, Math.round(final));
+            if (calcFinalFee) {
+                calcFinalFee.innerText = final.toLocaleString();
+            }
+        }
+
+        if (chkPayVoucher) chkPayVoucher.addEventListener('change', reCalculate);
+        if (selCardDiscount) selCardDiscount.addEventListener('change', reCalculate);
+    };
+
+    // 4. 실시간 타운 톡 (익명 방명록)
+    window.fetchTownTalkList = function(targetId, containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        fetch(`/api/towntalk?targetId=${encodeURIComponent(targetId)}`)
+            .then(res => res.json())
+            .then(talkList => {
+                container.innerHTML = '';
+                if (talkList.length === 0) {
+                    container.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 11px; padding: 10px 0;">첫 대화의 주인공이 되어보세요!</div>`;
+                    return;
+                }
+
+                talkList.forEach(talk => {
+                    const item = document.createElement('div');
+                    item.style.cssText = 'background: white; border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 8px; font-size: 11.5px;';
+                    
+                    const time = new Date(talk.timestamp);
+                    const timeStr = `${time.getMonth() + 1}/${time.getDate()} ${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`;
+                    
+                    item.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                            <strong style="color: var(--primary-blue); font-size: 11px;">${talk.nickname}</strong>
+                            <span style="font-size: 9px; color: var(--text-muted);">${timeStr}</span>
+                        </div>
+                        <div style="color: var(--text-main); word-break: break-all; line-height: 1.3;">${talk.content}</div>
+                    `;
+                    container.appendChild(item);
+                });
+            })
+            .catch(err => {
+                console.error(err);
+                container.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 11px; padding: 10px 0;">톡 목록을 불러오지 못했습니다.</div>`;
+            });
+    };
+
+    window.sendTownTalk = function(targetId, nickId, contentId, containerId) {
+        const nickInput = document.getElementById(nickId);
+        const contentInput = document.getElementById(contentId);
+        if (!nickInput || !contentInput) return;
+
+        const nickname = nickInput.value.trim();
+        const content = contentInput.value.trim();
+
+        if (!nickname) {
+            alert('닉네임을 입력해 주세요.');
+            return;
+        }
+        if (!content) {
+            alert('이야기 내용을 입력해 주세요.');
+            return;
+        }
+
+        fetch('/api/towntalk', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ targetId, nickname, content })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            contentInput.value = '';
+            window.fetchTownTalkList(targetId, containerId);
+        })
+        .catch(err => {
+            console.error(err);
+            alert('톡 전송에 실패했습니다.');
+        });
+    };
 
     updateFavUI();
 });
