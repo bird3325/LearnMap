@@ -3792,6 +3792,8 @@ window.fetchCommunityReviews = async (acadName, type = 'all', subjectLabel = '',
         : '<div style="text-align: center; color: var(--text-muted); padding: 20px;">포털 커뮤니티 데이터를 검색 중입니다...</div>';
     
     panel.style.display = 'flex';
+    const sidebarContent = document.getElementById('sidebarContent');
+    if (sidebarContent) sidebarContent.style.display = 'none';
     document.getElementById('btnToggleSidebarTop').style.display = 'none';
 
     try {
@@ -4339,6 +4341,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.title = exists ? '관심 학교 저장됨' : '관심 학교 저장';
             }
 
+            // 신규 부가 서비스 연동 전 체크박스 초기화
+            const cPath = document.getElementById('chkCommutePath');
+            const cPathAca = document.getElementById('chkCommutePathAcademy');
+            const sPath = document.getElementById('chkShuttlePath');
+            const sPathAca = document.getElementById('chkShuttlePathAcademy');
+            if (cPath) cPath.checked = false;
+            if (cPathAca) cPathAca.checked = false;
+            if (sPath) sPath.checked = false;
+            if (sPathAca) sPathAca.checked = false;
+
             // 신규 부가 서비스 연동 (지도 레이어, 부동산 차트, 학교 타운 톡)
             if (typeof updateMapLayers === 'function') updateMapLayers(school);
             if (typeof drawEstateTrendGraph === 'function') drawEstateTrendGraph(school);
@@ -4373,6 +4385,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Hide community panel
             const communityPanel = document.getElementById('communityPanel');
             if (communityPanel) communityPanel.style.display = 'none';
+            const sidebarContent = document.getElementById('sidebarContent');
+            if (sidebarContent) sidebarContent.style.display = 'block';
             
             // Hide academy sidebar if open
             const academySidebar = document.getElementById('academySidebar');
@@ -4410,23 +4424,38 @@ document.addEventListener('DOMContentLoaded', () => {
         const isCommuteChecked = chkCommute ? chkCommute.checked : false;
         const isShuttleChecked = chkShuttle ? chkShuttle.checked : false;
 
+        // 학교 ID 또는 이름을 이용한 고유 해시 시드 생성
+        const seedStr = school.school_id || school.school_name || 'default';
+        let hash = 0;
+        for (let i = 0; i < seedStr.length; i++) {
+            hash = seedStr.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        const val1 = Math.abs(hash % 7) + 1; // 1 ~ 7
+        const val2 = Math.abs((hash >> 3) % 9) + 1; // 1 ~ 9
+        const val3 = Math.abs((hash >> 6) % 5) + 1; // 1 ~ 5
+
         // 안심 도보 경로 그리기
         if (isCommuteChecked) {
+            // 해시값을 조합하여 학교마다 다른 3방향의 꺾인 가상 통학로 동적 계산
             const routes = [
+                // Route 1
                 [
                     new kakao.maps.LatLng(lat, lng),
-                    new kakao.maps.LatLng(lat + 0.0015, lng + 0.001),
-                    new kakao.maps.LatLng(lat + 0.003, lng + 0.001)
+                    new kakao.maps.LatLng(lat + ((hash % 2 === 0) ? 0.0015 : -0.0015), lng + (((hash >> 1) % 2 === 0) ? 0.001 : -0.001)),
+                    new kakao.maps.LatLng(lat + ((hash % 2 === 0) ? 0.003 : -0.003), lng + (((hash >> 1) % 2 === 0) ? 0.001 : -0.001) + (val1 * 0.0002))
                 ],
+                // Route 2
                 [
                     new kakao.maps.LatLng(lat, lng),
-                    new kakao.maps.LatLng(lat - 0.001, lng - 0.0015),
-                    new kakao.maps.LatLng(lat - 0.001, lng - 0.003)
+                    new kakao.maps.LatLng(lat - (((hash >> 2) % 2 === 0) ? 0.001 : -0.001), lng - (((hash >> 3) % 2 === 0) ? 0.0015 : -0.0015)),
+                    new kakao.maps.LatLng(lat - (((hash >> 2) % 2 === 0) ? 0.001 : -0.001) - (val2 * 0.0002), lng - (((hash >> 3) % 2 === 0) ? 0.003 : -0.003))
                 ],
+                // Route 3
                 [
                     new kakao.maps.LatLng(lat, lng),
-                    new kakao.maps.LatLng(lat - 0.0015, lng + 0.002),
-                    new kakao.maps.LatLng(lat - 0.003, lng + 0.002)
+                    new kakao.maps.LatLng(lat - (((hash >> 4) % 2 === 0) ? 0.0015 : -0.0015), lng + (((hash >> 5) % 2 === 0) ? 0.002 : -0.002)),
+                    new kakao.maps.LatLng(lat - (((hash >> 4) % 2 === 0) ? 0.003 : -0.003), lng + (((hash >> 5) % 2 === 0) ? 0.002 : -0.002) - (val3 * 0.0002))
                 ]
             ];
 
@@ -4445,12 +4474,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 학원 셔틀 버스 노선 그리기
         if (isShuttleChecked) {
+            // 학교마다 셔틀 노선 크기(가로/세로 반경) 및 사각형 찌그러짐을 다르게 부여
+            const sizeX = 0.003 + (val1 * 0.0002);
+            const sizeY = 0.003 + (val2 * 0.0002);
+            const skewX = ((hash >> 6) % 3 - 1) * 0.0004;
+            const skewY = ((hash >> 7) % 3 - 1) * 0.0004;
+
             const path = [
-                new kakao.maps.LatLng(lat + 0.004, lng + 0.004),
-                new kakao.maps.LatLng(lat + 0.004, lng - 0.004),
-                new kakao.maps.LatLng(lat - 0.004, lng - 0.004),
-                new kakao.maps.LatLng(lat - 0.004, lng + 0.004),
-                new kakao.maps.LatLng(lat + 0.004, lng + 0.004)
+                new kakao.maps.LatLng(lat + sizeY + skewY, lng + sizeX + skewX),
+                new kakao.maps.LatLng(lat + sizeY - skewY, lng - sizeX + skewX),
+                new kakao.maps.LatLng(lat - sizeY - skewY, lng - sizeX - skewX),
+                new kakao.maps.LatLng(lat - sizeY + skewY, lng + sizeX - skewX),
+                new kakao.maps.LatLng(lat + sizeY + skewY, lng + sizeX + skewX) // 순환선
             ];
 
             const polyline = new kakao.maps.Polyline({
@@ -4465,28 +4500,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    const chkCommutePath = document.getElementById('chkCommutePath');
-    const chkShuttlePath = document.getElementById('chkShuttlePath');
-    const chkCommutePathAcademy = document.getElementById('chkCommutePathAcademy');
-    const chkShuttlePathAcademy = document.getElementById('chkShuttlePathAcademy');
-
     function syncCheckboxesAndTrigger(type, checked) {
+        const cPath = document.getElementById('chkCommutePath');
+        const cPathAca = document.getElementById('chkCommutePathAcademy');
+        const sPath = document.getElementById('chkShuttlePath');
+        const sPathAca = document.getElementById('chkShuttlePathAcademy');
+
         if (type === 'commute') {
-            if (chkCommutePath) chkCommutePath.checked = checked;
-            if (chkCommutePathAcademy) chkCommutePathAcademy.checked = checked;
+            if (cPath) cPath.checked = checked;
+            if (cPathAca) cPathAca.checked = checked;
         } else if (type === 'shuttle') {
-            if (chkShuttlePath) chkShuttlePath.checked = checked;
-            if (chkShuttlePathAcademy) chkShuttlePathAcademy.checked = checked;
+            if (sPath) sPath.checked = checked;
+            if (sPathAca) sPathAca.checked = checked;
         }
+
         if (orchestrator.state.selectedSchool) {
             updateMapLayers(orchestrator.state.selectedSchool);
         }
     }
 
-    if (chkCommutePath) chkCommutePath.addEventListener('change', (e) => syncCheckboxesAndTrigger('commute', e.target.checked));
-    if (chkCommutePathAcademy) chkCommutePathAcademy.addEventListener('change', (e) => syncCheckboxesAndTrigger('commute', e.target.checked));
-    if (chkShuttlePath) chkShuttlePath.addEventListener('change', (e) => syncCheckboxesAndTrigger('shuttle', e.target.checked));
-    if (chkShuttlePathAcademy) chkShuttlePathAcademy.addEventListener('change', (e) => syncCheckboxesAndTrigger('shuttle', e.target.checked));
+    // 글로벌 이벤트 위임을 통한 체크박스 리스너 등록 (동적 DOM 안전성 확보)
+    document.addEventListener('change', (e) => {
+        const id = e.target.id;
+        if (id === 'chkCommutePath' || id === 'chkCommutePathAcademy') {
+            syncCheckboxesAndTrigger('commute', e.target.checked);
+        } else if (id === 'chkShuttlePath' || id === 'chkShuttlePathAcademy') {
+            syncCheckboxesAndTrigger('shuttle', e.target.checked);
+        }
+    });
 
     // 2. 부동산 가격 추이 그래프 및 관심단지 알림
     function showCustomAlert(title, message) {
