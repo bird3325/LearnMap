@@ -413,9 +413,30 @@ document.addEventListener('DOMContentLoaded', () => {
         if (settingsChildEng) settingsChildEng.value = child.english;
         if (settingsChildMath) settingsChildMath.value = child.math;
         
+        // 자녀별 점수 텍스트(Label)도 동적 갱신
+        const lblKor = document.getElementById('valSettingsChildKor');
+        const lblEng = document.getElementById('valSettingsChildEng');
+        const lblMath = document.getElementById('valSettingsChildMath');
+        if (lblKor) lblKor.innerText = `${child.korean}점`;
+        if (lblEng) lblEng.innerText = `${child.english}점`;
+        if (lblMath) lblMath.innerText = `${child.math}점`;
+
         // 현재 선택된 자녀 정보로 Orchestrator 상태 동기화 및 사이드바 인풋 동기화
         syncActiveChildWithOrchestrator(child);
     }
+
+    // 슬라이더 조작 시 텍스트 즉각 갱신 이벤트 등록
+    const setupSliderIndicatorSync = (sliderEl, labelId) => {
+        if (sliderEl) {
+            sliderEl.addEventListener('input', (e) => {
+                const label = document.getElementById(labelId);
+                if (label) label.innerText = `${e.target.value}점`;
+            });
+        }
+    };
+    setupSliderIndicatorSync(settingsChildKor, 'valSettingsChildKor');
+    setupSliderIndicatorSync(settingsChildEng, 'valSettingsChildEng');
+    setupSliderIndicatorSync(settingsChildMath, 'valSettingsChildMath');
 
     function syncActiveChildWithOrchestrator(child) {
         if (!child) return;
@@ -476,7 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('최소 1명의 자녀 정보는 필요합니다.');
                 return;
             }
-            if (confirm('선택된 자녀 정보를 삭제하시겠습니까?')) {
+            if (await confirm('선택된 자녀 정보를 삭제하시겠습니까?')) {
                 const targetId = selectedChildId;
                 childProfiles = childProfiles.filter(c => c.id !== targetId);
                 selectedChildId = childProfiles[0].id;
@@ -540,8 +561,9 @@ document.addEventListener('DOMContentLoaded', () => {
             refreshChildSelectUI();
 
             alert('자녀 성적 정보가 성공적으로 저장되었습니다.');
-            const settingsModal = document.getElementById('settingsModal');
-            if (settingsModal) settingsModal.style.display = 'none';
+            // 자녀 성적 저장 및 동기화 시 설정 모달을 닫지 않고 상태를 유지하도록 수정함
+            // const settingsModal = document.getElementById('settingsModal');
+            // if (settingsModal) settingsModal.style.display = 'none';
         });
     }
 
@@ -595,6 +617,143 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     });
+
+    // 사이드바 내부 신규 학원 등록 요청 제출 버튼 바인딩
+    const btnSubmitSidebarAca = document.getElementById('btnSubmitSidebarAca');
+    if (btnSubmitSidebarAca) {
+        btnSubmitSidebarAca.addEventListener('click', async () => {
+            const name = document.getElementById('sidebarAcaName').value.trim();
+            const address = document.getElementById('sidebarAcaAddress').value.trim();
+            const type = document.getElementById('sidebarAcaType').value;
+            const contact = document.getElementById('sidebarAcaContact').value.trim();
+            const comments = document.getElementById('sidebarAcaComments').value.trim();
+
+            if (!name || !address || !type) {
+                alert('필수 항목(*)을 모두 입력해 주세요.');
+                return;
+            }
+
+            const payload = {
+                targetId: 'academy_registration_request',
+                nickname: '학부모 제안',
+                content: `[신규 학원 등록 요청]\n학원명: ${name}\n주소: ${address}\n과목: ${type}\n연락처: ${contact}\n비고: ${comments}`
+            };
+
+            try {
+                const response = await fetch('/api/towntalk', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    alert('신규 학원 등록 제보가 성공적으로 제출되었습니다. 데이터 검토 후 신속히 반영해 드리겠습니다.');
+                    // 폼 초기화
+                    document.getElementById('sidebarAcaName').value = '';
+                    document.getElementById('sidebarAcaAddress').value = '';
+                    document.getElementById('sidebarAcaType').value = '';
+                    document.getElementById('sidebarAcaContact').value = '';
+                    document.getElementById('sidebarAcaComments').value = '';
+                    // 웰컴 카드로 이동
+                    document.getElementById('academyRegisterCard').style.display = 'none';
+                    document.getElementById('welcomeCard').style.display = 'block';
+                } else {
+                    alert('등록 요청 처리 중 서버 오류가 발생했습니다.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('네트워크 오류가 발생했습니다.');
+            }
+        });
+    }
+
+    // 잘못된 정보 수정 요청 제출 버튼 바인딩
+    const btnSubmitSidebarEdit = document.getElementById('btnSubmitSidebarEdit');
+    if (btnSubmitSidebarEdit) {
+        btnSubmitSidebarEdit.addEventListener('click', async () => {
+            const targetName = document.getElementById('sidebarEditTargetName').value.trim();
+            const details = document.getElementById('sidebarEditDetails').value.trim();
+            const contact = document.getElementById('sidebarEditContact').value.trim();
+
+            if (!targetName || !details) {
+                alert('필수 항목(*)을 모두 입력해 주세요.');
+                return;
+            }
+
+            const payload = {
+                targetId: 'information_edit_request',
+                nickname: '학부모 제보',
+                content: `[잘못된 정보 수정 요청]\n대상: ${targetName}\n내용: ${details}\n제보자: ${contact}`
+            };
+
+            try {
+                const response = await fetch('/api/towntalk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    alert('정보 수정 요청이 제출되었습니다. 검토 후 신속하게 조치하겠습니다.');
+                    document.getElementById('sidebarEditTargetName').value = '';
+                    document.getElementById('sidebarEditDetails').value = '';
+                    document.getElementById('sidebarEditContact').value = '';
+                    document.getElementById('infoEditRequestCard').style.display = 'none';
+                    document.getElementById('welcomeCard').style.display = 'block';
+                } else {
+                    alert('제출 중 서버 오류가 발생했습니다.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('네트워크 오류가 발생했습니다.');
+            }
+        });
+    }
+
+    // 광고 및 제휴 문의 제출 버튼 바인딩
+    const btnSubmitSidebarAd = document.getElementById('btnSubmitSidebarAd');
+    if (btnSubmitSidebarAd) {
+        btnSubmitSidebarAd.addEventListener('click', async () => {
+            const company = document.getElementById('sidebarAdCompanyName').value.trim();
+            const contact = document.getElementById('sidebarAdContact').value.trim();
+            const details = document.getElementById('sidebarAdDetails').value.trim();
+
+            if (!company || !contact || !details) {
+                alert('필수 항목(*)을 모두 입력해 주세요.');
+                return;
+            }
+
+            const payload = {
+                targetId: 'ad_business_inquiry',
+                nickname: '제휴 파트너',
+                content: `[광고 및 제휴 문의]\n회사/단체명: ${company}\n연락처/이메일: ${contact}\n내용: ${details}`
+            };
+
+            try {
+                const response = await fetch('/api/towntalk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    alert('광고 및 제휴 문의가 제출되었습니다. 확인 후 메일이나 연락처로 답변을 드리겠습니다.');
+                    document.getElementById('sidebarAdCompanyName').value = '';
+                    document.getElementById('sidebarAdContact').value = '';
+                    document.getElementById('sidebarAdDetails').value = '';
+                    document.getElementById('adInquiryCard').style.display = 'none';
+                    document.getElementById('welcomeCard').style.display = 'block';
+                } else {
+                    alert('제출 중 서버 오류가 발생했습니다.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('네트워크 오류가 발생했습니다.');
+            }
+        });
+    }
 
     // 도움말 및 CSV 내보내기 버튼 이벤트 연동
     const btnExportCSV = document.getElementById('btnExportCSV');
@@ -1717,9 +1876,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let filtered = filterSchools(schoolsDatabase, selectedRegion, typeLabel);
 
         // Boundary Check (화면에 보이는 범위 내만 표시)
+        // 맵 외곽선 부분에 있는 마커가 픽셀 오차 및 패딩 문제로 잘리지 않도록 0.01도의 여유 버퍼(Padding)를 둠.
+        const buffer = 0.01;
         filtered = filtered.filter(school => {
-            const latIn = school.lat >= sw.getLat() && school.lat <= ne.getLat();
-            const lngIn = school.lng >= sw.getLng() && school.lng <= ne.getLng();
+            const latIn = school.lat >= (sw.getLat() - buffer) && school.lat <= (ne.getLat() + buffer);
+            const lngIn = school.lng >= (sw.getLng() - buffer) && school.lng <= (ne.getLng() + buffer);
             return latIn && lngIn;
         });
 
