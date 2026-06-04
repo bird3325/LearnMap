@@ -5290,184 +5290,112 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    let crimeZonePolygons = [];
+    // 카카오맵 SDK에 존재하지 않는 GroundOverlay 클래스를 AbstractOverlay를 상속받아 정의 (Lazy Polyfill)
+    function initGroundOverlayPolyfill() {
+        if (window.kakao && window.kakao.maps && !kakao.maps.GroundOverlay) {
+            kakao.maps.GroundOverlay = function(imageUrl, bounds) {
+                this.imageUrl = imageUrl;
+                this.bounds = bounds;
+                this.node = null;
+            };
+
+            // AbstractOverlay 상속 설정
+            kakao.maps.GroundOverlay.prototype = new kakao.maps.AbstractOverlay();
+
+            // 오버레이가 지도에 추가될 때 호출
+            kakao.maps.GroundOverlay.prototype.onAdd = function() {
+                var node = document.createElement('div');
+                node.style.position = 'absolute';
+                node.style.background = 'url("' + this.imageUrl + '") no-repeat';
+                node.style.backgroundSize = '100% 100%';
+                node.style.pointerEvents = 'none'; // 클릭 통과 설정
+                this.node = node;
+
+                var panels = this.getPanels();
+                panels.overlayLayer.appendChild(node);
+            };
+
+            // 지도의 줌, 드래그 등에 반응하여 위치 및 크기 재조정
+            kakao.maps.GroundOverlay.prototype.draw = function() {
+                if (!this.node) return;
+
+                var projection = this.getProjection();
+                
+                // 위경도 영역의 좌하단과 우상단을 픽셀 좌표로 변환
+                var swPoint = projection.pointFromCoords(this.bounds.getSouthWest());
+                var nePoint = projection.pointFromCoords(this.bounds.getNorthEast());
+
+                var width = nePoint.x - swPoint.x;
+                var height = swPoint.y - nePoint.y;
+
+                this.node.style.left = swPoint.x + 'px';
+                this.node.style.top = nePoint.y + 'px';
+                this.node.style.width = width + 'px';
+                this.node.style.height = height + 'px';
+            };
+
+            // 오버레이가 지도에서 제거될 때 호출
+            kakao.maps.GroundOverlay.prototype.onRemove = function() {
+                if (this.node && this.node.parentNode) {
+                    this.node.parentNode.removeChild(this.node);
+                }
+                this.node = null;
+            };
+            console.log('[GroundOverlay Polyfill] Initialized successfully.');
+        }
+    }
+
+    let crimeZoneOverlay = null;
 
     window.clearCrimeZoneLayers = function() {
-        if (crimeZonePolygons) {
-            crimeZonePolygons.forEach(p => p.setMap(null));
+        if (crimeZoneOverlay) {
+            crimeZoneOverlay.setMap(null);
+            crimeZoneOverlay = null;
         }
-        crimeZonePolygons = [];
+        const legendBar = document.getElementById('crimeZoneLegendFloatingBar');
+        if (legendBar) legendBar.style.display = 'none';
     };
 
     window.updateCrimeZoneLayers = function(school) {
+        initGroundOverlayPolyfill(); // 지도가 다 로드된 시점에 안전하게 폴리필 적용
         clearCrimeZoneLayers();
         if (!window.kakaoMapInstance) return;
 
         const chk = document.getElementById('crimeZoneToggleCheckbox');
-        if (!chk || !chk.checked) return;
-
-        if (window.kakaoMapInstance.getLevel() >= 7) {
-            clearCrimeZoneLayers();
+        if (!chk || !chk.checked) {
             return;
         }
 
-        let lat, lng;
-        if (school) {
-            lat = parseFloat(school.lat);
-            lng = parseFloat(school.lng);
-        } else {
-            const center = window.kakaoMapInstance.getCenter();
-            lat = center.getLat();
-            lng = center.getLng();
+        // 범례 플로팅 가이드 바 노출
+        const legendBar = document.getElementById('crimeZoneLegendFloatingBar');
+        if (legendBar) legendBar.style.display = 'flex';
+
+        if (window.kakaoMapInstance.getLevel() >= 7) {
+            return;
         }
 
-        if (isNaN(lat) || isNaN(lng)) return;
+        // 현재 카카오맵의 영역(bounds) 획득
+        const bounds = window.kakaoMapInstance.getBounds();
+        const sw = bounds.getSouthWest();
+        const ne = bounds.getNorthEast();
 
-        // CORS 정책을 원천 차단하고 서버에 보관된 서비스키를 대행 전송하기 위한 로컬 백엔드 프록시 엔드포인트 호출
-        const apiUrl = `/api/crime-zones`;
+        // WMS API는 EPSG:4326(WGS84 위경도) 형식을 필요로 함 (경도,위도,경도,위도)
+        const bbox = `${sw.getLng()},${sw.getLat()},${ne.getLng()},${ne.getLat()}`;
 
-        fetch(apiUrl)
-            .then(async res => {
-                if (!res.ok) {
-                    let errMsg = 'API 중계 서버가 오류를 반환했습니다.';
-                    try {
-                        const errData = await res.json();
-                        if (errData && errData.error) {
-                            errMsg = errData.error;
-                        }
-                    } catch (e) {}
-                    throw new Error(errMsg);
-                }
-                const contentType = res.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    throw new Error('올바른 JSON 응답이 아닙니다. 백엔드 서버(port 3000)가 실행 중인지 확인해주세요.');
-                }
-                return res.json();
-            })
-            .then(data => {
-                let items = null;
-                // 공공데이터 JSON 응답 규격 분석 추출
-                if (data && data.response && data.response.body && data.response.body.items) {
-                    items = data.response.body.items.item;
-                } else if (data && data.items) {
-                    items = data.items;
-                }
+        // 카카오맵 컨테이너의 가로/세로 픽셀 사이즈 획득
+        const mapNode = window.kakaoMapInstance.getNode();
+        const width = mapNode.offsetWidth || 500;
+        const height = mapNode.offsetHeight || 500;
 
-                if (items && Array.isArray(items) && items.length > 0) {
-                    renderCrimePolygons(items);
-                } else {
-                    throw new Error('응답받은 실시간 범죄주의구간 목록이 비어있습니다.');
-                }
-            })
-            .catch(err => {
-                console.warn('[Crime GIS API] 실시간 공공데이터 연동 실패:', err.message);
-            });
-    }
+        // 백엔드 프록시 API 호출 URL
+        const imageUrl = `/api/crime-zones?bbox=${encodeURIComponent(bbox)}&width=${width}&height=${height}`;
 
-    // 공공데이터 API 응답 기반 정밀 다각형(Polygon) 렌더링 함수
-    function renderCrimePolygons(items) {
-        if (!Array.isArray(items)) return;
+        // 카카오맵 GroundOverlay 생성 및 지도 표시
+        crimeZoneOverlay = new kakao.maps.GroundOverlay(imageUrl, bounds);
+        crimeZoneOverlay.setMap(window.kakaoMapInstance);
+    };
 
-        items.forEach(item => {
-            let path = [];
 
-            // 1. GeoJSON geometry 규격 파싱
-            if (item.geometry) {
-                try {
-                    const geo = typeof item.geometry === 'string' ? JSON.parse(item.geometry) : item.geometry;
-                    if (geo.type === 'Polygon' && geo.coordinates) {
-                        path = geo.coordinates[0].map(coord => new kakao.maps.LatLng(coord[1], coord[0]));
-                    } else if (geo.type === 'MultiPolygon' && geo.coordinates) {
-                        path = geo.coordinates[0][0].map(coord => new kakao.maps.LatLng(coord[1], coord[0]));
-                    }
-                } catch (e) {
-                    console.warn('Geometry coordinates 파싱 오류:', e);
-                }
-            }
-
-            // 2. WKT (Well-Known Text - POLYGON) 파싱 규칙 적용
-            if (path.length === 0 && item.wkt) {
-                const wktMatches = item.wkt.match(/\d+\.\d+/g);
-                if (wktMatches && wktMatches.length >= 6) {
-                    for (let i = 0; i < wktMatches.length; i += 2) {
-                        const lng = parseFloat(wktMatches[i]);
-                        const lat = parseFloat(wktMatches[i + 1]);
-                        if (!isNaN(lat) && !isNaN(lng)) {
-                            path.push(new kakao.maps.LatLng(lat, lng));
-                        }
-                    }
-                }
-            }
-
-            // 3. 단순 x,y 또는 lat,lng 포인트 기반의 위험 영역 시뮬레이션
-            if (path.length === 0) {
-                const cLat = parseFloat(item.lat || item.y || item.la);
-                const cLng = parseFloat(item.lng || item.x || item.lo);
-                if (!isNaN(cLat) && !isNaN(cLng)) {
-                    path = [
-                        new kakao.maps.LatLng(cLat + 0.001, cLng - 0.001),
-                        new kakao.maps.LatLng(cLat + 0.001, cLng + 0.001),
-                        new kakao.maps.LatLng(cLat - 0.001, cLng + 0.001),
-                        new kakao.maps.LatLng(cLat - 0.001, cLng - 0.001)
-                    ];
-                }
-            }
-
-            if (path.length < 3) return;
-
-            const title = item.section_nm || item.zone_nm || item.zoneNm || '🚨 범죄 주의 구간';
-            const desc = item.danger_desc || item.dangerLevel || item.danger_level_nm || '취객 신고 빈도가 높은 이면도로 및 사각지대';
-
-            const polygon = new kakao.maps.Polygon({
-                path: path,
-                strokeWeight: 2,
-                strokeColor: '#FF3B30',
-                strokeOpacity: 0.7,
-                strokeStyle: 'solid',
-                fillColor: '#FF3B30',
-                fillOpacity: 0.25
-            });
-
-            polygon.setMap(window.kakaoMapInstance);
-            crimeZonePolygons.push(polygon);
-
-            let tooltipOverlay = null;
-
-            kakao.maps.event.addListener(polygon, 'mouseover', function(mouseEvent) {
-                polygon.setOptions({ fillColor: '#E60000', fillOpacity: 0.4 });
-                
-                const content = `
-                    <div style="background: rgba(33, 37, 41, 0.95); color: white; padding: 10px 14px; border-radius: 8px; font-size: 11px; font-family: sans-serif; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); pointer-events: none; width: 220px; line-height: 1.4;">
-                        <strong style="color: #FF4D4D; font-size: 12px; display: block; margin-bottom: 4px;">${title}</strong>
-                        <span>${desc}</span>
-                    </div>
-                `;
-
-                tooltipOverlay = new kakao.maps.CustomOverlay({
-                    content: content,
-                    position: mouseEvent.latLng,
-                    xAnchor: 0.5,
-                    yAnchor: 1.2,
-                    zIndex: 99999
-                });
-                tooltipOverlay.setMap(window.kakaoMapInstance);
-            });
-
-            kakao.maps.event.addListener(polygon, 'mousemove', function(mouseEvent) {
-                if (tooltipOverlay) {
-                    tooltipOverlay.setPosition(mouseEvent.latLng);
-                }
-            });
-
-            kakao.maps.event.addListener(polygon, 'mouseout', function() {
-                polygon.setOptions({ fillColor: '#FF3B30', fillOpacity: 0.25 });
-                if (tooltipOverlay) {
-                    tooltipOverlay.setMap(null);
-                    tooltipOverlay = null;
-                }
-            });
-        });
-    }
 
 
 

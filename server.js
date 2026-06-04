@@ -166,6 +166,13 @@ app.post('/api/admin/config', async (req, res) => {
         config.safemap_key = safemap_key;
     }
 
+    // 로컬 config.json 파일에도 동기화 저장
+    try {
+        fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf8');
+    } catch (fsErr) {
+        console.error('Error writing config to local json:', fsErr);
+    }
+
     if (await saveConfig(config)) {
         return res.json({ success: true, message: '설정이 성공적으로 저장되었습니다.' });
     }
@@ -513,50 +520,36 @@ app.get('/api/realestate', async (req, res) => {
     }
 });
 
-// 13. GET /api/crime-zones - Fetch crime attention zone areas from data.go.kr API
+// 13. GET /api/crime-zones - Fetch crime attention zone areas from safemap WMS API
 app.get('/api/crime-zones', async (req, res) => {
-    const config = await readConfig();
-    const serviceKey = config.safemap_key || config.data_go_kr_key || '';
-    console.log(`[Crime Zones API] Using serviceKey: ${serviceKey ? serviceKey.substring(0, 8) + '...' : 'empty'} (length: ${serviceKey.length})`);
+    const { bbox, width, height } = req.query;
+    if (!bbox || !width || !height) {
+        return res.status(400).json({ error: 'bbox, width, height 파라미터가 필요합니다.' });
+    }
 
-    const url1 = `https://apis.data.go.kr/1741000/CrimeAttentionSectionService/getCrimeAttentionSectionList?serviceKey=${encodeURIComponent(serviceKey)}&pageNo=1&numOfRows=50&type=json`;
-    
+    const config = await readConfig();
+    const serviceKey = config.safemap_key || '';
+    if (!serviceKey) {
+        return res.status(500).json({ error: '생활안전정보 API Key가 설정되지 않았습니다.' });
+    }
+
+    // 생활안전지도 WMS API 호출 URL 생성
+    const wmsUrl = `http://safemap.go.kr/openapi2/IF_0087_WMS?serviceKey=${serviceKey}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
+
     try {
-        // 1차 시도: URL 인코딩된 인증키로 요청
-        const responseData = await httpsGet(url1);
-        if (typeof responseData === 'string' && responseData.includes('Unexpected errors')) {
-            throw { status: 500, text: 'Unexpected errors' };
+        const response = await fetch(wmsUrl);
+        if (!response.ok) {
+            throw new Error(`WMS API responded with status: ${response.status}`);
         }
-        return res.json(responseData);
-    } catch (err) {
-        console.warn('[Crime Zones API] 1차 시도 실패(인코딩 키), 2차 시도(원본 키) 진행...', err);
         
-        // 2차 시도: URL 인코딩하지 않은 원본 인증키 그대로 요청 (포털 버그 우회용)
-        try {
-            const url2 = `https://apis.data.go.kr/1741000/CrimeAttentionSectionService/getCrimeAttentionSectionList?serviceKey=${serviceKey}&pageNo=1&numOfRows=50&type=json`;
-            const responseData2 = await httpsGet(url2);
-            if (typeof responseData2 === 'string' && responseData2.includes('Unexpected errors')) {
-                throw { status: 500, text: 'Unexpected errors' };
-            }
-            return res.json(responseData2);
-        } catch (err2) {
-            console.warn('[Crime Zones API] 2차 시도 실패(원본 키), 3차 시도(디코딩 후 인코딩 키) 진행...', err2);
-            
-            // 3차 시도: 이미 인코딩되어 있는 키일 경우를 위해 디코딩 후 다시 인코딩하여 요청
-            try {
-                const decodedKey = decodeURIComponent(serviceKey);
-                const url3 = `https://apis.data.go.kr/1741000/CrimeAttentionSectionService/getCrimeAttentionSectionList?serviceKey=${encodeURIComponent(decodedKey)}&pageNo=1&numOfRows=50&type=json`;
-                const responseData3 = await httpsGet(url3);
-                if (typeof responseData3 === 'string' && responseData3.includes('Unexpected errors')) {
-                    throw { status: 500, text: 'Unexpected errors' };
-                }
-                return res.json(responseData3);
-            } catch (err3) {
-                console.error('Crime Zones API Error (All retries failed):', err3);
-                const errMsg = err3.text || err3.message || JSON.stringify(err3);
-                res.status(500).json({ error: `행정안전부 범죄주의구간 API 호출에 실패했습니다. (상세: ${errMsg})` });
-            }
-        }
+        const contentType = response.headers.get('content-type');
+        const buffer = await response.arrayBuffer();
+        
+        res.setHeader('Content-Type', contentType || 'image/png');
+        return res.send(Buffer.from(buffer));
+    } catch (err) {
+        console.error('Crime Zones WMS Proxy Error:', err);
+        return res.status(500).json({ error: '범죄주의구간 이미지 로드에 실패했습니다.' });
     }
 });
 
