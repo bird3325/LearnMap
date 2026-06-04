@@ -445,6 +445,9 @@ body {
     box-shadow: 0 8px 32px rgba(0,0,0,0.12);
     z-index: 10000;
     transition: var(--transition-smooth);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .compare-grid {
@@ -458,15 +461,22 @@ body {
     background: white;
     border: 1px solid var(--border-color);
     border-radius: 10px;
-    padding: 12px;
+    padding: 0 12px 12px 12px;
+    position: relative;
 }
 
 .compare-school-name {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 10;
+    padding-top: 12px;
     font-weight: bold;
     color: var(--deep-blue);
     border-bottom: 1px solid var(--bg-primary);
     padding-bottom: 8px;
     margin-bottom: 8px;
+    border-radius: 9px 9px 0 0;
 }
 
 /* Responsive queries */
@@ -570,4 +580,51 @@ body {
         opacity: 1; 
         filter: drop-shadow(0 0 12px rgba(37, 99, 235, 0.4));
     }
+}
+
+/* Parents Filter Toggle Switch Button */
+.parents-filter-accordion .switch {
+    position: relative;
+    display: inline-block;
+    width: 32px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.parents-filter-accordion .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.parents-filter-accordion .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #DEE2E6;
+    transition: .3s;
+    border-radius: 18px;
+}
+
+.parents-filter-accordion .slider:before {
+    position: absolute;
+    content: "";
+    height: 12px;
+    width: 12px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+.parents-filter-accordion input:checked + .slider {
+    background-color: var(--primary-blue);
+}
+
+.parents-filter-accordion input:checked + .slider:before {
+    transform: translateX(14px);
 }

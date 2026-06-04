@@ -224,8 +224,8 @@ export class AnalysisAgent {
             analysisResult.overall.summary = `기초 보완이 시급합니다. 과목별 취약 영역 위주로 집중 보강이 요구됩니다.`;
         }
 
-        // 고교 진학 시뮬레이션 문구 생성
-        // 고교 진학 시뮬레이션 문구 생성
+        // 고교 또는 중학교 진학 시뮬레이션 문구 생성 (선택된 학교급에 따른 조건부 렌더링)
+        const isElem = school.school_type === 'elem' || school.school_name.includes('초등학교');
         const career = school.graduate_career || { general: 75, special: 5, autonomous: 10, specialized: 10 };
         const specialCut = career.special;
         const autoCut = career.special + career.autonomous;
@@ -241,12 +241,26 @@ export class AnalysisAgent {
         else if (avgPercentile <= 96) hsGrade = 8;
         else hsGrade = 9;
 
-        if (avgPercentile <= specialCut) {
-            analysisResult.overall.admission_simulation = `현재 점수 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로, 이 학교의 특목고 진학률(${specialCut}%) 이내입니다. 특목고 진학이 유력하며 심화 학습을 추천합니다.<br><br>일반계 고등학교 진학 시 예상 고교 내신: <strong style="color:var(--primary-blue); font-size:15px;">${hsGrade}등급</strong> (상위 대학교 수시 학종 지원 매우 유리)`;
-        } else if (avgPercentile <= autoCut) {
-            analysisResult.overall.admission_simulation = `현재 점수 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로, 자사/외고 진학 가능권입니다.<br><br>일반계 고등학교 진학 시 예상 고교 내신: <strong style="color:var(--primary-blue); font-size:15px;">${hsGrade}등급</strong> (주요 대학교 수시 교과 및 학종 전형 목표)`;
+        if (isElem) {
+            // 초등학교일 경우 진학 시뮬레이션 문구 정의
+            analysisResult.overall.simulation_title = '🎓 중학교 진학 적응 시뮬레이션 결과';
+            if (avgPercentile <= 15) {
+                analysisResult.overall.admission_simulation = `현재 초등 교과 이해도 추정치는 상위 ${avgPercentile.toFixed(1)}%로 매우 우수합니다. 관내 중학교 입학 후에도 최상위권 성취도(A등급) 유지가 유력합니다.<br><br>예상 중등 학업 성취 등급: <strong style="color:var(--primary-blue); font-size:15px;">A등급 안정권</strong> (중등 자유학기제 기간 동안 영어/수학 계통 심화 학습을 추천합니다)`;
+            } else if (avgPercentile <= 50) {
+                analysisResult.overall.admission_simulation = `현재 초등 교과 이해도 추정치는 상위 ${avgPercentile.toFixed(1)}%로 양호합니다. 무난한 중학교 적응이 예상됩니다.<br><br>예상 중등 학업 성취 등급: <strong style="color:var(--primary-blue); font-size:15px;">B등급 예상군</strong> (중등 서술형 수행평가 및 단원평가 대비를 위해 오답 노트 작성 습관 형성이 중요합니다)`;
+            } else {
+                analysisResult.overall.admission_simulation = `현재 초등 교과 이해도 추정치는 상위 ${avgPercentile.toFixed(1)}%로 기초 보강이 필요합니다.<br><br>예상 중등 학업 성취 등급: <strong style="color:var(--primary-blue); font-size:15px;">C등급 이하 보강 필요</strong> (입학 후 학습 격차가 누적되지 않도록 방학 중 초등 5-6학년 수학 기본 개념 및 연산 집중 보완이 요구됩니다)`;
+            }
         } else {
-            analysisResult.overall.admission_simulation = `현재 점수 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로, 안정적인 일반고 진학군에 해당합니다.<br><br>일반계 고등학교 진학 시 예상 고교 내신: <strong style="color:var(--primary-blue); font-size:15px;">${hsGrade}등급</strong> (등급 상승을 위해 고교 입학 전 심화 서술형 집중 대비 필요)`;
+            // 중학교/고등학교일 경우 고교 진학 시뮬레이션 문구 정의
+            analysisResult.overall.simulation_title = '🎓 고교 진학 시뮬레이션 결과';
+            if (avgPercentile <= specialCut) {
+                analysisResult.overall.admission_simulation = `현재 점수 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로, 이 학교의 특목고 진학률(${specialCut}%) 이내입니다. 특목고 진학이 우세한 우수 진학군에 해당합니다.<br><br>일반계 고등학교 진학 시 예상 고교 내신: <strong style="color:var(--primary-blue); font-size:15px;">${hsGrade}등급</strong> (상위 대학교 수시 학종 지원 매우 유리)`;
+            } else if (avgPercentile <= autoCut) {
+                analysisResult.overall.admission_simulation = `현재 점수 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로, 자사고/외고 진학 준비군에 해당합니다.<br><br>일반계 고등학교 진학 시 예상 고교 내신: <strong style="color:var(--primary-blue); font-size:15px;">${hsGrade}등급</strong> (주요 대학교 수시 교과 및 학종 전형 목표 가능)`;
+            } else {
+                analysisResult.overall.admission_simulation = `현재 점수 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로, 일반고등학교 진학군에 해당합니다.<br><br>일반계 고등학교 진학 시 예상 고교 내신: <strong style="color:var(--primary-blue); font-size:15px;">${hsGrade}등급</strong> (내신 경쟁력 확보 및 상위 등급 도약을 위해 고교 입학 전 취약 단원 집중 보강 필요)`;
+            }
         }
 
         // 학군지 비교 분석 및 진학 예측 정보 생성

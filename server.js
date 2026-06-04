@@ -34,8 +34,20 @@ async function readConfig() {
         neis_api_key: process.env.NEIS_API_KEY || '',
         naver_client_id: process.env.NAVER_CLIENT_ID || '',
         naver_client_secret: process.env.NAVER_CLIENT_SECRET || '',
-        data_go_kr_key: ''
+        data_go_kr_key: '',
+        safemap_key: ''
     };
+
+    // 로컬 config.json 파일이 있으면 기본값으로 로드
+    if (fs.existsSync(CONFIG_PATH)) {
+        try {
+            const localData = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+            config = { ...config, ...localData };
+        } catch (e) {
+            console.error('Error reading local config.json:', e);
+        }
+    }
+
     try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/api_configs?id=eq.1`, {
             headers: {
@@ -52,6 +64,7 @@ async function readConfig() {
                 if (dbConfig.naver_client_id) config.naver_client_id = dbConfig.naver_client_id;
                 if (dbConfig.naver_client_secret) config.naver_client_secret = dbConfig.naver_client_secret;
                 if (dbConfig.data_go_kr_key) config.data_go_kr_key = dbConfig.data_go_kr_key;
+                if (dbConfig.safemap_key) config.safemap_key = dbConfig.safemap_key;
             }
         }
     } catch (e) {
@@ -77,7 +90,8 @@ async function saveConfig(config) {
                 neis_api_key: config.neis_api_key,
                 naver_client_id: config.naver_client_id,
                 naver_client_secret: config.naver_client_secret,
-                data_go_kr_key: config.data_go_kr_key
+                data_go_kr_key: config.data_go_kr_key,
+                safemap_key: config.safemap_key
             })
         });
         if (!response.ok) {
@@ -139,7 +153,7 @@ app.post('/api/admin/config', async (req, res) => {
         return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
     }
 
-    const { kakao_app_key, neis_api_key, naver_client_id, naver_client_secret, data_go_kr_key } = req.body;
+    const { kakao_app_key, neis_api_key, naver_client_id, naver_client_secret, data_go_kr_key, safemap_key } = req.body;
     const config = await readConfig();
     config.kakao_app_key = kakao_app_key;
     config.neis_api_key = neis_api_key;
@@ -147,6 +161,9 @@ app.post('/api/admin/config', async (req, res) => {
     config.naver_client_secret = naver_client_secret;
     if (data_go_kr_key !== undefined) {
         config.data_go_kr_key = data_go_kr_key;
+    }
+    if (safemap_key !== undefined) {
+        config.safemap_key = safemap_key;
     }
 
     if (await saveConfig(config)) {
@@ -493,6 +510,53 @@ app.get('/api/realestate', async (req, res) => {
     } catch (err) {
         console.error('Real Estate API Error:', err);
         res.status(500).json({ error: '국토교통부 실거래가 API 호출에 실패했습니다.' });
+    }
+});
+
+// 13. GET /api/crime-zones - Fetch crime attention zone areas from data.go.kr API
+app.get('/api/crime-zones', async (req, res) => {
+    const config = await readConfig();
+    const serviceKey = config.safemap_key || config.data_go_kr_key || '';
+    console.log(`[Crime Zones API] Using serviceKey: ${serviceKey ? serviceKey.substring(0, 8) + '...' : 'empty'} (length: ${serviceKey.length})`);
+
+    const url1 = `https://apis.data.go.kr/1741000/CrimeAttentionSectionService/getCrimeAttentionSectionList?serviceKey=${encodeURIComponent(serviceKey)}&pageNo=1&numOfRows=50&type=json`;
+    
+    try {
+        // 1차 시도: URL 인코딩된 인증키로 요청
+        const responseData = await httpsGet(url1);
+        if (typeof responseData === 'string' && responseData.includes('Unexpected errors')) {
+            throw { status: 500, text: 'Unexpected errors' };
+        }
+        return res.json(responseData);
+    } catch (err) {
+        console.warn('[Crime Zones API] 1차 시도 실패(인코딩 키), 2차 시도(원본 키) 진행...', err);
+        
+        // 2차 시도: URL 인코딩하지 않은 원본 인증키 그대로 요청 (포털 버그 우회용)
+        try {
+            const url2 = `https://apis.data.go.kr/1741000/CrimeAttentionSectionService/getCrimeAttentionSectionList?serviceKey=${serviceKey}&pageNo=1&numOfRows=50&type=json`;
+            const responseData2 = await httpsGet(url2);
+            if (typeof responseData2 === 'string' && responseData2.includes('Unexpected errors')) {
+                throw { status: 500, text: 'Unexpected errors' };
+            }
+            return res.json(responseData2);
+        } catch (err2) {
+            console.warn('[Crime Zones API] 2차 시도 실패(원본 키), 3차 시도(디코딩 후 인코딩 키) 진행...', err2);
+            
+            // 3차 시도: 이미 인코딩되어 있는 키일 경우를 위해 디코딩 후 다시 인코딩하여 요청
+            try {
+                const decodedKey = decodeURIComponent(serviceKey);
+                const url3 = `https://apis.data.go.kr/1741000/CrimeAttentionSectionService/getCrimeAttentionSectionList?serviceKey=${encodeURIComponent(decodedKey)}&pageNo=1&numOfRows=50&type=json`;
+                const responseData3 = await httpsGet(url3);
+                if (typeof responseData3 === 'string' && responseData3.includes('Unexpected errors')) {
+                    throw { status: 500, text: 'Unexpected errors' };
+                }
+                return res.json(responseData3);
+            } catch (err3) {
+                console.error('Crime Zones API Error (All retries failed):', err3);
+                const errMsg = err3.text || err3.message || JSON.stringify(err3);
+                res.status(500).json({ error: `행정안전부 범죄주의구간 API 호출에 실패했습니다. (상세: ${errMsg})` });
+            }
+        }
     }
 });
 

@@ -1,6 +1,10 @@
 // Main entry point
 import { Orchestrator } from './src/agents/orchestrator.js';
 let orchestrator;
+let currentLoadedSchools = [];
+window.customCommuteStart = null;
+window.customCommuteEnd = null;
+window.mapClickMode = 'none';
 
 document.addEventListener('DOMContentLoaded', () => {
     orchestrator = new Orchestrator();
@@ -105,6 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Form Navigation & Action Buttons
     const btnBackToSchool = document.getElementById('btnBackToSchool');
     const btnBackToForm = document.getElementById('btnBackToForm');
+    const btnCloseAnalysis = document.getElementById('btnCloseAnalysis');
     const btnRunDiagnosis = document.getElementById('btnRunDiagnosis');
 
     // Diagnosis Output Elements
@@ -164,6 +169,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 text.innerText = val + suffix;
             });
             range.addEventListener('change', () => {
+                if (typeof window.resetSafeCommute === 'function') {
+                    window.resetSafeCommute();
+                }
                 onMapAction();
             });
         }
@@ -202,11 +210,355 @@ document.addEventListener('DOMContentLoaded', () => {
         updateOpacity(); // 초기값 적용
     }
 
+    // 다중 자녀 상태 (1명 이상 지원)
+    let childProfiles = [
+        { id: 'child_1', name: '자녀 1', grade: 'm2', korean: 85, english: 78, math: 72 }
+    ];
+    let selectedChildId = 'child_1';
+
+    // Supabase DB 자녀 프로필 데이터 동기화
+    async function loadChildProfilesFromSupabase() {
+        if (!supabase) {
+            loadChildProfilesFromLocalStorage();
+            return;
+        }
+        try {
+            const { data, error } = await supabase
+                .from('child_profiles')
+                .select('*')
+                .order('created_at', { ascending: true });
+            
+            if (error) throw error;
+            if (data && data.length > 0) {
+                childProfiles = data.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    grade: item.grade || 'm2',
+                    korean: parseInt(item.korean) || 0,
+                    english: parseInt(item.english) || 0,
+                    math: parseInt(item.math) || 0
+                }));
+                selectedChildId = childProfiles[0].id;
+            } else {
+                // 데이터가 없을 경우 초기 기본 자녀 1명 insert
+                const defaultChild = { name: '자녀 1', grade: 'm2', korean: 85, english: 78, math: 72 };
+                const { data: insertedData, error: insertErr } = await supabase
+                    .from('child_profiles')
+                    .insert([defaultChild])
+                    .select();
+                if (!insertErr && insertedData && insertedData.length > 0) {
+                    childProfiles = insertedData.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        grade: item.grade,
+                        korean: item.korean,
+                        english: item.english,
+                        math: item.math
+                    }));
+                    selectedChildId = childProfiles[0].id;
+                }
+            }
+            refreshChildSelectUI();
+        } catch (err) {
+            console.error('Error fetching child profiles from Supabase:', err);
+            loadChildProfilesFromLocalStorage();
+        }
+    }
+
+    function loadChildProfilesFromLocalStorage() {
+        const saved = localStorage.getItem('learnmap_child_profiles');
+        if (saved) {
+            try {
+                childProfiles = JSON.parse(saved);
+                if (childProfiles.length > 0) {
+                    selectedChildId = childProfiles[0].id;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        refreshChildSelectUI();
+    }
+
+    function saveChildProfilesToLocalStorage() {
+        localStorage.setItem('learnmap_child_profiles', JSON.stringify(childProfiles));
+    }
+
+    async function saveChildProfileToSupabase(child) {
+        if (!supabase) return;
+        try {
+            // id가 child_로 시작하면 임시 로컬 id이므로 insert 처리
+            const isTempId = typeof child.id === 'string' && child.id.startsWith('child_');
+            if (isTempId) {
+                const { data, error } = await supabase
+                    .from('child_profiles')
+                    .insert([{
+                        name: child.name,
+                        grade: child.grade,
+                        korean: child.korean,
+                        english: child.english,
+                        math: child.math
+                    }])
+                    .select();
+                if (error) throw error;
+                if (data && data.length > 0) {
+                    child.id = data[0].id; // 발급받은 실제 DB ID로 치환
+                }
+            } else {
+                const { error } = await supabase
+                    .from('child_profiles')
+                    .update({
+                        name: child.name,
+                        grade: child.grade,
+                        korean: child.korean,
+                        english: child.english,
+                        math: child.math
+                    })
+                    .eq('id', child.id);
+                if (error) throw error;
+            }
+        } catch (err) {
+            console.error('Supabase save error:', err);
+        }
+    }
+
+    async function deleteChildProfileFromSupabase(id) {
+        if (!supabase) return;
+        const isTempId = typeof id === 'string' && id.startsWith('child_');
+        if (isTempId) return;
+        try {
+            const { error } = await supabase
+                .from('child_profiles')
+                .delete()
+                .eq('id', id);
+            if (error) throw error;
+        } catch (err) {
+            console.error('Supabase delete error:', err);
+        }
+    }
+
+    const settingsChildSelect = document.getElementById('settingsChildSelect');
+    const settingsChildName = document.getElementById('settingsChildName');
+    const settingsChildGrade = document.getElementById('settingsChildGrade');
+    const settingsChildKor = document.getElementById('settingsChildKor');
+    const settingsChildEng = document.getElementById('settingsChildEng');
+    const settingsChildMath = document.getElementById('settingsChildMath');
+
+    // 분석 결과창 내 자녀 변경 시 실시간 분석 실행 바인딩
+    const analysisChildSelect = document.getElementById('analysisChildSelect');
+    if (analysisChildSelect) {
+        analysisChildSelect.addEventListener('change', () => {
+            const targetId = analysisChildSelect.value;
+            const child = childProfiles.find(c => c.id === targetId);
+            if (child) {
+                selectedChildId = targetId;
+                // 통합 설정 양방향 동기화
+                if (settingsChildSelect) settingsChildSelect.value = targetId;
+                updateFormWithSelectedChild();
+                
+                // 새로운 자녀의 성적으로 즉각 재분석 실행
+                if (orchestrator.state.selectedSchool && typeof orchestrator.childPerformanceDiagnosis === 'function') {
+                    const result = orchestrator.childPerformanceDiagnosis(orchestrator.state.childProfile.scores);
+                    if (typeof renderDiagnosisResults === 'function') {
+                        renderDiagnosisResults(result);
+                    }
+                }
+                
+                // 비교 보드 또한 해당 자녀 기준으로 자동 업데이트
+                if (orchestrator.state.comparisonList.length > 0) {
+                    const comparisonTable = orchestrator.compareAgent.generateComparisonMatrix(orchestrator.state.comparisonList, orchestrator.state.childProfile.scores);
+                    renderComparisonBoard(comparisonTable);
+                }
+            }
+        });
+    }
+
+    function refreshChildSelectUI() {
+        if (!settingsChildSelect) return;
+        settingsChildSelect.innerHTML = '';
+        
+        // 분석창 자녀 셀렉트도 동시에 갱신
+        if (analysisChildSelect) analysisChildSelect.innerHTML = '';
+
+        childProfiles.forEach(child => {
+            // 모달용 옵션
+            const opt1 = document.createElement('option');
+            opt1.value = child.id;
+            opt1.innerText = `${child.name} (${child.grade.toUpperCase()})`;
+            if (child.id === selectedChildId) {
+                opt1.selected = true;
+            }
+            settingsChildSelect.appendChild(opt1);
+
+            // 분석 결과창용 옵션
+            if (analysisChildSelect) {
+                const opt2 = document.createElement('option');
+                opt2.value = child.id;
+                opt2.innerText = child.name;
+                if (child.id === selectedChildId) {
+                    opt2.selected = true;
+                }
+                analysisChildSelect.appendChild(opt2);
+            }
+        });
+        updateFormWithSelectedChild();
+    }
+
+    function updateFormWithSelectedChild() {
+        const child = childProfiles.find(c => c.id === selectedChildId);
+        if (!child) return;
+        if (settingsChildName) settingsChildName.value = child.name;
+        if (settingsChildGrade) settingsChildGrade.value = child.grade;
+        if (settingsChildKor) settingsChildKor.value = child.korean;
+        if (settingsChildEng) settingsChildEng.value = child.english;
+        if (settingsChildMath) settingsChildMath.value = child.math;
+        
+        // 현재 선택된 자녀 정보로 Orchestrator 상태 동기화 및 사이드바 인풋 동기화
+        syncActiveChildWithOrchestrator(child);
+    }
+
+    function syncActiveChildWithOrchestrator(child) {
+        if (!child) return;
+        orchestrator.state.childProfile.name = child.name;
+        orchestrator.state.childProfile.grade = child.grade;
+        orchestrator.state.childProfile.scores = {
+            korean: child.korean,
+            english: child.english,
+            math: child.math
+        };
+
+        const elGrade = document.getElementById('childGrade');
+        const elKor = document.getElementById('childKor');
+        const elEng = document.getElementById('childEng');
+        const elMath = document.getElementById('childMath');
+        if (elGrade) elGrade.value = child.grade;
+        if (elKor) elKor.value = child.korean;
+        if (elEng) elEng.value = child.english;
+        if (elMath) elMath.value = child.math;
+        
+        // 분석 결과창 내 자녀 선택 상태값도 싱크 처리
+        if (analysisChildSelect && analysisChildSelect.value !== child.id) {
+            analysisChildSelect.value = child.id;
+        }
+    }
+
+    if (settingsChildSelect) {
+        settingsChildSelect.addEventListener('change', () => {
+            selectedChildId = settingsChildSelect.value;
+            updateFormWithSelectedChild();
+        });
+    }
+
+    // 자녀 추가 버튼 이벤트
+    const btnAddNewChild = document.getElementById('btnAddNewChild');
+    if (btnAddNewChild) {
+        btnAddNewChild.addEventListener('click', () => {
+            const newId = `child_${Date.now()}`;
+            const newChild = {
+                id: newId,
+                name: `자녀 ${childProfiles.length + 1}`,
+                grade: 'm2',
+                korean: 80,
+                english: 80,
+                math: 80
+            };
+            childProfiles.push(newChild);
+            selectedChildId = newId;
+            refreshChildSelectUI();
+        });
+    }
+
+    // 자녀 삭제 버튼 이벤트
+    const btnDeleteSelectedChild = document.getElementById('btnDeleteSelectedChild');
+    if (btnDeleteSelectedChild) {
+        btnDeleteSelectedChild.addEventListener('click', async () => {
+            if (childProfiles.length <= 1) {
+                alert('최소 1명의 자녀 정보는 필요합니다.');
+                return;
+            }
+            if (confirm('선택된 자녀 정보를 삭제하시겠습니까?')) {
+                const targetId = selectedChildId;
+                childProfiles = childProfiles.filter(c => c.id !== targetId);
+                selectedChildId = childProfiles[0].id;
+                
+                await deleteChildProfileFromSupabase(targetId);
+                saveChildProfilesToLocalStorage();
+                refreshChildSelectUI();
+            }
+        });
+    }
+
+    // 설정 모달이 열릴 때 Supabase 데이터를 기준으로 동기화
+    const btnOpenSettings = document.getElementById('btnOpenSettings');
+    if (btnOpenSettings) {
+        btnOpenSettings.addEventListener('click', async () => {
+            await loadChildProfilesFromSupabase();
+        });
+    }
+
+    // 자녀 성적 저장 및 동기화 버튼 클릭 이벤트
+    const btnSaveSettingsScores = document.getElementById('btnSaveSettingsScores');
+    if (btnSaveSettingsScores) {
+        btnSaveSettingsScores.addEventListener('click', async () => {
+            const child = childProfiles.find(c => c.id === selectedChildId);
+            if (!child) return;
+
+            const elModalName = document.getElementById('settingsChildName');
+            const elModalGrade = document.getElementById('settingsChildGrade');
+            const elModalKor = document.getElementById('settingsChildKor');
+            const elModalEng = document.getElementById('settingsChildEng');
+            const elModalMath = document.getElementById('settingsChildMath');
+
+            child.name = elModalName ? elModalName.value.trim() || '자녀' : '자녀';
+            child.grade = elModalGrade ? elModalGrade.value : 'm2';
+            child.korean = elModalKor ? parseInt(elModalKor.value) || 0 : 0;
+            child.english = elModalEng ? parseInt(elModalEng.value) || 0 : 0;
+            child.math = elModalMath ? parseInt(elModalMath.value) || 0 : 0;
+
+            // 로컬 스토리지 저장 및 동기화
+            saveChildProfilesToLocalStorage();
+            syncActiveChildWithOrchestrator(child);
+
+            // Supabase 비동기 업서트 처리
+            await saveChildProfileToSupabase(child);
+
+            // 학업 진단 다시 실행 (선택된 학교가 있을 때)
+            if (orchestrator.state.selectedSchool && typeof orchestrator.childPerformanceDiagnosis === 'function') {
+                const result = orchestrator.childPerformanceDiagnosis(orchestrator.state.childProfile.scores);
+                if (typeof renderDiagnosisResults === 'function') {
+                    renderDiagnosisResults(result);
+                }
+            }
+
+            // 비교 보드 적합도 및 산출근거 실시간 갱신
+            if (orchestrator.state.comparisonList.length > 0) {
+                const comparisonTable = orchestrator.compareAgent.generateComparisonMatrix(orchestrator.state.comparisonList, orchestrator.state.childProfile.scores);
+                renderComparisonBoard(comparisonTable);
+            }
+
+            // 자녀 선택 목록 옵션 텍스트 최신화
+            refreshChildSelectUI();
+
+            alert('자녀 성적 정보가 성공적으로 저장되었습니다.');
+            const settingsModal = document.getElementById('settingsModal');
+            if (settingsModal) settingsModal.style.display = 'none';
+        });
+    }
+
+    // 초기 로딩 시 자녀 정보 연동
+    loadChildProfilesFromLocalStorage();
+    if (supabase) {
+        loadChildProfilesFromSupabase();
+    }
+
     const otherFilters = ['profileRecommendFilter', 'commuteRadiusFilter', 'trendUpwardCheckbox', 'filterClassSizePreset', 'filterStudentTrend', 'filterSpecialClass'];
     otherFilters.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
             el.addEventListener('change', () => {
+                if (typeof window.resetSafeCommute === 'function') {
+                    window.resetSafeCommute();
+                }
                 if (id === 'profileRecommendFilter') {
                     const profile = el.value;
                     const setVal = (sid, tid, val) => {
@@ -278,6 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnOpenSimulation && simulationModal) {
         btnOpenSimulation.addEventListener('click', () => {
+            if (typeof resetSafeCommute === 'function') resetSafeCommute();
             simulationModal.style.display = 'flex';
             document.getElementById('simulationResultPanel').style.display = 'none';
             initSimulationDropdowns(); // 모달 오픈 시 드롭다운 초기화
@@ -362,17 +715,53 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') performSearch();
     });
     regionFilter.addEventListener('change', () => {
+        if (typeof resetSafeCommute === 'function') resetSafeCommute();
         onRegionFilterChange();
         // 지도가 이동한 후 영역 내 학교를 표시하기 위해 약간의 지연 후 호출
         setTimeout(onMapAction, 150);
     });
     schoolTypeFilter.addEventListener('change', () => {
+        if (typeof resetSafeCommute === 'function') resetSafeCommute();
         onMapAction();
     });
 
     btnCompareChild.addEventListener('click', () => {
+        // 자녀 선택 UI 목록 갱신
+        refreshChildSelectUI();
+
+        // 이미 저장된 성적 데이터가 있는지 확인
+        const scores = orchestrator.state.childProfile.scores;
+        
+        // 성적이 아예 입력된 적이 없거나 모두 0인 경우 방어 처리
+        const hasSavedScores = scores && (scores.korean > 0 || scores.english > 0 || scores.math > 0);
+        
+        if (!hasSavedScores) {
+            alert('⚙️ 상단 [통합 설정] 버튼을 눌러 자녀의 최근 시험 성적 정보를 먼저 저장해 주세요.');
+            const settingsModal = document.getElementById('settingsModal');
+            if (settingsModal) {
+                settingsModal.style.display = 'flex';
+            }
+            return;
+        }
+
+        // 저장된 성적으로 즉시 분석 수행
+        const result = orchestrator.childPerformanceDiagnosis(scores);
+        
+        // Reset compare region dropdown to selected school's region
+        const defaultRegion = orchestrator.state.selectedSchool ? orchestrator.state.selectedSchool.region : '서울특별시';
+        const elCompareRegion = document.getElementById('selCompareRegion');
+        if (elCompareRegion) {
+            elCompareRegion.value = defaultRegion;
+        }
+
+        if (typeof renderDiagnosisResults === 'function') {
+            renderDiagnosisResults(result);
+        }
+
+        // 사이드바의 입력 폼을 생략하고 바로 결과 카드를 노출
         schoolCard.style.display = 'none';
-        childFormCard.style.display = 'block';
+        childFormCard.style.display = 'none';
+        diagnosisResultCard.style.display = 'block';
     });
 
     btnBackToSchool.addEventListener('click', () => {
@@ -381,9 +770,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     btnBackToForm.addEventListener('click', () => {
-        diagnosisResultCard.style.display = 'none';
-        childFormCard.style.display = 'block';
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) {
+            settingsModal.style.display = 'flex';
+        }
     });
+
+    if (btnCloseAnalysis) {
+        btnCloseAnalysis.addEventListener('click', () => {
+            diagnosisResultCard.style.display = 'none';
+            schoolCard.style.display = 'block';
+        });
+    }
 
     btnRunDiagnosis.addEventListener('click', () => {
         orchestrator.state.childProfile.name = document.getElementById('childName').value;
@@ -420,13 +818,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // 이미 추가되었을 경우 비교보드 매트릭스를 그대로 다시 렌더링하여 화면에 보여줍니다.
             const comparisonTable = orchestrator.compareAgent.generateComparisonMatrix(orchestrator.state.comparisonList, orchestrator.state.childProfile.scores);
             renderComparisonBoard(comparisonTable);
-            compareOverlay.style.display = 'block';
+            compareOverlay.style.display = 'flex';
             updateCompareFloatingButton();
         } else {
             const res = orchestrator.addToComparison(orchestrator.state.selectedSchool);
             if (res.success) {
                 renderComparisonBoard(res.data);
-                compareOverlay.style.display = 'block';
+                compareOverlay.style.display = 'flex';
                 updateCompareFloatingButton();
             } else {
                 alert(res.message);
@@ -461,7 +859,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const comparisonTable = orchestrator.compareAgent.generateComparisonMatrix(orchestrator.state.comparisonList, orchestrator.state.childProfile.scores);
             renderComparisonBoard(comparisonTable);
             if (compareOverlay) {
-                compareOverlay.style.display = 'block';
+                compareOverlay.style.display = 'flex';
             }
             updateCompareFloatingButton();
         });
@@ -681,11 +1079,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let geocoder = null;
     let clusterer = null;
     let mapMarkers = [];
-    let currentLoadedSchools = []; // Cache for currently loaded school data
+    currentLoadedSchools = []; // Cache for currently loaded school data
     let schoolsDatabase = []; // In-memory database of all schools fetched from backend
     let schoolsLoadPromise = null;
     let commuteCircle = null; // 통학 반경 시각화용 원 객체
     let commuteCenter = null; // 통학 분석 기준 중심점 LatLng
+    window.getCommuteCenter = () => commuteCenter;
     let commuteCenterMarker = null; // 통학 분석 기준 중심점 마커
     let lastMapCenter = null; // 마지막 지도 중심 좌표 캐시
     let lastDetectedRegion = null; // 마지막 감지된 시도 지역명 캐시
@@ -771,6 +1170,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
 
                         // Register Map Interaction events
+                        let dragThrottleTimeout = null;
+                        kakao.maps.event.addListener(kakaoMap, 'drag', () => {
+                            if (!dragThrottleTimeout) {
+                                dragThrottleTimeout = setTimeout(() => {
+                                    const chk = document.getElementById('safetyGuideCheckbox');
+                                    if (chk && chk.checked) {
+                                        updateSafetyGuideLayers(orchestrator.state.selectedSchool);
+                                    }
+                                    const chkCrime = document.getElementById('crimeZoneToggleCheckbox');
+                                    if (chkCrime && chkCrime.checked) {
+                                        updateCrimeZoneLayers(orchestrator.state.selectedSchool);
+                                    }
+                                    dragThrottleTimeout = null;
+                                }, 300);
+                            }
+                        });
+
                         kakao.maps.event.addListener(kakaoMap, 'dragend', () => {
                             onMapAction();
                             if (compareOverlay) {
@@ -785,6 +1201,28 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (compareOverlay && compareOverlay.style.display !== 'none') {
                                 compareOverlay.style.display = 'none';
                                 updateCompareFloatingButton();
+                            }
+                            
+                            if (window.mapClickMode === 'setStart') {
+                                window.customCommuteStart = mouseEvent.latLng;
+                                window.mapClickMode = 'none';
+                                if (orchestrator.state.selectedSchool) {
+                                    window.updateMapLayers(orchestrator.state.selectedSchool);
+                                }
+                                if (typeof window.updatePointSelectorButtons === 'function') {
+                                    window.updatePointSelectorButtons();
+                                }
+                                return;
+                            } else if (window.mapClickMode === 'setEnd') {
+                                window.customCommuteEnd = mouseEvent.latLng;
+                                window.mapClickMode = 'none';
+                                if (orchestrator.state.selectedSchool) {
+                                    window.updateMapLayers(orchestrator.state.selectedSchool);
+                                }
+                                if (typeof window.updatePointSelectorButtons === 'function') {
+                                    window.updatePointSelectorButtons();
+                                }
+                                return;
                             }
                             
                             const commuteMode = document.getElementById('commuteRadiusFilter').value;
@@ -887,6 +1325,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 4. Memory-based School Search
     async function performSearch(overrideQuery) {
+        if (typeof resetSafeCommute === 'function') resetSafeCommute();
         const query = (overrideQuery !== undefined && !(overrideQuery instanceof Event)) ? overrideQuery : searchInput.value;
         
         // Sync Filters
@@ -1235,6 +1674,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 clusterer.clear();
                 clusterer.addMarkers(markers);
             }
+            updateSafetyGuideLayers(orchestrator.state.selectedSchool);
+            updateCrimeZoneLayers(orchestrator.state.selectedSchool);
             return;
         }
 
@@ -1287,6 +1728,8 @@ document.addEventListener('DOMContentLoaded', () => {
         filtered = filtered.slice(0, 30); // Prevent overlay flooding
         currentLoadedSchools = filtered;
         renderPins(filtered, false);
+        updateSafetyGuideLayers(orchestrator.state.selectedSchool);
+        updateCrimeZoneLayers(orchestrator.state.selectedSchool);
     }
 
     // Global selector callback
@@ -2010,6 +2453,20 @@ document.addEventListener('DOMContentLoaded', () => {
                                 window.fetchCommunityReviews(acadName, 'all', shortSubject, typeLabel);
 
                                 // 신규 학원 부가 서비스 연동 (계산기 & 타운 톡)
+                                // 탭 상태 기본값(후기 & 톡)으로 초기화
+                                const tabRev = document.getElementById('tabAcademyReviews');
+                                const tabCalc = document.getElementById('tabAcademyCalculator');
+                                const secRev = document.getElementById('sectionAcademyReviews');
+                                const secCalc = document.getElementById('sectionAcademyCalculator');
+                                if (tabRev && tabCalc && secRev && secCalc) {
+                                    tabRev.style.borderBottomColor = 'var(--primary-blue)';
+                                    tabRev.style.color = 'var(--primary-blue)';
+                                    tabCalc.style.borderBottomColor = 'transparent';
+                                    tabCalc.style.color = 'var(--text-muted)';
+                                    secRev.style.display = 'block';
+                                    secCalc.style.display = 'none';
+                                }
+
                                 if (typeof window.renderAcademyFeeCalculator === 'function') {
                                     window.renderAcademyFeeCalculator(acadName, shortSubject);
                                 }
@@ -2178,7 +2635,13 @@ document.addEventListener('DOMContentLoaded', () => {
         lastDiagnosisResult = result;
         diagnosticSummaryLabel.innerText = result.overall.position_label;
         diagnosticSummaryDesc.innerText = result.overall.summary;
-        document.getElementById('admissionSimulationDesc').innerText = result.overall.admission_simulation;
+        
+        const simTitleEl = document.getElementById('simulationTitle');
+        if (simTitleEl) {
+            simTitleEl.innerText = result.overall.simulation_title || '🎓 고교 진학 시뮬레이션 결과';
+        }
+        
+        document.getElementById('admissionSimulationDesc').innerHTML = result.overall.admission_simulation;
         
         // 진학 예측 정보 렌더링
         const predictionBox = document.getElementById('districtAdmissionPrediction');
@@ -2297,6 +2760,26 @@ document.addEventListener('DOMContentLoaded', () => {
                         <strong style="color: #1565c0; font-size: 11px; display: block; margin-bottom: 4px;">💡 대입 지원 전략 제안: 학생부 교과/수시 집중 공략</strong>
                         <p style="margin: 0; font-size: 11px; line-height: 1.5; color: #0d47a1; letter-spacing: -0.2px;">
                             비교적 내신 최상위 등급(1등급대) 쟁탈전이 다른 학군에 비해 수월한 학교입니다. 모의고사 성적 대비 높은 학교 내신 점수를 무기로 하여 <strong>학생부 교과 중심의 수시 전형을 통해 최상위 대학교를 저격하는 전략</strong>이 가장 높은 가성비를 냅니다.
+                        </p>
+                    </div>
+                `;
+            }
+        } else if (school.school_type && school.school_type.includes('초등학교')) {
+            if (compIndex2026 >= 70) {
+                strategyHTML = `
+                    <div style="background: #ffe0b2; border: 1px solid #ffb74d; border-radius: 8px; padding: 12px; margin-top: 12px;">
+                        <strong style="color: #e65100; font-size: 11px; display: block; margin-bottom: 4px;">💡 중학교 진학 추천 가이드: 명문 학군중 진학 및 연계 대비</strong>
+                        <p style="margin: 0; font-size: 11px; line-height: 1.5; color: #4e342e; letter-spacing: -0.2px;">
+                            주변의 높은 교육열과 학생들의 기초 학력이 탄탄한 학군지입니다. 중학교 진학 후 급격히 심화되는 수학 계통성 학습과 영어 서술형 평가에 대비하여, 초등 고학년 시기부터 교과 구멍이 없도록 꼼꼼한 기본-응용 연계 지도와 독서 토론을 강화하는 것을 권장합니다.
+                        </p>
+                    </div>
+                `;
+            } else {
+                strategyHTML = `
+                    <div style="background: #f1f8e9; border: 1px solid #aed581; border-radius: 8px; padding: 12px; margin-top: 12px;">
+                        <strong style="color: #33691e; font-size: 11px; display: block; margin-bottom: 4px;">💡 초등 학습 지도 가이드: 자기주도 독서 및 기초 연산 확립</strong>
+                        <p style="margin: 0; font-size: 11px; line-height: 1.5; color: #1b5e20; letter-spacing: -0.2px;">
+                            안정적이고 여유로운 학업 분위기를 띄고 있습니다. 무리한 속진 선행보다는 자기주도적 독서 습관을 기르고, 연산 속도 및 문해력을 튼튼히 쌓으며 초등 과정의 완벽한 개념 체화를 지향하는 것이 장기적으로 고교 내신 성취에 유리합니다.
                         </p>
                     </div>
                 `;
@@ -2875,20 +3358,6 @@ document.addEventListener('DOMContentLoaded', () => {
             col.className = 'compare-col';
             col.style.position = 'relative';
             
-            // 삭제 버튼
-            const deleteBtn = document.createElement('button');
-            deleteBtn.innerHTML = '&times;';
-            deleteBtn.style.cssText = 'position:absolute; top:8px; right:8px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-muted); padding:0; line-height:1; font-weight:bold;';
-            deleteBtn.onclick = () => {
-                const newMatrix = orchestrator.removeFromComparison(item.school_id);
-                renderComparisonBoard(newMatrix);
-                if (newMatrix.length === 0) {
-                    compareOverlay.style.display = 'none';
-                }
-                updateCompareFloatingButton();
-            };
-            col.appendChild(deleteBtn);
-            
             // 3개년 성적 스파크라인 SVG 렌더링
             let sparklineHtml = '';
             if (item.trendData && item.trendData.length >= 3) {
@@ -2942,8 +3411,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const infoContent = document.createElement('div');
             infoContent.innerHTML = `
-                <div class="compare-school-name" style="padding-right: 18px;">${item.school_name}</div>
-                <div style="font-size:12px;margin-bottom:5px;">🧑‍🎓 학생수: <strong>${item.student_count}</strong></div>
+                <div class="compare-school-name" style="padding-right: 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; background: white; margin-top: 0; border-top-left-radius: 9px; border-top-right-radius: 9px;">
+                    <span>${item.school_name}</span>
+                    <button class="compare-card-close" style="background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-muted); padding:0 4px; line-height:1; font-weight:bold;">&times;</button>
+                </div>
+                <div style="font-size:12px;margin-bottom:5px; margin-top:8px;">🧑‍🎓 학생수: <strong>${item.student_count}</strong></div>
                 <div style="font-size:12px;margin-bottom:5px;">🏫 학급 평균: <strong>${item.class_avg_size}</strong></div>
                 <div style="font-size:12px;margin-bottom:5px;">📊 국·영·수 평균: <strong>${item.korean_avg} / ${item.english_avg} / ${item.math_avg}</strong></div>
                 <div style="font-size:12px;margin-bottom:5px;">⚖️ 가중 평균 점수: <strong>${weightedAvgLabel}</strong></div>
@@ -2963,9 +3435,76 @@ document.addEventListener('DOMContentLoaded', () => {
                     <strong style="color:${item.suitability === '상' ? 'var(--success-green)' : (item.suitability === '중' ? 'var(--warning-yellow)' : 'var(--danger-red)')}; font-size:13px;">${item.suitability} (${item.suitabilityDiff >= 0 ? '+' : ''}${Math.round(item.suitabilityDiff * 10) / 10}점)</strong>
                 </div>
             `;
+            
+            // 삭제 버튼 클릭 리스너 연결
+            const closeBtn = infoContent.querySelector('.compare-card-close');
+            if (closeBtn) {
+                closeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const newMatrix = orchestrator.removeFromComparison(item.school_id);
+                    renderComparisonBoard(newMatrix);
+                    if (newMatrix.length === 0) {
+                        compareOverlay.style.display = 'none';
+                    }
+                    updateCompareFloatingButton();
+                };
+            }
+
             col.appendChild(infoContent);
             compareGrid.appendChild(col);
         });
+
+        // 우리 아이 적합도 산출근거 실시간 바인딩
+        const basisContainer = document.getElementById('compareSuitabilityBasis');
+        const basisList = document.getElementById('compareSuitabilityBasisList');
+        if (basisContainer && basisList) {
+            if (matrix.length > 0) {
+                let listHtml = '';
+                let hasValidScore = false;
+
+                // 자녀 성적 데이터가 유효한지 검증하기 위한 점수 확인
+                const scores = orchestrator.state.childProfile.scores;
+                const elKor = document.getElementById('childKor');
+                const elEng = document.getElementById('childEng');
+                const elMath = document.getElementById('childMath');
+                const currentScores = {
+                    korean: scores.korean !== null ? scores.korean : (elKor ? parseInt(elKor.value) || 0 : 0),
+                    english: scores.english !== null ? scores.english : (elEng ? parseInt(elEng.value) || 0 : 0),
+                    math: scores.math !== null ? scores.math : (elMath ? parseInt(elMath.value) || 0 : 0)
+                };
+
+                if (currentScores.korean > 0 || currentScores.english > 0 || currentScores.math > 0) {
+                    hasValidScore = true;
+                }
+
+                if (hasValidScore) {
+                    matrix.forEach(item => {
+                        const totalAvg = Math.round(((item.korean_avg + item.english_avg + item.math_avg) / 3) * 10) / 10;
+                        const childAvg = Math.round(((currentScores.korean + currentScores.english + currentScores.math) / 3) * 10) / 10;
+                        const diff = Math.round((childAvg - totalAvg) * 10) / 10;
+                        const diffSign = diff >= 0 ? '+' : '';
+                        
+                        let badgeColor = 'var(--warning-yellow)';
+                        if (item.suitability === '상') badgeColor = 'var(--success-green)';
+                        if (item.suitability === '하') badgeColor = 'var(--danger-red)';
+
+                        listHtml += `
+                            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; padding: 2px 0;">
+                                <span>🏫 <strong>${item.school_name}</strong>: 자녀 평균 (${childAvg}점) - 학교 평균 (${totalAvg}점) = 편차 (<strong>${diffSign}${diff}점</strong>)</span>
+                                <span style="background: ${badgeColor}; color: white; padding: 1px 6px; border-radius: 4px; font-weight: bold; font-size: 9px;">적합도: ${item.suitability}</span>
+                            </div>
+                        `;
+                    });
+                    basisList.innerHTML = listHtml;
+                    basisContainer.style.display = 'flex';
+                } else {
+                    basisList.innerHTML = '<div style="color: var(--text-muted); font-style: italic;">* 성적 입력란에 자녀의 성적을 입력하시면 학교별 편차 및 산출 근거가 이곳에 실시간 노출됩니다.</div>';
+                    basisContainer.style.display = 'flex';
+                }
+            } else {
+                basisContainer.style.display = 'none';
+            }
+        }
     }
 
     function updateCommuteCircle() {
@@ -4351,6 +4890,17 @@ document.addEventListener('DOMContentLoaded', () => {
             if (sPath) sPath.checked = false;
             if (sPathAca) sPathAca.checked = false;
 
+            const panel = document.getElementById('commutePathSettings');
+            const panelAca = document.getElementById('commutePathSettingsAcademy');
+            if (panel) panel.style.display = 'none';
+            if (panelAca) panelAca.style.display = 'none';
+            window.customCommuteStart = null;
+            window.customCommuteEnd = null;
+            window.mapClickMode = 'none';
+            if (typeof window.updatePointSelectorButtons === 'function') {
+                window.updatePointSelectorButtons();
+            }
+
             // 신규 부가 서비스 연동 (지도 레이어, 부동산 차트, 학교 타운 톡)
             if (typeof updateMapLayers === 'function') updateMapLayers(school);
             if (typeof drawEstateTrendGraph === 'function') drawEstateTrendGraph(school);
@@ -4400,15 +4950,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 5대 신규 서비스 헬퍼 함수 구현 ---
 
-    // 1. 안심 통학로 및 학원 셔틀 노선 맵 레이어
+    // 1. 안심 통학로 및 안전 시설 맵 레이어
     let commutePolylines = [];
-    let shuttlePolylines = [];
+    let safetyMarkers = [];
+    let schoolZoneCircles = [];
+    let safetyGuideMarkers = [];
+
+    window.clearSafetyGuideLayers = function() {
+        if (safetyGuideMarkers) {
+            safetyGuideMarkers.forEach(m => m.setMap(null));
+        }
+        safetyGuideMarkers = [];
+    }
 
     function clearMapLayers() {
         commutePolylines.forEach(p => p.setMap(null));
         commutePolylines = [];
-        shuttlePolylines.forEach(p => p.setMap(null));
-        shuttlePolylines = [];
+        safetyMarkers.forEach(m => m.setMap(null));
+        safetyMarkers = [];
+        schoolZoneCircles.forEach(c => c.setMap(null));
+        schoolZoneCircles = [];
+        
+        // 범례 플로팅 가이드 바 숨김
+        const legendBar = document.getElementById('commuteLegendFloatingBar');
+        if (legendBar) legendBar.style.display = 'none';
     }
 
     function updateMapLayers(school) {
@@ -4420,102 +4985,565 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isNaN(lat) || isNaN(lng)) return;
 
         const chkCommute = document.getElementById('chkCommutePath');
-        const chkShuttle = document.getElementById('chkShuttlePath');
         const isCommuteChecked = chkCommute ? chkCommute.checked : false;
-        const isShuttleChecked = chkShuttle ? chkShuttle.checked : false;
 
-        // 학교 ID 또는 이름을 이용한 고유 해시 시드 생성
-        const seedStr = school.school_id || school.school_name || 'default';
-        let hash = 0;
-        for (let i = 0; i < seedStr.length; i++) {
-            hash = seedStr.charCodeAt(i) + ((hash << 5) - hash);
-        }
-
-        const val1 = Math.abs(hash % 7) + 1; // 1 ~ 7
-        const val2 = Math.abs((hash >> 3) % 9) + 1; // 1 ~ 9
-        const val3 = Math.abs((hash >> 6) % 5) + 1; // 1 ~ 5
-
-        // 안심 도보 경로 그리기
+        // 안심 도보 경로 및 안전 지킴이 시설 표시
         if (isCommuteChecked) {
-            // 해시값을 조합하여 학교마다 다른 3방향의 꺾인 가상 통학로 동적 계산
-            const routes = [
-                // Route 1
-                [
-                    new kakao.maps.LatLng(lat, lng),
-                    new kakao.maps.LatLng(lat + ((hash % 2 === 0) ? 0.0015 : -0.0015), lng + (((hash >> 1) % 2 === 0) ? 0.001 : -0.001)),
-                    new kakao.maps.LatLng(lat + ((hash % 2 === 0) ? 0.003 : -0.003), lng + (((hash >> 1) % 2 === 0) ? 0.001 : -0.001) + (val1 * 0.0002))
-                ],
-                // Route 2
-                [
-                    new kakao.maps.LatLng(lat, lng),
-                    new kakao.maps.LatLng(lat - (((hash >> 2) % 2 === 0) ? 0.001 : -0.001), lng - (((hash >> 3) % 2 === 0) ? 0.0015 : -0.0015)),
-                    new kakao.maps.LatLng(lat - (((hash >> 2) % 2 === 0) ? 0.001 : -0.001) - (val2 * 0.0002), lng - (((hash >> 3) % 2 === 0) ? 0.003 : -0.003))
-                ],
-                // Route 3
-                [
-                    new kakao.maps.LatLng(lat, lng),
-                    new kakao.maps.LatLng(lat - (((hash >> 4) % 2 === 0) ? 0.0015 : -0.0015), lng + (((hash >> 5) % 2 === 0) ? 0.002 : -0.002)),
-                    new kakao.maps.LatLng(lat - (((hash >> 4) % 2 === 0) ? 0.003 : -0.003), lng + (((hash >> 5) % 2 === 0) ? 0.002 : -0.002) - (val3 * 0.0002))
-                ]
-            ];
+            // 범례 플로팅 가이드 바 표시
+            const legendBar = document.getElementById('commuteLegendFloatingBar');
+            if (legendBar) legendBar.style.display = 'flex';
 
-            routes.forEach(path => {
-                const polyline = new kakao.maps.Polyline({
-                    path: path,
-                    strokeWeight: 6,
-                    strokeColor: '#2979ff',
-                    strokeOpacity: 0.85,
-                    strokeStyle: 'solid'
-                });
-                polyline.setMap(window.kakaoMapInstance);
-                commutePolylines.push(polyline);
+            // 통학 출발지 결정 (수동으로 지정한 경우 혹은 지도 클릭 중심점 데이터가 있는 경우에만 활성화)
+            let startLat, startLng;
+            let usingCommuteCenter = false;
+
+            if (window.customCommuteStart) {
+                startLat = window.customCommuteStart.getLat();
+                startLng = window.customCommuteStart.getLng();
+                usingCommuteCenter = true;
+            } else {
+                // 출발지가 지정되지 않은 경우, 화면을 깔끔하게 유지하기 위해 경로 및 마커를 렌더링하지 않습니다.
+                return;
+            }
+
+            const startPoint = new kakao.maps.LatLng(startLat, startLng);
+            const endPoint = new kakao.maps.LatLng(lat, lng);
+
+            // 출발점 마커 표시 (빨간색 깃발 - 출발)
+            const startMarker = new kakao.maps.Marker({
+                position: startPoint,
+                map: window.kakaoMapInstance,
+                title: '통학 출발지 (수동 지정)',
+                image: new kakao.maps.MarkerImage(
+                    'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/red_b.png',
+                    new kakao.maps.Size(30, 30),
+                    { offset: new kakao.maps.Point(15, 30) }
+                )
             });
+            safetyMarkers.push(startMarker);
+
+            // 도착점 마커 표시 (파란색 깃발 - 학교/도착)
+            const endMarker = new kakao.maps.Marker({
+                position: endPoint,
+                map: window.kakaoMapInstance,
+                title: school.school_name,
+                image: new kakao.maps.MarkerImage(
+                    'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/blue_b.png',
+                    new kakao.maps.Size(30, 30),
+                    { offset: new kakao.maps.Point(15, 30) }
+                )
+            });
+            safetyMarkers.push(endMarker);
+
+            // 어린이보호구역(스쿨존) 300m 법정 반경 가이드 원 그리기 (황색 투명 원)
+            const schoolZone = new kakao.maps.Circle({
+                center: endPoint,
+                radius: 300, // 스쿨존 반경 300m
+                strokeWeight: 2,
+                strokeColor: '#ffb300',
+                strokeOpacity: 0.8,
+                strokeStyle: 'solid',
+                fillColor: '#ffe082',
+                fillOpacity: 0.15
+            });
+            schoolZone.setMap(window.kakaoMapInstance);
+            schoolZoneCircles.push(schoolZone);
+
+            // OSRM Pedestrian Routing API 호출
+            const osrmUrl = `https://router.project-osrm.org/route/v1/foot/${startLng},${startLat};${lng},${lat}?overview=full&geometries=geojson`;
+            
+            fetch(osrmUrl)
+                .then(res => res.json())
+                .then(data => {
+                    let pathCoordinates = [];
+                    if (data.code === 'Ok' && data.routes && data.routes[0]) {
+                        pathCoordinates = data.routes[0].geometry.coordinates.map(coord => new kakao.maps.LatLng(coord[1], coord[0]));
+                    } else {
+                        pathCoordinates = [
+                            startPoint,
+                            new kakao.maps.LatLng(startLat, lng),
+                            endPoint
+                        ];
+                    }
+                    drawCommutePath(pathCoordinates);
+                    
+                    // OSRM 경로 상의 일정 간격 교차점에 방범 CCTV 가상 카메라 배지 설치
+                    if (pathCoordinates.length > 4) {
+                        for (let i = 2; i < pathCoordinates.length - 2; i += 4) {
+                            const coord = pathCoordinates[i];
+                            const content = `
+                                <div style="background: white; border: 2px solid #78909c; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.25); font-size: 13px;" title="방범용 CCTV">
+                                    🎥
+                                </div>
+                            `;
+                            const cctvOverlay = new kakao.maps.CustomOverlay({
+                                position: coord,
+                                content: content,
+                                yAnchor: 1.2
+                            });
+                            cctvOverlay.setMap(window.kakaoMapInstance);
+                            safetyMarkers.push(cctvOverlay);
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error('[Safe Commute API] OSRM 라우팅 호출 실패, 백업 격자 경로를 그립니다:', err);
+                    const pathCoordinates = [
+                        startPoint,
+                        new kakao.maps.LatLng(startLat, lng),
+                        endPoint
+                    ];
+                    drawCommutePath(pathCoordinates);
+                });
+
+            // 주변 안전 지킴이 시설(치안센터, 파출소, 아동보호시설 등) 검색 및 지도에 표시
+            if (window.kakao && kakao.maps.services) {
+                const ps = new kakao.maps.services.Places();
+                
+                // 1. 아동안전지킴이집 검색 및 마커 표시
+                ps.keywordSearch('아동안전지킴이집', (result, status) => {
+                    if (status === kakao.maps.services.Status.OK) {
+                        result.forEach(place => {
+                            const placeLatLng = new kakao.maps.LatLng(place.y, place.x);
+                            const content = `
+                                <div style="background: white; border: 2px solid #2979ff; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.25); font-size: 13px;" title="아동안전지킴이집: ${place.place_name}">
+                                    🛡️
+                                </div>
+                            `;
+                            const safeHouseOverlay = new kakao.maps.CustomOverlay({
+                                position: placeLatLng,
+                                content: content,
+                                yAnchor: 1.2
+                            });
+                            safeHouseOverlay.setMap(window.kakaoMapInstance);
+                            safetyMarkers.push(safeHouseOverlay);
+                        });
+                    }
+                }, {
+                    location: endPoint,
+                    radius: 800
+                });
+
+                // 2. 경찰/치안 시설(파출소) 검색 및 마커 표시
+                ps.keywordSearch('파출소', (result, status) => {
+                    if (status === kakao.maps.services.Status.OK) {
+                        result.forEach(place => {
+                            const placeLatLng = new kakao.maps.LatLng(place.y, place.x);
+                            const content = `
+                                <div style="background: white; border: 2px solid #d50000; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.25); font-size: 13px;" title="경찰/치안시설: ${place.place_name}">
+                                    🚨
+                                </div>
+                            `;
+                            const policeOverlay = new kakao.maps.CustomOverlay({
+                                position: placeLatLng,
+                                content: content,
+                                yAnchor: 1.2
+                            });
+                            policeOverlay.setMap(window.kakaoMapInstance);
+                            safetyMarkers.push(policeOverlay);
+                        });
+                    }
+                }, {
+                    location: endPoint,
+                    radius: 800
+                });
+            }
+        }
+        updateSafetyGuideLayers(school);
+    }
+
+    window.updateSafetyGuideLayers = function(school) {
+        if (!window.kakaoMapInstance) return;
+        
+        const chk = document.getElementById('safetyGuideCheckbox');
+        if (!chk || !chk.checked) {
+            clearSafetyGuideLayers();
+            return;
         }
 
-        // 학원 셔틀 버스 노선 그리기
-        if (isShuttleChecked) {
-            // 학교마다 셔틀 노선 크기(가로/세로 반경) 및 사각형 찌그러짐을 다르게 부여
-            const sizeX = 0.003 + (val1 * 0.0002);
-            const sizeY = 0.003 + (val2 * 0.0002);
-            const skewX = ((hash >> 6) % 3 - 1) * 0.0004;
-            const skewY = ((hash >> 7) % 3 - 1) * 0.0004;
-
-            const path = [
-                new kakao.maps.LatLng(lat + sizeY + skewY, lng + sizeX + skewX),
-                new kakao.maps.LatLng(lat + sizeY - skewY, lng - sizeX + skewX),
-                new kakao.maps.LatLng(lat - sizeY - skewY, lng - sizeX - skewX),
-                new kakao.maps.LatLng(lat - sizeY + skewY, lng + sizeX - skewX),
-                new kakao.maps.LatLng(lat + sizeY + skewY, lng + sizeX + skewX) // 순환선
+        // 지도 줌 레벨이 너무 축소된 상태(레벨 7 이상)이면 마커 과도 현상 방지를 위해 그리지 않음
+        if (window.kakaoMapInstance.getLevel() >= 7) {
+            clearSafetyGuideLayers();
+            return;
+        }
+        
+        const tempMarkers = [];
+        
+        // 1. 현재 지도 영역 내에 로드된 전체 학교(currentLoadedSchools)를 돌며 CCTV 가상 핀을 전체 지도에 흩뿌림
+        const schoolsToMark = currentLoadedSchools && currentLoadedSchools.length > 0 
+            ? currentLoadedSchools 
+            : (school ? [school] : []);
+            
+        schoolsToMark.forEach(s => {
+            const sLat = parseFloat(s.lat);
+            const sLng = parseFloat(s.lng);
+            if (isNaN(sLat) || isNaN(sLng)) return;
+            
+            // 학교당 2개씩 가상 CCTV 오프셋 배치
+            const offsets = [
+                { lat: 0.001, lng: 0.001 },
+                { lat: -0.001, lng: -0.001 }
             ];
-
-            const polyline = new kakao.maps.Polyline({
-                path: path,
-                strokeWeight: 6,
-                strokeColor: '#ff9100',
-                strokeOpacity: 0.85,
-                strokeStyle: 'dash'
+            
+            offsets.forEach(offset => {
+                const cLatLng = new kakao.maps.LatLng(sLat + offset.lat, sLng + offset.lng);
+                const content = `
+                    <div style="background: white; border: 2px solid #78909c; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.25); font-size: 13px;" title="방범용 CCTV">
+                        🎥
+                    </div>
+                `;
+                const cctvOverlay = new kakao.maps.CustomOverlay({
+                    position: cLatLng,
+                    content: content,
+                    yAnchor: 1.2
+                });
+                cctvOverlay.setMap(window.kakaoMapInstance);
+                tempMarkers.push(cctvOverlay);
             });
-            polyline.setMap(window.kakaoMapInstance);
-            shuttlePolylines.push(polyline);
+        });
+        
+        // 2. 현재 지도 중심을 기준으로 반경 2000m 이내의 지킴이집 및 파출소를 카카오맵 로컬 검색하여 노출
+        const center = window.kakaoMapInstance.getCenter();
+        const centerLatLng = new kakao.maps.LatLng(center.getLat(), center.getLng());
+        
+        if (window.kakao && kakao.maps.services) {
+            const ps = new kakao.maps.services.Places();
+            let completedCount = 0;
+            
+            const checkAndReplace = () => {
+                completedCount++;
+                if (completedCount === 2) {
+                    // 비동기 작업이 모두 완료되면 기존 마커를 떼어내고 교체
+                    safetyGuideMarkers.forEach(m => m.setMap(null));
+                    safetyGuideMarkers = tempMarkers;
+                }
+            };
+            
+            // 아동안전지킴이집 2000m 검색
+            ps.keywordSearch('아동안전지킴이집', (result, status) => {
+                if (status === kakao.maps.services.Status.OK) {
+                    result.forEach(place => {
+                        const placeLatLng = new kakao.maps.LatLng(place.y, place.x);
+                        // 위치 중복 생성 체크
+                        const isDup = tempMarkers.some(m => {
+                            if (typeof m.getPosition !== 'function') return false;
+                            const pos = m.getPosition();
+                            return Math.abs(pos.getLat() - placeLatLng.getLat()) < 0.0001 && Math.abs(pos.getLng() - placeLatLng.getLng()) < 0.0001;
+                        });
+                        if (isDup) return;
+                        
+                        const content = `
+                            <div style="background: white; border: 2px solid #2979ff; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.25); font-size: 13px;" title="아동안전지킴이집: ${place.place_name}">
+                                🛡️
+                            </div>
+                        `;
+                        const safeHouseOverlay = new kakao.maps.CustomOverlay({
+                            position: placeLatLng,
+                            content: content,
+                            yAnchor: 1.2
+                        });
+                        safeHouseOverlay.setMap(window.kakaoMapInstance);
+                        tempMarkers.push(safeHouseOverlay);
+                    });
+                }
+                checkAndReplace();
+            }, {
+                location: centerLatLng,
+                radius: 2000
+            });
+            
+            // 파출소 2000m 검색
+            ps.keywordSearch('파출소', (result, status) => {
+                if (status === kakao.maps.services.Status.OK) {
+                    result.forEach(place => {
+                        const placeLatLng = new kakao.maps.LatLng(place.y, place.x);
+                        // 위치 중복 생성 체크
+                        const isDup = tempMarkers.some(m => {
+                            if (typeof m.getPosition !== 'function') return false;
+                            const pos = m.getPosition();
+                            return Math.abs(pos.getLat() - placeLatLng.getLat()) < 0.0001 && Math.abs(pos.getLng() - placeLatLng.getLng()) < 0.0001;
+                        });
+                        if (isDup) return;
+
+                        const content = `
+                            <div style="background: white; border: 2px solid #d50000; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.25); font-size: 13px;" title="경찰/치안시설: ${place.place_name}">
+                                🚨
+                            </div>
+                        `;
+                        const policeOverlay = new kakao.maps.CustomOverlay({
+                            position: placeLatLng,
+                            content: content,
+                            yAnchor: 1.2
+                        });
+                        policeOverlay.setMap(window.kakaoMapInstance);
+                        tempMarkers.push(policeOverlay);
+                    });
+                }
+                checkAndReplace();
+            }, {
+                location: centerLatLng,
+                radius: 2000
+            });
+        } else {
+            safetyGuideMarkers.forEach(m => m.setMap(null));
+            safetyGuideMarkers = tempMarkers;
         }
     }
+
+    let crimeZonePolygons = [];
+
+    window.clearCrimeZoneLayers = function() {
+        if (crimeZonePolygons) {
+            crimeZonePolygons.forEach(p => p.setMap(null));
+        }
+        crimeZonePolygons = [];
+    };
+
+    window.updateCrimeZoneLayers = function(school) {
+        clearCrimeZoneLayers();
+        if (!window.kakaoMapInstance) return;
+
+        const chk = document.getElementById('crimeZoneToggleCheckbox');
+        if (!chk || !chk.checked) return;
+
+        if (window.kakaoMapInstance.getLevel() >= 7) {
+            clearCrimeZoneLayers();
+            return;
+        }
+
+        let lat, lng;
+        if (school) {
+            lat = parseFloat(school.lat);
+            lng = parseFloat(school.lng);
+        } else {
+            const center = window.kakaoMapInstance.getCenter();
+            lat = center.getLat();
+            lng = center.getLng();
+        }
+
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        // CORS 정책을 원천 차단하고 서버에 보관된 서비스키를 대행 전송하기 위한 로컬 백엔드 프록시 엔드포인트 호출
+        const apiUrl = `/api/crime-zones`;
+
+        fetch(apiUrl)
+            .then(async res => {
+                if (!res.ok) {
+                    let errMsg = 'API 중계 서버가 오류를 반환했습니다.';
+                    try {
+                        const errData = await res.json();
+                        if (errData && errData.error) {
+                            errMsg = errData.error;
+                        }
+                    } catch (e) {}
+                    throw new Error(errMsg);
+                }
+                const contentType = res.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('올바른 JSON 응답이 아닙니다. 백엔드 서버(port 3000)가 실행 중인지 확인해주세요.');
+                }
+                return res.json();
+            })
+            .then(data => {
+                let items = null;
+                // 공공데이터 JSON 응답 규격 분석 추출
+                if (data && data.response && data.response.body && data.response.body.items) {
+                    items = data.response.body.items.item;
+                } else if (data && data.items) {
+                    items = data.items;
+                }
+
+                if (items && Array.isArray(items) && items.length > 0) {
+                    renderCrimePolygons(items);
+                } else {
+                    throw new Error('응답받은 실시간 범죄주의구간 목록이 비어있습니다.');
+                }
+            })
+            .catch(err => {
+                console.warn('[Crime GIS API] 실시간 공공데이터 연동 실패:', err.message);
+            });
+    }
+
+    // 공공데이터 API 응답 기반 정밀 다각형(Polygon) 렌더링 함수
+    function renderCrimePolygons(items) {
+        if (!Array.isArray(items)) return;
+
+        items.forEach(item => {
+            let path = [];
+
+            // 1. GeoJSON geometry 규격 파싱
+            if (item.geometry) {
+                try {
+                    const geo = typeof item.geometry === 'string' ? JSON.parse(item.geometry) : item.geometry;
+                    if (geo.type === 'Polygon' && geo.coordinates) {
+                        path = geo.coordinates[0].map(coord => new kakao.maps.LatLng(coord[1], coord[0]));
+                    } else if (geo.type === 'MultiPolygon' && geo.coordinates) {
+                        path = geo.coordinates[0][0].map(coord => new kakao.maps.LatLng(coord[1], coord[0]));
+                    }
+                } catch (e) {
+                    console.warn('Geometry coordinates 파싱 오류:', e);
+                }
+            }
+
+            // 2. WKT (Well-Known Text - POLYGON) 파싱 규칙 적용
+            if (path.length === 0 && item.wkt) {
+                const wktMatches = item.wkt.match(/\d+\.\d+/g);
+                if (wktMatches && wktMatches.length >= 6) {
+                    for (let i = 0; i < wktMatches.length; i += 2) {
+                        const lng = parseFloat(wktMatches[i]);
+                        const lat = parseFloat(wktMatches[i + 1]);
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            path.push(new kakao.maps.LatLng(lat, lng));
+                        }
+                    }
+                }
+            }
+
+            // 3. 단순 x,y 또는 lat,lng 포인트 기반의 위험 영역 시뮬레이션
+            if (path.length === 0) {
+                const cLat = parseFloat(item.lat || item.y || item.la);
+                const cLng = parseFloat(item.lng || item.x || item.lo);
+                if (!isNaN(cLat) && !isNaN(cLng)) {
+                    path = [
+                        new kakao.maps.LatLng(cLat + 0.001, cLng - 0.001),
+                        new kakao.maps.LatLng(cLat + 0.001, cLng + 0.001),
+                        new kakao.maps.LatLng(cLat - 0.001, cLng + 0.001),
+                        new kakao.maps.LatLng(cLat - 0.001, cLng - 0.001)
+                    ];
+                }
+            }
+
+            if (path.length < 3) return;
+
+            const title = item.section_nm || item.zone_nm || item.zoneNm || '🚨 범죄 주의 구간';
+            const desc = item.danger_desc || item.dangerLevel || item.danger_level_nm || '취객 신고 빈도가 높은 이면도로 및 사각지대';
+
+            const polygon = new kakao.maps.Polygon({
+                path: path,
+                strokeWeight: 2,
+                strokeColor: '#FF3B30',
+                strokeOpacity: 0.7,
+                strokeStyle: 'solid',
+                fillColor: '#FF3B30',
+                fillOpacity: 0.25
+            });
+
+            polygon.setMap(window.kakaoMapInstance);
+            crimeZonePolygons.push(polygon);
+
+            let tooltipOverlay = null;
+
+            kakao.maps.event.addListener(polygon, 'mouseover', function(mouseEvent) {
+                polygon.setOptions({ fillColor: '#E60000', fillOpacity: 0.4 });
+                
+                const content = `
+                    <div style="background: rgba(33, 37, 41, 0.95); color: white; padding: 10px 14px; border-radius: 8px; font-size: 11px; font-family: sans-serif; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); pointer-events: none; width: 220px; line-height: 1.4;">
+                        <strong style="color: #FF4D4D; font-size: 12px; display: block; margin-bottom: 4px;">${title}</strong>
+                        <span>${desc}</span>
+                    </div>
+                `;
+
+                tooltipOverlay = new kakao.maps.CustomOverlay({
+                    content: content,
+                    position: mouseEvent.latLng,
+                    xAnchor: 0.5,
+                    yAnchor: 1.2,
+                    zIndex: 99999
+                });
+                tooltipOverlay.setMap(window.kakaoMapInstance);
+            });
+
+            kakao.maps.event.addListener(polygon, 'mousemove', function(mouseEvent) {
+                if (tooltipOverlay) {
+                    tooltipOverlay.setPosition(mouseEvent.latLng);
+                }
+            });
+
+            kakao.maps.event.addListener(polygon, 'mouseout', function() {
+                polygon.setOptions({ fillColor: '#FF3B30', fillOpacity: 0.25 });
+                if (tooltipOverlay) {
+                    tooltipOverlay.setMap(null);
+                    tooltipOverlay = null;
+                }
+            });
+        });
+    }
+
+
+
+    function drawCommutePath(path) {
+        // 기존 통학로 라인 제거
+        commutePolylines.forEach(p => p.setMap(null));
+        commutePolylines = [];
+
+        const polyline = new kakao.maps.Polyline({
+            path: path,
+            strokeWeight: 6,
+            strokeColor: '#2979ff', // 안심도보 블루
+            strokeOpacity: 0.85,
+            strokeStyle: 'solid'
+        });
+        polyline.setMap(window.kakaoMapInstance);
+        commutePolylines.push(polyline);
+    }
+
+    window.updateMapLayers = updateMapLayers;
+
+    function resetSafeCommute() {
+        const cPath = document.getElementById('chkCommutePath');
+        const cPathAca = document.getElementById('chkCommutePathAcademy');
+        if (cPath) cPath.checked = false;
+        if (cPathAca) cPathAca.checked = false;
+
+        const panel = document.getElementById('commutePathSettings');
+        const panelAca = document.getElementById('commutePathSettingsAcademy');
+        if (panel) panel.style.display = 'none';
+        if (panelAca) panelAca.style.display = 'none';
+
+        window.customCommuteStart = null;
+        window.customCommuteEnd = null;
+        window.mapClickMode = 'none';
+        
+        clearMapLayers();
+        if (typeof window.updatePointSelectorButtons === 'function') {
+            window.updatePointSelectorButtons();
+        }
+    }
+    window.resetSafeCommute = resetSafeCommute;
+
+    window.updatePointSelectorButtons = function() {
+        const startBtns = document.querySelectorAll('.btn-set-start');
+
+        startBtns.forEach(btn => {
+            if (window.mapClickMode === 'setStart') {
+                btn.style.background = 'var(--light-blue)';
+                btn.style.borderColor = 'var(--primary-blue)';
+                btn.style.color = 'var(--primary-blue)';
+                btn.innerText = '🏠 지도 클릭대기..';
+            } else {
+                btn.style.background = 'white';
+                btn.style.borderColor = 'var(--border-color)';
+                btn.style.color = 'var(--text-main)';
+                btn.innerText = '🏠 출발지 지정';
+            }
+        });
+    };
 
     function syncCheckboxesAndTrigger(type, checked) {
         const cPath = document.getElementById('chkCommutePath');
         const cPathAca = document.getElementById('chkCommutePathAcademy');
-        const sPath = document.getElementById('chkShuttlePath');
-        const sPathAca = document.getElementById('chkShuttlePathAcademy');
+        const panel = document.getElementById('commutePathSettings');
+        const panelAca = document.getElementById('commutePathSettingsAcademy');
 
         if (type === 'commute') {
             if (cPath) cPath.checked = checked;
             if (cPathAca) cPathAca.checked = checked;
-        } else if (type === 'shuttle') {
-            if (sPath) sPath.checked = checked;
-            if (sPathAca) sPathAca.checked = checked;
+            if (panel) panel.style.display = checked ? 'flex' : 'none';
+            if (panelAca) panelAca.style.display = checked ? 'flex' : 'none';
         }
 
         if (orchestrator.state.selectedSchool) {
-            updateMapLayers(orchestrator.state.selectedSchool);
+            window.updateMapLayers(orchestrator.state.selectedSchool);
         }
     }
 
@@ -4524,8 +5552,60 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = e.target.id;
         if (id === 'chkCommutePath' || id === 'chkCommutePathAcademy') {
             syncCheckboxesAndTrigger('commute', e.target.checked);
-        } else if (id === 'chkShuttlePath' || id === 'chkShuttlePathAcademy') {
-            syncCheckboxesAndTrigger('shuttle', e.target.checked);
+        } else if (id === 'safetyGuideCheckbox') {
+            if (orchestrator.state.selectedSchool) {
+                updateSafetyGuideLayers(orchestrator.state.selectedSchool);
+            } else {
+                updateSafetyGuideLayers(null);
+            }
+        } else if (id === 'crimeZoneToggleCheckbox') {
+            if (orchestrator.state.selectedSchool) {
+                updateCrimeZoneLayers(orchestrator.state.selectedSchool);
+            } else {
+                updateCrimeZoneLayers(null);
+            }
+        }
+    });
+
+    // 출발지 및 초기화 버튼 동작 리스너 등록
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('btn-set-start')) {
+            window.mapClickMode = window.mapClickMode === 'setStart' ? 'none' : 'setStart';
+            window.updatePointSelectorButtons();
+        } else if (e.target.classList.contains('btn-reset-commute')) {
+            window.customCommuteStart = null;
+            window.customCommuteEnd = null;
+            window.mapClickMode = 'none';
+            if (orchestrator.state.selectedSchool) {
+                window.updateMapLayers(orchestrator.state.selectedSchool);
+            }
+            window.updatePointSelectorButtons();
+        } else if (e.target.id === 'tabAcademyReviews') {
+            const tabRev = document.getElementById('tabAcademyReviews');
+            const tabCalc = document.getElementById('tabAcademyCalculator');
+            const secRev = document.getElementById('sectionAcademyReviews');
+            const secCalc = document.getElementById('sectionAcademyCalculator');
+            if (tabRev && tabCalc && secRev && secCalc) {
+                tabRev.style.borderBottomColor = 'var(--primary-blue)';
+                tabRev.style.color = 'var(--primary-blue)';
+                tabCalc.style.borderBottomColor = 'transparent';
+                tabCalc.style.color = 'var(--text-muted)';
+                secRev.style.display = 'block';
+                secCalc.style.display = 'none';
+            }
+        } else if (e.target.id === 'tabAcademyCalculator') {
+            const tabRev = document.getElementById('tabAcademyReviews');
+            const tabCalc = document.getElementById('tabAcademyCalculator');
+            const secRev = document.getElementById('sectionAcademyReviews');
+            const secCalc = document.getElementById('sectionAcademyCalculator');
+            if (tabRev && tabCalc && secRev && secCalc) {
+                tabRev.style.borderBottomColor = 'transparent';
+                tabRev.style.color = 'var(--text-muted)';
+                tabCalc.style.borderBottomColor = 'var(--primary-blue)';
+                tabCalc.style.color = 'var(--primary-blue)';
+                secRev.style.display = 'none';
+                secCalc.style.display = 'block';
+            }
         }
     });
 
@@ -4654,11 +5734,20 @@ document.addEventListener('DOMContentLoaded', () => {
             <div style="font-weight: bold; font-size: 13px; color: var(--deep-blue); margin-bottom: 4px;">${acadName}</div>
             <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">과목: ${subject || '종합보습'}</div>
             
-            <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 4px;">
                 <span>기본 수강료:</span>
-                <strong style="font-size: 13.5px; color: var(--primary-blue);"><span id="calcBaseFee">${originalFee.toLocaleString()}</span>원</strong>
+                <div style="display: flex; align-items: center; gap: 4px;" id="baseFeeEditWrapper">
+                    <span id="calcBaseFeeText" style="cursor: pointer; border-bottom: 1.5px dashed var(--primary-blue); font-weight: bold; font-size: 13.5px; color: var(--primary-blue);" title="클릭하여 수강료 수정">${originalFee.toLocaleString()}</span><span id="calcBaseFeeStaticUnit" style="font-weight: bold; font-size: 13.5px;">원</span>
+                    <input type="number" id="calcBaseFeeInput" value="${originalFee}" style="display: none; width: 100px; padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; text-align: right; font-weight: bold; color: var(--primary-blue); outline: none;">
+                    <span id="calcBaseFeeInputUnit" style="display: none; font-weight: bold; font-size: 13.5px;">원</span>
+                </div>
             </div>
-            <div style="font-size: 11px; margin-bottom: 8px; text-align: right;">${comparisonMsg}</div>
+            
+            <div style="font-size: 10.5px; color: var(--text-muted); margin-bottom: 8px; background: #f5f5f5; padding: 6px; border-radius: 4px; line-height: 1.4;">
+                💡 <strong>산출 근거:</strong> 기본금 250,000원 + 학원별 가중 가변액(${(seed % 21) * 10000}원)
+            </div>
+            
+            <div id="calcComparisonMsg" style="font-size: 11px; margin-bottom: 8px; text-align: right;">${comparisonMsg}</div>
 
             <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; background: white; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
                 <label style="display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; cursor: pointer; user-select: none;">
@@ -4681,12 +5770,64 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
+        const baseFeeText = document.getElementById('calcBaseFeeText');
+        const baseFeeStaticUnit = document.getElementById('calcBaseFeeStaticUnit');
+        const baseFeeInput = document.getElementById('calcBaseFeeInput');
+        const baseFeeInputUnit = document.getElementById('calcBaseFeeInputUnit');
         const chkPayVoucher = document.getElementById('calcUseVoucher');
         const selCardDiscount = document.getElementById('calcCardDiscount');
         const calcFinalFee = document.getElementById('calcFinalFee');
 
+        let currentOriginalFee = originalFee;
+
+        function getComparisonMsg(fee) {
+            const diffPercent = Math.round(((fee - avgFee) / avgFee) * 100);
+            if (diffPercent < 0) {
+                return `<span style="color: var(--success-green); font-weight: bold;">주변 평균(${avgFee.toLocaleString()}원) 대비 ${Math.abs(diffPercent)}% 저렴</span>`;
+            } else if (diffPercent > 0) {
+                return `<span style="color: var(--danger-red); font-weight: bold;">주변 평균(${avgFee.toLocaleString()}원) 대비 ${diffPercent}% 높음</span>`;
+            } else {
+                return `<span style="color: var(--text-muted);">주변 평균(${avgFee.toLocaleString()}원) 수준</span>`;
+            }
+        }
+
+        if (baseFeeText && baseFeeInput) {
+            baseFeeText.addEventListener('click', () => {
+                baseFeeText.style.display = 'none';
+                if (baseFeeStaticUnit) baseFeeStaticUnit.style.display = 'none';
+                baseFeeInput.style.display = 'inline-block';
+                if (baseFeeInputUnit) baseFeeInputUnit.style.display = 'inline-block';
+                baseFeeInput.focus();
+            });
+
+            const finishEditing = () => {
+                let baseVal = parseInt(baseFeeInput.value);
+                if (isNaN(baseVal) || baseVal < 0) baseVal = 0;
+                baseFeeInput.value = baseVal;
+                currentOriginalFee = baseVal;
+                baseFeeText.innerText = baseVal.toLocaleString();
+                
+                baseFeeInput.style.display = 'none';
+                if (baseFeeInputUnit) baseFeeInputUnit.style.display = 'none';
+                baseFeeText.style.display = 'inline-block';
+                if (baseFeeStaticUnit) baseFeeStaticUnit.style.display = 'inline-block';
+                
+                const compMsgEl = document.getElementById('calcComparisonMsg');
+                if (compMsgEl) {
+                    compMsgEl.innerHTML = getComparisonMsg(baseVal);
+                }
+                
+                reCalculate();
+            };
+
+            baseFeeInput.addEventListener('blur', finishEditing);
+            baseFeeInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') finishEditing();
+            });
+        }
+
         function reCalculate() {
-            let final = originalFee;
+            let final = currentOriginalFee;
             if (chkPayVoucher && chkPayVoucher.checked) {
                 final -= 50000;
             }

@@ -15,6 +15,7 @@ const neisApiKey = document.getElementById('neisApiKey');
 const naverClientId = document.getElementById('naverClientId');
 const naverClientSecret = document.getElementById('naverClientSecret');
 const dataGoKrKey = document.getElementById('dataGoKrKey');
+const safemapKey = document.getElementById('safemapKey');
 const btnSaveConfig = document.getElementById('btnSaveConfig');
 
 const updateSido = document.getElementById('updateSido');
@@ -353,6 +354,7 @@ function showPanel() {
         naverClientId.value = config.naver_client_id || '';
         naverClientSecret.value = config.naver_client_secret || '';
         if (dataGoKrKey) dataGoKrKey.value = config.data_go_kr_key || '';
+        if (safemapKey) safemapKey.value = config.safemap_key || '';
         
         // Dynamically load Kakao SDK if App Key exists for Geocoding in Admin page
         if (config.kakao_app_key) {
@@ -438,7 +440,8 @@ btnSaveConfig.addEventListener('click', () => {
         neis_api_key: neisApiKey.value.trim(),
         naver_client_id: naverClientId.value.trim(),
         naver_client_secret: naverClientSecret.value.trim(),
-        data_go_kr_key: dataGoKrKey ? dataGoKrKey.value.trim() : ''
+        data_go_kr_key: dataGoKrKey ? dataGoKrKey.value.trim() : '',
+        safemap_key: safemapKey ? safemapKey.value.trim() : ''
     };
 
     fetch('/api/admin/config', {
