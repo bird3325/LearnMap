@@ -289,6 +289,26 @@
                 </div>
             </div>
 
+            <!-- 서비스 문의 및 제보 관리 카드 -->
+            <div class="admin-card" id="inquiriesManagementCard">
+                <h2 class="card-title">서비스 문의 및 제보 관리</h2>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                    사용자가 등록한 정보 수정 요청, 광고/제휴 문의, 신규 학원 등록 요청 데이터를 조회하고 삭제할 수 있습니다.
+                </p>
+
+                <!-- 탭 선택 (정보 수정 요청 / 광고 및 제휴 문의 / 신규 학원 등록 요청) -->
+                <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+                    <button class="btn-primary" id="btnTabInfoEditRequests" style="flex: 1; margin: 0; padding: 8px; font-size: 12px; min-width: 120px;">✏️ 정보 수정 요청</button>
+                    <button class="btn-secondary" id="btnTabAdInquiries" style="flex: 1; margin: 0; padding: 8px; font-size: 12px; min-width: 120px; background: #f0f0f0; color: #333; border: 1px solid #ccc;">💼 광고 및 제휴 문의</button>
+                    <button class="btn-secondary" id="btnTabAcademyRegistrations" style="flex: 1; margin: 0; padding: 8px; font-size: 12px; min-width: 120px; background: #f0f0f0; color: #333; border: 1px solid #ccc;">🏫 신규 학원 등록 요청</button>
+                </div>
+
+                <div id="adminInquiriesListContainer"
+                    style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: var(--bg-primary); font-size: 12px; line-height: 1.8;">
+                    <div style="text-align: center; color: var(--text-muted); padding: 20px 0;">문의 및 제보 데이터를 불러오는 중...</div>
+                </div>
+            </div>
+
             <div style="text-align: center; margin-bottom: 30px;">
                 <button class="btn-secondary" id="btnLogout" style="width: auto; padding: 10px 20px;">로그아웃</button>
                 <br>

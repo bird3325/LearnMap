@@ -335,9 +335,10 @@ function showPanel() {
     // Load school list
     loadStoredSchools();
     
-    // Load reviews
+    // Load reviews & inquiries
     setTimeout(() => {
         if (typeof loadReviews === 'function') loadReviews();
+        if (typeof loadInquiries === 'function') loadInquiries();
     }, 300);
     
     // Fetch Configuration from server
@@ -1068,4 +1069,193 @@ function escapeHtml(text) {
         .replace(/'/g, '&#039;');
 }
 window.loadReviews = loadReviews;
+
+// ==========================================
+// 서비스 문의 및 제보 관리 로직
+// ==========================================
+let currentInquiryTab = 'info_edit'; // 'info_edit' | 'ad' | 'academy'
+let allInquiries = [];
+
+const btnTabInfoEditRequests = document.getElementById('btnTabInfoEditRequests');
+const btnTabAdInquiries = document.getElementById('btnTabAdInquiries');
+const btnTabAcademyRegistrations = document.getElementById('btnTabAcademyRegistrations');
+const adminInquiriesListContainer = document.getElementById('adminInquiriesListContainer');
+
+if (btnTabInfoEditRequests) {
+    btnTabInfoEditRequests.addEventListener('click', () => {
+        currentInquiryTab = 'info_edit';
+        btnTabInfoEditRequests.className = 'btn-primary';
+        btnTabInfoEditRequests.style.background = '';
+        btnTabInfoEditRequests.style.color = '';
+        
+        btnTabAdInquiries.className = 'btn-secondary';
+        btnTabAdInquiries.style.background = '#f0f0f0';
+        btnTabAdInquiries.style.color = '#333';
+        btnTabAdInquiries.style.border = '1px solid #ccc';
+        
+        btnTabAcademyRegistrations.className = 'btn-secondary';
+        btnTabAcademyRegistrations.style.background = '#f0f0f0';
+        btnTabAcademyRegistrations.style.color = '#333';
+        btnTabAcademyRegistrations.style.border = '1px solid #ccc';
+        
+        loadInquiries();
+    });
+}
+
+if (btnTabAdInquiries) {
+    btnTabAdInquiries.addEventListener('click', () => {
+        currentInquiryTab = 'ad';
+        btnTabAdInquiries.className = 'btn-primary';
+        btnTabAdInquiries.style.background = '';
+        btnTabAdInquiries.style.color = '';
+        
+        btnTabInfoEditRequests.className = 'btn-secondary';
+        btnTabInfoEditRequests.style.background = '#f0f0f0';
+        btnTabInfoEditRequests.style.color = '#333';
+        btnTabInfoEditRequests.style.border = '1px solid #ccc';
+        
+        btnTabAcademyRegistrations.className = 'btn-secondary';
+        btnTabAcademyRegistrations.style.background = '#f0f0f0';
+        btnTabAcademyRegistrations.style.color = '#333';
+        btnTabAcademyRegistrations.style.border = '1px solid #ccc';
+        
+        loadInquiries();
+    });
+}
+
+if (btnTabAcademyRegistrations) {
+    btnTabAcademyRegistrations.addEventListener('click', () => {
+        currentInquiryTab = 'academy';
+        btnTabAcademyRegistrations.className = 'btn-primary';
+        btnTabAcademyRegistrations.style.background = '';
+        btnTabAcademyRegistrations.style.color = '';
+        
+        btnTabInfoEditRequests.className = 'btn-secondary';
+        btnTabInfoEditRequests.style.background = '#f0f0f0';
+        btnTabInfoEditRequests.style.color = '#333';
+        btnTabInfoEditRequests.style.border = '1px solid #ccc';
+        
+        btnTabAdInquiries.className = 'btn-secondary';
+        btnTabAdInquiries.style.background = '#f0f0f0';
+        btnTabAdInquiries.style.color = '#333';
+        btnTabAdInquiries.style.border = '1px solid #ccc';
+        
+        loadInquiries();
+    });
+}
+
+async function loadInquiries() {
+    if (!adminInquiriesListContainer) return;
+    adminInquiriesListContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px 0;">데이터를 불러오는 중...</div>';
+
+    if (!supabaseAdmin) {
+        initSupabaseAdmin();
+    }
+    if (!supabaseAdmin) {
+        adminInquiriesListContainer.innerHTML = '<div style="text-align: center; color: red; padding: 20px 0;">Supabase 클라이언트를 초기화할 수 없습니다.</div>';
+        return;
+    }
+
+    try {
+        let table = '';
+        if (currentInquiryTab === 'info_edit') {
+            table = 'info_edit_requests';
+        } else if (currentInquiryTab === 'ad') {
+            table = 'ad_inquiries';
+        } else {
+            table = 'academy_registration_requests';
+        }
+
+        const { data, error } = await supabaseAdmin
+            .from(table)
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        allInquiries = data || [];
+        renderInquiriesList();
+    } catch (err) {
+        console.error('Error loading inquiries:', err);
+        adminInquiriesListContainer.innerHTML = `<div style="text-align: center; color: red; padding: 20px 0;">데이터 로드 오류: ${err.message}</div>`;
+    }
+}
+
+function renderInquiriesList() {
+    if (!adminInquiriesListContainer) return;
+
+    if (allInquiries.length === 0) {
+        adminInquiriesListContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px 0;">등록된 문의 및 제보가 없습니다.</div>';
+        return;
+    }
+
+    adminInquiriesListContainer.innerHTML = allInquiries.map((inq, idx) => {
+        let dateStr = new Date(inq.created_at).toLocaleString('ko-KR');
+        let detailsHtml = '';
+
+        if (currentInquiryTab === 'info_edit') {
+            detailsHtml = `
+                <div style="margin-bottom: 4px;"><strong>대상 학교/학원명:</strong> ${escapeHtml(inq.target_name)}</div>
+                <div style="margin-bottom: 4px;"><strong>상세 내용:</strong> ${escapeHtml(inq.details)}</div>
+                <div><strong>연락처:</strong> ${escapeHtml(inq.contact || '미입력')}</div>
+            `;
+        } else if (currentInquiryTab === 'ad') {
+            detailsHtml = `
+                <div style="margin-bottom: 4px;"><strong>회사/단체명:</strong> ${escapeHtml(inq.company_name)}</div>
+                <div style="margin-bottom: 4px;"><strong>상세 내용:</strong> ${escapeHtml(inq.details)}</div>
+                <div><strong>연락처:</strong> ${escapeHtml(inq.contact)}</div>
+            `;
+        } else {
+            detailsHtml = `
+                <div style="margin-bottom: 4px;"><strong>학원명:</strong> ${escapeHtml(inq.academy_name)}</div>
+                <div style="margin-bottom: 4px;"><strong>주소:</strong> ${escapeHtml(inq.address)}</div>
+                <div style="margin-bottom: 4px;"><strong>과목/대상:</strong> ${escapeHtml(inq.academy_type)}</div>
+                <div style="margin-bottom: 4px;"><strong>연락처:</strong> ${escapeHtml(inq.contact || '미입력')}</div>
+                <div><strong>비고:</strong> ${escapeHtml(inq.comments || '없음')}</div>
+            `;
+        }
+
+        return `
+            <div style="background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-start; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                <div style="flex: 1; padding-right: 12px;">
+                    <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">등록 시간: ${dateStr}</div>
+                    <div style="font-size: 13px; color: var(--text-main); line-height: 1.5; word-break: break-all;">
+                        ${detailsHtml}
+                    </div>
+                </div>
+                <button class="btn-secondary" onclick="window.deleteInquiryConfirm(${inq.id})" style="background: var(--danger-red); color: white; border: none; padding: 5px 10px; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 4px; width: auto; margin: 0; align-self: center;">삭제</button>
+            </div>
+        `;
+    }).join('');
+}
+
+window.deleteInquiryConfirm = function(id) {
+    showConfirm('이 제보/문의 내역을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.', async () => {
+        try {
+            let table = '';
+            if (currentInquiryTab === 'info_edit') {
+                table = 'info_edit_requests';
+            } else if (currentInquiryTab === 'ad') {
+                table = 'ad_inquiries';
+            } else {
+                table = 'academy_registration_requests';
+            }
+
+            const { error } = await supabaseAdmin
+                .from(table)
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
+            showAlert('성공적으로 삭제되었습니다.');
+            loadInquiries();
+        } catch (err) {
+            console.error('Failed to delete inquiry:', err);
+            showAlert('삭제에 실패했습니다: ' + err.message);
+        }
+    });
+};
+
+window.loadInquiries = loadInquiries;
 

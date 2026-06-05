@@ -58,7 +58,7 @@ export class Orchestrator {
         if (!this.state.selectedSchool) {
             throw new Error("비교할 대상 학교를 선택해 주세요.");
         }
-        return this.analysisAgent.analyzeRelativePosition(scores, this.state.selectedSchool);
+        return this.analysisAgent.analyzeRelativePosition(scores, this.state.selectedSchool, this.state.childProfile.grade);
     }
 
     /**

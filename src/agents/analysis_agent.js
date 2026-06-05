@@ -144,11 +144,10 @@ export class AnalysisAgent {
             graduate_career: school.graduate_career || { general: 75, special: 5, autonomous: 10, specialized: 10 }
         };
     }
-
     /**
      * 자녀 성적을 학교 분포에 매핑하여 등수 백분위 및 가이드 생성
      */
-    analyzeRelativePosition(childScores, school) {
+    analyzeRelativePosition(childScores, school, childGrade) {
         const analysisResult = {
             korean: {},
             english: {},
@@ -225,7 +224,13 @@ export class AnalysisAgent {
         }
 
         // 고교 또는 중학교 진학 시뮬레이션 문구 생성 (선택된 학교급에 따른 조건부 렌더링)
-        const isElem = school.school_type === 'elem' || school.school_name.includes('초등학교');
+        const isSchoolElem = school.school_type === 'elem' || school.school_name.includes('초등학교');
+        const isSchoolHigh = school.school_type === 'high' || school.school_name.includes('고등학교');
+        const isSchoolMiddle = !isSchoolElem && !isSchoolHigh;
+        const isChildElem = childGrade && childGrade.startsWith('e');
+
+        // 초등학교이거나, 중학교인데 초등학생 자녀인 경우 중등 진학 시뮬레이션 노출
+        const showElemSimulation = isSchoolElem || (isSchoolMiddle && isChildElem);
         const career = school.graduate_career || { general: 75, special: 5, autonomous: 10, specialized: 10 };
         const specialCut = career.special;
         const autoCut = career.special + career.autonomous;
@@ -241,8 +246,8 @@ export class AnalysisAgent {
         else if (avgPercentile <= 96) hsGrade = 8;
         else hsGrade = 9;
 
-        if (isElem) {
-            // 초등학교일 경우 진학 시뮬레이션 문구 정의
+        if (showElemSimulation) {
+            // 초등학교 또는 중학교 입학 예정일 경우 진학 시뮬레이션 문구 정의
             analysisResult.overall.simulation_title = '🎓 중학교 진학 적응 시뮬레이션 결과';
             if (avgPercentile <= 15) {
                 analysisResult.overall.admission_simulation = `현재 초등 교과 이해도 추정치는 상위 ${avgPercentile.toFixed(1)}%로 매우 우수합니다. 관내 중학교 입학 후에도 최상위권 성취도(A등급) 유지가 유력합니다.<br><br>예상 중등 학업 성취 등급: <strong style="color:var(--primary-blue); font-size:15px;">A등급 안정권</strong> (중등 자유학기제 기간 동안 영어/수학 계통 심화 학습을 추천합니다)`;
@@ -251,11 +256,25 @@ export class AnalysisAgent {
             } else {
                 analysisResult.overall.admission_simulation = `현재 초등 교과 이해도 추정치는 상위 ${avgPercentile.toFixed(1)}%로 기초 보강이 필요합니다.<br><br>예상 중등 학업 성취 등급: <strong style="color:var(--primary-blue); font-size:15px;">C등급 이하 보강 필요</strong> (입학 후 학습 격차가 누적되지 않도록 방학 중 초등 5-6학년 수학 기본 개념 및 연산 집중 보완이 요구됩니다)`;
             }
+        } else if (isSchoolHigh) {
+            // 고등학교일 경우 대입(대학 진학) 시뮬레이션 문구 정의
+            analysisResult.overall.simulation_title = '🎓 대학 진학 시뮬레이션 결과';
+            if (avgPercentile <= 4) {
+                analysisResult.overall.admission_simulation = `현재 내신/모의고사 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로 전교 최상위권입니다. 서울 주요 대학교 및 전국 의학계열 수시/정시 지원이 대단히 유리합니다.<br><br>대학 진학 목표군: <strong style="color:var(--primary-blue); font-size:15px;">의·치·한·약·수 및 서울대/연세대/고려대 학생부 종합/교과 전형</strong> (수능 최저 등급 충족을 위해 모의고사 성적을 병행 관리해 주세요)`;
+            } else if (avgPercentile <= 11) {
+                analysisResult.overall.admission_simulation = `현재 내신/모의고사 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로 우수한 상위권 수준입니다. 인서울 및 수도권 주요 대학교의 선호 학과 합격권에 해당합니다.<br><br>대학 진학 목표군: <strong style="color:var(--primary-blue); font-size:15px;">서울 주요 10대 대학 학생부 종합/교과 전형 및 자사고/특목고 종합 전형</strong> (학생부 비교과 관리 상태에 따라 수시 종합 기회를 적극 활용하세요)`;
+            } else if (avgPercentile <= 23) {
+                analysisResult.overall.admission_simulation = `현재 내신/모의고사 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로 양호한 중상위권입니다. 서울 소재 일반 대학 및 수도권 주요 대학 수시 지원 가능군입니다.<br><br>대학 진학 목표군: <strong style="color:var(--primary-blue); font-size:15px;">인서울 중상위 대학 및 수도권 핵심 대학 수시/정시</strong> (수능 정시 강점이 뚜렷하다면 논술 전형 대비 및 모의고사 성취도 보강을 권장합니다)`;
+            } else if (avgPercentile <= 40) {
+                analysisResult.overall.admission_simulation = `현재 내신/모의고사 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로 평이한 수준입니다. 수도권 일반 대학교 또는 지방 거점 국립대학 지원에 적합합니다.<br><br>대학 진학 목표군: <strong style="color:var(--primary-blue); font-size:15px;">수도권 일반 대학교 및 지역 거점 국립대학교</strong> (학생부 교과 등급의 소폭 상승 및 방어 전략과 함께 수능 최저 기준 대비에 주력하세요)`;
+            } else {
+                analysisResult.overall.admission_simulation = `현재 내신/모의고사 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로 하위권 혹은 기초 보완 대상입니다. 맞춤 입시 로드맵 설계가 중요합니다.<br><br>대학 진학 목표군: <strong style="color:var(--primary-blue); font-size:15px;">수도권 외곽 대학 및 전문대 특성화 학과 또는 정시 전형</strong> (성적 반영 비율이 유리한 특정 영역 위주 수시 전형을 미리 리서치하여 전략적 학습 분배를 권장합니다)`;
+            }
         } else {
-            // 중학교/고등학교일 경우 고교 진학 시뮬레이션 문구 정의
+            // 중학교이고 중학생 자녀일 경우 고교 진학 시뮬레이션 문구 정의
             analysisResult.overall.simulation_title = '🎓 고교 진학 시뮬레이션 결과';
             if (avgPercentile <= specialCut) {
-                analysisResult.overall.admission_simulation = `현재 점수 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로, 이 학교의 특목고 진학률(${specialCut}%) 이내입니다. 특목고 진학이 우세한 우수 진학군에 해당합니다.<br><br>일반계 고등학교 진학 시 예상 고교 내신: <strong style="color:var(--primary-blue); font-size:15px;">${hsGrade}등급</strong> (상위 대학교 수시 학종 지원 매우 유리)`;
+                analysisResult.overall.admission_simulation = `현재 점수 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로, 이 중학교의 특목고 진학률(${specialCut}%) 이내입니다. 특목고 진학이 우세한 우수 진학군에 해당합니다.<br><br>일반계 고등학교 진학 시 예상 고교 내신: <strong style="color:var(--primary-blue); font-size:15px;">${hsGrade}등급</strong> (상위 대학교 수시 학종 지원 매우 유리)`;
             } else if (avgPercentile <= autoCut) {
                 analysisResult.overall.admission_simulation = `현재 점수 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로, 자사고/외고 진학 준비군에 해당합니다.<br><br>일반계 고등학교 진학 시 예상 고교 내신: <strong style="color:var(--primary-blue); font-size:15px;">${hsGrade}등급</strong> (주요 대학교 수시 교과 및 학종 전형 목표 가능)`;
             } else {
@@ -266,10 +285,32 @@ export class AnalysisAgent {
         // 학군지 비교 분석 및 진학 예측 정보 생성
         const comp = school.subjects ? this.calculateCompetitionLevel(school) : { label: '중', desc: '' };
         let districtPrediction = '';
-        if (comp.label.includes('최상') || comp.label.includes('상')) {
-            districtPrediction = `이 학교는 주변 타 지역 대비 학업성취도가 월등히 높은 <strong>명문 학군지</strong>(${comp.label})에 속해 있어 내신 경쟁이 대단히 치열합니다. Z-score 추정 백분위는 상위 ${avgPercentile.toFixed(1)}%로, 일반고 진학 시 전교 상위권 유지 가능성은 충분하나 서술형 및 수행평가 감점 방어 대책이 최우선 과제입니다.`;
+        if (isSchoolElem) {
+            if (comp.label.includes('최상') || comp.label.includes('상')) {
+                districtPrediction = `이 학교는 주변 지역 대비 학업 수준과 교육열이 대단히 뜨거운 <strong>명문 초등 학군</strong>(${comp.label})에 속합니다. 자녀의 추정 백분위는 상위 ${avgPercentile.toFixed(1)}%로 양호하며, 중학교 진학 후에도 안정적인 성적 유지를 위해 초등 자유 분방한 태도에서 벗어나 오답 분석 및 규칙적인 학습 습관을 다져두어야 합니다.`;
+            } else {
+                districtPrediction = `이 학교는 기초 학습 형성에 양호하고 평이한 수준의 환경입니다. 자녀의 추정 백분위는 상위 ${avgPercentile.toFixed(1)}%이며, 타 명문 중학군(강남, 목동 등)으로 전학이나 이사 진학을 고민 중이시라면 중등 선행 심화 정도를 기존보다 20% 이상 보강해야 경쟁에서 우위를 점할 수 있습니다.`;
+            }
+        } else if (isSchoolHigh) {
+            if (comp.label.includes('최상') || comp.label.includes('상')) {
+                districtPrediction = `이 학교는 서울 지역에서 내신 경쟁 및 학업 집중도가 최고조에 달하는 <strong>명문 고등학교</strong>(${comp.label})에 속합니다. 추정 백분위는 상위 ${avgPercentile.toFixed(1)}%로 경쟁이 극도로 치열하므로, 내신 취득 난도가 높기 때문에 수시 학종 외에도 논술 및 수능 정시 대비를 반드시 주력 전형으로 병행해야 합니다.`;
+            } else {
+                districtPrediction = `이 학교는 평이하고 고른 성취 분포를 가진 고등학교입니다. 자녀의 추정 백분위는 상위 ${avgPercentile.toFixed(1)}%로 수시 학생부 교과/종합 전형을 통해 내신 등급 우위를 살려 대입을 준비하기에 최적의 요건입니다. 단, 전국 단위 모의고사 최저 학력 기준을 조기에 충족할 수 있도록 정시 대비 기본 학습을 늘리기를 권장합니다.`;
+            }
         } else {
-            districtPrediction = `이 학교는 무난한 학업 성취 수준을 보이고 있습니다. Z-score 추정 백분위는 상위 ${avgPercentile.toFixed(1)}%이며, 학업 열기가 높은 주요 학군지 학교(강남, 목동 등)로 전학 혹은 고등학교 진학 시 현재보다 백분위가 5%~10% 가량 하락할 수 있어, 방학 중 선행/심화 학습 비율을 30% 이상 높이기를 권장합니다.`;
+            if (comp.label.includes('최상') || comp.label.includes('상')) {
+                if (isChildElem) {
+                    districtPrediction = `이 학교는 주변 지역 대비 학력 수준이 대단히 우수한 <strong>명문 중학교</strong>(${comp.label})입니다. 현재 초등 자녀의 성적 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로 우수한 수준이지만, 이 중학교에 진학 시 상대적으로 치열한 지필평가 내신 경쟁을 겪게 될 것입니다. 초등 단계에서부터 중등 주요 개념의 깊이 있는 심화 학습과 서술형 답안 작성이 선행되어야 중학교 첫 시험에서 상위권을 확보할 수 있습니다.`;
+                } else {
+                    districtPrediction = `이 학교는 주변 타 지역 대비 학업성취도가 월등히 높은 <strong>명문 중학군</strong>(${comp.label})에 속해 있어 내신 경쟁이 대단히 치열합니다. Z-score 추정 백분위는 상위 ${avgPercentile.toFixed(1)}%로, 일반고 진학 시 전교 상위권 유지 가능성은 충분하나 서술형 및 수행평가 감점 방어 대책이 최우선 과제입니다.`;
+                }
+            } else {
+                if (isChildElem) {
+                    districtPrediction = `이 학교는 무난하고 고른 학업 분위기를 가진 중학교입니다. 현재 초등 자녀의 성적 백분위 추정치는 상위 ${avgPercentile.toFixed(1)}%로, 입학 후 첫 내신 시험 등급에서 안정적인 B등급 이상(경우에 따라 A등급) 확보가 기대됩니다. 다만, 더 학업 수준이 높은 주변 학군지 고교 등으로의 연계 진학을 모색하신다면, 중등 과정 선행/심화 비중을 조기에 끌어올려야 학력 유지가 수월해집니다.`;
+                } else {
+                    districtPrediction = `이 학교는 무난한 학업 성취 수준을 보이고 있습니다. Z-score 추정 백분위는 상위 ${avgPercentile.toFixed(1)}%이며, 학업 열기가 높은 주요 학군지 고등학교(강남, 목동 등)로 진학 시 현재보다 백분위가 5%~10% 가량 하락할 수 있어, 방학 중 선행/심화 학습 비율을 30% 이상 높이기를 권장합니다.`;
+                }
+            }
         }
 
         // 과목 격차 분석
@@ -283,7 +324,11 @@ export class AnalysisAgent {
             }, null);
             const subjectKorean = { korean: '국어', english: '영어', math: '수학' };
             if (minSubject && childScores[minSubject] < 80) {
-                districtPrediction += `<br><br>⚠️ <strong>과목 불균형 처방:</strong> 현재 <strong>${subjectKorean[minSubject]}</strong> 과목이 상대적 취약 상태(평균 대비 부족)입니다. 주요 학군지 고교에서는 주요 3개 교과의 균형성이 무너지면 수시 종합 평가에서 매우 불리하므로, 차기 학기 방학 기간 중 취약 과목의 기본 개념 복습 및 심화 문제풀이 비율을 과감히 절반 이상 배정해야 합니다.`;
+                if (isSchoolHigh) {
+                    districtPrediction += `<br><br>⚠️ <strong>과목 불균형 처방:</strong> 현재 <strong>${subjectKorean[minSubject]}</strong> 과목이 상대적 취약 상태(평균 대비 부족)입니다. 대입 학생부 종합 전형 및 주요 과목 최저 기준 충족 시 주요 3개 교과의 균형성이 흔들리면 수시 평가에서 크게 불리해지므로, 다가오는 방학 기간 중 취약 과목 기본 복습 및 심화 풀이 비율을 과감히 높여야 합니다.`;
+                } else {
+                    districtPrediction += `<br><br>⚠️ <strong>과목 불균형 처방:</strong> 현재 <strong>${subjectKorean[minSubject]}</strong> 과목이 상대적 취약 상태(평균 대비 부족)입니다. 주요 학군지 고교에서는 주요 3개 교과의 균형성이 무너지면 수시 종합 평가에서 매우 불리하므로, 차기 학기 방학 기간 중 취약 과목의 기본 개념 복습 및 심화 문제풀이 비율을 과감히 절반 이상 배정해야 합니다.`;
+                }
             }
         }
         analysisResult.overall.district_prediction = districtPrediction;

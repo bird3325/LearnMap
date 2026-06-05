@@ -553,6 +553,72 @@ app.get('/api/crime-zones', async (req, res) => {
     }
 });
 
+// 14. GET /api/accident-statistics - Fetch crime/safety accident statistics from safemap WMS API (IF_0075_WMS)
+app.get('/api/accident-statistics', async (req, res) => {
+    const { bbox, width, height } = req.query;
+    if (!bbox || !width || !height) {
+        return res.status(400).json({ error: 'bbox, width, height 파라미터가 필요합니다.' });
+    }
+
+    const config = await readConfig();
+    const serviceKey = config.safemap_key || '';
+    if (!serviceKey) {
+        return res.status(500).json({ error: '생활안전정보 API Key가 설정되지 않았습니다.' });
+    }
+
+    // 생활안전지도 WMS API 호출 URL 생성 (치안사고 통계 - IF_0075_WMS)
+    const wmsUrl = `http://safemap.go.kr/openapi2/IF_0075_WMS?serviceKey=${serviceKey}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
+
+    try {
+        const response = await fetch(wmsUrl);
+        if (!response.ok) {
+            throw new Error(`WMS API responded with status: ${response.status}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        const buffer = await response.arrayBuffer();
+        
+        res.setHeader('Content-Type', contentType || 'image/png');
+        return res.send(Buffer.from(buffer));
+    } catch (err) {
+        console.error('Accident Statistics WMS Proxy Error:', err);
+        return res.status(500).json({ error: '치안사고 통계 이미지 로드에 실패했습니다.' });
+    }
+});
+
+// 15. GET /api/traffic-accidents - Fetch frequent traffic accident zones from safemap WMS API (IF_0093_WMS)
+app.get('/api/traffic-accidents', async (req, res) => {
+    const { bbox, width, height } = req.query;
+    if (!bbox || !width || !height) {
+        return res.status(400).json({ error: 'bbox, width, height 파라미터가 필요합니다.' });
+    }
+
+    const config = await readConfig();
+    const serviceKey = config.safemap_key || '';
+    if (!serviceKey) {
+        return res.status(500).json({ error: '생활안전정보 API Key가 설정되지 않았습니다.' });
+    }
+
+    // 생활안전지도 WMS API 호출 URL 생성 (교통사고 다발구역 - IF_0093_WMS)
+    const wmsUrl = `http://safemap.go.kr/openapi2/IF_0093_WMS?serviceKey=${serviceKey}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
+
+    try {
+        const response = await fetch(wmsUrl);
+        if (!response.ok) {
+            throw new Error(`WMS API responded with status: ${response.status}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        const buffer = await response.arrayBuffer();
+        
+        res.setHeader('Content-Type', contentType || 'image/png');
+        return res.send(Buffer.from(buffer));
+    } catch (err) {
+        console.error('Traffic Accidents WMS Proxy Error:', err);
+        return res.status(500).json({ error: '교통사고 다발구역 이미지 로드에 실패했습니다.' });
+    }
+});
+
 // --- Town Talk API ---
 const Towntalk_Path = path.join(__dirname, 'towntalk.json');
 
@@ -617,6 +683,278 @@ app.post('/api/towntalk', (req, res) => {
     writeTowntalk(talkList);
 
     res.status(201).json(newTalk);
+});
+
+// 16. POST /api/info-edit-request - Save wrong info edit request to Supabase
+app.post('/api/info-edit-request', async (req, res) => {
+    const { targetName, details, contact } = req.body;
+    if (!targetName || !details) {
+        return res.status(400).json({ error: '필수 필드가 누락되었습니다.' });
+    }
+
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/info_edit_requests`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({
+                target_name: targetName,
+                details: details,
+                contact: contact
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Supabase error: ${await response.text()}`);
+        }
+
+        const data = await response.json();
+        return res.status(201).json(data);
+    } catch (err) {
+        console.error('Info Edit Request Supabase Error:', err);
+        return res.status(500).json({ error: '요청 제출에 실패했습니다.' });
+    }
+});
+
+// 17. POST /api/ad-inquiry - Save advertisement inquiry to Supabase
+app.post('/api/ad-inquiry', async (req, res) => {
+    const { companyName, contact, details } = req.body;
+    if (!companyName || !contact || !details) {
+        return res.status(400).json({ error: '필수 필드가 누락되었습니다.' });
+    }
+
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/ad_inquiries`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({
+                company_name: companyName,
+                contact: contact,
+                details: details
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Supabase error: ${await response.text()}`);
+        }
+
+        const data = await response.json();
+        return res.status(201).json(data);
+    } catch (err) {
+        console.error('Ad Inquiry Supabase Error:', err);
+        return res.status(500).json({ error: '문의 제출에 실패했습니다.' });
+    }
+});
+
+// 18. POST /api/academy-register - Save academy registration request to Supabase
+app.post('/api/academy-register', async (req, res) => {
+    const { academyName, address, academyType, contact, comments } = req.body;
+    if (!academyName || !address || !academyType) {
+        return res.status(400).json({ error: '필수 필드가 누락되었습니다.' });
+    }
+
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/academy_registration_requests`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({
+                academy_name: academyName,
+                address: address,
+                academy_type: academyType,
+                contact: contact,
+                comments: comments
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Supabase error: ${await response.text()}`);
+        }
+
+        const data = await response.json();
+        return res.status(201).json(data);
+    } catch (err) {
+        console.error('Academy Register Supabase Error:', err);
+        return res.status(500).json({ error: '등록 제안 제출에 실패했습니다.' });
+    }
+});
+
+// 19. GET /api/admin/info-edit-requests - Retrieve wrong info edit requests from Supabase
+app.get('/api/admin/info-edit-requests', async (req, res) => {
+    const token = req.headers.authorization;
+    if (token !== 'session_token_example_12345') {
+        return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
+    }
+
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/info_edit_requests?order=created_at.desc`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Supabase error: ${await response.text()}`);
+        }
+
+        const data = await response.json();
+        return res.json(data);
+    } catch (err) {
+        console.error('Fetch Info Edit Requests Error:', err);
+        return res.status(500).json({ error: '데이터를 가져오는 중 오류가 발생했습니다.' });
+    }
+});
+
+// 20. DELETE /api/admin/info-edit-requests/:id - Delete an info edit request from Supabase
+app.delete('/api/admin/info-edit-requests/:id', async (req, res) => {
+    const token = req.headers.authorization;
+    if (token !== 'session_token_example_12345') {
+        return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
+    }
+    const { id } = req.params;
+
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/info_edit_requests?id=eq.${id}`, {
+            method: 'DELETE',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Supabase error: ${await response.text()}`);
+        }
+
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Delete Info Edit Request Error:', err);
+        return res.status(500).json({ error: '삭제 중 오류가 발생했습니다.' });
+    }
+});
+
+// 21. GET /api/admin/ad-inquiries - Retrieve advertisement inquiries from Supabase
+app.get('/api/admin/ad-inquiries', async (req, res) => {
+    const token = req.headers.authorization;
+    if (token !== 'session_token_example_12345') {
+        return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
+    }
+
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/ad_inquiries?order=created_at.desc`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Supabase error: ${await response.text()}`);
+        }
+
+        const data = await response.json();
+        return res.json(data);
+    } catch (err) {
+        console.error('Fetch Ad Inquiries Error:', err);
+        return res.status(500).json({ error: '데이터를 가져오는 중 오류가 발생했습니다.' });
+    }
+});
+
+// 22. DELETE /api/admin/ad-inquiries/:id - Delete an ad inquiry from Supabase
+app.delete('/api/admin/ad-inquiries/:id', async (req, res) => {
+    const token = req.headers.authorization;
+    if (token !== 'session_token_example_12345') {
+        return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
+    }
+    const { id } = req.params;
+
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/ad_inquiries?id=eq.${id}`, {
+            method: 'DELETE',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Supabase error: ${await response.text()}`);
+        }
+
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Delete Ad Inquiry Error:', err);
+        return res.status(500).json({ error: '삭제 중 오류가 발생했습니다.' });
+    }
+});
+
+// 23. GET /api/admin/academy-registers - Retrieve academy registrations from Supabase
+app.get('/api/admin/academy-registers', async (req, res) => {
+    const token = req.headers.authorization;
+    if (token !== 'session_token_example_12345') {
+        return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
+    }
+
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/academy_registration_requests?order=created_at.desc`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Supabase error: ${await response.text()}`);
+        }
+
+        const data = await response.json();
+        return res.json(data);
+    } catch (err) {
+        console.error('Fetch Academy Registers Error:', err);
+        return res.status(500).json({ error: '데이터를 가져오는 중 오류가 발생했습니다.' });
+    }
+});
+
+// 24. DELETE /api/admin/academy-registers/:id - Delete an academy registration from Supabase
+app.delete('/api/admin/academy-registers/:id', async (req, res) => {
+    const token = req.headers.authorization;
+    if (token !== 'session_token_example_12345') {
+        return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
+    }
+    const { id } = req.params;
+
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/academy_registration_requests?id=eq.${id}`, {
+            method: 'DELETE',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Supabase error: ${await response.text()}`);
+        }
+
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Delete Academy Register Error:', err);
+        return res.status(500).json({ error: '삭제 중 오류가 발생했습니다.' });
+    }
 });
 
 // Fallback to serve index.html for unknown SPA routes
