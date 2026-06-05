@@ -27,7 +27,7 @@
         </button>
 
         <!-- Top Right Floating Settings Button -->
-        <button id="btnOpenSettings" style="position: absolute; right: 74px; top: 24px; width: 40px; height: 40px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10001; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all 0.2s ease;" onclick="const s = document.getElementById('settingsModal'); s.style.display = s.style.display === 'none' ? 'block' : 'none';">
+        <button id="btnOpenSettings" style="position: absolute; right: 74px; top: 24px; width: 40px; height: 40px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10001; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all 0.2s ease;" onclick="const s = document.getElementById('settingsModal'); const t = document.getElementById('tutorialSidebarCard'); if (t) t.style.display = 'none'; s.style.display = s.style.display === 'none' ? 'block' : 'none';">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="3"></circle>
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -679,6 +679,95 @@
                 </div>
             </div>
 
+            <!-- 💡 전체 기능 설명 가이드 카드 (설정처럼 다른 카드 위에 노출되도록 개선) -->
+            <div class="card" id="tutorialSidebarCard" style="display: none; margin: 0 0 20px 0; position: relative;">
+                <button onclick="if(typeof window.closeTutorialSidebar === 'function') window.closeTutorialSidebar(); else { this.parentNode.style.display='none'; }" style="position: absolute; top: 12px; right: 12px; background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted); font-weight: bold; line-height: 1;" title="닫기">&times;</button>
+                <div class="card-title" style="font-size: 16px; color: var(--deep-blue); font-weight: 700; margin-bottom: 8px;">💡 서비스 이용 도움말 가이드</div>
+                <p style="font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-bottom: 12px;">서울시 학업성취도 분석 및 자녀 맞춤 추천 서비스 도움말입니다.</p>
+                
+                <!-- 카테고리 탭 메뉴 (가로 스크롤 가능형) -->
+                <div style="display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; overflow-x: auto; white-space: nowrap; -ms-overflow-style: none; scrollbar-width: none;">
+                    <button onclick="switchTutorialTab('all')" class="tutorial-tab-btn" id="tab-all" style="padding: 6px 10px; font-size: 11px; font-weight: bold; background: var(--primary-blue); color: white; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s;">전체 사용법</button>
+                    <button onclick="switchTutorialTab('menu')" class="tutorial-tab-btn" id="tab-menu" style="padding: 6px 10px; font-size: 11px; font-weight: bold; background: #f1f3f5; color: var(--text-muted); border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s;">☰ 메뉴</button>
+                    <button onclick="switchTutorialTab('filter')" class="tutorial-tab-btn" id="tab-filter" style="padding: 6px 10px; font-size: 11px; font-weight: bold; background: #f1f3f5; color: var(--text-muted); border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s;">🔍 필터</button>
+                    <button onclick="switchTutorialTab('school')" class="tutorial-tab-btn" id="tab-school" style="padding: 6px 10px; font-size: 11px; font-weight: bold; background: #f1f3f5; color: var(--text-muted); border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s;">🏫 학교 상세</button>
+                    <button onclick="switchTutorialTab('academy')" class="tutorial-tab-btn" id="tab-academy" style="padding: 6px 10px; font-size: 11px; font-weight: bold; background: #f1f3f5; color: var(--text-muted); border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s;">📚 학원</button>
+                </div>
+
+                <!-- 1. 전체 사용법 패널 -->
+                <div class="tutorial-tab-panel" id="panel-all" style="display: flex; flex-direction: column; gap: 12px; font-size: 11.5px; line-height: 1.6;">
+                    <div style="background: var(--light-blue); padding: 8px 12px; border-radius: 6px; border-left: 3px solid var(--primary-blue); font-weight: 600; color: var(--deep-blue); font-size: 11px;">
+                        💡 학군 분석 및 자녀 컨설팅의 기본 이용 흐름
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div>1️⃣ <strong>학교 탐색 및 선택</strong>: 지도에서 관심 학교 마커를 클릭하거나 상단 검색창을 활용해 직접 명칭을 입력하여 해당 학교를 선택합니다.</div>
+                        <div>2️⃣ <strong>맞춤 정보 필터 설정</strong>: 좌측 사이드바 및 필터창에서 원하는 학년, 성적 등급 기준, 학력 지표 등을 조정하여 맞춤 지도를 구성합니다.</div>
+                        <div>3️⃣ <strong>도보 통학로 실시간 분석</strong>: 출발지를 설정하여 안심 도보 경로를 찾고, 동적 안전 분석 수치(CCTV, 지킴이집, 파출소 등)를 획득합니다.</div>
+                        <div>4️⃣ <strong>우리 아이 성적 진단</strong>: 학부모 설정을 통해 성적 데이터를 입력하면 학교 점수 분포와 연계한 컨설팅 진단서를 즉시 생성합니다.</div>
+                    </div>
+                </div>
+
+                <!-- 2. 메뉴 가이드 패널 -->
+                <div class="tutorial-tab-panel" id="panel-menu" style="display: none; flex-direction: column; gap: 12px; font-size: 11.5px; line-height: 1.6;">
+                    <div>
+                        <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">☰ 사이드바 토글 버튼 (우측 상단)</strong>
+                        <span style="color: var(--text-main);">모니터 해상도에 맞춰 분석 카드들이 가리지 않도록 사이드바 영역 전체를 화면에서 접거나 펼치는 기능을 제공합니다.</span>
+                    </div>
+                    <div>
+                        <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">⚙️ 설정 및 비즈니스 센터 (우측 상단)</strong>
+                        <span style="color: var(--text-main);">아이 성적 저장, 지도 플로팅 창 투명도(알파값) 미세 조정 및 잘못된 정보 수정 제보, 신규 학원 제휴 및 등록 문의 기능을 집약해 둔 창입니다.</span>
+                    </div>
+                    <div>
+                        <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">❓ 도움말 가이드 (우측 상단)</strong>
+                        <span style="color: var(--text-main);">현재 보시는 화면으로, 각 필터와 차트 및 메뉴의 세부 작동 원리를 상세히 확인할 수 있습니다.</span>
+                    </div>
+                </div>
+
+                <!-- 3. 필터 가이드 패널 -->
+                <div class="tutorial-tab-panel" id="panel-filter" style="display: none; flex-direction: column; gap: 12px; font-size: 11.5px; line-height: 1.6;">
+                    <div>
+                        <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">🏫 학교 급수(초/중/고) 필터</strong>
+                        <span style="color: var(--text-main);">탐색하려는 학군 수준에 맞게 지도의 학교 핀 표시 대상을 필터링합니다.</span>
+                    </div>
+                    <div>
+                        <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">📊 학업 성취 기준치 슬라이더</strong>
+                        <span style="color: var(--text-main);">우수(파랑), 보통(초록), 경계(노랑) 등 지도의 핀 색상을 결정짓는 성취도 점수 기준(기본 78점)을 임의로 높이거나 낮추어 지도를 재분석할 수 있습니다.</span>
+                    </div>
+                    <div>
+                        <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">📍 행정구역(동) 필터 & 검색</strong>
+                        <span style="color: var(--text-main);">특정 행정동을 입력하면 해당 지역에 포진한 모든 학군과 학교 평점을 일괄 비교하고 순위를 정렬합니다.</span>
+                    </div>
+                </div>
+
+                <!-- 4. 학교 상세 가이드 패널 -->
+                <div class="tutorial-tab-panel" id="panel-school" style="display: none; flex-direction: column; gap: 12px; font-size: 11.5px; line-height: 1.6;">
+                    <div>
+                        <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">📈 3개년 학업성취 추이 (국·영·수 평균)</strong>
+                        <span style="color: var(--text-main);">최근 3개년 동안의 학력 수준 변화 추세를 스파크라인 그래프로 표시해 주어 상승세 또는 하락세인지 실시간 비교합니다.</span>
+                    </div>
+                    <div>
+                        <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">🏫 종합 교육환경 점수</strong>
+                        <span style="color: var(--text-main);">학업 성취 점수, 학급당 학생수(과밀 여부), 주변 치안 인프라 가중치, 학교 예산 등을 AI 가중치로 종합 산출한 100점 만점 평점 지표입니다.</span>
+                    </div>
+                    <div>
+                        <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">🔥 경쟁 치열도 및 학부모 톡</strong>
+                        <span style="color: var(--text-main);">학생들의 경쟁 분위기 지표 분석 및 학부모들이 익명으로 소통할 수 있는 익명 커뮤니티(타운 톡)를 제공합니다.</span>
+                    </div>
+                </div>
+
+                <!-- 5. 학원 가이드 패널 -->
+                <div class="tutorial-tab-panel" id="panel-academy" style="display: none; flex-direction: column; gap: 12px; font-size: 11.5px; line-height: 1.6;">
+                    <div>
+                        <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">📚 주변 학원가 현황</strong>
+                        <span style="color: var(--text-main);">해당 학교 주변의 주요 사교육 인프라 분포 개수를 표시하고 학원 밀집 지역 연계 정보를 도출합니다.</span>
+                    </div>
+                    <div>
+                        <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">💰 평균 학원 수강비 (추정치)</strong>
+                        <span style="color: var(--text-main);">인근 수학/영어 단과 학원(주 3회 기준)의 지역별 평균 수강 가격을 자동 연동 및 비교하여 사교육 예산 가이드를 제공합니다.</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Container for dynamic UI cards (School Info, Performance Diagnostic) -->
             <div id="sidebarContent">
                 <!-- ✏️ 잘못된 정보 수정 요청 카드 (사이드바 내부) -->
@@ -766,94 +855,7 @@
                     </div>
                 </div>
 
-                <!-- 💡 전체 기능 설명 가이드 카드 (사이드바 내부) -->
-                <div class="card" id="tutorialSidebarCard" style="display: none; position: relative;">
-                    <button onclick="if(typeof window.closeTutorialSidebar === 'function') window.closeTutorialSidebar(); else { this.parentNode.style.display='none'; document.getElementById('welcomeCard').style.display='block'; }" style="position: absolute; top: 12px; right: 12px; background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted); font-weight: bold; line-height: 1;" title="닫기">&times;</button>
-                    <div class="card-title" style="font-size: 16px; color: var(--deep-blue); font-weight: 700; margin-bottom: 8px;">💡 서비스 이용 도움말 가이드</div>
-                    <p style="font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-bottom: 12px;">서울시 학업성취도 분석 및 자녀 맞춤 추천 서비스 도움말입니다.</p>
-                    
-                    <!-- 카테고리 탭 메뉴 (가로 스크롤 가능형) -->
-                    <div style="display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; overflow-x: auto; white-space: nowrap; -ms-overflow-style: none; scrollbar-width: none;">
-                        <button onclick="switchTutorialTab('all')" class="tutorial-tab-btn" id="tab-all" style="padding: 6px 10px; font-size: 11px; font-weight: bold; background: var(--primary-blue); color: white; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s;">전체 사용법</button>
-                        <button onclick="switchTutorialTab('menu')" class="tutorial-tab-btn" id="tab-menu" style="padding: 6px 10px; font-size: 11px; font-weight: bold; background: #f1f3f5; color: var(--text-muted); border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s;">☰ 메뉴</button>
-                        <button onclick="switchTutorialTab('filter')" class="tutorial-tab-btn" id="tab-filter" style="padding: 6px 10px; font-size: 11px; font-weight: bold; background: #f1f3f5; color: var(--text-muted); border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s;">🔍 필터</button>
-                        <button onclick="switchTutorialTab('school')" class="tutorial-tab-btn" id="tab-school" style="padding: 6px 10px; font-size: 11px; font-weight: bold; background: #f1f3f5; color: var(--text-muted); border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s;">🏫 학교 상세</button>
-                        <button onclick="switchTutorialTab('academy')" class="tutorial-tab-btn" id="tab-academy" style="padding: 6px 10px; font-size: 11px; font-weight: bold; background: #f1f3f5; color: var(--text-muted); border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s;">📚 학원</button>
-                    </div>
 
-                    <!-- 1. 전체 사용법 패널 -->
-                    <div class="tutorial-tab-panel" id="panel-all" style="display: flex; flex-direction: column; gap: 12px; font-size: 11.5px; line-height: 1.6;">
-                        <div style="background: var(--light-blue); padding: 8px 12px; border-radius: 6px; border-left: 3px solid var(--primary-blue); font-weight: 600; color: var(--deep-blue); font-size: 11px;">
-                            💡 학군 분석 및 자녀 컨설팅의 기본 이용 흐름
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 8px;">
-                            <div>1️⃣ <strong>학교 탐색 및 선택</strong>: 지도에서 관심 학교 마커를 클릭하거나 상단 검색창을 활용해 직접 명칭을 입력하여 해당 학교를 선택합니다.</div>
-                            <div>2️⃣ <strong>맞춤 정보 필터 설정</strong>: 좌측 사이드바 및 필터창에서 원하는 학년, 성적 등급 기준, 학력 지표 등을 조정하여 맞춤 지도를 구성합니다.</div>
-                            <div>3️⃣ <strong>도보 통학로 실시간 분석</strong>: 출발지를 설정하여 안심 도보 경로를 찾고, 동적 안전 분석 수치(CCTV, 지킴이집, 파출소 등)를 획득합니다.</div>
-                            <div>4️⃣ <strong>우리 아이 성적 진단</strong>: 학부모 설정을 통해 성적 데이터를 입력하면 학교 점수 분포와 연계한 컨설팅 진단서를 즉시 생성합니다.</div>
-                        </div>
-                    </div>
-
-                    <!-- 2. 메뉴 가이드 패널 -->
-                    <div class="tutorial-tab-panel" id="panel-menu" style="display: none; flex-direction: column; gap: 12px; font-size: 11.5px; line-height: 1.6;">
-                        <div>
-                            <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">☰ 사이드바 토글 버튼 (우측 상단)</strong>
-                            <span style="color: var(--text-main);">모니터 해상도에 맞춰 분석 카드들이 가리지 않도록 사이드바 영역 전체를 화면에서 접거나 펼치는 기능을 제공합니다.</span>
-                        </div>
-                        <div>
-                            <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">⚙️ 설정 및 비즈니스 센터 (우측 상단)</strong>
-                            <span style="color: var(--text-main);">아이 성적 저장, 지도 플로팅 창 투명도(알파값) 미세 조정 및 잘못된 정보 수정 제보, 신규 학원 제휴 및 등록 문의 기능을 집약해 둔 창입니다.</span>
-                        </div>
-                        <div>
-                            <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">❓ 도움말 가이드 (우측 상단)</strong>
-                            <span style="color: var(--text-main);">현재 보시는 화면으로, 각 필터와 차트 및 메뉴의 세부 작동 원리를 상세히 확인할 수 있습니다.</span>
-                        </div>
-                    </div>
-
-                    <!-- 3. 필터 가이드 패널 -->
-                    <div class="tutorial-tab-panel" id="panel-filter" style="display: none; flex-direction: column; gap: 12px; font-size: 11.5px; line-height: 1.6;">
-                        <div>
-                            <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">🏫 학교 급수(초/중/고) 필터</strong>
-                            <span style="color: var(--text-main);">탐색하려는 학군 수준에 맞게 지도의 학교 핀 표시 대상을 필터링합니다.</span>
-                        </div>
-                        <div>
-                            <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">📊 학업 성취 기준치 슬라이더</strong>
-                            <span style="color: var(--text-main);">우수(파랑), 보통(초록), 경계(노랑) 등 지도의 핀 색상을 결정짓는 성취도 점수 기준(기본 78점)을 임의로 높이거나 낮추어 지도를 재분석할 수 있습니다.</span>
-                        </div>
-                        <div>
-                            <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">📍 행정구역(동) 필터 & 검색</strong>
-                            <span style="color: var(--text-main);">특정 행정동을 입력하면 해당 지역에 포진한 모든 학군과 학교 평점을 일괄 비교하고 순위를 정렬합니다.</span>
-                        </div>
-                    </div>
-
-                    <!-- 4. 학교 상세 가이드 패널 -->
-                    <div class="tutorial-tab-panel" id="panel-school" style="display: none; flex-direction: column; gap: 12px; font-size: 11.5px; line-height: 1.6;">
-                        <div>
-                            <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">📈 3개년 학업성취 추이 (국·영·수 평균)</strong>
-                            <span style="color: var(--text-main);">최근 3개년 동안의 학력 수준 변화 추세를 스파크라인 그래프로 표시해 주어 상승세 또는 하락세인지 실시간 비교합니다.</span>
-                        </div>
-                        <div>
-                            <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">🏫 종합 교육환경 점수</strong>
-                            <span style="color: var(--text-main);">학업 성취 점수, 학급당 학생수(과밀 여부), 주변 치안 인프라 가중치, 학교 예산 등을 AI 가중치로 종합 산출한 100점 만점 평점 지표입니다.</span>
-                        </div>
-                        <div>
-                            <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">🔥 경쟁 치열도 및 학부모 톡</strong>
-                            <span style="color: var(--text-main);">학생들의 경쟁 분위기 지표 분석 및 학부모들이 익명으로 소통할 수 있는 익명 커뮤니티(타운 톡)를 제공합니다.</span>
-                        </div>
-                    </div>
-
-                    <!-- 5. 학원 가이드 패널 -->
-                    <div class="tutorial-tab-panel" id="panel-academy" style="display: none; flex-direction: column; gap: 12px; font-size: 11.5px; line-height: 1.6;">
-                        <div>
-                            <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">📚 주변 학원가 현황</strong>
-                            <span style="color: var(--text-main);">해당 학교 주변의 주요 사교육 인프라 분포 개수를 표시하고 학원 밀집 지역 연계 정보를 도출합니다.</span>
-                        </div>
-                        <div>
-                            <strong style="color: var(--primary-blue); display: block; margin-bottom: 2px;">💰 평균 학원 수강비 (추정치)</strong>
-                            <span style="color: var(--text-main);">인근 수학/영어 단과 학원(주 3회 기준)의 지역별 평균 수강 가격을 자동 연동 및 비교하여 사교육 예산 가이드를 제공합니다.</span>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- Welcome/Instruction Card -->
                 <div class="card" id="welcomeCard">
@@ -1196,6 +1198,10 @@
                         </div>
                     </div>
                 </div>
+                <div style="margin-top: 24px; margin-bottom: 8px; text-align: center; font-size: 10px; color: var(--text-muted); opacity: 0.6; font-weight: 500; letter-spacing: 0.3px;">
+                    © It's LAB. All rights reserved.
+            </div>
+            </div>
             </div>
             <!-- Floating Community Review Panel -->
             <div id="communityPanel" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.95); z-index: 100; backdrop-filter: blur(5px); flex-direction: column; padding: 24px; overflow-y: auto; transition: opacity 0.3s ease;">
