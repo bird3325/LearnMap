@@ -1606,7 +1606,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.onMapAction = onMapAction;
 
     // 학부모 맞춤 필터 및 가중치 기반 학교 필터링 함수
-    function filterSchools(schools, selectedRegion, typeLabel) {
+    function filterSchools(schools, selectedRegion, typeLabel, isClusterMode = false) {
         const curLevel = parseFloat(document.getElementById('currentLevelRange').value);
         const tarLevel = parseFloat(document.getElementById('targetLevelRange').value);
         
@@ -1665,53 +1665,56 @@ document.addEventListener('DOMContentLoaded', () => {
             const avgPrev2 = Math.round((avgPrev1 - y2Change) * 10) / 10;
             school.trendData = [avgPrev2, avgPrev1, school.weightedAvg];
 
-            // 3. 3년 연속 우상향 필터
-            if (showTrendUpward) {
-                const isUpward = (avgPrev2 <= avgPrev1) && (avgPrev1 <= school.weightedAvg);
-                if (!isUpward) return false;
+            // 클러스터 모드일 때는 세부 성적 및 기타 필터를 건너뜀 (전체 학교 개요 파악 목적)
+            if (!isClusterMode) {
+                // 3. 3년 연속 우상향 필터
+                if (showTrendUpward) {
+                    const isUpward = (avgPrev2 <= avgPrev1) && (avgPrev1 <= school.weightedAvg);
+                    if (!isUpward) return false;
+                }
+
+                // 4. 자녀 내신 추천 필터 (자녀 내신 - 10점 ~ 목표 내신 + 5점 범위)
+                if (school.weightedAvg < curLevel - 10 || school.weightedAvg > tarLevel + 5) {
+                    return false;
+                }
+
+                // --- 세부 학업 지표 필터 체크 ---
+                if (school.weightedAvg < minAvgScore) return false;
+                if (school.subjects.korean.avg < minSubjectScore || school.subjects.english.avg < minSubjectScore || school.subjects.math.avg < minSubjectScore) return false;
+                
+                const distKor = school.subjects.korean.dist || [0, 0, 0, 0];
+                const distEng = school.subjects.english.dist || [0, 0, 0, 0];
+                const distMath = school.subjects.math.dist || [0, 0, 0, 0];
+                const topRatio = (distKor[0] + distEng[0] + distMath[0]) / 3;
+                if (topRatio < minTopRatio) return false;
+                
+                const bottomRatio = (distKor[3] + distEng[3] + distMath[3]) / 3;
+                if (bottomRatio > maxBottomRatio) return false;
+
+                // --- School 특성 필터 체크 ---
+                if (classSizePreset === 'small' && school.class_avg_size >= 20) return false;
+                if (classSizePreset === 'medium' && (school.class_avg_size < 20 || school.class_avg_size > 25)) return false;
+                if (classSizePreset === 'large' && school.class_avg_size <= 25) return false;
+
+                const studentPerTeacher = Math.round(school.class_avg_size * 0.65 * 10) / 10;
+                if (studentPerTeacher > maxStudentPerTeacher) return false;
+
+                const studentTrendDir = (codeHash % 3 === 0) ? 'up' : ((codeHash % 3 === 1) ? 'down' : 'stable');
+                if (studentTrend !== 'all' && studentTrendDir !== studentTrend) return false;
+
+                const hasSpecialClass = (codeHash % 4 !== 0);
+                if (specialClassOnly && !hasSpecialClass) return false;
+
+                // --- 생활 및 진로 관련 지표 필터 체크 ---
+                const gradRate = school.graduate_career ? (school.graduate_career.general + (school.graduate_career.special || 0) + (school.graduate_career.autonomous || 0)) : 80;
+                if (gradRate < minGraduateRate) return false;
+
+                const specialAdmRate = school.graduate_career ? ((school.graduate_career.special || 0) + (school.graduate_career.autonomous || 0)) : 10;
+                if (specialAdmRate < minSpecialAdmission) return false;
+
+                const violenceCount = school.violence_stats ? school.violence_stats.total_cases : 0;
+                if (violenceCount > maxViolence) return false;
             }
-
-            // 4. 자녀 내신 추천 필터 (자녀 내신 - 10점 ~ 목표 내신 + 5점 범위)
-            if (school.weightedAvg < curLevel - 10 || school.weightedAvg > tarLevel + 5) {
-                return false;
-            }
-
-            // --- 세부 학업 지표 필터 체크 ---
-            if (school.weightedAvg < minAvgScore) return false;
-            if (school.subjects.korean.avg < minSubjectScore || school.subjects.english.avg < minSubjectScore || school.subjects.math.avg < minSubjectScore) return false;
-            
-            const distKor = school.subjects.korean.dist || [0, 0, 0, 0];
-            const distEng = school.subjects.english.dist || [0, 0, 0, 0];
-            const distMath = school.subjects.math.dist || [0, 0, 0, 0];
-            const topRatio = (distKor[0] + distEng[0] + distMath[0]) / 3;
-            if (topRatio < minTopRatio) return false;
-            
-            const bottomRatio = (distKor[3] + distEng[3] + distMath[3]) / 3;
-            if (bottomRatio > maxBottomRatio) return false;
-
-            // --- 학교 특성 필터 체크 ---
-            if (classSizePreset === 'small' && school.class_avg_size >= 20) return false;
-            if (classSizePreset === 'medium' && (school.class_avg_size < 20 || school.class_avg_size > 25)) return false;
-            if (classSizePreset === 'large' && school.class_avg_size <= 25) return false;
-
-            const studentPerTeacher = Math.round(school.class_avg_size * 0.65 * 10) / 10;
-            if (studentPerTeacher > maxStudentPerTeacher) return false;
-
-            const studentTrendDir = (codeHash % 3 === 0) ? 'up' : ((codeHash % 3 === 1) ? 'down' : 'stable');
-            if (studentTrend !== 'all' && studentTrendDir !== studentTrend) return false;
-
-            const hasSpecialClass = (codeHash % 4 !== 0);
-            if (specialClassOnly && !hasSpecialClass) return false;
-
-            // --- 생활 및 진로 관련 지표 필터 체크 ---
-            const gradRate = school.graduate_career ? (school.graduate_career.general + (school.graduate_career.special || 0) + (school.graduate_career.autonomous || 0)) : 80;
-            if (gradRate < minGraduateRate) return false;
-
-            const specialAdmRate = school.graduate_career ? ((school.graduate_career.special || 0) + (school.graduate_career.autonomous || 0)) : 10;
-            if (specialAdmRate < minSpecialAdmission) return false;
-
-            const violenceCount = school.violence_stats ? school.violence_stats.total_cases : 0;
-            if (violenceCount > maxViolence) return false;
 
             // --- 교육환경 스코어 계산 ---
             const scoreScore = school.weightedAvg;
@@ -1723,31 +1726,33 @@ document.addEventListener('DOMContentLoaded', () => {
             school.envScore = envScore;
             school.envScoresDetails = { scoreScore, teacherScore, safetyScore, budgetScore };
 
-            // 5. 프로필별 성향 추천 필터 (balanced 등 개선 조건 완화)
-            if (profile === 'academic') {
-                if (school.weightedAvg < 75) return false;
-            } else if (profile === 'balanced') {
-                if (school.weightedAvg < 68 || teacherScore < 20 || safetyScore < 50) return false;
-            } else if (profile === 'safety') {
-                if (safetyScore < 80 || school.class_avg_size > 28) return false;
-            }
-
-            // 6. 통학 분석 기준 반경 필터 (선택된 중심점 기준 반경 체크)
-            if (commuteMode !== 'off' && kakaoMap) {
-                let center = commuteCenter;
-                if (!center) {
-                    if (orchestrator.state.selectedSchool && orchestrator.state.selectedSchool.lat) {
-                        center = new kakao.maps.LatLng(orchestrator.state.selectedSchool.lat, orchestrator.state.selectedSchool.lng);
-                    } else {
-                        center = kakaoMap.getCenter();
-                    }
+            if (!isClusterMode) {
+                // 5. 프로필별 성향 추천 필터 (balanced 등 개선 조건 완화)
+                if (profile === 'academic') {
+                    if (school.weightedAvg < 75) return false;
+                } else if (profile === 'balanced') {
+                    if (school.weightedAvg < 68 || teacherScore < 20 || safetyScore < 50) return false;
+                } else if (profile === 'safety') {
+                    if (safetyScore < 80 || school.class_avg_size > 28) return false;
                 }
-                const radius = parseFloat(commuteMode); // 500, 1000, 1500
-                
-                const latDiff = (school.lat - center.getLat()) * 111000;
-                const lngDiff = (school.lng - center.getLng()) * 88000;
-                const distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
-                if (distance > radius) return false;
+
+                // 6. 통학 분석 기준 반경 필터 (선택된 중심점 기준 반경 체크)
+                if (commuteMode !== 'off' && kakaoMap) {
+                    let center = commuteCenter;
+                    if (!center) {
+                        if (orchestrator.state.selectedSchool && orchestrator.state.selectedSchool.lat) {
+                            center = new kakao.maps.LatLng(orchestrator.state.selectedSchool.lat, orchestrator.state.selectedSchool.lng);
+                        } else {
+                            center = kakaoMap.getCenter();
+                        }
+                    }
+                    const radius = parseFloat(commuteMode); // 500, 1000, 1500
+                    
+                    const latDiff = (school.lat - center.getLat()) * 111000;
+                    const lngDiff = (school.lng - center.getLng()) * 88000;
+                    const distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+                    if (distance > radius) return false;
+                }
             }
 
             // --- 가중평균 기반 pin_color 동적 갱신 ---
@@ -1821,12 +1826,15 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
 
             // 개별 핀 숨기기
-            mapMarkers.forEach(marker => marker.setMap(null));
+            mapMarkers.forEach(item => {
+                if (item.marker) item.marker.setMap(null);
+                else item.setMap(null);
+            });
             mapMarkers = [];
             currentLoadedSchools = [];
 
-            // 공통 필터 적용
-            const filteredForCluster = filterSchools(schoolsDatabase, selectedRegion, typeLabel);
+            // 공통 필터 적용 (줌 레벨 7 이상 축소 시에는 전체 지역 학교가 보이도록 'all' 및 isClusterMode=true 전달)
+            const filteredForCluster = filterSchools(schoolsDatabase, 'all', typeLabel, true);
 
             const markers = filteredForCluster.map(school => {
                 const marker = new kakao.maps.Marker({
@@ -1902,7 +1910,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         logDiagnostic(`[onMapAction] 현재 지도 영역 내 학교 수: ${filtered.length}개`);
 
-        filtered = filtered.slice(0, 30); // Prevent overlay flooding
+        filtered = filtered.slice(0, 150); // Prevent overlay flooding (30 -> 150개로 상향하여 핀 유실 방지)
         currentLoadedSchools = filtered;
         renderPins(filtered, false);
         updateSafetyGuideLayers(orchestrator.state.selectedSchool);
@@ -5221,96 +5229,145 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const favs = JSON.parse(localStorage.getItem('favoriteSchools') || '[]');
             const index = favs.findIndex(f => f.id === school.school_id);
+            const priority = document.getElementById('favPrioritySelect').value;
+            const memo = document.getElementById('favMemoText').value.trim();
+            const now = new Date().toLocaleDateString('ko-KR');
+            
+            const item = {
+                id: school.school_id,
+                name: school.school_name,
+                type: school.school_type,
+                priority: priority,
+                memo: memo,
+                updated_at: now
+            };
+
             if (index !== -1) {
-                const priority = document.getElementById('favPrioritySelect').value;
-                const memo = document.getElementById('favMemoText').value.trim();
-                const now = new Date().toLocaleDateString('ko-KR');
-                
-                favs[index].priority = priority;
-                favs[index].memo = memo;
-                favs[index].updated_at = now;
-                
-                localStorage.setItem('favoriteSchools', JSON.stringify(favs));
-                document.getElementById('favMemoDate').innerText = `작성일: ${now}`;
-                
-                // Supabase 동기화 시도
-                if (supabase) {
-                    try {
-                        const { error } = await supabase
-                            .from('favorite_school_notes')
-                            .upsert({
-                                school_id: school.school_id,
-                                priority: parseInt(priority),
-                                memo: memo,
-                                updated_at: new Date()
-                            });
-                        if (error) throw error;
-                    } catch (e) {
-                        console.error('Failed to sync favorite memo with Supabase:', e);
-                    }
-                }
-                
-                alert('관심 학교 메모 및 순위 정보가 정상적으로 저장되었습니다.');
-                updateFavUI();
+                favs[index] = item;
+            } else {
+                favs.push(item);
             }
+            
+            localStorage.setItem('favoriteSchools', JSON.stringify(favs));
+            
+            // Supabase 동기화 시도
+            if (supabase) {
+                try {
+                    const { error } = await supabase
+                        .from('favorite_school_notes')
+                        .upsert({
+                            school_id: school.school_id,
+                            priority: parseInt(priority),
+                            memo: memo,
+                            updated_at: new Date()
+                        });
+                    if (error) throw error;
+                } catch (e) {
+                    console.error('Failed to sync favorite memo with Supabase:', e);
+                }
+            }
+            
+            const btn = document.getElementById('btnSaveFavorite');
+            if (btn) {
+                btn.innerHTML = '🌟';
+                btn.title = '관심 학교 저장됨';
+            }
+            
+            alert('관심 학교 메모 및 순위 정보가 정상적으로 저장되었습니다.');
+            window.toggleFavMemoModal();
+            updateFavUI();
         });
     }
 
+    // 모달 내 관심 해제 버튼 이벤트 연결
+    const btnRemoveFavoriteFromModal = document.getElementById('btnRemoveFavoriteFromModal');
+    if (btnRemoveFavoriteFromModal) {
+        btnRemoveFavoriteFromModal.addEventListener('click', async () => {
+            const school = orchestrator.state.selectedSchool;
+            if (!school) return;
+            
+            const favs = JSON.parse(localStorage.getItem('favoriteSchools') || '[]');
+            const filtered = favs.filter(f => f.id !== school.school_id);
+            localStorage.setItem('favoriteSchools', JSON.stringify(filtered));
+            
+            // Supabase 연동 시 삭제 처리 시도
+            if (supabase) {
+                try {
+                    const { error } = await supabase
+                        .from('favorite_school_notes')
+                        .delete()
+                        .eq('school_id', school.school_id);
+                    if (error) throw error;
+                } catch (e) {
+                    console.error('Failed to delete favorite note from Supabase:', e);
+                }
+            }
+            
+            const btn = document.getElementById('btnSaveFavorite');
+            if (btn) {
+                btn.innerHTML = '⭐';
+                btn.title = '관심 학교 저장';
+            }
+            
+            alert(`${school.school_name}이(가) 관심 학교에서 제거되었습니다.`);
+            window.toggleFavMemoModal();
+            updateFavUI();
+        });
+    }
+
+    // Globally expose toggleFavMemoModal
+    window.toggleFavMemoModal = () => {
+        const modal = document.getElementById('favMemoModal');
+        if (!modal) return;
+        if (modal.style.display === 'none' || modal.style.display === '') {
+            modal.style.display = 'flex';
+        } else {
+            modal.style.display = 'none';
+        }
+    };
+
     // Globally expose toggleFavoriteSchool for inline HTML onclick handler
     window.toggleFavoriteSchool = () => {
-        const btn = document.getElementById('btnSaveFavorite');
         if (!orchestrator.state.selectedSchool) {
             alert('저장할 학교를 선택해 주세요.');
             return;
         }
         const school = orchestrator.state.selectedSchool;
         const favs = JSON.parse(localStorage.getItem('favoriteSchools') || '[]');
+        const exists = favs.find(f => f.id === school.school_id);
         
-        const exists = favs.some(f => f.id === school.school_id);
-        const memoPanel = document.getElementById('favoriteMemoPanel');
+        // 모달창 필드 매핑 및 채우기
+        const modalSchoolName = document.getElementById('favMemoModalSchoolName');
+        if (modalSchoolName) {
+            modalSchoolName.innerText = school.school_name;
+        }
+        
+        const prioritySelect = document.getElementById('favPrioritySelect');
+        const memoText = document.getElementById('favMemoText');
+        const memoDate = document.getElementById('favMemoDate');
         
         if (exists) {
-            // Remove if already exists (toggle)
-            const filtered = favs.filter(f => f.id !== school.school_id);
-            localStorage.setItem('favoriteSchools', JSON.stringify(filtered));
-            if (btn) {
-                btn.innerHTML = '⭐';
-                btn.title = '관심 학교 저장';
-            }
-            if (memoPanel) memoPanel.style.display = 'none';
-            alert(`${school.school_name}이(가) 관심 학교에서 제거되었습니다.`);
+            if (prioritySelect) prioritySelect.value = exists.priority || '3';
+            if (memoText) memoText.value = exists.memo || '';
+            if (memoDate) memoDate.innerText = exists.updated_at ? `작성일: ${exists.updated_at}` : '작성일: -';
         } else {
             const now = new Date().toLocaleDateString('ko-KR');
-            const newFav = { id: school.school_id, name: school.school_name, type: school.school_type, priority: '3', memo: '', updated_at: now };
-            favs.push(newFav);
-            localStorage.setItem('favoriteSchools', JSON.stringify(favs));
-            if (btn) {
-                btn.innerHTML = '🌟';
-                btn.title = '관심 학교 저장됨';
-            }
-            
-            if (memoPanel) {
-                memoPanel.style.display = 'flex';
-                document.getElementById('favPrioritySelect').value = '3';
-                document.getElementById('favMemoText').value = '';
-                document.getElementById('favMemoDate').innerText = `작성일: ${now}`;
-            }
-            
-            alert(`${school.school_name}이(가) 관심 학교로 등록되었습니다.`);
+            if (prioritySelect) prioritySelect.value = '3';
+            if (memoText) memoText.value = '';
+            if (memoDate) memoDate.innerText = `작성일: ${now}`;
         }
-        updateFavUI();
+        
+        window.toggleFavMemoModal();
     };
 
-    window.clearAllFavorites = () => {
-        if (confirm('관심 저장된 모든 학교 목록을 삭제하시겠습니까?')) {
+    window.clearAllFavorites = async () => {
+        if (await confirm('관심 저장된 모든 학교 목록을 삭제하시겠습니까?')) {
             localStorage.removeItem('favoriteSchools');
             const btn = document.getElementById('btnSaveFavorite');
             if (btn) {
                 btn.innerHTML = '⭐';
                 btn.title = '관심 학교 저장';
             }
-            const memoPanel = document.getElementById('favoriteMemoPanel');
-            if (memoPanel) memoPanel.style.display = 'none';
             updateFavUI();
             alert('모든 관심 학교가 삭제되었습니다.');
         }
@@ -5327,18 +5384,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (btn) {
                 btn.innerHTML = exists ? '🌟' : '⭐';
                 btn.title = exists ? '관심 학교 저장됨' : '관심 학교 저장';
-            }
-
-            const memoPanel = document.getElementById('favoriteMemoPanel');
-            if (memoPanel) {
-                if (exists) {
-                    memoPanel.style.display = 'flex';
-                    document.getElementById('favPrioritySelect').value = exists.priority || '3';
-                    document.getElementById('favMemoText').value = exists.memo || '';
-                    document.getElementById('favMemoDate').innerText = exists.updated_at ? `작성일: ${exists.updated_at}` : '작성일: -';
-                } else {
-                    memoPanel.style.display = 'none';
-                }
             }
 
             // 신규 부가 서비스 연동 전 체크박스 초기화
@@ -5424,6 +5469,58 @@ document.addEventListener('DOMContentLoaded', () => {
         safetyGuideMarkers = [];
     }
 
+    function updateDynamicSafetyGuideItems() {
+        const cctvCountEl = document.getElementById('commuteCctvCount');
+        const cctvItem = document.getElementById('commuteCctvItem');
+        if (cctvCountEl && cctvItem) {
+            const count = parseInt(cctvCountEl.textContent || '0', 10);
+            if (count > 0) {
+                cctvItem.style.display = 'block';
+            } else {
+                cctvItem.style.display = 'none';
+            }
+        }
+
+        const safeHouseCountEl = document.getElementById('commuteSafeHouseCount');
+        const policeCountEl = document.getElementById('commutePoliceCount');
+        const guardiansItem = document.getElementById('commuteSafetyGuardiansItem');
+        const guardiansText = document.getElementById('commuteSafetyGuardiansText');
+
+        if (guardiansItem && guardiansText) {
+            const shCount = safeHouseCountEl ? parseInt(safeHouseCountEl.textContent || '0', 10) : 0;
+            const poCount = policeCountEl ? parseInt(policeCountEl.textContent || '0', 10) : 0;
+
+            if (shCount > 0 && poCount > 0) {
+                guardiansItem.style.display = 'block';
+                guardiansText.innerHTML = `통학로 주변 800m 내에 <strong id="commuteSafeHouseCount" style="color: #1b5e20;">${shCount}</strong>곳의 아동안전지킴이집과 <strong id="commutePoliceCount" style="color: #1b5e20;">${poCount}</strong>곳의 파출소/경찰 시설이 운영 중입니다.`;
+            } else if (shCount > 0 && poCount === 0) {
+                guardiansItem.style.display = 'block';
+                guardiansText.innerHTML = `통학로 주변 800m 내에 <strong id="commuteSafeHouseCount" style="color: #1b5e20;">${shCount}</strong>곳의 아동안전지킴이집이 운영 중입니다.`;
+            } else if (shCount === 0 && poCount > 0) {
+                guardiansItem.style.display = 'block';
+                guardiansText.innerHTML = `통학로 주변 800m 내에 <strong id="commutePoliceCount" style="color: #1b5e20;">${poCount}</strong>곳의 파출소/경찰 시설이 운영 중입니다.`;
+            } else {
+                guardiansItem.style.display = 'none';
+            }
+        }
+
+        // visible 항목들에 대한 순서 번호 자동 재배정
+        const guideEl = document.getElementById('commutePathSafetyGuide');
+        if (guideEl) {
+            const items = guideEl.querySelectorAll('.commute-safety-item');
+            let currentNum = 1;
+            items.forEach(item => {
+                if (item.style.display !== 'none') {
+                    const numSpan = item.querySelector('.commute-item-num');
+                    if (numSpan) {
+                        numSpan.textContent = `${currentNum}.`;
+                    }
+                    currentNum++;
+                }
+            });
+        }
+    }
+
     function clearMapLayers() {
         commutePolylines.forEach(p => p.setMap(null));
         commutePolylines = [];
@@ -5435,6 +5532,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // 범례 플로팅 가이드 바 숨김
         const legendBar = document.getElementById('commuteLegendFloatingBar');
         if (legendBar) legendBar.style.display = 'none';
+
+        // 안전 시설 수치 초기화
+        const cctvCountEl = document.getElementById('commuteCctvCount');
+        if (cctvCountEl) cctvCountEl.textContent = '0';
+        const safeHouseCountEl = document.getElementById('commuteSafeHouseCount');
+        if (safeHouseCountEl) safeHouseCountEl.textContent = '0';
+        const policeCountEl = document.getElementById('commutePoliceCount');
+        if (policeCountEl) policeCountEl.textContent = '0';
+
+        updateDynamicSafetyGuideItems();
     }
 
     function updateMapLayers(school) {
@@ -5529,6 +5636,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     drawCommutePath(pathCoordinates);
                     
                     // OSRM 경로 상의 일정 간격 교차점에 방범 CCTV 가상 카메라 배지 설치
+                    let cctvCount = 0;
                     if (pathCoordinates.length > 4) {
                         for (let i = 2; i < pathCoordinates.length - 2; i += 4) {
                             const coord = pathCoordinates[i];
@@ -5544,8 +5652,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             });
                             cctvOverlay.setMap(window.kakaoMapInstance);
                             safetyMarkers.push(cctvOverlay);
+                            cctvCount++;
                         }
                     }
+                    const cctvCountEl = document.getElementById('commuteCctvCount');
+                    if (cctvCountEl) {
+                        cctvCountEl.textContent = cctvCount;
+                    }
+
+                    updateDynamicSafetyGuideItems();
+
+                    const guideEl = document.getElementById('commutePathSafetyGuide');
+                    if (guideEl) guideEl.style.display = 'flex';
                 })
                 .catch(err => {
                     console.error('[Safe Commute API] OSRM 라우팅 호출 실패, 백업 격자 경로를 그립니다:', err);
@@ -5555,6 +5673,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         endPoint
                     ];
                     drawCommutePath(pathCoordinates);
+                    const cctvCountEl = document.getElementById('commuteCctvCount');
+                    if (cctvCountEl) {
+                        cctvCountEl.textContent = '0';
+                    }
+                    updateDynamicSafetyGuideItems();
                 });
 
             // 주변 안전 지킴이 시설(치안센터, 파출소, 아동보호시설 등) 검색 및 지도에 표시
@@ -5579,6 +5702,17 @@ document.addEventListener('DOMContentLoaded', () => {
                             safeHouseOverlay.setMap(window.kakaoMapInstance);
                             safetyMarkers.push(safeHouseOverlay);
                         });
+                        const safeHouseCountEl = document.getElementById('commuteSafeHouseCount');
+                        if (safeHouseCountEl) {
+                            safeHouseCountEl.textContent = result.length;
+                        }
+                        updateDynamicSafetyGuideItems();
+                    } else {
+                        const safeHouseCountEl = document.getElementById('commuteSafeHouseCount');
+                        if (safeHouseCountEl) {
+                            safeHouseCountEl.textContent = '0';
+                        }
+                        updateDynamicSafetyGuideItems();
                     }
                 }, {
                     location: endPoint,
@@ -5603,6 +5737,17 @@ document.addEventListener('DOMContentLoaded', () => {
                             policeOverlay.setMap(window.kakaoMapInstance);
                             safetyMarkers.push(policeOverlay);
                         });
+                        const policeCountEl = document.getElementById('commutePoliceCount');
+                        if (policeCountEl) {
+                            policeCountEl.textContent = result.length;
+                        }
+                        updateDynamicSafetyGuideItems();
+                    } else {
+                        const policeCountEl = document.getElementById('commutePoliceCount');
+                        if (policeCountEl) {
+                            policeCountEl.textContent = '0';
+                        }
+                        updateDynamicSafetyGuideItems();
                     }
                 }, {
                     location: endPoint,
@@ -5969,6 +6114,9 @@ document.addEventListener('DOMContentLoaded', () => {
         window.customCommuteEnd = null;
         window.mapClickMode = 'none';
         
+        const guideEl = document.getElementById('commutePathSafetyGuide');
+        if (guideEl) guideEl.style.display = 'none';
+        
         clearMapLayers();
         if (typeof window.updatePointSelectorButtons === 'function') {
             window.updatePointSelectorButtons();
@@ -6087,7 +6235,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // 2. 부동산 가격 추이 그래프 및 관심단지 알림
-    function showCustomAlert(title, message) {
+    window.showCustomAlert = function(title, message) {
         const modalId = 'customNotificationModal';
         let modal = document.getElementById(modalId);
         if (!modal) {

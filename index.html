@@ -17,6 +17,15 @@
             </svg>
         </button>
 
+        <!-- Top Right Floating Help Guide Button -->
+        <button id="btnShowTutorial" style="position: absolute; right: 124px; top: 24px; width: 40px; height: 40px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10001; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all 0.2s ease;" title="도움말 가이드">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+        </button>
+
         <!-- Top Right Floating Settings Button -->
         <button id="btnOpenSettings" style="position: absolute; right: 74px; top: 24px; width: 40px; height: 40px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10001; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all 0.2s ease;" onclick="const s = document.getElementById('settingsModal'); s.style.display = s.style.display === 'none' ? 'block' : 'none';">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -802,22 +811,7 @@
                         <div style="grid-column: span 2;">공시 기준일: <strong id="schoolCardUpdate">2025.09</strong></div>
                     </div>
 
-                    <!-- 관심 학교 관리: 순위 및 개인 메모 -->
-                    <div id="favoriteMemoPanel" style="display: none; background: #fffde7; padding: 10.5px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #fff59d; font-size: 12px; flex-direction: column; gap: 6px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <strong style="color: #f57f17; font-weight: 800;">⭐ 관심 학교 순위 및 메모</strong>
-                            <select id="favPrioritySelect" style="padding: 2px 4px; border: 1px solid #ccc; border-radius: 4px; font-size: 11px; cursor: pointer; outline: none; background: white;">
-                                <option value="3">관심 등록</option>
-                                <option value="1">🥇 1순위 학교</option>
-                                <option value="2">🥈 2순위 학교</option>
-                            </select>
-                        </div>
-                        <textarea id="favMemoText" placeholder="학부모 개인 메모를 작성해 주세요 (예: 통학로 안전, 면학 분위기 좋음 등)" style="width: 100%; min-height: 40px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 11px; font-family: inherit; resize: vertical; box-sizing: border-box; outline: none; background: white;"></textarea>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span id="favMemoDate" style="font-size: 9px; color: var(--text-muted);">작성일: -</span>
-                            <button id="btnSaveFavMemo" class="btn-primary" style="padding: 4px 10px; font-size: 11.5px; border-radius: 4px; font-weight: bold; cursor: pointer; border: none; background: var(--primary-blue); color: white; transition: background 0.2s;">메모 저장</button>
-                        </div>
-                    </div>
+
                     
                     <!-- 🚶 안심 통학로 & 🚌 학원 셔틀 노선도 레이어 체크박스 -->
                     <div style="background: var(--bg-primary); padding: 10px; border-radius: 8px; margin-bottom: 12px; display: flex; gap: 8px;">
@@ -840,6 +834,17 @@
                         </div>
                         <div style="color: var(--text-muted); line-height: 1.3; font-size: 10px; margin-top: 4px;">
                             * 버튼 선택 후 지도를 클릭하면 출발지가 지정됩니다. (도착지는 선택된 학교로 고정됩니다.)
+                        </div>
+                    </div>
+                    
+                    <!-- 🛡️ 안심 통학로 안전 분석 결과 고정 안내 패널 -->
+                    <div id="commutePathSafetyGuide" style="display: none; flex-direction: column; gap: 6px; margin-bottom: 12px; background: #e8f5e9; padding: 12px; border-radius: 8px; border: 1px solid #c8e6c9; font-size: 11px; line-height: 1.5; color: #2e7d32;">
+                        <strong style="color: #1b5e20; font-size: 12px; display: flex; align-items: center; gap: 4px; border-bottom: 1px dashed #a5d6a7; padding-bottom: 4px; margin-bottom: 2px;">🛡️ 안심 통학로 안전 분석 결과</strong>
+                        <div style="display: flex; flex-direction: column; gap: 4px; font-weight: 500;">
+                            <div class="commute-safety-item"><span class="commute-item-num">1.</span> 🚶 <strong>보행 전용 경로</strong>: 차량 도로를 최대한 우회하는 안심 도보 경로가 적용되었습니다.</div>
+                            <div class="commute-safety-item"><span class="commute-item-num">2.</span> 🟡 <strong>스쿨존 안심 반경</strong>: 어린이보호구역 300m 법정 서행 반경을 확인했습니다.</div>
+                            <div id="commuteSafetyGuardiansItem" class="commute-safety-item"><span class="commute-item-num">3.</span> 🛡️ <strong>안전 파수꾼 연계</strong>: <span id="commuteSafetyGuardiansText">통학로 주변 800m 내에 <strong id="commuteSafeHouseCount" style="color: #1b5e20;">0</strong>곳의 아동안전지킴이집과 <strong id="commutePoliceCount" style="color: #1b5e20;">0</strong>곳의 파출소/경찰 시설이 운영 중입니다.</span></div>
+                            <div id="commuteCctvItem" class="commute-safety-item"><span class="commute-item-num">4.</span> 🎥 <strong>방범용 CCTV 배치</strong>: 자녀 안전 보호를 위해 도보 경로 상에 <strong id="commuteCctvCount" style="color: #1b5e20;">0</strong>개의 방범 CCTV가 감지되었습니다.</div>
                         </div>
                     </div>
                     
@@ -973,7 +978,6 @@
                         <button class="btn-primary" id="btnCompareChild" style="flex: 1;">우리아이 분석하기</button>
                         <button class="btn-secondary" id="btnCompareBoard" style="flex: 1;">비교 보드 추가</button>
                     </div>
-                    <button class="btn-secondary" id="btnShowTutorial" style="background: white; border: 1px solid var(--primary-blue); color: var(--primary-blue); width: 100%;">💡 도움말 가이드</button>
                     <button class="btn-secondary" id="btnShowReviews" style="background: white; border: 1px solid var(--primary-blue); color: var(--primary-blue); width: 100%;">💬 찐 학부모 리뷰 보기</button>
                 </div>
                 
@@ -1225,6 +1229,44 @@
                 </div>
                 <!-- 학교알리미 링크 -->
                 <a id="schoolAlrimiLink" href="#" target="_blank" style="display: block; text-align: center; font-size: 11px; color: var(--primary-blue); text-decoration: none; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 4px;">🏫 학교알리미에서 원본 확인 →</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 관심 학교 설정 및 메모 모달 -->
+    <div id="favMemoModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) toggleFavMemoModal()">
+        <div style="background: var(--bg-card); border-radius: 16px; padding: 24px; width: 90%; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color); position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 style="font-size: 16px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
+                    <span>⭐ 관심 학교 설정 및 메모</span>
+                </h3>
+                <button onclick="toggleFavMemoModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='var(--deep-blue)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px; font-size: 12px;">
+                <div style="font-size: 14px; font-weight: bold; color: var(--text-main);" id="favMemoModalSchoolName">○○중학교</div>
+                
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-weight: 700; color: var(--text-main);">관심 순위 지정</label>
+                    <select id="favPrioritySelect" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 12px; cursor: pointer; outline: none; background: white;">
+                        <option value="3">⭐ 관심 등록</option>
+                        <option value="1">🥇 1순위 학교</option>
+                        <option value="2">🥈 2순위 학교</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-weight: 700; color: var(--text-main);">개인 메모</label>
+                    <textarea id="favMemoText" placeholder="학부모 개인 메모를 작성해 주세요 (예: 통학로 안전, 면학 분위기 좋음 등)" style="width: 100%; min-height: 80px; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 12px; font-family: inherit; resize: vertical; box-sizing: border-box; outline: none; background: white;"></textarea>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                    <span id="favMemoDate" style="font-size: 10px; color: var(--text-muted);">작성일: -</span>
+                    <div style="display: flex; gap: 8px; flex-shrink: 0;">
+                        <button id="btnRemoveFavoriteFromModal" class="btn-secondary" style="padding: 8px 14px; font-size: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; border: 1px solid var(--danger-red); background: white; color: var(--danger-red); transition: all 0.2s; white-space: nowrap;">관심 해제</button>
+                        <button id="btnSaveFavMemo" class="btn-primary" style="padding: 8px 14px; font-size: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; border: none; background: var(--primary-blue); color: white; transition: background 0.2s; white-space: nowrap;">저장하기</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
