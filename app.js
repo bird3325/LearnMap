@@ -418,13 +418,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateFormWithSelectedChild() {
         const child = childProfiles.find(c => c.id === selectedChildId);
-        if (!child) return;
+        if (!child) {
+            // 자녀설정이 없으면 중학교(middle)를 기본으로 설정
+            const schoolTypeFilter = document.getElementById('schoolTypeFilter');
+            if (schoolTypeFilter) {
+                schoolTypeFilter.value = 'middle';
+                const event = new Event('change');
+                schoolTypeFilter.dispatchEvent(event);
+            }
+            return;
+        }
         if (settingsChildName) settingsChildName.value = child.name;
         if (settingsChildGrade) settingsChildGrade.value = child.grade;
         if (settingsChildKor) settingsChildKor.value = child.korean;
         if (settingsChildEng) settingsChildEng.value = child.english;
         if (settingsChildMath) settingsChildMath.value = child.math;
         
+        // 자녀설정의 학년에 따라 학교급 필터 기본값 자동 선택
+        const schoolTypeFilter = document.getElementById('schoolTypeFilter');
+        if (schoolTypeFilter && child.grade) {
+            const firstChar = child.grade.charAt(0).toLowerCase();
+            if (firstChar === 'e') {
+                schoolTypeFilter.value = 'elementary';
+            } else if (firstChar === 'm') {
+                schoolTypeFilter.value = 'middle';
+            } else if (firstChar === 'h') {
+                schoolTypeFilter.value = 'high';
+            }
+            const event = new Event('change');
+            schoolTypeFilter.dispatchEvent(event);
+        }
+
         // 자녀별 점수 텍스트(Label)도 동적 갱신
         const lblKor = document.getElementById('valSettingsChildKor');
         const lblEng = document.getElementById('valSettingsChildEng');
@@ -786,14 +810,56 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnShowTutorial = document.getElementById('btnShowTutorial');
     const tutorialModal = document.getElementById('tutorialModal');
 
+    window.switchTutorialTab = function(tabId) {
+        const buttons = document.querySelectorAll('.tutorial-tab-btn');
+        buttons.forEach(btn => {
+            btn.style.background = '#f1f3f5';
+            btn.style.color = 'var(--text-muted)';
+        });
+        
+        const activeBtn = document.getElementById(`tab-${tabId}`);
+        if (activeBtn) {
+            activeBtn.style.background = 'var(--primary-blue)';
+            activeBtn.style.color = 'white';
+        }
+        
+        const panels = document.querySelectorAll('.tutorial-tab-panel');
+        panels.forEach(p => p.style.display = 'none');
+        
+        const targetPanel = document.getElementById(`panel-${tabId}`);
+        if (targetPanel) {
+            targetPanel.style.display = 'flex';
+        }
+    };
+
+    window.closeTutorialSidebar = function() {
+        const tutorialCard = document.getElementById('tutorialSidebarCard');
+        if (tutorialCard) tutorialCard.style.display = 'none';
+
+        if (orchestrator && orchestrator.state && orchestrator.state.selectedSchool) {
+            const schoolCard = document.getElementById('schoolCard');
+            if (schoolCard) schoolCard.style.display = 'block';
+        } else {
+            const welcomeCard = document.getElementById('welcomeCard');
+            if (welcomeCard) welcomeCard.style.display = 'block';
+        }
+    };
+
     if (btnShowTutorial) {
         btnShowTutorial.addEventListener('click', () => {
-            const onboardingModal = document.getElementById('onboardingModal');
-            if (onboardingModal) {
-                document.getElementById('onboardingStep1').style.display = 'block';
-                document.getElementById('onboardingStep2').style.display = 'none';
-                document.getElementById('onboardingStep3').style.display = 'none';
-                onboardingModal.style.display = 'flex';
+            const tutorialCard = document.getElementById('tutorialSidebarCard');
+            if (tutorialCard && tutorialCard.style.display === 'block') {
+                window.closeTutorialSidebar();
+            } else {
+                // 사이드바 내부의 다른 모든 카드 숨김
+                const panels = document.querySelectorAll('#sidebarContent > .card');
+                panels.forEach(p => p.style.display = 'none');
+                
+                // 도움말 가이드 카드 표시
+                if (tutorialCard) {
+                    tutorialCard.style.display = 'block';
+                    window.switchTutorialTab('all'); // 기본값으로 전체 사용법 탭 선택
+                }
             }
         });
     }
