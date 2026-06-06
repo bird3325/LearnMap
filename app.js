@@ -1985,6 +1985,44 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTrafficAccidentLayers(orchestrator.state.selectedSchool);
     }
 
+    function highlightSelectedPin(schoolId) {
+        mapMarkers.forEach(item => {
+            const isSelected = item.id === schoolId;
+            if (item.marker && item.content) {
+                const pin = item.content.querySelector('.school-pin');
+                const label = item.content.querySelector('.pin-label');
+                if (pin) {
+                    if (isSelected) {
+                        pin.style.transform = 'rotate(-45deg) scale(1.35)';
+                        pin.style.boxShadow = '-4px 4px 15px rgba(0,0,0,0.4)';
+                        pin.style.border = '2.5px solid white';
+                        item.marker.setZIndex(9999);
+                    } else {
+                        pin.style.transform = '';
+                        pin.style.boxShadow = '';
+                        pin.style.border = '';
+                        item.marker.setZIndex(999);
+                    }
+                }
+                if (label) {
+                    if (isSelected) {
+                        label.style.background = 'var(--deep-blue)';
+                        label.style.fontWeight = 'bold';
+                        label.style.border = '1.5px solid white';
+                        label.style.padding = '5px 10px';
+                        label.style.fontSize = '12px';
+                    } else {
+                        label.style.background = '';
+                        label.style.fontWeight = '';
+                        label.style.border = '';
+                        label.style.padding = '';
+                        label.style.fontSize = '';
+                    }
+                }
+            }
+        });
+    }
+
     // Global selector callback
     window.selectSchoolById = (schoolId) => {
         let school = currentLoadedSchools.find(s => s.school_id === schoolId);
@@ -1999,6 +2037,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (sidebar && sidebar.style.display === 'none') {
                 if (typeof toggleSidebar === 'function') toggleSidebar();
             }
+            highlightSelectedPin(schoolId);
         }
     };
 
@@ -2176,6 +2215,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 pinsContainer.appendChild(labelEl);
             }
         });
+
+        // 현재 선택된 학교가 있다면 핀 강조 표시
+        const selectedId = (orchestrator && orchestrator.state && orchestrator.state.selectedSchool) 
+            ? orchestrator.state.selectedSchool.school_id 
+            : null;
+        if (selectedId) {
+            highlightSelectedPin(selectedId);
+        }
     }
 
     
@@ -5820,6 +5867,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     radius: 800
                 });
             }
+        } else {
+            const guideEl = document.getElementById('commutePathSafetyGuide');
+            if (guideEl) guideEl.style.display = 'none';
+            const legendBar = document.getElementById('commuteLegendFloatingBar');
+            if (legendBar) legendBar.style.display = 'none';
         }
         updateSafetyGuideLayers(school);
     }
@@ -6028,43 +6080,54 @@ document.addEventListener('DOMContentLoaded', () => {
         if (legendBar) legendBar.style.display = 'none';
     };
 
+    let crimeZoneTimeout = null;
+
     window.updateCrimeZoneLayers = function(school) {
         initGroundOverlayPolyfill(); // 지도가 다 로드된 시점에 안전하게 폴리필 적용
-        clearCrimeZoneLayers();
-        if (!window.kakaoMapInstance) return;
-
+        
         const chk = document.getElementById('crimeZoneToggleCheckbox');
         if (!chk || !chk.checked) {
+            clearCrimeZoneLayers();
+            if (crimeZoneTimeout) {
+                clearTimeout(crimeZoneTimeout);
+                crimeZoneTimeout = null;
+            }
             return;
         }
 
-        // 범례 플로팅 가이드 바 노출
-        const legendBar = document.getElementById('crimeZoneLegendFloatingBar');
-        if (legendBar) legendBar.style.display = 'flex';
+        if (crimeZoneTimeout) clearTimeout(crimeZoneTimeout);
+        crimeZoneTimeout = setTimeout(() => {
+            clearCrimeZoneLayers();
+            if (!window.kakaoMapInstance) return;
 
-        if (window.kakaoMapInstance.getLevel() >= 7) {
-            return;
-        }
+            // 범례 플로팅 가이드 바 노출
+            const legendBar = document.getElementById('crimeZoneLegendFloatingBar');
+            if (legendBar) legendBar.style.display = 'flex';
 
-        // 현재 카카오맵의 영역(bounds) 획득
-        const bounds = window.kakaoMapInstance.getBounds();
-        const sw = bounds.getSouthWest();
-        const ne = bounds.getNorthEast();
+            if (window.kakaoMapInstance.getLevel() >= 7) {
+                return;
+            }
 
-        // WMS API는 EPSG:4326(WGS84 위경도) 형식을 필요로 함 (경도,위도,경도,위도)
-        const bbox = `${sw.getLng()},${sw.getLat()},${ne.getLng()},${ne.getLat()}`;
+            // 현재 카카오맵의 영역(bounds) 획득
+            const bounds = window.kakaoMapInstance.getBounds();
+            const sw = bounds.getSouthWest();
+            const ne = bounds.getNorthEast();
 
-        // 카카오맵 컨테이너의 가로/세로 픽셀 사이즈 획득
-        const mapNode = window.kakaoMapInstance.getNode();
-        const width = mapNode.offsetWidth || 500;
-        const height = mapNode.offsetHeight || 500;
+            // WMS API는 EPSG:4326(WGS84 위경도) 형식을 필요로 함 (경도,위도,경도,위도)
+            const bbox = `${sw.getLng()},${sw.getLat()},${ne.getLng()},${ne.getLat()}`;
 
-        // 백엔드 프록시 API 호출 URL
-        const imageUrl = `/api/crime-zones?bbox=${encodeURIComponent(bbox)}&width=${width}&height=${height}`;
+            // 카카오맵 컨테이너의 가로/세로 픽셀 사이즈 획득
+            const mapNode = window.kakaoMapInstance.getNode();
+            const width = mapNode.offsetWidth || 500;
+            const height = mapNode.offsetHeight || 500;
 
-        // 카카오맵 GroundOverlay 생성 및 지도 표시
-        crimeZoneOverlay = new kakao.maps.GroundOverlay(imageUrl, bounds);
-        crimeZoneOverlay.setMap(window.kakaoMapInstance);
+            // 백엔드 프록시 API 호출 URL
+            const imageUrl = `/api/crime-zones?bbox=${encodeURIComponent(bbox)}&width=${width}&height=${height}`;
+
+            // 카카오맵 GroundOverlay 생성 및 지도 표시
+            crimeZoneOverlay = new kakao.maps.GroundOverlay(imageUrl, bounds);
+            crimeZoneOverlay.setMap(window.kakaoMapInstance);
+        }, 300);
     };
 
     let accidentStatisticsOverlay = null;
@@ -6076,33 +6139,44 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    let accidentStatisticsTimeout = null;
+
     window.updateAccidentStatisticsLayers = function(school) {
         initGroundOverlayPolyfill();
-        clearAccidentStatisticsLayers();
-        if (!window.kakaoMapInstance) return;
-
+        
         const chk = document.getElementById('accidentStatisticsCheckbox');
         if (!chk || !chk.checked) {
+            clearAccidentStatisticsLayers();
+            if (accidentStatisticsTimeout) {
+                clearTimeout(accidentStatisticsTimeout);
+                accidentStatisticsTimeout = null;
+            }
             return;
         }
 
-        if (window.kakaoMapInstance.getLevel() >= 7) {
-            return;
-        }
+        if (accidentStatisticsTimeout) clearTimeout(accidentStatisticsTimeout);
+        accidentStatisticsTimeout = setTimeout(() => {
+            clearAccidentStatisticsLayers();
+            if (!window.kakaoMapInstance) return;
 
-        const bounds = window.kakaoMapInstance.getBounds();
-        const sw = bounds.getSouthWest();
-        const ne = bounds.getNorthEast();
-        const bbox = `${sw.getLng()},${sw.getLat()},${ne.getLng()},${ne.getLat()}`;
+            if (window.kakaoMapInstance.getLevel() >= 7) {
+                return;
+            }
 
-        const mapNode = window.kakaoMapInstance.getNode();
-        const width = mapNode.offsetWidth || 500;
-        const height = mapNode.offsetHeight || 500;
+            const bounds = window.kakaoMapInstance.getBounds();
+            const sw = bounds.getSouthWest();
+            const ne = bounds.getNorthEast();
+            const bbox = `${sw.getLng()},${sw.getLat()},${ne.getLng()},${ne.getLat()}`;
 
-        const imageUrl = `/api/accident-statistics?bbox=${encodeURIComponent(bbox)}&width=${width}&height=${height}`;
+            const mapNode = window.kakaoMapInstance.getNode();
+            const width = mapNode.offsetWidth || 500;
+            const height = mapNode.offsetHeight || 500;
 
-        accidentStatisticsOverlay = new kakao.maps.GroundOverlay(imageUrl, bounds);
-        accidentStatisticsOverlay.setMap(window.kakaoMapInstance);
+            const imageUrl = `/api/accident-statistics?bbox=${encodeURIComponent(bbox)}&width=${width}&height=${height}`;
+
+            accidentStatisticsOverlay = new kakao.maps.GroundOverlay(imageUrl, bounds);
+            accidentStatisticsOverlay.setMap(window.kakaoMapInstance);
+        }, 300);
     };
 
     let trafficAccidentOverlay = null;
@@ -6114,33 +6188,44 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    let trafficAccidentTimeout = null;
+
     window.updateTrafficAccidentLayers = function(school) {
         initGroundOverlayPolyfill();
-        clearTrafficAccidentLayers();
-        if (!window.kakaoMapInstance) return;
-
+        
         const chk = document.getElementById('trafficAccidentCheckbox');
         if (!chk || !chk.checked) {
+            clearTrafficAccidentLayers();
+            if (trafficAccidentTimeout) {
+                clearTimeout(trafficAccidentTimeout);
+                trafficAccidentTimeout = null;
+            }
             return;
         }
 
-        if (window.kakaoMapInstance.getLevel() >= 7) {
-            return;
-        }
+        if (trafficAccidentTimeout) clearTimeout(trafficAccidentTimeout);
+        trafficAccidentTimeout = setTimeout(() => {
+            clearTrafficAccidentLayers();
+            if (!window.kakaoMapInstance) return;
 
-        const bounds = window.kakaoMapInstance.getBounds();
-        const sw = bounds.getSouthWest();
-        const ne = bounds.getNorthEast();
-        const bbox = `${sw.getLng()},${sw.getLat()},${ne.getLng()},${ne.getLat()}`;
+            if (window.kakaoMapInstance.getLevel() >= 7) {
+                return;
+            }
 
-        const mapNode = window.kakaoMapInstance.getNode();
-        const width = mapNode.offsetWidth || 500;
-        const height = mapNode.offsetHeight || 500;
+            const bounds = window.kakaoMapInstance.getBounds();
+            const sw = bounds.getSouthWest();
+            const ne = bounds.getNorthEast();
+            const bbox = `${sw.getLng()},${sw.getLat()},${ne.getLng()},${ne.getLat()}`;
 
-        const imageUrl = `/api/traffic-accidents?bbox=${encodeURIComponent(bbox)}&width=${width}&height=${height}`;
+            const mapNode = window.kakaoMapInstance.getNode();
+            const width = mapNode.offsetWidth || 500;
+            const height = mapNode.offsetHeight || 500;
 
-        trafficAccidentOverlay = new kakao.maps.GroundOverlay(imageUrl, bounds);
-        trafficAccidentOverlay.setMap(window.kakaoMapInstance);
+            const imageUrl = `/api/traffic-accidents?bbox=${encodeURIComponent(bbox)}&width=${width}&height=${height}`;
+
+            trafficAccidentOverlay = new kakao.maps.GroundOverlay(imageUrl, bounds);
+            trafficAccidentOverlay.setMap(window.kakaoMapInstance);
+        }, 300);
     };
 
 
@@ -6213,12 +6298,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const cPathAca = document.getElementById('chkCommutePathAcademy');
         const panel = document.getElementById('commutePathSettings');
         const panelAca = document.getElementById('commutePathSettingsAcademy');
+        const guideEl = document.getElementById('commutePathSafetyGuide');
 
         if (type === 'commute') {
             if (cPath) cPath.checked = checked;
             if (cPathAca) cPathAca.checked = checked;
             if (panel) panel.style.display = checked ? 'flex' : 'none';
             if (panelAca) panelAca.style.display = checked ? 'flex' : 'none';
+            if (guideEl && !checked) {
+                guideEl.style.display = 'none';
+            }
         }
 
         if (orchestrator.state.selectedSchool) {
