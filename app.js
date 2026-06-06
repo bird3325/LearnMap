@@ -835,28 +835,22 @@ document.addEventListener('DOMContentLoaded', () => {
     window.closeTutorialSidebar = function() {
         const tutorialCard = document.getElementById('tutorialSidebarCard');
         if (tutorialCard) tutorialCard.style.display = 'none';
-
-        if (orchestrator && orchestrator.state && orchestrator.state.selectedSchool) {
-            const schoolCard = document.getElementById('schoolCard');
-            if (schoolCard) schoolCard.style.display = 'block';
-        } else {
-            const welcomeCard = document.getElementById('welcomeCard');
-            if (welcomeCard) welcomeCard.style.display = 'block';
-        }
     };
 
     if (btnShowTutorial) {
         btnShowTutorial.addEventListener('click', () => {
             const tutorialCard = document.getElementById('tutorialSidebarCard');
-            if (tutorialCard && tutorialCard.style.display === 'block') {
-                window.closeTutorialSidebar();
-            } else {
-                // 사이드바 내부의 다른 모든 카드 숨김
-                const panels = document.querySelectorAll('#sidebarContent > .card');
-                panels.forEach(p => p.style.display = 'none');
-                
-                // 도움말 가이드 카드 표시
-                if (tutorialCard) {
+            const settingsModal = document.getElementById('settingsModal');
+            
+            // 도움말을 켤 때 설정창은 닫음
+            if (settingsModal) {
+                settingsModal.style.display = 'none';
+            }
+            
+            if (tutorialCard) {
+                if (tutorialCard.style.display === 'block') {
+                    tutorialCard.style.display = 'none';
+                } else {
                     tutorialCard.style.display = 'block';
                     window.switchTutorialTab('all'); // 기본값으로 전체 사용법 탭 선택
                 }
@@ -1986,40 +1980,48 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function highlightSelectedPin(schoolId) {
+        // 유저 요청에 따라 학교 선택 시 마커가 강조되는 효과(크기 확대 및 스타일 변경)를 전면 제거합니다.
         mapMarkers.forEach(item => {
-            const isSelected = item.id === schoolId;
-            if (item.marker && item.content) {
+            if (item.marker) {
+                item.marker.setZIndex(999);
+            }
+            if (item.content) {
                 const pin = item.content.querySelector('.school-pin');
                 const label = item.content.querySelector('.pin-label');
                 if (pin) {
-                    if (isSelected) {
-                        pin.style.transform = 'rotate(-45deg) scale(1.35)';
-                        pin.style.boxShadow = '-4px 4px 15px rgba(0,0,0,0.4)';
-                        pin.style.border = '2.5px solid white';
-                        item.marker.setZIndex(9999);
-                    } else {
-                        pin.style.transform = '';
-                        pin.style.boxShadow = '';
-                        pin.style.border = '';
-                        item.marker.setZIndex(999);
-                    }
+                    pin.style.transform = 'rotate(-45deg)';
+                    pin.style.boxShadow = '';
+                    pin.style.border = '';
                 }
                 if (label) {
-                    if (isSelected) {
-                        label.style.background = 'var(--deep-blue)';
-                        label.style.fontWeight = 'bold';
-                        label.style.border = '1.5px solid white';
-                        label.style.padding = '5px 10px';
-                        label.style.fontSize = '12px';
-                    } else {
-                        label.style.background = '';
-                        label.style.fontWeight = '';
-                        label.style.border = '';
-                        label.style.padding = '';
-                        label.style.fontSize = '';
-                    }
+                    label.style.background = '';
+                    label.style.fontWeight = '';
+                    label.style.border = '';
+                    label.style.padding = '';
+                    label.style.fontSize = '';
                 }
             }
+        });
+
+        const pins = document.querySelectorAll('.school-pin');
+        const labels = document.querySelectorAll('.pin-label');
+
+        pins.forEach(pin => {
+            pin.style.transform = 'rotate(-45deg)';
+            pin.style.boxShadow = '';
+            pin.style.border = '';
+            const overlay = pin.closest('.school-overlay');
+            if (overlay) {
+                overlay.style.zIndex = '999';
+            }
+        });
+
+        labels.forEach(label => {
+            label.style.background = '';
+            label.style.fontWeight = '';
+            label.style.border = '';
+            label.style.padding = '';
+            label.style.fontSize = '';
         });
     }
 
@@ -2059,12 +2061,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const pinEl = document.createElement('div');
         pinEl.className = `school-pin pin-${school.pin_color}`;
+        pinEl.setAttribute('data-school-id', school.school_id);
         // 핀의 뾰족한 끝이 정확히 (0,0)에 위치하도록 마진 조정
         pinEl.style.left = '-19px';
         pinEl.style.top = '-46px';
         
         const labelEl = document.createElement('div');
         labelEl.className = 'pin-label';
+        labelEl.setAttribute('data-school-id', school.school_id);
         labelEl.style.position = 'absolute';
         // 핀 바로 위에 라벨이 위치하도록 조정
         labelEl.style.top = '-46px';
@@ -2146,12 +2150,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             if (newSchoolIds.has(item.id)) {
-                // 기존 마커 유지 및 색상 클래스 동적 갱신
+                // 기존 마커 유지 및 색상 클래스 동적 갱신, data-school-id 누락 방지 설정
                 const school = schools.find(s => s.school_id === item.id);
                 if (school && item.content) {
                     const pin = item.content.querySelector('.school-pin');
                     if (pin) {
                         pin.className = `school-pin pin-${school.pin_color}`;
+                        pin.setAttribute('data-school-id', school.school_id);
+                    }
+                    const label = item.content.querySelector('.pin-label');
+                    if (label) {
+                        label.setAttribute('data-school-id', school.school_id);
                     }
                 }
                 keepMarkers.push(item);
@@ -2196,12 +2205,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const pinEl = document.createElement('div');
                 pinEl.className = `school-pin pin-${school.pin_color}`;
+                pinEl.setAttribute('data-school-id', school.school_id);
                 pinEl.style.left = `${xOffset}px`;
                 pinEl.style.top = `${yOffset}px`;
                 pinEl.title = school.school_name;
 
                 const labelEl = document.createElement('div');
                 labelEl.className = 'pin-label';
+                labelEl.setAttribute('data-school-id', school.school_id);
                 labelEl.innerText = school.school_name;
                 labelEl.style.left = `${xOffset + 19}px`;
                 labelEl.style.top = `${yOffset}px`;
@@ -2216,13 +2227,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // 현재 선택된 학교가 있다면 핀 강조 표시
+        // 현재 선택된 학교가 있다면 핀 강조 표시 (선택 해제된 경우 강조 초기화)
         const selectedId = (orchestrator && orchestrator.state && orchestrator.state.selectedSchool) 
             ? orchestrator.state.selectedSchool.school_id 
             : null;
-        if (selectedId) {
-            highlightSelectedPin(selectedId);
-        }
+        highlightSelectedPin(selectedId);
     }
 
     
@@ -5545,6 +5554,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnDeselectSchool) {
         btnDeselectSchool.addEventListener('click', () => {
             orchestrator.state.selectedSchool = null;
+            if (typeof highlightSelectedPin === 'function') highlightSelectedPin(null);
             if (typeof clearMapLayers === 'function') clearMapLayers();
             if (schoolCard) schoolCard.style.display = 'none';
             if (childFormCard) childFormCard.style.display = 'none';
