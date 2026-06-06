@@ -6113,10 +6113,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const sw = bounds.getSouthWest();
             const ne = bounds.getNorthEast();
 
-            // WMS API는 EPSG:4326(WGS84 위경도) 형식을 필요로 함 (경도,위도,경도,위도)
-            const bbox = `${sw.getLng()},${sw.getLat()},${ne.getLng()},${ne.getLat()}`;
+            // BBox 정밀도제한 (Snap to Grid) - 소수점 4자리로 제한하여 미세 이동 시 캐시 재사용
+            const swLng = sw.getLng().toFixed(4);
+            const swLat = sw.getLat().toFixed(4);
+            const neLng = ne.getLng().toFixed(4);
+            const neLat = ne.getLat().toFixed(4);
+            const bbox = `${swLng},${swLat},${neLng},${neLat}`;
 
-            // 카카오맵 컨테이너의 가로/세로 픽셀 사이즈 획득
+            // 카카오맵 컨테이너의 가로/세로 픽셀 사이즈 획득 (WMS 아이콘 크기 왜곡 방지를 위해 100% 비율 복구)
             const mapNode = window.kakaoMapInstance.getNode();
             const width = mapNode.offsetWidth || 500;
             const height = mapNode.offsetHeight || 500;
@@ -6166,7 +6170,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const bounds = window.kakaoMapInstance.getBounds();
             const sw = bounds.getSouthWest();
             const ne = bounds.getNorthEast();
-            const bbox = `${sw.getLng()},${sw.getLat()},${ne.getLng()},${ne.getLat()}`;
+            
+            // BBox 정밀도제한 (Snap to Grid) - 소수점 4자리로 제한하여 미세 이동 시 캐시 재사용
+            const swLng = sw.getLng().toFixed(4);
+            const swLat = sw.getLat().toFixed(4);
+            const neLng = ne.getLng().toFixed(4);
+            const neLat = ne.getLat().toFixed(4);
+            const bbox = `${swLng},${swLat},${neLng},${neLat}`;
 
             const mapNode = window.kakaoMapInstance.getNode();
             const width = mapNode.offsetWidth || 500;
@@ -6215,7 +6225,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const bounds = window.kakaoMapInstance.getBounds();
             const sw = bounds.getSouthWest();
             const ne = bounds.getNorthEast();
-            const bbox = `${sw.getLng()},${sw.getLat()},${ne.getLng()},${ne.getLat()}`;
+            
+            // BBox 정밀도제한 (Snap to Grid) - 소수점 4자리로 제한하여 미세 이동 시 캐시 재사용
+            const swLng = sw.getLng().toFixed(4);
+            const swLat = sw.getLat().toFixed(4);
+            const neLng = ne.getLng().toFixed(4);
+            const neLat = ne.getLat().toFixed(4);
+            const bbox = `${swLng},${swLat},${neLng},${neLat}`;
 
             const mapNode = window.kakaoMapInstance.getNode();
             const width = mapNode.offsetWidth || 500;

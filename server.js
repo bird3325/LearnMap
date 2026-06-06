@@ -520,6 +520,36 @@ app.get('/api/realestate', async (req, res) => {
     }
 });
 
+// --- WMS In-Memory Cache Helper ---
+const wmsResponseCache = new Map();
+const MAX_CACHE_SIZE = 100;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5분 만료시간
+
+function getCachedWms(key) {
+    const cached = wmsResponseCache.get(key);
+    if (!cached) return null;
+    
+    // 만료 시간 검사
+    if (Date.now() - cached.timestamp > CACHE_TTL_MS) {
+        wmsResponseCache.delete(key);
+        return null;
+    }
+    return cached;
+}
+
+function setCachedWms(key, contentType, buffer) {
+    // 캐시 사이즈 초과 시 가장 오래된 것 삭제
+    if (wmsResponseCache.size >= MAX_CACHE_SIZE) {
+        const oldestKey = wmsResponseCache.keys().next().value;
+        wmsResponseCache.delete(oldestKey);
+    }
+    wmsResponseCache.set(key, {
+        contentType,
+        buffer,
+        timestamp: Date.now()
+    });
+}
+
 // 13. GET /api/crime-zones - Fetch crime attention zone areas from safemap WMS API
 app.get('/api/crime-zones', async (req, res) => {
     const { bbox, width, height } = req.query;
@@ -533,6 +563,14 @@ app.get('/api/crime-zones', async (req, res) => {
         return res.status(500).json({ error: '생활안전정보 API Key가 설정되지 않았습니다.' });
     }
 
+    const cacheKey = `crime-zones:${bbox}:${width}:${height}:${serviceKey}`;
+    const cached = getCachedWms(cacheKey);
+    if (cached) {
+        res.setHeader('Cache-Control', 'public, max-age=300');
+        res.setHeader('Content-Type', cached.contentType || 'image/png');
+        return res.send(cached.buffer);
+    }
+
     // 생활안전지도 WMS API 호출 URL 생성
     const wmsUrl = `http://safemap.go.kr/openapi2/IF_0087_WMS?serviceKey=${serviceKey}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
 
@@ -543,10 +581,14 @@ app.get('/api/crime-zones', async (req, res) => {
         }
         
         const contentType = response.headers.get('content-type');
-        const buffer = await response.arrayBuffer();
+        const arrayBuf = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuf);
         
+        setCachedWms(cacheKey, contentType, buffer);
+
+        res.setHeader('Cache-Control', 'public, max-age=300');
         res.setHeader('Content-Type', contentType || 'image/png');
-        return res.send(Buffer.from(buffer));
+        return res.send(buffer);
     } catch (err) {
         console.error('Crime Zones WMS Proxy Error:', err);
         return res.status(500).json({ error: '범죄주의구간 이미지 로드에 실패했습니다.' });
@@ -566,6 +608,14 @@ app.get('/api/accident-statistics', async (req, res) => {
         return res.status(500).json({ error: '생활안전정보 API Key가 설정되지 않았습니다.' });
     }
 
+    const cacheKey = `accident-stats:${bbox}:${width}:${height}:${serviceKey}`;
+    const cached = getCachedWms(cacheKey);
+    if (cached) {
+        res.setHeader('Cache-Control', 'public, max-age=300');
+        res.setHeader('Content-Type', cached.contentType || 'image/png');
+        return res.send(cached.buffer);
+    }
+
     // 생활안전지도 WMS API 호출 URL 생성 (치안사고 통계 - IF_0075_WMS)
     const wmsUrl = `http://safemap.go.kr/openapi2/IF_0075_WMS?serviceKey=${serviceKey}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
 
@@ -576,10 +626,14 @@ app.get('/api/accident-statistics', async (req, res) => {
         }
         
         const contentType = response.headers.get('content-type');
-        const buffer = await response.arrayBuffer();
+        const arrayBuf = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuf);
+
+        setCachedWms(cacheKey, contentType, buffer);
         
+        res.setHeader('Cache-Control', 'public, max-age=300');
         res.setHeader('Content-Type', contentType || 'image/png');
-        return res.send(Buffer.from(buffer));
+        return res.send(buffer);
     } catch (err) {
         console.error('Accident Statistics WMS Proxy Error:', err);
         return res.status(500).json({ error: '치안사고 통계 이미지 로드에 실패했습니다.' });
@@ -599,6 +653,14 @@ app.get('/api/traffic-accidents', async (req, res) => {
         return res.status(500).json({ error: '생활안전정보 API Key가 설정되지 않았습니다.' });
     }
 
+    const cacheKey = `traffic-accidents:${bbox}:${width}:${height}:${serviceKey}`;
+    const cached = getCachedWms(cacheKey);
+    if (cached) {
+        res.setHeader('Cache-Control', 'public, max-age=300');
+        res.setHeader('Content-Type', cached.contentType || 'image/png');
+        return res.send(cached.buffer);
+    }
+
     // 생활안전지도 WMS API 호출 URL 생성 (교통사고 다발구역 - IF_0093_WMS)
     const wmsUrl = `http://safemap.go.kr/openapi2/IF_0093_WMS?serviceKey=${serviceKey}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
 
@@ -609,10 +671,14 @@ app.get('/api/traffic-accidents', async (req, res) => {
         }
         
         const contentType = response.headers.get('content-type');
-        const buffer = await response.arrayBuffer();
+        const arrayBuf = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuf);
         
+        setCachedWms(cacheKey, contentType, buffer);
+
+        res.setHeader('Cache-Control', 'public, max-age=300');
         res.setHeader('Content-Type', contentType || 'image/png');
-        return res.send(Buffer.from(buffer));
+        return res.send(buffer);
     } catch (err) {
         console.error('Traffic Accidents WMS Proxy Error:', err);
         return res.status(500).json({ error: '교통사고 다발구역 이미지 로드에 실패했습니다.' });
