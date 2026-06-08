@@ -2394,7 +2394,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             }
 
-            schoolInsight.innerHTML = `<div style="font-weight: 800; color: var(--primary-blue); margin-bottom: 6px;">📍 서울시 전체 중 상위 ${percentRank}% 수준</div>
+            const regionName = fullSchool.region || (fullSchool.address ? fullSchool.address.split(' ')[0] : '해당 지역');
+            schoolInsight.innerHTML = `<div style="font-weight: 800; color: var(--primary-blue); margin-bottom: 6px;">📍 ${regionName} 전체 중 상위 ${percentRank}% 수준</div>
                                        <div>${summary.insight}</div>
                                        <div style="margin-top: 4px; font-weight: 500;">${trendSummary}</div>
                                        ${suitabilityHTML}`;
@@ -2538,11 +2539,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const rsIndex = document.getElementById('realEstateIndex');
         const acEng = document.getElementById('academyFeeEng');
         const acMath = document.getElementById('academyFeeMath');
+        const svgGraph = document.getElementById('estateTrendGraph');
         
         if (rsSale) rsSale.innerText = '로딩 중...';
         if (rsJeonse) rsJeonse.innerText = '로딩 중...';
         if (acEng) acEng.innerText = '로딩 중...';
         if (acMath) acMath.innerText = '로딩 중...';
+        if (svgGraph) {
+            svgGraph.innerHTML = '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="12px" fill="var(--text-muted)">로딩 중...</text>';
+        }
 
         // 1. 부동산 실거래가 조회 (카카오 좌표 -> 법정동 코드 변환)
         if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
@@ -2606,10 +2611,20 @@ document.addEventListener('DOMContentLoaded', () => {
                                 if (rsJeonse) rsJeonse.innerText = `${jUk > 0 ? jUk + '억 ' : ''}${jMan > 0 ? jMan.toLocaleString() + '만원 (추정)' : ''}`;
                                 
                                 // 가성비 지수 동적 계산 (학업성취도 국영수 평균점수 / 억 단위 집값)
-                                const avgScore = (fullSchool.subjects.korean.avg + fullSchool.subjects.english.avg + fullSchool.subjects.math.avg) / 3;
+                                let avgScore = 0;
+                                if (fullSchool.subjects && fullSchool.subjects.korean) {
+                                    avgScore = (fullSchool.subjects.korean.avg + fullSchool.subjects.english.avg + fullSchool.subjects.math.avg) / 3;
+                                }
                                 const avgSaleInEok = avgSale / 10000;
-                                const rawIndex = avgScore / avgSaleInEok;
+                                const rawIndex = avgSaleInEok > 0 ? avgScore / avgSaleInEok : 0;
                                 const efficiencyScore = Math.min(100, Math.round(rawIndex * 10));
+                                
+                                // 실제 매매가 기준으로 차트 다시 그리기
+                                if (typeof window.drawEstateTrendGraph === 'function') {
+                                    window.drawEstateTrendGraph(fullSchool, avgSaleInEok);
+                                } else if (typeof drawEstateTrendGraph === 'function') {
+                                    drawEstateTrendGraph(fullSchool, avgSaleInEok);
+                                }
                                 
                                 let efficiencyGrade = '보통';
                                 if (rawIndex >= 8.5) {
@@ -2627,12 +2642,20 @@ document.addEventListener('DOMContentLoaded', () => {
                                 if (rsSale) rsSale.innerText = '최근 1년 거래 없음';
                                 if (rsJeonse) rsJeonse.innerText = '최근 1년 거래 없음';
                                 if (rsIndex) rsIndex.innerText = '분석 불가 (거래 없음)';
+                                const svgGraph = document.getElementById('estateTrendGraph');
+                                if (svgGraph) {
+                                    svgGraph.innerHTML = '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="12px" fill="var(--text-muted)">데이터 없음</text>';
+                                }
                             }
                         } catch (e) {
-                            console.error(e);
+                            console.error("TryCatch Error:", e);
                             if (rsSale) rsSale.innerText = '조회 실패';
                             if (rsJeonse) rsJeonse.innerText = '조회 실패';
                             if (rsIndex) rsIndex.innerText = '분석 실패';
+                            const svgGraph = document.getElementById('estateTrendGraph');
+                            if (svgGraph) {
+                                svgGraph.innerHTML = '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="12px" fill="var(--text-muted)">조회 실패</text>';
+                            }
                         }
                     }
                 }
@@ -5531,7 +5554,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 신규 부가 서비스 연동 (지도 레이어, 부동산 차트, 학교 타운 톡)
             if (typeof updateMapLayers === 'function') updateMapLayers(school);
-            if (typeof drawEstateTrendGraph === 'function') drawEstateTrendGraph(school);
+            // if (typeof drawEstateTrendGraph === 'function') drawEstateTrendGraph(school); // 비동기 로딩 중 임시 차트 렌더링 방지를 위해 주석 처리
             if (typeof window.fetchTownTalkList === 'function') {
                 const schoolId = school.school_id;
                 window.fetchTownTalkList(schoolId, 'schoolTownTalkList');
@@ -6441,13 +6464,28 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.style.display = 'flex';
     }
 
-    function drawEstateTrendGraph(school) {
+    window.drawEstateTrendGraph = function(school, realBasePrice = null) {
         const svg = document.getElementById('estateTrendGraph');
         if (!svg) return;
-        svg.innerHTML = '';
+        
+        // 방어 로직: 비동기 API가 먼저 완료되어 이미 실제 데이터로 그려진 경우, 이후 실행된 setTimeout 등에 의한 임시 차트 렌더링 무시
+        if (realBasePrice === null && svg.dataset.realSchoolId === String(school.school_id)) {
+            return;
+        }
+        if (realBasePrice !== null) {
+            svg.dataset.realSchoolId = String(school.school_id);
+        } else if (svg.dataset.currentSchoolId !== String(school.school_id)) {
+            svg.dataset.realSchoolId = "";
+        }
+        svg.dataset.currentSchoolId = String(school.school_id);
+        
+        while (svg.firstChild) {
+            svg.removeChild(svg.firstChild);
+        }
 
-        const seed = school.school_id ? school.school_id.charCodeAt(school.school_id.length - 1) : 5;
-        const basePrice = 8 + (seed % 12);
+        const sid = String(school.school_id || 'dummy');
+        const seed = sid ? sid.charCodeAt(sid.length - 1) : 5;
+        const basePrice = realBasePrice !== null ? realBasePrice : 8 + (seed % 12);
         const data = [
             basePrice - 1.2 - (seed % 2) * 0.3,
             basePrice - 0.5 + (seed % 3) * 0.2,
