@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import https from 'https';
+import http from 'http';
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
@@ -223,6 +224,34 @@ function httpsGet(url, headers) {
                 }
             });
         }).on('error', (err) => reject(err));
+    });
+}
+
+// Helper function to fetch image buffer, bypassing fetch() strictness and adding User-Agent
+function fetchImageBuffer(urlStr) {
+    return new Promise((resolve, reject) => {
+        const client = urlStr.startsWith('https') ? https : http;
+        client.get(urlStr, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+            }
+        }, (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                return fetchImageBuffer(res.headers.location).then(resolve).catch(reject);
+            }
+            if (res.statusCode >= 400) {
+                return reject(new Error(`HTTP Error: ${res.statusCode}`));
+            }
+            const chunks = [];
+            res.on('data', chunk => chunks.push(chunk));
+            res.on('end', () => {
+                resolve({
+                    buffer: Buffer.concat(chunks),
+                    contentType: res.headers['content-type']
+                });
+            });
+        }).on('error', reject);
     });
 }
 
@@ -575,14 +604,7 @@ app.get('/api/crime-zones', async (req, res) => {
     const wmsUrl = `http://safemap.go.kr/openapi2/IF_0087_WMS?serviceKey=${serviceKey}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
 
     try {
-        const response = await fetch(wmsUrl);
-        if (!response.ok) {
-            throw new Error(`WMS API responded with status: ${response.status}`);
-        }
-        
-        const contentType = response.headers.get('content-type');
-        const arrayBuf = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuf);
+        const { buffer, contentType } = await fetchImageBuffer(wmsUrl);
         
         setCachedWms(cacheKey, contentType, buffer);
 
@@ -620,14 +642,7 @@ app.get('/api/accident-statistics', async (req, res) => {
     const wmsUrl = `http://safemap.go.kr/openapi2/IF_0075_WMS?serviceKey=${serviceKey}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
 
     try {
-        const response = await fetch(wmsUrl);
-        if (!response.ok) {
-            throw new Error(`WMS API responded with status: ${response.status}`);
-        }
-        
-        const contentType = response.headers.get('content-type');
-        const arrayBuf = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuf);
+        const { buffer, contentType } = await fetchImageBuffer(wmsUrl);
 
         setCachedWms(cacheKey, contentType, buffer);
         
@@ -665,14 +680,7 @@ app.get('/api/traffic-accidents', async (req, res) => {
     const wmsUrl = `http://safemap.go.kr/openapi2/IF_0093_WMS?serviceKey=${serviceKey}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
 
     try {
-        const response = await fetch(wmsUrl);
-        if (!response.ok) {
-            throw new Error(`WMS API responded with status: ${response.status}`);
-        }
-        
-        const contentType = response.headers.get('content-type');
-        const arrayBuf = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuf);
+        const { buffer, contentType } = await fetchImageBuffer(wmsUrl);
         
         setCachedWms(cacheKey, contentType, buffer);
 
