@@ -607,7 +607,7 @@ app.get('/api/crime-zones', async (req, res) => {
     }
 
     // 생활안전지도 WMS API 호출 URL 생성
-    const wmsUrl = `http://safemap.go.kr/openapi2/IF_0087_WMS?serviceKey=${serviceKey}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
+    const wmsUrl = `https://safemap.go.kr/openapi2/IF_0087_WMS?serviceKey=${encodeURIComponent(serviceKey)}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
 
     try {
         const { buffer, contentType } = await fetchImageBuffer(wmsUrl);
@@ -619,7 +619,7 @@ app.get('/api/crime-zones', async (req, res) => {
         return res.send(buffer);
     } catch (err) {
         console.error('Crime Zones WMS Proxy Error:', err);
-        return res.status(500).json({ error: '범죄주의구간 이미지 로드에 실패했습니다.' });
+        return res.status(500).json({ error: '범죄주의구간 이미지 로드에 실패했습니다.', details: err.message });
     }
 });
 
@@ -645,7 +645,7 @@ app.get('/api/accident-statistics', async (req, res) => {
     }
 
     // 생활안전지도 WMS API 호출 URL 생성 (치안사고 통계 - IF_0075_WMS)
-    const wmsUrl = `http://safemap.go.kr/openapi2/IF_0075_WMS?serviceKey=${serviceKey}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
+    const wmsUrl = `https://safemap.go.kr/openapi2/IF_0075_WMS?serviceKey=${encodeURIComponent(serviceKey)}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
 
     try {
         const { buffer, contentType } = await fetchImageBuffer(wmsUrl);
@@ -657,7 +657,7 @@ app.get('/api/accident-statistics', async (req, res) => {
         return res.send(buffer);
     } catch (err) {
         console.error('Accident Statistics WMS Proxy Error:', err);
-        return res.status(500).json({ error: '치안사고 통계 이미지 로드에 실패했습니다.' });
+        return res.status(500).json({ error: '치안사고 통계 이미지 로드에 실패했습니다.', details: err.message });
     }
 });
 
@@ -683,7 +683,7 @@ app.get('/api/traffic-accidents', async (req, res) => {
     }
 
     // 생활안전지도 WMS API 호출 URL 생성 (교통사고 다발구역 - IF_0093_WMS)
-    const wmsUrl = `http://safemap.go.kr/openapi2/IF_0093_WMS?serviceKey=${serviceKey}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
+    const wmsUrl = `https://safemap.go.kr/openapi2/IF_0093_WMS?serviceKey=${encodeURIComponent(serviceKey)}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
 
     try {
         const { buffer, contentType } = await fetchImageBuffer(wmsUrl);
@@ -695,7 +695,7 @@ app.get('/api/traffic-accidents', async (req, res) => {
         return res.send(buffer);
     } catch (err) {
         console.error('Traffic Accidents WMS Proxy Error:', err);
-        return res.status(500).json({ error: '교통사고 다발구역 이미지 로드에 실패했습니다.' });
+        return res.status(500).json({ error: '교통사고 다발구역 이미지 로드에 실패했습니다.', details: err.message });
     }
 });
 
