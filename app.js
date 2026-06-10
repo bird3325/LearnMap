@@ -2348,6 +2348,16 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function showSchoolDetails(summary, fullSchool) {
+        if (typeof window.clearAcademyMarker === 'function') window.clearAcademyMarker();
+        
+        // 학원 상세 패널(커뮤니티 패널) 닫기 및 기본 사이드바 보이기
+        const cp = document.getElementById('communityPanel');
+        if (cp) cp.style.display = 'none';
+        const sc = document.getElementById('sidebarContent');
+        if (sc) sc.style.display = 'block';
+        const btnTop = document.getElementById('btnToggleSidebarTop');
+        if (btnTop) btnTop.style.display = 'flex';
+
         welcomeCard.style.display = 'none';
         childFormCard.style.display = 'none';
         diagnosisResultCard.style.display = 'none';
@@ -6561,12 +6571,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 3. 학원비 비교 및 할인 계산기 위젯
     window.renderAcademyFeeCalculator = async function(acadName, subject, address = '') {
+        if (typeof window.clearAcademyMarker === 'function') window.clearAcademyMarker();
         const calculatorContent = document.getElementById('calculatorContent');
         if (!calculatorContent) return;
 
+        const basicInfoContainer = document.getElementById('academyBasicInfoContainer');
+        if (basicInfoContainer) basicInfoContainer.innerHTML = '';
+
         // 로딩 상태 표시
         calculatorContent.innerHTML = `
-            <div style="font-weight: bold; font-size: 13px; color: var(--deep-blue); margin-bottom: 4px;">${acadName}</div>
             <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">과목: ${subject || '종합보습'}</div>
             <div style="text-align: center; padding: 20px; font-size: 12px; color: var(--text-muted);">
                 나이스(NEIS) 교육정보 개방 포털에서<br>수강료 정보를 불러오는 중입니다... ⏳
@@ -6609,6 +6622,129 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.acaInsTiInfo && data.acaInsTiInfo[1] && data.acaInsTiInfo[1].row) {
                 // 여러 결과 중 수강료 정보가 등록되어 있는 첫 번째 학원을 찾음
                 const validRow = data.acaInsTiInfo[1].row.find(r => r.PSNBY_THCC_CNTNT && r.PSNBY_THCC_CNTNT.trim() !== '') || data.acaInsTiInfo[1].row[0];
+                
+                // 공공데이터 기본 정보 추출
+                const typeName = validRow.ACA_INSTI_SC_NM || '정보없음';
+                const eduOffice = validRow.ATPT_OFCDC_SC_NM || '정보없음';
+                const estDate = validRow.ESTBL_YMD ? validRow.ESTBL_YMD.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') : '정보없음';
+                const capacity = validRow.TOFOR_SMTOT ? `${validRow.TOFOR_SMTOT}명` : '정보없음';
+                const addressStr = validRow.FA_RDNMA ? `${validRow.FA_RDNMA} ${validRow.FA_RDNDA || ''}`.trim() : '정보없음';
+                const telNo = validRow.FA_TELNO || '정보없음';
+
+                const academyInfoHtml = `
+                    <div style="background: white; border: 1px solid #eaeaea; border-radius: 8px; padding: 10px 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.02); margin-bottom: 12px;">
+                        <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 8px; border-bottom: 1px solid #f0f0f0; padding-bottom: 6px;">
+                            <span style="font-size: 13px;">🏫</span>
+                            <strong style="color: #1a202c; font-size: 12px; letter-spacing: -0.2px;">기본 학원 정보</strong>
+                        </div>
+                        <div style="display: grid; grid-template-columns: minmax(70px, auto) 1fr; row-gap: 6px; column-gap: 8px; font-size: 11px; line-height: 1.3;">
+                            
+                            <div style="color: #718096; display: flex; align-items: center; gap: 4px;"><span style="font-size: 11px;">🏷️</span> 구분</div>
+                            <div style="color: #2d3748; font-weight: 600;">${typeName}</div>
+
+                            <div style="color: #718096; display: flex; align-items: center; gap: 4px;"><span style="font-size: 11px;">🏢</span> 교육청</div>
+                            <div style="color: #2d3748; font-weight: 600;">${eduOffice}</div>
+
+                            <div style="color: #718096; display: flex; align-items: center; gap: 4px;"><span style="font-size: 11px;">📅</span> 설립일</div>
+                            <div style="color: #2d3748; font-weight: 600;">${estDate}</div>
+
+                            <div style="color: #718096; display: flex; align-items: center; gap: 4px;"><span style="font-size: 11px;">👥</span> 수용인원</div>
+                            <div style="color: #2d3748; font-weight: 600;">${capacity}</div>
+
+                            <div style="color: #718096; display: flex; align-items: center; gap: 4px;"><span style="font-size: 11px;">📞</span> 전화번호</div>
+                            <div style="color: #3182ce; font-weight: 700;">${telNo}</div>
+
+                            <div style="color: #718096; display: flex; align-items: flex-start; gap: 4px; padding-top: 1px;"><span style="font-size: 11px;">📍</span> 상세주소</div>
+                            <div style="color: #3182ce; font-weight: 600; word-break: keep-all; cursor: pointer; text-decoration: underline; text-underline-offset: 3px;" onclick="window.searchAndMoveMap('${addressStr}', '${acadName}')" title="클릭하면 지도에서 위치를 확인합니다.">${addressStr}</div>
+
+                        </div>
+                    </div>
+                `;
+
+                // 전역 변수로 임시 마커 상태 관리
+                if (typeof window.tempAddressMarker === 'undefined') {
+                    window.tempAddressMarker = null;
+                    window.tempAddressInfoWindow = null;
+                }
+
+                if (typeof window.clearAcademyMarker !== 'function') {
+                    window.clearAcademyMarker = function() {
+                        if (window.tempAddressMarker) {
+                            window.tempAddressMarker.setMap(null);
+                        }
+                        if (window.tempAddressInfoWindow) {
+                            if (typeof window.tempAddressInfoWindow.close === 'function') {
+                                window.tempAddressInfoWindow.close();
+                            } else {
+                                window.tempAddressInfoWindow.setMap(null);
+                            }
+                        }
+                    };
+                }
+
+                // 전역 함수로 주소 검색 및 지도 이동 함수 추가 (한 번만 등록되도록)
+                if (typeof window.searchAndMoveMap !== 'function') {
+                    window.searchAndMoveMap = function(address, academyName) {
+                        if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+                            const geocoder = new window.kakao.maps.services.Geocoder();
+                            // 주소에서 괄호 내용(아파트 등) 제거하여 검색 정확도 향상
+                            const cleanAddress = address.replace(/\([^)]*\)/g, '').trim();
+                            geocoder.addressSearch(cleanAddress, function(result, status) {
+                                if (status === window.kakao.maps.services.Status.OK) {
+                                    const coords = new window.kakao.maps.LatLng(result[0].y, result[0].x);
+                                    const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
+                                    if (mapObj) {
+                                        mapObj.setCenter(coords);
+                                        mapObj.setLevel(3); // 적절한 줌 레벨로 이동
+                                        
+                                        // 기존 임시 마커가 있다면 제거
+                                        if (window.tempAddressMarker) {
+                                            window.tempAddressMarker.setMap(null);
+                                        }
+                                        if (window.tempAddressInfoWindow) {
+                                            if (typeof window.tempAddressInfoWindow.close === 'function') {
+                                                window.tempAddressInfoWindow.close();
+                                            } else {
+                                                window.tempAddressInfoWindow.setMap(null);
+                                            }
+                                        }
+                                        
+                                        // 새 마커 생성
+                                        window.tempAddressMarker = new kakao.maps.Marker({
+                                            map: mapObj,
+                                            position: coords
+                                        });
+                                        
+                                        // 커스텀 오버레이로 학원명 노출 (글자 길이에 맞게 너비 자동 조절)
+                                        const displayName = academyName || '학원 위치';
+                                        const overlayContent = `<div style="display:inline-block; padding:5px 10px; background:white; border:1px solid #ccc; border-radius:4px; box-shadow:0 2px 4px rgba(0,0,0,0.1); font-size:12px; color:var(--deep-blue); font-weight:bold; white-space:nowrap;">${displayName}</div>`;
+                                        
+                                        window.tempAddressInfoWindow = new kakao.maps.CustomOverlay({
+                                            map: mapObj,
+                                            position: coords,
+                                            content: overlayContent,
+                                            yAnchor: 2.7, // 마커 위쪽으로 띄우기
+                                            zIndex: 999
+                                        });
+                                        
+                                        // 모바일 환경 등에서 사이드바가 화면을 다 가리고 있다면 사이드바를 살짝 닫거나 조절할 필요가 있음
+                                        if (window.innerWidth <= 768) {
+                                            const sidebar = document.getElementById('academySidebar');
+                                            if (sidebar) sidebar.classList.remove('open');
+                                        }
+                                    }
+                                } else {
+                                    alert('해당 주소의 정확한 지도 위치를 찾을 수 없습니다.');
+                                }
+                            });
+                        }
+                    };
+                }
+
+                if (basicInfoContainer) {
+                    basicInfoContainer.innerHTML = academyInfoHtml;
+                }
+
                 const feeContent = validRow.PSNBY_THCC_CNTNT || '';
                 
                 if (feeContent) {
@@ -6647,7 +6783,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         calculatorContent.innerHTML = `
-            <div style="font-weight: bold; font-size: 13px; color: var(--deep-blue); margin-bottom: 4px;">${acadName}</div>
             <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">과목: ${subject || '종합보습'}</div>
             
             <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 4px;">

@@ -129,6 +129,7 @@
                         }
                         button.innerHTML = iconClose;
                     } else {
+                        if (typeof window.clearAcademyMarker === 'function') window.clearAcademyMarker();
                         sidebar.style.display = 'none';
                         academySidebar.style.display = 'none'; // hide academy sidebar too if main sidebar hides
                         container.style.gridTemplateColumns = '100% 0%';
@@ -1213,8 +1214,12 @@
                         </h2>
                         <span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">학부모 커뮤니티 최신 후기</span>
                     </div>
-                    <button onclick="document.getElementById('communityPanel').style.display='none'; document.getElementById('sidebarContent').style.display='block'; document.getElementById('btnToggleSidebarTop').style.display='flex';" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-muted);">&times;</button>
+                    <button onclick="if (typeof window.clearAcademyMarker === 'function') window.clearAcademyMarker(); document.getElementById('communityPanel').style.display='none'; document.getElementById('sidebarContent').style.display='block'; document.getElementById('btnToggleSidebarTop').style.display='flex';" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-muted);">&times;</button>
                 </div>
+
+                <!-- 학원 기본 정보 (공공데이터) 컨테이너 -->
+                <div id="academyBasicInfoContainer" style="margin-bottom: 16px;"></div>
+
 
                 <!-- 학원 상세 탭 메뉴 -->
                 <div style="display: flex; gap: 4px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px;">
