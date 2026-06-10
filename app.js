@@ -6612,9 +6612,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const feeContent = validRow.PSNBY_THCC_CNTNT || '';
                 
                 if (feeContent) {
-                    const match = feeContent.match(/:\s*([0-9]+)/);
-                    if (match && match[1]) {
-                        originalFee = parseInt(match[1], 10);
+                    const feeString = feeContent.replace(/,/g, '');
+                    const match = feeString.match(/[0-9]{4,}/);
+                    if (match && match[0]) {
+                        originalFee = parseInt(match[0], 10);
                     }
                     
                     // 수강료 내역 전체를 포맷팅하여 노출
@@ -6627,13 +6628,13 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('학원비 데이터 호출 실패:', e);
         }
 
-        // 공공데이터 미등록 또는 수강료 정보가 없는 경우 0원 처리
-        if (!isRealData || originalFee === 0) {
-            originalFee = 0;
-            feeReason = `💡 <strong>출처:</strong> 나이스(NEIS) 교육정보 개방 포털<br><span style="color: var(--danger-red);">⚠️ 미등록/폐업 학원이거나 수강료 정보가 없습니다. (수동 입력 가능)</span>`;
-        }
-
         const avgFee = 320000;
+
+        // 공공데이터 미등록 또는 수강료 정보가 없는 경우 평균 수강료(avgFee)로 임시 처리
+        if (!isRealData || originalFee === 0) {
+            originalFee = avgFee;
+            feeReason = `💡 <strong>출처:</strong> 나이스(NEIS) 교육정보 개방 포털<br><span style="color: var(--danger-red);">⚠️ 미등록 학원이거나 수강료 정보가 없습니다. 평균 수강료로 임시 계산됩니다. (수동 입력 가능)</span>`;
+        }
         
         const diffPercent = Math.round(((originalFee - avgFee) / avgFee) * 100);
         let comparisonMsg = '';

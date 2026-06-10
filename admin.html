@@ -98,7 +98,7 @@
             </p>
             <div class="form-group">
                 <label for="adminPassword">비밀번호</label>
-                <input type="password" id="adminPassword" class="form-control" placeholder="비밀번호 입력 (기본값: admin1234)">
+                <input type="password" id="adminPassword" class="form-control" placeholder="비밀번호 입력">
             </div>
             <button class="btn-primary" id="btnLogin">로그인</button>
             <div style="text-align: center; margin-top: 16px;">
@@ -135,11 +135,13 @@
                 </div>
                 <div class="form-group">
                     <label for="dataGoKrKey">공공데이터포털(Data.go.kr) API Key (Decoding)</label>
-                    <input type="text" id="dataGoKrKey" class="form-control" placeholder="부동산 실거래가 조회용 일반 인증키(Decoding)를 입력하세요">
+                    <input type="text" id="dataGoKrKey" class="form-control"
+                        placeholder="부동산 실거래가 조회용 일반 인증키(Decoding)를 입력하세요">
                 </div>
                 <div class="form-group">
                     <label for="safemapKey">생활안전정보(Safemap) API Key</label>
-                    <input type="text" id="safemapKey" class="form-control" placeholder="생활안전정보 범죄주의구간 조회용 일반 인증키를 입력하세요">
+                    <input type="text" id="safemapKey" class="form-control"
+                        placeholder="생활안전정보 범죄주의구간 조회용 일반 인증키를 입력하세요">
                 </div>
                 <button class="btn-primary" id="btnSaveConfig">설정 저장</button>
             </div>
@@ -214,9 +216,11 @@
                 </p>
 
                 <!-- Unsaved Regions Status -->
-                <div style="background: #FFF3CD; border-left: 4px solid var(--warning-yellow); padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 12px;">
+                <div
+                    style="background: #FFF3CD; border-left: 4px solid var(--warning-yellow); padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 12px;">
                     <strong style="color: #856404; display: block; margin-bottom: 8px;">⚠️ 미저장 지역 (업데이트 필요)</strong>
-                    <div id="unsavedRegionsContainer" style="color: #856404; max-height: 100px; overflow-y: auto; line-height: 1.6;">
+                    <div id="unsavedRegionsContainer"
+                        style="color: #856404; max-height: 100px; overflow-y: auto; line-height: 1.6;">
                         데이터를 분석 중입니다...
                     </div>
                 </div>
@@ -270,17 +274,23 @@
 
                 <!-- 탭 선택 (학교 리뷰 / 학원 리뷰) -->
                 <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-                    <button class="btn-primary" id="btnTabSchoolReviews" style="flex: 1; margin: 0; padding: 8px; font-size: 13px;">🏫 학교 리뷰 관리</button>
-                    <button class="btn-secondary" id="btnTabAcademyReviews" style="flex: 1; margin: 0; padding: 8px; font-size: 13px; background: #f0f0f0; color: #333; border: 1px solid #ccc;">✏️ 학원 리뷰 관리</button>
+                    <button class="btn-primary" id="btnTabSchoolReviews"
+                        style="flex: 1; margin: 0; padding: 8px; font-size: 13px;">🏫 학교 리뷰 관리</button>
+                    <button class="btn-secondary" id="btnTabAcademyReviews"
+                        style="flex: 1; margin: 0; padding: 8px; font-size: 13px; background: #f0f0f0; color: #333; border: 1px solid #ccc;">✏️
+                        학원 리뷰 관리</button>
                 </div>
 
                 <!-- 대상 필터 및 검색창 -->
                 <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
-                    <select id="reviewTargetFilter" class="form-control" style="flex: 1; min-width: 150px; padding: 6px 10px; font-size: 13px; height: auto;">
+                    <select id="reviewTargetFilter" class="form-control"
+                        style="flex: 1; min-width: 150px; padding: 6px 10px; font-size: 13px; height: auto;">
                         <option value="all">전체 대상 (필터)</option>
                     </select>
-                    <input type="text" id="reviewSearchInput" class="form-control" placeholder="검색어 입력..." style="flex: 1.5; min-width: 150px; padding: 6px 10px; font-size: 13px; height: auto;">
-                    <button class="btn-primary" id="btnSearchReviews" style="width: auto; padding: 6px 16px; font-size: 13px; height: auto; margin: 0;">검색</button>
+                    <input type="text" id="reviewSearchInput" class="form-control" placeholder="검색어 입력..."
+                        style="flex: 1.5; min-width: 150px; padding: 6px 10px; font-size: 13px; height: auto;">
+                    <button class="btn-primary" id="btnSearchReviews"
+                        style="width: auto; padding: 6px 16px; font-size: 13px; height: auto; margin: 0;">검색</button>
                 </div>
 
                 <div id="adminReviewsListContainer"
@@ -298,14 +308,21 @@
 
                 <!-- 탭 선택 (정보 수정 요청 / 광고 및 제휴 문의 / 신규 학원 등록 요청) -->
                 <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
-                    <button class="btn-primary" id="btnTabInfoEditRequests" style="flex: 1; margin: 0; padding: 8px; font-size: 12px; min-width: 120px;">✏️ 정보 수정 요청</button>
-                    <button class="btn-secondary" id="btnTabAdInquiries" style="flex: 1; margin: 0; padding: 8px; font-size: 12px; min-width: 120px; background: #f0f0f0; color: #333; border: 1px solid #ccc;">💼 광고 및 제휴 문의</button>
-                    <button class="btn-secondary" id="btnTabAcademyRegistrations" style="flex: 1; margin: 0; padding: 8px; font-size: 12px; min-width: 120px; background: #f0f0f0; color: #333; border: 1px solid #ccc;">🏫 신규 학원 등록 요청</button>
+                    <button class="btn-primary" id="btnTabInfoEditRequests"
+                        style="flex: 1; margin: 0; padding: 8px; font-size: 12px; min-width: 120px;">✏️ 정보 수정
+                        요청</button>
+                    <button class="btn-secondary" id="btnTabAdInquiries"
+                        style="flex: 1; margin: 0; padding: 8px; font-size: 12px; min-width: 120px; background: #f0f0f0; color: #333; border: 1px solid #ccc;">💼
+                        광고 및 제휴 문의</button>
+                    <button class="btn-secondary" id="btnTabAcademyRegistrations"
+                        style="flex: 1; margin: 0; padding: 8px; font-size: 12px; min-width: 120px; background: #f0f0f0; color: #333; border: 1px solid #ccc;">🏫
+                        신규 학원 등록 요청</button>
                 </div>
 
                 <div id="adminInquiriesListContainer"
                     style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: var(--bg-primary); font-size: 12px; line-height: 1.8;">
-                    <div style="text-align: center; color: var(--text-muted); padding: 20px 0;">문의 및 제보 데이터를 불러오는 중...</div>
+                    <div style="text-align: center; color: var(--text-muted); padding: 20px 0;">문의 및 제보 데이터를 불러오는 중...
+                    </div>
                 </div>
             </div>
 

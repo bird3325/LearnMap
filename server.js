@@ -213,9 +213,10 @@ function httpsGet(url, headers) {
             rejectUnauthorized: false
         };
         https.get(url, options, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
+            const chunks = [];
+            res.on('data', chunk => chunks.push(chunk));
             res.on('end', () => {
+                const data = Buffer.concat(chunks).toString('utf8');
                 if (res.statusCode >= 200 && res.statusCode < 300) {
                     try {
                         resolve(JSON.parse(data));
