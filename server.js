@@ -519,7 +519,7 @@ app.get('/api/reviews', async (req, res) => {
 
 // --- Academy Fees Proxy (NEIS API) ---
 app.get('/api/academies/fees', async (req, res) => {
-    const { atpt_code, admst_zone_nm } = req.query;
+    const { atpt_code, admst_zone_nm, aca_nm } = req.query;
     if (!atpt_code) return res.status(400).json({ error: 'ATPT_OFCDC_SC_CODE is required' });
 
     const config = await readConfig();
@@ -528,6 +528,7 @@ app.get('/api/academies/fees', async (req, res) => {
     try {
         let url = `https://open.neis.go.kr/hub/acaInsTiInfo?Type=json&pIndex=1&pSize=1000&ATPT_OFCDC_SC_CODE=${atpt_code}`;
         if (admst_zone_nm) url += `&ADMST_ZONE_NM=${encodeURIComponent(admst_zone_nm)}`;
+        if (aca_nm) url += `&ACA_NM=${encodeURIComponent(aca_nm)}`;
         if (neisKey) url += `&KEY=${neisKey}`;
 
         const response = await fetch(url);

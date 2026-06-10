@@ -2976,7 +2976,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
 
                                 if (typeof window.renderAcademyFeeCalculator === 'function') {
-                                    window.renderAcademyFeeCalculator(acadName, shortSubject);
+                                    window.renderAcademyFeeCalculator(acadName, shortSubject, place.address_name);
                                 }
                                 if (typeof window.fetchTownTalkList === 'function') {
                                     window.fetchTownTalkList(acadName, 'academyTownTalkList');
@@ -6560,12 +6560,79 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 3. 학원비 비교 및 할인 계산기 위젯
-    window.renderAcademyFeeCalculator = function(acadName, subject) {
+    window.renderAcademyFeeCalculator = async function(acadName, subject, address = '') {
         const calculatorContent = document.getElementById('calculatorContent');
         if (!calculatorContent) return;
 
-        const seed = acadName.charCodeAt(0) + (acadName.charCodeAt(acadName.length - 1) || 0);
-        const originalFee = 250000 + (seed % 21) * 10000;
+        // 로딩 상태 표시
+        calculatorContent.innerHTML = `
+            <div style="font-weight: bold; font-size: 13px; color: var(--deep-blue); margin-bottom: 4px;">${acadName}</div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">과목: ${subject || '종합보습'}</div>
+            <div style="text-align: center; padding: 20px; font-size: 12px; color: var(--text-muted);">
+                나이스(NEIS) 교육정보 개방 포털에서<br>수강료 정보를 불러오는 중입니다... ⏳
+            </div>
+        `;
+
+        let originalFee = 0;
+        let feeReason = '';
+        let isRealData = false;
+
+        let atptCode = 'B10'; // default 서울
+        if (address) {
+            if (address.includes('서울')) atptCode = 'B10';
+            else if (address.includes('부산')) atptCode = 'C10';
+            else if (address.includes('대구')) atptCode = 'D10';
+            else if (address.includes('인천')) atptCode = 'E10';
+            else if (address.includes('광주')) atptCode = 'F10';
+            else if (address.includes('대전')) atptCode = 'G10';
+            else if (address.includes('울산')) atptCode = 'H10';
+            else if (address.includes('세종')) atptCode = 'I10';
+            else if (address.includes('경기')) atptCode = 'J10';
+            else if (address.includes('강원')) atptCode = 'K10';
+            else if (address.includes('충북')) atptCode = 'M10';
+            else if (address.includes('충남')) atptCode = 'N10';
+            else if (address.includes('전북')) atptCode = 'P10';
+            else if (address.includes('전남')) atptCode = 'Q10';
+            else if (address.includes('경북')) atptCode = 'R10';
+            else if (address.includes('경남')) atptCode = 'S10';
+            else if (address.includes('제주')) atptCode = 'T10';
+        }
+
+        // 검색어 최적화: 지점명 등 불필요한 단어 제거를 통해 검색 매칭률 높임
+        let searchName = acadName.replace(/\([^)]*\)/g, '').replace(/(학원|교습소|보습|전문|음악|미술|어학원|본원|지점|캠퍼스).*/g, '').trim();
+        if (searchName.length < 2) searchName = acadName.replace(/\([^)]*\)/g, '').trim();
+
+        try {
+            const res = await fetch(`/api/academies/fees?atpt_code=${atptCode}&aca_nm=${encodeURIComponent(searchName)}`);
+            const data = await res.json();
+            
+            if (data.acaInsTiInfo && data.acaInsTiInfo[1] && data.acaInsTiInfo[1].row) {
+                // 여러 결과 중 수강료 정보가 등록되어 있는 첫 번째 학원을 찾음
+                const validRow = data.acaInsTiInfo[1].row.find(r => r.PSNBY_THCC_CNTNT && r.PSNBY_THCC_CNTNT.trim() !== '') || data.acaInsTiInfo[1].row[0];
+                const feeContent = validRow.PSNBY_THCC_CNTNT || '';
+                
+                if (feeContent) {
+                    const match = feeContent.match(/:\s*([0-9]+)/);
+                    if (match && match[1]) {
+                        originalFee = parseInt(match[1], 10);
+                    }
+                    
+                    // 수강료 내역 전체를 포맷팅하여 노출
+                    const formattedFees = feeContent.split(',').map(item => item.trim()).join('<br>• ');
+                    feeReason = `💡 <strong>출처:</strong> 나이스(NEIS) 교육정보 개방 포털<br><div style="margin-top: 6px; padding: 6px; background: #fff; border: 1px solid #e0e0e0; border-radius: 4px; color: var(--primary-blue); font-weight: 500;">• ${formattedFees}</div>`;
+                    isRealData = true;
+                }
+            }
+        } catch (e) {
+            console.error('학원비 데이터 호출 실패:', e);
+        }
+
+        // 공공데이터 미등록 또는 수강료 정보가 없는 경우 0원 처리
+        if (!isRealData || originalFee === 0) {
+            originalFee = 0;
+            feeReason = `💡 <strong>출처:</strong> 나이스(NEIS) 교육정보 개방 포털<br><span style="color: var(--danger-red);">⚠️ 미등록/폐업 학원이거나 수강료 정보가 없습니다. (수동 입력 가능)</span>`;
+        }
+
         const avgFee = 320000;
         
         const diffPercent = Math.round(((originalFee - avgFee) / avgFee) * 100);
@@ -6592,7 +6659,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             
             <div style="font-size: 10.5px; color: var(--text-muted); margin-bottom: 8px; background: #f5f5f5; padding: 6px; border-radius: 4px; line-height: 1.4;">
-                💡 <strong>산출 근거:</strong> 기본금 250,000원 + 학원별 가중 가변액(${(seed % 21) * 10000}원)
+                ${feeReason}
             </div>
             
             <div id="calcComparisonMsg" style="font-size: 11px; margin-bottom: 8px; text-align: right;">${comparisonMsg}</div>
