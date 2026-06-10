@@ -1358,6 +1358,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(res => res.json())
                 .then(data => {
                     const appkey = data.kakao_app_key;
+                    window.GLOBAL_SAFEMAP_KEY = data.safemap_key;
                     if (!appkey) {
                         logDiagnostic('[Warning] 카카오 지도 API 키가 설정되지 않았습니다. 관리자 페이지(/admin.html)에서 키를 저장해 주세요.');
                         resolve(false);
@@ -6158,8 +6159,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const width = mapNode.offsetWidth || 500;
             const height = mapNode.offsetHeight || 500;
 
-            // 백엔드 프록시 API 호출 URL
-            const imageUrl = `/api/crime-zones?bbox=${encodeURIComponent(bbox)}&width=${width}&height=${height}`;
+            // 백엔드 프록시 API 호출 URL (Vercel IP 차단 우회를 위해 프론트에서 직접 호출)
+            const serviceKey = window.GLOBAL_SAFEMAP_KEY || '8N7ELUCO-8N7E-8N7E-8N7E-8N7ELUCOQY';
+            const imageUrl = `https://safemap.go.kr/openapi2/IF_0087_WMS?serviceKey=${encodeURIComponent(serviceKey)}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
 
             // 카카오맵 GroundOverlay 생성 및 지도 표시
             crimeZoneOverlay = new kakao.maps.GroundOverlay(imageUrl, bounds);
@@ -6215,7 +6217,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const width = mapNode.offsetWidth || 500;
             const height = mapNode.offsetHeight || 500;
 
-            const imageUrl = `/api/accident-statistics?bbox=${encodeURIComponent(bbox)}&width=${width}&height=${height}`;
+            const serviceKey = window.GLOBAL_SAFEMAP_KEY || '8N7ELUCO-8N7E-8N7E-8N7E-8N7ELUCOQY';
+            const imageUrl = `https://safemap.go.kr/openapi2/IF_0075_WMS?serviceKey=${encodeURIComponent(serviceKey)}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
 
             accidentStatisticsOverlay = new kakao.maps.GroundOverlay(imageUrl, bounds);
             accidentStatisticsOverlay.setMap(window.kakaoMapInstance);
@@ -6270,7 +6273,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const width = mapNode.offsetWidth || 500;
             const height = mapNode.offsetHeight || 500;
 
-            const imageUrl = `/api/traffic-accidents?bbox=${encodeURIComponent(bbox)}&width=${width}&height=${height}`;
+            const serviceKey = window.GLOBAL_SAFEMAP_KEY || '8N7ELUCO-8N7E-8N7E-8N7E-8N7ELUCOQY';
+            const imageUrl = `https://safemap.go.kr/openapi2/IF_0093_WMS?serviceKey=${encodeURIComponent(serviceKey)}&srs=EPSG:4326&bbox=${bbox}&format=image/png&width=${width}&height=${height}&transparent=TRUE`;
 
             trafficAccidentOverlay = new kakao.maps.GroundOverlay(imageUrl, bounds);
             trafficAccidentOverlay.setMap(window.kakaoMapInstance);

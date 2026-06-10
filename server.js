@@ -124,7 +124,10 @@ app.get('/api/schools', (req, res) => {
 // 2. GET /api/config/map-key - Serves Kakao Map Key dynamically
 app.get('/api/config/map-key', async (req, res) => {
     const config = await readConfig();
-    return res.json({ kakao_app_key: config.kakao_app_key || '' });
+    return res.json({ 
+        kakao_app_key: config.kakao_app_key || '',
+        safemap_key: config.safemap_key || '8N7ELUCO-8N7E-8N7E-8N7E-8N7ELUCOQY'
+    });
 });
 
 // 3. POST /api/admin/login - Simple admin verification
