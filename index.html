@@ -1,12 +1,22 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-3GMJRV3CVX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-3GMJRV3CVX');
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>학업성취도 지도 - Academic Achievement Map</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
     <div class="app-container" style="position: relative;">
         <!-- Top Right Floating Toggle Button -->
         <button id="btnToggleSidebarTop" style="position: absolute; right: 24px; top: 24px; width: 40px; height: 40px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10001; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 20px; transition: all 0.2s ease;" onclick="toggleSidebar()">
