@@ -103,17 +103,19 @@ body {
 
 .search-btn {
     border: none;
-    background: var(--primary-blue);
-    color: white;
-    border-radius: 8px;
-    padding: 0 16px;
+    background: transparent;
+    color: var(--primary-blue);
+    padding: 0 8px;
     cursor: pointer;
-    font-weight: 500;
     transition: var(--transition-smooth);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .search-btn:hover {
-    background: var(--deep-blue);
+    color: var(--deep-blue);
+    transform: scale(1.1);
 }
 
 .filter-bar {
@@ -736,3 +738,160 @@ body {
 .parents-filter-accordion input:checked + .slider:before {
     transform: translateX(14px);
 }
+
+/* 모바일 하단 내비게이션 바 스타일 */
+.mobile-bottom-nav {
+    display: none;
+}
+
+@media (max-width: 1024px) {
+    .mobile-bottom-nav {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 60px;
+        background-color: var(--bg-card, #ffffff);
+        border-top: 1px solid var(--border-color, #e5e7eb);
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+        z-index: 10095;
+    }
+
+    .mobile-bottom-nav .nav-item {
+        background: none;
+        border: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted, #6b7280);
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 6px 0;
+        width: 25%;
+        height: 100%;
+        gap: 4px;
+        transition: color 0.2s ease;
+        font-family: inherit;
+    }
+
+    .mobile-bottom-nav .nav-item svg {
+        stroke: currentColor;
+    }
+
+    .mobile-bottom-nav .nav-item.active {
+        color: var(--primary-blue, #2563eb);
+    }
+
+    /* 모바일에서 설정창을 전체 화면으로 표시 */
+    #settingsModal {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: calc(100% - 60px) !important;
+        margin: 0 !important;
+        z-index: 10090 !important;
+        overflow-y: auto !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-sizing: border-box !important;
+    }
+
+    /* 모바일에서 학부모 필터 설정창을 전체 화면으로 표시 */
+    .parents-filter-accordion {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: calc(100% - 60px) !important;
+        max-height: none !important;
+        margin: 0 !important;
+        z-index: 10090 !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-sizing: border-box !important;
+        display: none;
+    }
+
+    #parentsFilterIndicator {
+        display: none !important;
+    }
+
+    #btnCloseParentsFilter {
+        display: block !important;
+    }
+
+    /* 모바일 상단 floating 버튼 숨김 */
+    #btnToggleSidebarTop,
+    #btnShowTutorial,
+    #btnOpenSettings {
+        display: none !important;
+    }
+
+    /* 모바일 지도 위 검색 상단바 스타일 */
+    .map-search-container {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        background: var(--bg-card, #ffffff) !important;
+        padding: 10px 16px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+        z-index: 10090 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        box-sizing: border-box !important;
+        border-radius: 0 !important;
+    }
+
+    .map-search-container .search-bar-wrapper {
+        box-shadow: none !important;
+        border: 1px solid var(--border-color, #e5e7eb) !important;
+        padding: 2px 8px !important;
+        border-radius: 8px !important;
+        background: #ffffff !important;
+    }
+
+    .map-search-container .search-bar-wrapper input {
+        font-size: 14px !important;
+        padding: 6px !important;
+    }
+
+    .map-search-container .search-btn {
+        padding: 0 12px !important;
+        font-size: 13px !important;
+    }
+
+    .map-search-container .filter-bar {
+        gap: 6px !important;
+    }
+
+    .map-search-container .filter-select {
+        padding: 6px 12px !important;
+        border-radius: 8px !important;
+        font-size: 12px !important;
+        box-shadow: none !important;
+        border: 1px solid var(--border-color, #e5e7eb) !important;
+        background: #ffffff !important;
+    }
+
+    /* 모바일 마이페이지 하단 도움말 노출 */
+    #mobileMypageTutorial {
+        display: block !important;
+    }
+
+    /* 모바일에서 범례 가이드 위치를 하단 메뉴(60px) 위로 상향 조정 */
+    #mapLegend {
+        bottom: 75px !important;
+        left: 12px !important;
+    }
+}
+
+

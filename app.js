@@ -1396,7 +1396,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         container.innerHTML = ''; // Clear SVG fallback content
                         const options = {
                             center: new kakao.maps.LatLng(37.4979, 127.0276), // Default: Gangnam
-                            level: 5
+                            level: window.innerWidth <= 1024 ? 6 : 5
                         };
                         kakaoMap = new kakao.maps.Map(container, options);
                         window.kakaoMapInstance = kakaoMap;
@@ -1553,7 +1553,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const target = regionCoords[region];
         if (target) {
             kakaoMap.setCenter(new kakao.maps.LatLng(target.lat, target.lng));
-            kakaoMap.setLevel(target.level);
+            kakaoMap.setLevel(target.level + (window.innerWidth <= 1024 ? 1 : 0));
         }
     }
 
@@ -1561,6 +1561,11 @@ document.addEventListener('DOMContentLoaded', () => {
     async function performSearch(overrideQuery) {
         if (typeof resetSafeCommute === 'function') resetSafeCommute();
         const query = (overrideQuery !== undefined && !(overrideQuery instanceof Event)) ? overrideQuery : searchInput.value;
+        
+        if (typeof query === 'string' && query.trim() === '') {
+            alert("검색어를 입력해주세요.");
+            return;
+        }
         
         // Sync Filters
         orchestrator.state.filters.schoolType = schoolTypeFilter.value;
@@ -2113,7 +2118,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const coords = new kakao.maps.LatLng(school.lat, school.lng);
                         if (shouldCenter) {
                             kakaoMap.setCenter(coords);
-                            kakaoMap.setLevel(5); // 줌인되면 zoom_changed 이벤트를 통해 개별 핀이 다시 활성화됩니다.
+                            kakaoMap.setLevel(window.innerWidth <= 1024 ? 6 : 5); // 줌인되면 zoom_changed 이벤트를 통해 개별 핀이 다시 활성화됩니다.
                         }
                         const marker = new kakao.maps.Marker({
                             position: coords
@@ -2196,7 +2201,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (shouldCenter && !centered) {
                     kakaoMap.setCenter(coords);
-                    kakaoMap.setLevel(5); // Zoom in so that markers become visible (<=6)
+                    kakaoMap.setLevel(window.innerWidth <= 1024 ? 6 : 5); // Zoom in so that markers become visible (<=6)
                     centered = true;
                 }
             } else {
@@ -4751,7 +4756,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reset map view using local variable in scope
         if (kakaoMap) {
             kakaoMap.setCenter(new kakao.maps.LatLng(37.4979, 127.0276));
-            kakaoMap.setLevel(5);
+            kakaoMap.setLevel(window.innerWidth <= 1024 ? 6 : 5);
         }
 
         onMapAction();
@@ -5297,7 +5302,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (window.kakaoMapInstance) {
-            window.kakaoMapInstance.setLevel(6);
+            window.kakaoMapInstance.setLevel(window.innerWidth <= 1024 ? 7 : 6);
         }
         if (typeof window.onMapAction === 'function') {
             window.onMapAction();
@@ -6974,3 +6979,228 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateFavUI();
 });
+
+// --- 모바일 하단 내비게이션 클릭 이벤트 처리 ---
+window.onMobileNavClick = function(menu, btnEl) {
+    // 1024px 이하 모바일 환경에서만 하단 네비게이션 동작 적용
+    if (window.innerWidth > 1024) return;
+
+    // 하단 탭바 활성화 상태 변경
+    document.querySelectorAll('.mobile-bottom-nav .nav-item').forEach(el => {
+        el.classList.remove('active');
+    });
+    if (btnEl) {
+        btnEl.classList.add('active');
+    }
+
+    const container = document.querySelector('.app-container');
+    const sidebar = document.querySelector('.sidebar-section');
+    const academySidebar = document.getElementById('academySidebar');
+    const filterAccordion = document.querySelector('.parents-filter-accordion');
+
+    // 모든 팝업 모달 및 리뷰 닫기 목록
+    const modals = [
+        'simulationModal', 
+        'settingsModal', 
+        'onboardingModal', 
+        'tutorialModal', 
+        'schoolReviewFormModal', 
+        'schoolReviewListModal', 
+        'budgetModal'
+    ];
+    modals.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+
+    // 학부모 필터 설정 모달도 기본적으로 숨김
+    if (filterAccordion) {
+        filterAccordion.style.display = 'none';
+    }
+
+    if (menu === 'map') {
+        // 지도 보기: 모든 사이드바 닫기
+        if (container) {
+            container.classList.remove('sidebar-open');
+            container.classList.remove('academy-open');
+        }
+        if (sidebar) sidebar.style.display = 'none';
+        if (academySidebar) academySidebar.style.display = 'none';
+        
+        // 상단 토글 버튼 상태도 맞춰줌
+        const btnToggle = document.getElementById('btnToggleSidebarTop');
+        if (btnToggle) {
+            btnToggle.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>`;
+        }
+        if (window.kakaoMapInstance) {
+            setTimeout(() => window.kakaoMapInstance.relayout(), 100);
+        }
+    } else if (menu === 'filter') {
+        // 필터 보기: 사이드바를 열지 않고 학부모 필터 아코디언을 전체 화면으로 활성화함
+        if (filterAccordion) {
+            filterAccordion.style.display = 'flex';
+        }
+        
+        const filterContent = document.getElementById('parentsFilterContent');
+        const filterIndicator = document.getElementById('parentsFilterIndicator');
+        if (filterContent) {
+            filterContent.style.display = 'flex';
+        }
+        if (filterIndicator) {
+            filterIndicator.innerText = '▲';
+        }
+    } else if (menu === 'region') {
+        // 지역 보기: 이사 시뮬레이션 모달 팝업
+        const simModal = document.getElementById('simulationModal');
+        if (simModal) simModal.style.display = 'flex';
+    } else if (menu === 'mypage') {
+        // 마이페이지 보기: 설정 모달 팝업 노출 (최상위 컨테이너로 이동되어 단독 노출 가능)
+        const setModal = document.getElementById('settingsModal');
+        if (setModal) {
+            setModal.style.display = 'block';
+        }
+    }
+};
+
+// --- 화면 크기 변경 감지 및 PC 버전 스타일 복원 ---
+window.addEventListener('resize', function() {
+    if (window.innerWidth > 1024) {
+        const sidebar = document.querySelector('.sidebar-section');
+        const academySidebar = document.getElementById('academySidebar');
+        const container = document.querySelector('.app-container');
+        
+        // PC 화면으로 복원 시 모바일에서 적용된 인라인 display 스타일을 flex로 복구
+        if (sidebar) {
+            sidebar.style.display = 'flex';
+        }
+        if (academySidebar && academySidebar.style.display === 'none') {
+            academySidebar.style.display = '';
+        }
+        
+        // PC 화면으로 복원 시 모바일에서 적용된 인라인 display 스타일을 flex로 복구
+        if (sidebar) {
+            sidebar.style.display = 'flex';
+        }
+        if (academySidebar && academySidebar.style.display === 'none') {
+            academySidebar.style.display = '';
+        }
+        
+        // PC 화면에서는 우측 사이드바가 기본적으로 열려있도록 클래스 복구
+        if (container && !container.classList.contains('sidebar-open')) {
+            container.classList.add('sidebar-open');
+        }
+
+        // 학부모 필터 설정창 PC 뷰 스타일 초기화
+        const filterAccordion = document.querySelector('.parents-filter-accordion');
+        if (filterAccordion) {
+            filterAccordion.style.display = '';
+        }
+
+        // PC 뷰 복원 시 settingsModal을 원래의 sidebar-section 내부로 복귀시킴
+        const settingsModal = document.getElementById('settingsModal');
+        const sidebarHeader = document.querySelector('.sidebar-header');
+        if (settingsModal && sidebar && settingsModal.parentNode !== sidebar) {
+            if (sidebarHeader && sidebarHeader.nextSibling) {
+                sidebar.insertBefore(settingsModal, sidebarHeader.nextSibling);
+            } else {
+                sidebar.appendChild(settingsModal);
+            }
+        }
+
+        // 상단 토글 버튼 아이콘 리셋 (사이드바 열림 아이콘인 X 표시)
+        const btnToggle = document.getElementById('btnToggleSidebarTop');
+        if (btnToggle) {
+            btnToggle.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+        }
+    } else {
+        // 모바일 화면으로 축소 시 settingsModal을 transform 영향이 없는 최상위 container로 이동
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal && container && settingsModal.parentNode !== container) {
+            container.appendChild(settingsModal);
+        }
+    }
+});
+
+// 즉시 실행 함수(IIFE)로 로드 즉시 PC/모바일 상태 확인 및 레이아웃 설정
+(function() {
+    const sidebar = document.querySelector('.sidebar-section');
+    const academySidebar = document.getElementById('academySidebar');
+    const container = document.querySelector('.app-container');
+    const btnToggle = document.getElementById('btnToggleSidebarTop');
+    const settingsModal = document.getElementById('settingsModal');
+    const filterAccordion = document.querySelector('.parents-filter-accordion');
+
+    if (window.innerWidth > 1024) {
+        // PC 접속 시: settingsModal이 원래 부모(sidebar-section) 내에 위치하도록 보장
+        const sidebarHeader = document.querySelector('.sidebar-header');
+        if (settingsModal && sidebar && settingsModal.parentNode !== sidebar) {
+            if (sidebarHeader && sidebarHeader.nextSibling) {
+                sidebar.insertBefore(settingsModal, sidebarHeader.nextSibling);
+            } else {
+                sidebar.appendChild(settingsModal);
+            }
+        }
+
+        // 우측 사이드바가 기본적으로 열려있도록 설정
+        if (sidebar) {
+            sidebar.style.display = 'flex';
+        }
+        if (container && !container.classList.contains('sidebar-open')) {
+            container.classList.add('sidebar-open');
+        }
+        if (filterAccordion) {
+            filterAccordion.style.display = '';
+        }
+    } else {
+        // 모바일 접속 시: settingsModal을 최상위 container 하위로 이동
+        if (settingsModal && container && settingsModal.parentNode !== container) {
+            container.appendChild(settingsModal);
+        }
+
+        // 지도만 보이도록 모든 사이드바 닫기
+        if (sidebar) {
+            sidebar.style.display = 'none';
+        }
+        if (academySidebar) {
+            academySidebar.style.display = 'none';
+        }
+        if (container) {
+            container.classList.remove('sidebar-open');
+            container.classList.remove('academy-open');
+        }
+        if (filterAccordion) {
+            filterAccordion.style.display = 'none';
+        }
+        // 상단 토글 버튼도 메뉴 열기(☰) 아이콘으로 설정
+        if (btnToggle) {
+            btnToggle.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>`;
+        }
+    }
+})();
+
+// 모바일 학부모 필터 및 설정 닫기(X) 버튼 이벤트 연동
+window.addEventListener('DOMContentLoaded', () => {
+    const btnCloseParentsFilter = document.getElementById('btnCloseParentsFilter');
+    if (btnCloseParentsFilter) {
+        btnCloseParentsFilter.addEventListener('click', (e) => {
+            e.stopPropagation(); // 아코디언 토글 전파 방지
+            // 지도 탭 버튼 탐색 및 지도 탭으로 전환
+            const mapTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*="map"]');
+            window.onMobileNavClick('map', mapTabBtn);
+        });
+    }
+
+    const btnCloseSettings = document.getElementById('btnCloseSettings');
+    if (btnCloseSettings) {
+        btnCloseSettings.addEventListener('click', () => {
+            const settingsModal = document.getElementById('settingsModal');
+            if (settingsModal) settingsModal.style.display = 'none';
+            
+            if (window.innerWidth <= 1024) {
+                const mapTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*="map"]');
+                window.onMobileNavClick('map', mapTabBtn);
+            }
+        });
+    }
+});
+

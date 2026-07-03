@@ -19,7 +19,7 @@
 
     <div class="app-container sidebar-open" style="position: relative;">
         <!-- Top Right Floating Toggle Button -->
-        <button id="btnToggleSidebarTop" style="position: absolute; right: 24px; top: 24px; width: 40px; height: 40px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10001; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 20px; transition: all 0.2s ease;" onclick="toggleSidebar()">
+        <button id="btnToggleSidebarTop" style="position: absolute; right: 24px; top: 24px; width: 40px; height: 40px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10085; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 20px; transition: all 0.2s ease;" onclick="toggleSidebar()">
             <!-- SVG Menu Icon (☰) -->
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -28,7 +28,7 @@
         </button>
 
         <!-- Top Right Floating Help Guide Button -->
-        <button id="btnShowTutorial" style="position: absolute; right: 124px; top: 24px; width: 40px; height: 40px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10001; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all 0.2s ease;" title="도움말 가이드">
+        <button id="btnShowTutorial" style="position: absolute; right: 124px; top: 24px; width: 40px; height: 40px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10085; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all 0.2s ease;" title="도움말 가이드">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
@@ -37,7 +37,7 @@
         </button>
 
         <!-- Top Right Floating Settings Button -->
-        <button id="btnOpenSettings" style="position: absolute; right: 74px; top: 24px; width: 40px; height: 40px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10001; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all 0.2s ease;" onclick="const s = document.getElementById('settingsModal'); const t = document.getElementById('tutorialSidebarCard'); if (t) t.style.display = 'none'; s.style.display = s.style.display === 'none' ? 'block' : 'none';">
+        <button id="btnOpenSettings" style="position: absolute; right: 74px; top: 24px; width: 40px; height: 40px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10085; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all 0.2s ease;" onclick="const s = document.getElementById('settingsModal'); const t = document.getElementById('tutorialSidebarCard'); if (t) t.style.display = 'none'; s.style.display = s.style.display === 'none' ? 'block' : 'none';">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="3"></circle>
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -199,7 +199,12 @@
             <div class="map-search-container">
                 <div class="search-bar-wrapper">
                     <input type="text" id="searchInput" placeholder="학교명 또는 주소 검색 (예: 강남중, 대치중)..." value="">
-                    <button class="search-btn" id="searchBtn">검색</button>
+                    <button class="search-btn" id="searchBtn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </button>
                 </div>
                 <div class="filter-bar">
                     <select class="filter-select" id="regionFilter">
@@ -235,6 +240,7 @@
                     <div id="btnToggleParentsFilter" style="background: transparent; padding: 12px 16px; font-weight: bold; color: var(--deep-blue); cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; flex-shrink: 0;">
                         <span style="font-size: 13px;">⚙️ 학부모 맞춤 분석 & 필터 설정</span>
                         <span id="parentsFilterIndicator">▼</span>
+                        <button id="btnCloseParentsFilter" style="display: none; background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1;" title="닫기">&times;</button>
                     </div>
                     <div id="parentsFilterContent" style="display: none; padding: 12px; border-top: 1px solid var(--border-color); flex-direction: column; gap: 10px; overflow-y: auto;">
                         
@@ -609,7 +615,7 @@
                         <h3 style="font-size: 14px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
                             <span>⚙️ 통합 설정</span>
                         </h3>
-                        <button onclick="document.getElementById('settingsModal').style.display='none'" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1;">&times;</button>
+                        <button id="btnCloseSettings" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1;">&times;</button>
                     </div>
                     
                     <!-- 1. 자녀 정보 및 최근 시험 성적 설정 (다중 자녀 지원) -->
@@ -702,6 +708,29 @@
                                 <span>🏫 학원 정보 신규 등록 요청</span>
                                 <span style="color: var(--primary-blue); font-weight: 600; font-size: 11px;">등록 신청 ↗</span>
                             </a>
+                        </div>
+                    </div>
+
+                    <!-- 모바일 마이페이지 도움말 영역 -->
+                    <div id="mobileMypageTutorial" style="display: none; margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                        <h4 style="font-size: 13.5px; color: var(--deep-blue); margin-bottom: 12px; font-weight: 700;">💡 서비스 이용 도움말 가이드</h4>
+                        <div style="font-size: 11.5px; line-height: 1.6; color: var(--text-main); display: flex; flex-direction: column; gap: 10px; text-align: left;">
+                            <div>
+                                <strong style="color: var(--primary-blue);">1. 학교 탐색 및 필터링</strong>
+                                <p style="margin: 2px 0 0 0; color: var(--text-muted); font-size: 11px;">지도 상단 검색창에 학교명을 검색하거나 필터를 조정해 학교 핀을 클릭하세요.</p>
+                            </div>
+                            <div>
+                                <strong style="color: var(--primary-blue);">2. 우리 아이 분석하기</strong>
+                                <p style="margin: 2px 0 0 0; color: var(--text-muted); font-size: 11px;">자녀 정보를 저장한 뒤 학교 상세 카드에서 분석을 누르면 맞춤 학업 진단서가 생성됩니다.</p>
+                            </div>
+                            <div>
+                                <strong style="color: var(--primary-blue);">3. 안심 통학로 도보 분석</strong>
+                                <p style="margin: 2px 0 0 0; color: var(--text-muted); font-size: 11px;">'안심 통학로' 체크 후 지도를 터치하여 출발지를 찍으면 치안 인프라 연계 경로가 계산됩니다.</p>
+                            </div>
+                            <div>
+                                <strong style="color: var(--primary-blue);">4. 학교 비교 보드 활용</strong>
+                                <p style="margin: 2px 0 0 0; color: var(--text-muted); font-size: 11px;">'비교 보드 추가' 버튼을 눌러 최대 5개 학교의 성적과 예산 지표를 비교 분석할 수 있습니다.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1804,6 +1833,26 @@
         </div>
     </div>
     
+    <!-- 모바일 하단 탭바 메뉴 -->
+    <div id="mobileBottomNav" class="mobile-bottom-nav">
+        <button class="nav-item active" onclick="window.onMobileNavClick('map', this)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon></svg>
+            <span>지도</span>
+        </button>
+        <button class="nav-item" onclick="window.onMobileNavClick('filter', this)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+            <span>필터</span>
+        </button>
+        <button class="nav-item" onclick="window.onMobileNavClick('region', this)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span>지역</span>
+        </button>
+        <button class="nav-item" onclick="window.onMobileNavClick('mypage', this)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <span>마이페이지</span>
+        </button>
+    </div>
+
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="module" src="app.js"></script>
