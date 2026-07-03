@@ -17,7 +17,7 @@
 </head>
 <body>
 
-    <div class="app-container" style="position: relative;">
+    <div class="app-container sidebar-open" style="position: relative;">
         <!-- Top Right Floating Toggle Button -->
         <button id="btnToggleSidebarTop" style="position: absolute; right: 24px; top: 24px; width: 40px; height: 40px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10001; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 20px; transition: all 0.2s ease;" onclick="toggleSidebar()">
             <!-- SVG Menu Icon (☰) -->
@@ -132,21 +132,30 @@
 
                     if (sidebar.style.display === 'none') {
                         sidebar.style.display = 'flex';
+                        // Force a reflow to trigger transition
+                        void sidebar.offsetWidth;
+                        container.classList.add('sidebar-open');
                         if (academySidebar.style.display === 'flex') {
-                            container.style.gridTemplateColumns = '55% 15% 30%';
+                            container.classList.add('academy-open');
                         } else {
-                            container.style.gridTemplateColumns = '70% 30%';
+                            container.classList.remove('academy-open');
                         }
                         button.innerHTML = iconClose;
                     } else {
                         if (typeof window.clearAcademyMarker === 'function') window.clearAcademyMarker();
-                        sidebar.style.display = 'none';
-                        academySidebar.style.display = 'none'; // hide academy sidebar too if main sidebar hides
-                        container.style.gridTemplateColumns = '100% 0%';
+                        container.classList.remove('sidebar-open');
+                        container.classList.remove('academy-open');
                         button.innerHTML = iconMenu;
+                        setTimeout(() => {
+                            if (!container.classList.contains('sidebar-open')) {
+                                sidebar.style.display = 'none';
+                                academySidebar.style.display = 'none';
+                            }
+                        }, 300);
                     }
                     if (window.kakaoMapInstance) {
-                        window.kakaoMapInstance.relayout();
+                        setTimeout(() => window.kakaoMapInstance.relayout(), 50);
+                        setTimeout(() => window.kakaoMapInstance.relayout(), 310);
                     }
                 }
 
@@ -158,8 +167,7 @@
                     if (sidebar.style.display === 'none') return; // Cannot open if main is hidden
                     
                     if (academySidebar.style.display === 'flex' && !forceOpen) {
-                        academySidebar.style.display = 'none';
-                        container.style.gridTemplateColumns = '70% 30%';
+                        container.classList.remove('academy-open');
                         
                         // 학원 리스트 닫을 때 학원상세(커뮤니티 패널)도 함께 닫고 학교 상세 복구
                         const commPanel = document.getElementById('communityPanel');
@@ -169,12 +177,20 @@
                         const btnToggle = document.getElementById('btnToggleSidebarTop');
                         if (btnToggle) btnToggle.style.display = 'flex';
                         
+                        setTimeout(() => {
+                            if (!container.classList.contains('academy-open')) {
+                                academySidebar.style.display = 'none';
+                            }
+                        }, 300);
                     } else {
                         academySidebar.style.display = 'flex';
-                        container.style.gridTemplateColumns = '55% 15% 30%';
+                        // Force a reflow to trigger transition
+                        void academySidebar.offsetWidth;
+                        container.classList.add('academy-open');
                     }
                     if (window.kakaoMapInstance) {
-                        window.kakaoMapInstance.relayout();
+                        setTimeout(() => window.kakaoMapInstance.relayout(), 50);
+                        setTimeout(() => window.kakaoMapInstance.relayout(), 310);
                     }
                 }
             </script>
@@ -548,7 +564,7 @@
         </section>
 
         <!-- Academy Sidebar (Initially hidden) -->
-        <section class="academy-sidebar-section" id="academySidebar" style="display: none; background: white; border-right: 1px solid var(--border-color); flex-direction: column; height: 100vh; overflow: hidden; box-sizing: border-box; padding: 20px; box-shadow: -4px 0 15px rgba(0,0,0,0.05); z-index: 10;">
+        <section class="academy-sidebar-section" id="academySidebar" style="display: none;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-blue); padding-bottom: 12px; margin-bottom: 8px;">
                 <h2 style="font-size: 16px; color: var(--deep-blue); margin: 0;">주변 학원 리스트</h2>
                 <button onclick="toggleAcademySidebar()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted);">&times;</button>
@@ -580,7 +596,8 @@
 
         <!-- Right Section: Sidebar (Details, Child Diagnostic, etc.) -->
         <section class="sidebar-section">
-            <div class="sidebar-header">
+            <div class="sidebar-header" style="position: relative;">
+                <button class="mobile-close-btn" onclick="toggleSidebar()" style="display: none; position: absolute; top: -5px; right: 0; background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-muted); font-weight: bold; padding: 0;">&times;</button>
                 <h1>학업성취도 지도</h1>
                 <p>학교알리미 공시 기반 학부모용 교육 진단 도구</p>
             </div>
