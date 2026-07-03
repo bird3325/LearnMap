@@ -78,28 +78,40 @@
                 </svg>
             </div>
             
+            <!-- 모바일 지도 우측 플로팅 필터 버튼 그룹 -->
+            <div id="mobileFloatingMapFilters" class="mobile-floating-filters" style="display: none; position: absolute; right: 12px; top: 110px; z-index: 10080; flex-direction: column; gap: 8px;">
+                <button onclick="toggleMobileMapFilter('trendUpwardCheckbox', this)" title="3년 연속 우상향만 보기">📈</button>
+                <button onclick="toggleMobileMapFilter('safetyGuideCheckbox', this)" title="안심 가이드 지도 표시">🛡️</button>
+                <button onclick="toggleMobileMapFilter('crimeZoneToggleCheckbox', this)" title="우범 지역 영역 표시">🚨</button>
+                <button onclick="toggleMobileMapFilter('accidentStatisticsCheckbox', this)" title="치안사고 통계 표시">🎥</button>
+                <button onclick="toggleMobileMapFilter('trafficAccidentCheckbox', this)" title="교통사고 다발구역 표시">⚠️</button>
+                <button onclick="toggleMobileMapFilter('dongRatingCheckbox', this)" title="동 단위 학군 히트맵">🔥</button>
+            </div>
+            <!-- 모바일 필터 토스트 배너 알림 -->
+            <div id="mobileFilterToast" style="display: none; position: absolute; top: 120px; left: 50%; transform: translateX(-50%); background: rgba(37, 99, 235, 0.95); backdrop-filter: blur(8px); color: white; padding: 10px 18px; border-radius: 30px; font-size: 11px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 10100; pointer-events: none; transition: opacity 0.3s ease; opacity: 0; white-space: nowrap; text-align: center; font-family: var(--font-primary);"></div>
+            
             <!-- Map Legend (Marker Color Guide) -->
             <div class="map-legend" id="mapLegend" style="position: absolute; bottom: 20px; left: 20px; background: rgba(255, 255, 255, var(--overlay-bg-alpha, 0.9)); border: 1px solid var(--border-color); padding: 12px 16px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); z-index: 9999; font-size: 11px; line-height: 1.6; display: flex; flex-direction: column; gap: 6px; pointer-events: auto; transition: all 0.3s ease;">
-                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--deep-blue); font-size: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; gap: 20px; cursor: pointer;" onclick="toggleLegend()">
+                <div class="legend-header" style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--deep-blue); font-size: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; gap: 20px; cursor: pointer;" onclick="toggleLegend()">
                     <span id="legendTitleText">학업성취도 기준 (78.0점)</span>
                     <button id="btnToggleLegend" style="background: none; border: none; font-size: 10px; cursor: pointer; color: var(--primary-blue); font-weight: 700; padding: 0 4px;">▼</button>
                 </div>
                 <div id="legendContent" style="display: flex; flex-direction: column; gap: 6px;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--primary-blue);"></span>
-                        <span style="font-weight: 600; color: var(--text-main);">3개 교과 기준 충족 (우수)</span>
+                        <span style="font-weight: 600; color: var(--text-main);"><span class="pc-text">3개 교과 기준 충족 (우수)</span><span class="mobile-text" style="display:none;">3개(우수)</span></span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--success-green);"></span>
-                        <span style="font-weight: 600; color: var(--text-main);">2개 교과 기준 충족</span>
+                        <span style="font-weight: 600; color: var(--text-main);"><span class="pc-text">2개 교과 기준 충족</span><span class="mobile-text" style="display:none;">2개</span></span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--warning-yellow);"></span>
-                        <span style="font-weight: 600; color: var(--text-main);">1개 교과 기준 충족</span>
+                        <span style="font-weight: 600; color: var(--text-main);"><span class="pc-text">1개 교과 기준 충족</span><span class="mobile-text" style="display:none;">1개</span></span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--info-gray);"></span>
-                        <span style="font-weight: 600; color: var(--text-muted);">기준 충족 과목 없음</span>
+                        <span style="font-weight: 600; color: var(--text-muted);"><span class="pc-text">기준 충족 과목 없음</span><span class="mobile-text" style="display:none;">0개</span></span>
                     </div>
                 </div>
             </div>
@@ -159,6 +171,70 @@
                     }
                 }
 
+                // 모바일 플로팅 활성화 뱃지 상시 노출 제어 함수
+                function updateFloatingActiveBadges() {
+                    const mapping = [
+                        { id: 'trendUpwardCheckbox', label: '📈 3년 연속 성적 우상향만 보기' },
+                        { id: 'safetyGuideCheckbox', label: '🛡️ 안심 가이드 지도 (CCTV/지킴이집/파출소)' },
+                        { id: 'crimeZoneToggleCheckbox', label: '🚨 우범 지역 영역 (범죄주의구간)' },
+                        { id: 'accidentStatisticsCheckbox', label: '🎥 치안사고 WMS 통계 표시' },
+                        { id: 'trafficAccidentCheckbox', label: '⚠️ 교통사고 다발구역 WMS 표시' },
+                        { id: 'dongRatingCheckbox', label: '🔥 동 단위 학군 레이팅 히트맵' }
+                    ];
+                    
+                    const container = document.getElementById('mobileFilterToast');
+                    if (!container) return;
+                    
+                    const activeLabels = [];
+                    mapping.forEach(item => {
+                        const cb = document.getElementById(item.id);
+                        if (cb && cb.checked) {
+                            activeLabels.push(item.label);
+                        }
+                    });
+                    
+                    if (activeLabels.length === 0) {
+                        container.style.display = 'none';
+                        container.style.opacity = '0';
+                        return;
+                    }
+                    
+                    // Flex Wrap 구조로 상시 노출 뱃지들을 가로 정렬
+                    container.innerHTML = activeLabels.map(label => `
+                        <span style="display: inline-block; background: rgba(37, 99, 235, 0.95); backdrop-filter: blur(8px); color: white; padding: 5px 12px; border-radius: 15px; font-size: 10px; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin: 2px;">${label}</span>
+                    `).join('');
+                    
+                    container.style.display = 'flex';
+                    container.style.flexWrap = 'wrap';
+                    container.style.justifyContent = 'center';
+                    container.style.width = 'calc(100% - 32px)';
+                    container.style.background = 'transparent'; // 개별 뱃지 배경을 활용하므로 부모 투명화
+                    container.style.boxShadow = 'none';
+                    container.style.backdropFilter = 'none';
+                    container.style.padding = '0';
+                    
+                    void container.offsetWidth;
+                    container.style.opacity = '1';
+                }
+
+                // 모바일 플로팅 필터 상태 토글 및 실제 체크박스 이벤트 연동 함수
+                function toggleMobileMapFilter(checkboxId, btnEl) {
+                    const cb = document.getElementById(checkboxId);
+                    if (cb) {
+                        cb.checked = !cb.checked;
+                        cb.dispatchEvent(new Event('change', { bubbles: true }));
+                        
+                        if (cb.checked) {
+                            btnEl.classList.add('active');
+                        } else {
+                            btnEl.classList.remove('active');
+                        }
+                        
+                        // 상시 플로팅 뱃지 상태 업데이트
+                        updateFloatingActiveBadges();
+                    }
+                }
+
                 function toggleAcademySidebar(forceOpen = false) {
                     const container = document.querySelector('.app-container');
                     const academySidebar = document.getElementById('academySidebar');
@@ -198,6 +274,15 @@
             <!-- Map overlay filters and search -->
             <div class="map-search-container">
                 <div class="search-bar-wrapper">
+                    <!-- 모바일 임시 로고 추가 -->
+                    <div class="brand-logo" style="display: flex; align-items: center; justify-content: center; padding-left: 4px; margin-right: 4px; color: var(--primary-blue); gap: 4px; user-select: none;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                            <path d="M2 17l10 5 10-5"></path>
+                            <path d="M2 12l10 5 10-5"></path>
+                        </svg>
+                        <span style="font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 800; letter-spacing: -0.5px; color: var(--deep-blue);">LearnMap</span>
+                    </div>
                     <input type="text" id="searchInput" placeholder="학교명 또는 주소 검색 (예: 강남중, 대치중)..." value="">
                     <button class="search-btn" id="searchBtn">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -559,12 +644,12 @@
 
             <!-- 우범 지역(범죄주의구간) 범례 플로팅 가이드 바 -->
             <div id="crimeZoneLegendFloatingBar" style="display: none; position: absolute; bottom: 20px; left: 250px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border: 1px solid var(--border-color); border-radius: 30px; padding: 8px 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 9999; align-items: center; gap: 14px; font-size: 11px; font-weight: bold; color: var(--text-main); font-family: var(--font-primary); transition: all 0.3s ease;">
-                <span style="font-weight: 800; color: var(--deep-blue); display: flex; align-items: center; gap: 4px; border-right: 1px solid var(--border-color); padding-right: 10px; margin-right: -4px;">⚠️ 범죄주의구간 등급 가이드</span>
+                <span class="crime-legend-title" style="font-weight: 800; color: var(--deep-blue); display: flex; align-items: center; gap: 4px; border-right: 1px solid var(--border-color); padding-right: 10px; margin-right: -4px;">⚠️ 범죄주의구간 등급 가이드</span>
                 <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #d50000; border-radius: 2px;"></span> 1등급 (매우 높음)</span>
                 <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #ff3d00; border-radius: 2px;"></span> 2~3등급 (높음)</span>
                 <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #ff9100; border-radius: 2px;"></span> 4~7등급 (보통)</span>
                 <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #ffea00; border-radius: 2px;"></span> 8~10등급 (낮음)</span>
-                <span style="color: var(--text-muted); font-weight: normal; font-size: 10px;">*등급이 높을수록 우범 비율이 높은 지역입니다.</span>
+                <span class="crime-legend-desc" style="color: var(--text-muted); font-weight: normal; font-size: 10px;">*등급이 높을수록 우범 비율이 높은 지역입니다.</span>
             </div>
 
         </section>
@@ -1836,7 +1921,10 @@
     <!-- 모바일 하단 탭바 메뉴 -->
     <div id="mobileBottomNav" class="mobile-bottom-nav">
         <button class="nav-item active" onclick="window.onMobileNavClick('map', this)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+            </svg>
             <span>지도</span>
         </button>
         <button class="nav-item" onclick="window.onMobileNavClick('filter', this)">

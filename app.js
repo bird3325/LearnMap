@@ -1870,24 +1870,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const legendContent = document.getElementById('legendContent');
             if (legendTitle) legendTitle.innerText = '지도 클러스터 가이드 (학교 수)';
             if (legendContent) legendContent.innerHTML = `
-                <div style="font-size: 11px; color: var(--text-muted); text-align: center; margin-bottom: 8px;">
+                <div class="cluster-desc" style="font-size: 11px; color: var(--text-muted); text-align: center; margin-bottom: 8px;">
                     지도를 <strong>확대(줌 인)</strong>하시면 개별 학교의<br>학업성취도를 확인할 수 있습니다.
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: rgba(51, 204, 255, 0.8);"></span>
-                    <span style="font-weight: 500; color: var(--text-main);">10개 미만</span>
+                    <span style="font-weight: 500; color: var(--text-main);"><span class="pc-text">10개 미만</span><span class="mobile-text" style="display:none;">~10개</span></span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: rgba(255, 153, 0, 0.8);"></span>
-                    <span style="font-weight: 500; color: var(--text-main);">10 ~ 30개 미만</span>
+                    <span style="font-weight: 500; color: var(--text-main);"><span class="pc-text">10 ~ 30개 미만</span><span class="mobile-text" style="display:none;">10~30</span></span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: rgba(255, 51, 204, 0.8);"></span>
-                    <span style="font-weight: 500; color: var(--text-main);">30 ~ 50개 미만</span>
+                    <span style="font-weight: 500; color: var(--text-main);"><span class="pc-text">30 ~ 50개 미만</span><span class="mobile-text" style="display:none;">30~50</span></span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: rgba(255, 0, 0, 0.8);"></span>
-                    <span style="font-weight: 500; color: var(--text-main);">50개 이상</span>
+                    <span style="font-weight: 500; color: var(--text-main);"><span class="pc-text">50개 이상</span><span class="mobile-text" style="display:none;">50~</span></span>
                 </div>
             `;
 
@@ -2362,6 +2362,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sc) sc.style.display = 'block';
         const btnTop = document.getElementById('btnToggleSidebarTop');
         if (btnTop) btnTop.style.display = 'flex';
+
+        // 학교 상세 페이지 노출 시 다른 간섭 가능 모달/카드들 일괄 숨김 처리
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) settingsModal.style.display = 'none';
+        const tutorialCard = document.getElementById('tutorialSidebarCard');
+        if (tutorialCard) tutorialCard.style.display = 'none';
+        const infoEditCard = document.getElementById('infoEditRequestCard');
+        if (infoEditCard) infoEditCard.style.display = 'none';
+        const adInquiryCard = document.getElementById('adInquiryCard');
+        if (adInquiryCard) adInquiryCard.style.display = 'none';
+        const academyRegisterCard = document.getElementById('academyRegisterCard');
+        if (academyRegisterCard) academyRegisterCard.style.display = 'none';
 
         welcomeCard.style.display = 'none';
         childFormCard.style.display = 'none';
@@ -5600,6 +5612,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (diagnosisResultCard) diagnosisResultCard.style.display = 'none';
             if (welcomeCard) welcomeCard.style.display = 'block';
             
+            // 모바일 환경일 경우, 학교 카드가 닫힐 때 상세페이지(사이드바)도 자동으로 함께 숨김 처리하여 지도로 복귀
+            if (window.innerWidth <= 1024) {
+                const sidebar = document.querySelector('.sidebar-section');
+                if (sidebar) sidebar.style.display = 'none';
+                const container = document.querySelector('.app-container');
+                if (container) {
+                    container.classList.remove('sidebar-open');
+                }
+            }
+            
             // Hide community panel
             const communityPanel = document.getElementById('communityPanel');
             if (communityPanel) communityPanel.style.display = 'none';
@@ -7202,5 +7224,44 @@ window.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // 모바일 플로팅 지도 필터와 실제 폼 체크박스들 상태 동기화 함수
+    function syncMobileFloatingFilters() {
+        const mapping = {
+            'trendUpwardCheckbox': 0,
+            'safetyGuideCheckbox': 1,
+            'crimeZoneToggleCheckbox': 2,
+            'accidentStatisticsCheckbox': 3,
+            'trafficAccidentCheckbox': 4,
+            'dongRatingCheckbox': 5
+        };
+        const buttons = document.querySelectorAll('.mobile-floating-filters button');
+        if (buttons.length === 6) {
+            Object.entries(mapping).forEach(([id, idx]) => {
+                const cb = document.getElementById(id);
+                if (cb && cb.checked) {
+                    buttons[idx].classList.add('active');
+                } else {
+                    buttons[idx].classList.remove('active');
+                }
+            });
+        }
+        
+        // 플로팅 활성화 뱃지 상시 노출 동기화 호출
+        if (typeof window.updateFloatingActiveBadges === 'function') {
+            window.updateFloatingActiveBadges();
+        }
+    }
+
+    // 실제 체크박스 변경 시 플로팅 버튼도 같이 싱크
+    ['trendUpwardCheckbox', 'safetyGuideCheckbox', 'crimeZoneToggleCheckbox', 'accidentStatisticsCheckbox', 'trafficAccidentCheckbox', 'dongRatingCheckbox'].forEach(id => {
+        const cb = document.getElementById(id);
+        if (cb) {
+            cb.addEventListener('change', syncMobileFloatingFilters);
+        }
+    });
+
+    // 최초 로드 시 동기화
+    setTimeout(syncMobileFloatingFilters, 500);
 });
 

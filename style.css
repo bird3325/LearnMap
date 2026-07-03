@@ -81,6 +81,14 @@ body {
     gap: 12px;
 }
 
+.brand-logo {
+    display: none !important;
+}
+
+.mobile-floating-filters {
+    display: none !important;
+}
+
 .search-bar-wrapper {
     display: flex;
     background: rgba(255, 255, 255, var(--overlay-bg-alpha, 0.9));
@@ -606,6 +614,14 @@ body {
     }
 }
 
+/* PC 웹 환경에서 학부모 맞춤 추천 패널 스크롤 제공 (모바일 영향 없음) */
+@media (min-width: 1025px) {
+    .parents-filter-accordion {
+        max-height: calc(100vh - 180px) !important;
+        overflow-y: auto !important;
+    }
+}
+
 /* Parents Advanced Analytics Custom Styles */
 .parents-filter-accordion input[type="range"] {
     -webkit-appearance: none;
@@ -891,6 +907,132 @@ body {
     #mapLegend {
         bottom: 75px !important;
         left: 12px !important;
+    }
+
+    /* 모바일에서 임시 로고 노출 */
+    .brand-logo {
+        display: flex !important;
+    }
+
+    /* 모바일에서 학교 정보 사이드바를 하단 메뉴 제외 전체화면으로 표시 */
+    .sidebar-section {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: calc(100% - 60px) !important;
+        margin: 0 !important;
+        z-index: 10090 !important;
+        box-sizing: border-box !important;
+        border-left: none !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+    }
+
+    /* 모바일 학교 상세 카드 내부에서 붕 뜨는 외곽 영역(이중 보더, 그림자, 라운딩 등)을 제거하고 평평하게 밀착 */
+    .sidebar-section .card {
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        padding: 16px 16px 24px 16px !important;
+        margin: 0 !important;
+        background: transparent !important;
+    }
+
+    /* 모바일에서 외곽의 공통 브랜드 로고 헤더 영역 자체를 완전히 제거 */
+    .sidebar-section .sidebar-header {
+        display: none !important;
+    }
+
+    /* 모바일 지도 우측 플로팅 필터 노출 및 버튼 스타일 */
+    .mobile-floating-filters {
+        display: flex !important;
+    }
+
+    .mobile-floating-filters button {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: #ffffff;
+        border: 1px solid var(--border-color, #e5e7eb);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        color: var(--text-main);
+        outline: none;
+    }
+
+    .mobile-floating-filters button.active {
+        background: var(--primary-blue, #2563eb) !important;
+        border-color: var(--primary-blue, #2563eb) !important;
+        transform: scale(1.1);
+        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3) !important;
+    }
+
+    /* 모바일 환경에서 범례 플로팅 가이드 바 깨짐 방지 및 반응형 밀착 배치 */
+    #commuteLegendFloatingBar,
+    #crimeZoneLegendFloatingBar {
+        left: 12px !important;
+        bottom: 75px !important;
+        width: calc(100% - 24px) !important;
+        box-sizing: border-box !important;
+        border-radius: 12px !important;
+        flex-wrap: wrap !important;
+        gap: 6px 12px !important;
+        padding: 10px 14px !important;
+        justify-content: center !important;
+    }
+
+    /* 모바일 페이지에 맞춤 압축화 (타이틀 및 부가 설명 생략 및 글자/갭 축소) */
+    #crimeZoneLegendFloatingBar {
+        font-size: 9.5px !important;
+        gap: 4px 8px !important;
+        padding: 8px 10px !important;
+    }
+
+    #crimeZoneLegendFloatingBar .crime-legend-title,
+    #crimeZoneLegendFloatingBar .crime-legend-desc {
+        display: none !important;
+    }
+
+    /* 모바일 학업성취도 등급 가이드 압축 및 깨짐 보완 */
+    #mapLegend {
+        left: 12px !important;
+        bottom: 75px !important;
+        width: calc(100% - 24px) !important;
+        box-sizing: border-box !important;
+        border-radius: 12px !important;
+        padding: 8px 10px !important;
+    }
+
+    #mapLegend .legend-header {
+        display: none !important; /* 모바일에서 타이틀 헤더 바 삭제 */
+    }
+
+    #mapLegend #legendContent {
+        display: flex !important; /* 모바일일 때 항상 강제 flex 노출 (클릭 토글 상태 무시) */
+        flex-direction: row !important; /* 가로 수평 정렬 */
+        gap: 8px 10px !important;
+        justify-content: center !important;
+        font-size: 9.5px !important;
+        flex-wrap: wrap !important;
+    }
+
+    #mapLegend .pc-text {
+        display: none !important;
+    }
+
+    #mapLegend .mobile-text {
+        display: inline !important;
+    }
+
+    #mapLegend .cluster-desc {
+        display: none !important;
     }
 }
 
