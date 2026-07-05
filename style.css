@@ -560,6 +560,22 @@ body {
         border-left: none;
         border-radius: 24px 24px 0 0;
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important; /* 전체 세로 스크롤을 막고 내부만 움직이게 함 */
+    }
+    
+    /* 모바일 학교 상세 스크롤 본문 개별 고정 정렬 및 스크롤바 가리기 */
+    #sidebarContent,
+    #tutorialSidebarCard {
+        flex: 1 !important;
+        overflow-y: auto !important;
+        -ms-overflow-style: none !important;
+        scrollbar-width: none !important;
+    }
+    #sidebarContent::-webkit-scrollbar,
+    #tutorialSidebarCard::-webkit-scrollbar {
+        display: none !important;
     }
     .app-container:not(.sidebar-open) .sidebar-section {
         transform: translateY(100%) !important;
@@ -568,30 +584,29 @@ body {
         transform: translateY(0) !important;
     }
     .academy-sidebar-section {
-        position: absolute;
-        top: auto;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        width: 100%;
+        position: fixed !important;
+        top: 0 !important;
+        bottom: auto !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
         max-width: 100% !important;
-        height: 60vh;
-        z-index: 10090;
-        box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15);
-        border-top: 1px solid var(--border-color);
-        border-left: none;
-        border-right: none !important;
-        border-radius: 24px 24px 0 0;
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        height: calc(100% - 60px) !important;
+        z-index: 10095 !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        transform: none !important;
+        background: #ffffff !important;
     }
     .app-container:not(.sidebar-open) .academy-sidebar-section {
-        transform: translateY(100%) !important;
+        transform: none !important;
     }
     .app-container.sidebar-open:not(.academy-open) .academy-sidebar-section {
-        transform: translateY(100%) !important;
+        transform: none !important;
     }
     .app-container.sidebar-open.academy-open .academy-sidebar-section {
-        transform: translateY(0) !important;
+        transform: none !important;
     }
     .compare-overlay {
         width: 96% !important;
@@ -618,7 +633,26 @@ body {
 @media (min-width: 1025px) {
     .parents-filter-accordion {
         max-height: calc(100vh - 180px) !important;
+        overflow-y: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    #parentsFilterContent {
+        max-height: calc(100vh - 230px) !important;
         overflow-y: auto !important;
+    }
+    /* PC에서 닫기 버튼 제거 및 삼각형을 우측 끝으로 배치 */
+    .parents-filter-accordion #btnCloseParentsFilter {
+        display: none !important;
+    }
+    .parents-filter-accordion #btnToggleParentsFilter {
+        justify-content: space-between !important;
+    }
+    /* PC 헤더 밑 구분선 제공 */
+    .parents-filter-accordion .filter-header-bar {
+        border-bottom: 1px solid var(--border-color) !important;
+        background: rgba(255, 255, 255, 0.98) !important;
+        backdrop-filter: blur(10px) !important;
     }
 }
 
@@ -856,13 +890,13 @@ body {
         left: 0 !important;
         width: 100% !important;
         max-width: 100% !important;
-        background: var(--bg-card, #ffffff) !important;
-        padding: 10px 16px !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+        background: #3F6991 !important;
+        padding: 10px 16px 8px 16px !important;
+        box-shadow: none !important;
         z-index: 10090 !important;
         display: flex !important;
         flex-direction: column !important;
-        gap: 8px !important;
+        gap: 0 !important;
         box-sizing: border-box !important;
         border-radius: 0 !important;
     }
@@ -873,20 +907,36 @@ body {
         padding: 2px 8px !important;
         border-radius: 8px !important;
         background: #ffffff !important;
+        display: flex !important;
+        align-items: center !important;
     }
 
     .map-search-container .search-bar-wrapper input {
         font-size: 14px !important;
         padding: 6px !important;
+        min-width: 0 !important;
+        flex: 1 !important;
     }
 
     .map-search-container .search-btn {
         padding: 0 12px !important;
         font-size: 13px !important;
+        flex-shrink: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin-right: -4px !important;
     }
 
     .map-search-container .filter-bar {
-        gap: 6px !important;
+        background: #ffffff !important;
+        margin: 8px -16px -8px -16px !important;
+        padding: 10px 16px !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08) !important;
+        border-bottom: 1px solid var(--border-color, #e5e7eb) !important;
+        display: flex !important;
+        gap: 8px !important;
+        box-sizing: border-box !important;
     }
 
     .map-search-container .filter-select {
@@ -972,6 +1022,7 @@ body {
         border-color: var(--primary-blue, #2563eb) !important;
         transform: scale(1.1);
         box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3) !important;
+        color: #ffffff !important;
     }
 
     /* 모바일 환경에서 범례 플로팅 가이드 바 깨짐 방지 및 반응형 밀착 배치 */
@@ -982,17 +1033,37 @@ body {
         width: calc(100% - 24px) !important;
         box-sizing: border-box !important;
         border-radius: 12px !important;
-        flex-wrap: wrap !important;
-        gap: 6px 12px !important;
-        padding: 10px 14px !important;
-        justify-content: center !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        gap: 6px 14px !important;
+        padding: 10px 16px !important;
+        justify-content: flex-start !important;
+        font-size: 11px !important;
+    }
+
+    #commuteLegendFloatingBar span,
+    #crimeZoneLegendFloatingBar span {
+        font-size: 11px !important;
+        white-space: nowrap !important;
+    }
+
+    #commuteLegendFloatingBar::-webkit-scrollbar,
+    #crimeZoneLegendFloatingBar::-webkit-scrollbar,
+    #mapLegend::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    /* 통학 가이드 타이틀 축소/숨김 */
+    #commuteLegendFloatingBar > span:first-child {
+        display: none !important;
     }
 
     /* 모바일 페이지에 맞춤 압축화 (타이틀 및 부가 설명 생략 및 글자/갭 축소) */
     #crimeZoneLegendFloatingBar {
-        font-size: 9.5px !important;
-        gap: 4px 8px !important;
-        padding: 8px 10px !important;
+        gap: 4px 10px !important;
+        padding: 10px 16px !important;
     }
 
     #crimeZoneLegendFloatingBar .crime-legend-title,
@@ -1007,7 +1078,10 @@ body {
         width: calc(100% - 24px) !important;
         box-sizing: border-box !important;
         border-radius: 12px !important;
-        padding: 8px 10px !important;
+        padding: 6px 12px !important;
+        overflow-x: auto !important;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
     }
 
     #mapLegend .legend-header {
@@ -1017,10 +1091,29 @@ body {
     #mapLegend #legendContent {
         display: flex !important; /* 모바일일 때 항상 강제 flex 노출 (클릭 토글 상태 무시) */
         flex-direction: row !important; /* 가로 수평 정렬 */
-        gap: 8px 10px !important;
-        justify-content: center !important;
-        font-size: 9.5px !important;
-        flex-wrap: wrap !important;
+        gap: 4px 8px !important;
+        justify-content: flex-start !important;
+        font-size: 10px !important;
+        flex-wrap: nowrap !important;
+        white-space: nowrap !important;
+    }
+
+    #mapLegend #legendContent div > span:first-child {
+        width: 8px !important;
+        height: 8px !important;
+    }
+
+    /* 모바일에서 설정창, 필터창, 학교상세 사이드바 등이 활성화되었을 때 하단 범례들이 화면을 가리지 않도록 숨김 */
+    .app-container.sidebar-open #mapLegend,
+    .app-container.sidebar-open #commuteLegendFloatingBar,
+    .app-container.sidebar-open #crimeZoneLegendFloatingBar,
+    .app-container:has(#settingsModal[style*="display: block"]) #mapLegend,
+    .app-container:has(#settingsModal[style*="display: block"]) #commuteLegendFloatingBar,
+    .app-container:has(#settingsModal[style*="display: block"]) #crimeZoneLegendFloatingBar,
+    .app-container:has(.parents-filter-accordion[style*="display: flex"]) #mapLegend,
+    .app-container:has(.parents-filter-accordion[style*="display: flex"]) #commuteLegendFloatingBar,
+    .app-container:has(.parents-filter-accordion[style*="display: flex"]) #crimeZoneLegendFloatingBar {
+        display: none !important;
     }
 
     #mapLegend .pc-text {
@@ -1031,9 +1124,427 @@ body {
         display: inline !important;
     }
 
+
     #mapLegend .cluster-desc {
         display: none !important;
     }
+
+    /* 모바일 학교 핀 크기 한 단계 축소 (38px -> 30px) 및 좌표 보정 */
+    .school-overlay {
+        width: 30px !important;
+        height: 38px !important;
+    }
+    .school-pin {
+        width: 30px !important;
+        height: 30px !important;
+        left: -15px !important;
+        top: -38px !important;
+    }
+    .school-pin::after {
+        width: 10px !important;
+        height: 10px !important;
+    }
+    .pin-label {
+        top: -38px !important;
+        font-size: 9.5px !important;
+        padding: 2px 4px !important;
+    }
+    .school-pin:hover {
+        transform: rotate(-45deg) scale(1.1) !important;
+    }
+
+    /* 모바일에서 설정창과 이사 시뮬레이션 창을 팝업 모달이 아닌 전체 페이지로 일관성 있게 오버라이딩 */
+    #settingsModal.card,
+    #simulationModal > div {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: calc(100% - 60px) !important;
+        max-width: none !important;
+        max-height: none !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        box-sizing: border-box !important;
+        background: var(--bg-card, #ffffff) !important;
+        z-index: 10080 !important;
+        overflow-y: auto !important;
+        -ms-overflow-style: none !important;
+        scrollbar-width: none !important;
+    }
+    #settingsModal.card {
+        padding: 0 !important;
+    }
+    #simulationModal > div {
+        padding: 20px !important;
+    }
+    #settingsModal.card::-webkit-scrollbar,
+    #simulationModal > div::-webkit-scrollbar {
+        display: none !important;
+    }
+    
+    #simulationModal {
+        background: transparent !important;
+        backdrop-filter: none !important;
+        z-index: 10080 !important;
+    }
+
+    /* 모바일에서 학부모 필터 설정창 전체 페이지화 및 여백 통일 */
+    .parents-filter-accordion {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: calc(100% - 60px) !important;
+        max-width: none !important;
+        max-height: none !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 20px !important;
+        box-sizing: border-box !important;
+        background: var(--bg-card, #ffffff) !important;
+        z-index: 10080 !important;
+    }
+
+    /* 모바일에서 필터 헤더 바 레이아웃 통일 (구형 오버라이드 제거) */
+
+    #parentsFilterIndicator {
+        display: none !important;
+    }
+    
+    #btnCloseParentsFilter {
+        display: block !important;
+    }
+
+    /* 모바일에서 중복되는 필터 항목 숨김 */
+    .pc-only-filter {
+        display: none !important;
+    }
+
+    /* 모바일에서 필터 설정창 상단 보더라인 제거 */
+    #parentsFilterContent {
+        border-top: none !important;
+    }
+
+    /* 모바일에서 헤더 클릭/토글 링크 스타일 비활성화 (커서 기본값) */
+    #btnToggleParentsFilter {
+        cursor: default !important;
+    }
+
+    /* 모바일에서 필터 적용 버튼 표시 */
+    #btnApplyFilters {
+        display: block !important;
+    }
+
+    /* 모바일에서 개별 학원 상세 커뮤니티 패널을 전체화면으로 덮음 */
+    #communityPanel {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        height: 100% !important;
+        z-index: 10100 !important;
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        opacity: 1 !important;
+        backdrop-filter: none !important;
+        padding: 20px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* 모바일에서 학원 상세 패널 활성화 시 부모의 z-index를 올려줌 */
+    .sidebar-section.active-community {
+        z-index: 10105 !important;
+    }
+
+    /* 모바일 팝업/패널 헤더 바 스타일 공통 통일 */
+    .sidebar-header,
+    #academySidebar > div:first-child,
+    #communityPanel > div:first-child,
+    #storyModal > div:first-child > div:first-child,
+    .filter-header-bar,
+    #settingsModal > div:first-child > div:first-child,
+    #simulationModal > div:first-child > div:first-child {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        height: 56px !important; /* 세로 높이를 56px로 단일 고정 */
+        border-bottom: 1px solid var(--border-color) !important;
+        padding: 0 48px 0 16px !important; /* 상하 패딩을 배제하여 높이 편차를 예방하고 우측 닫기공간 확보 */
+        margin: -20px -20px 16px -20px !important; /* 상단/좌우 네거티브 마진 */
+        position: relative !important;
+        box-sizing: border-box !important;
+        background: #ffffff !important;
+        border-top-left-radius: 12px !important;
+        border-top-right-radius: 12px !important;
+    }
+    
+    /* 모바일 필터 헤더 전용 레이아웃 정규화 */
+    #parentsFilterIndicator {
+        display: none !important;
+    }
+    #btnToggleParentsFilter {
+        padding: 0 !important;
+        margin: 0 !important;
+        flex: 1 !important;
+        min-width: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        height: 100% !important;
+        background: transparent !important;
+    }
+    
+    /* 통합 설정의 경우 부모 패딩이 0이므로 마진을 없애 잘림 예방 */
+    #settingsModal > div:first-child > div:first-child {
+        margin: 0 !important;
+        border-top-left-radius: 0 !important;
+        border-top-right-radius: 0 !important;
+    }
+
+    /* 학교 상세의 경우 상단 패딩 마진 조절 */
+    .sidebar-header {
+        margin: 0 0 16px 0 !important;
+        padding: 0 48px 0 0 !important;
+        background: transparent !important;
+    }
+
+    /* 모바일 닫기 버튼 스타일 공통 통일 */
+    .mobile-close-btn, 
+    #btnCloseSettings,
+    #btnCloseParentsFilter,
+    #academySidebar button[onclick*="toggleAcademySidebar"],
+    #communityPanel button[onclick*="clearAcademyMarker"],
+    #simulationModal button[onclick*="simulationModal"],
+    #storyModal button[onclick*="mapTabBtn"] {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: #f1f3f5 !important;
+        border: none !important;
+        width: 32px !important;
+        height: 32px !important;
+        border-radius: 50% !important;
+        font-size: 20px !important;
+        line-height: 1 !important;
+        color: var(--text-muted) !important;
+        cursor: pointer !important;
+        position: absolute !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        right: 16px !important;
+        padding: 0 !important;
+        z-index: 10 !important;
+        transition: background 0.2s !important;
+    }
+    .mobile-close-btn:hover, 
+    #btnCloseSettings:hover,
+    #btnCloseParentsFilter:hover,
+    #academySidebar button[onclick*="toggleAcademySidebar"]:hover,
+    #communityPanel button[onclick*="clearAcademyMarker"]:hover,
+    #simulationModal button[onclick*="simulationModal"]:hover,
+    #storyModal button[onclick*="mapTabBtn"]:hover {
+        background: #e9ecef !important;
+    }
+
+    /* 모바일 모달 헤더 타이틀 스타일 통일 */
+    .sidebar-header h1,
+    #settingsModal h3,
+    #communityPanel h2,
+    #simulationModal h3,
+    #storyModal h3,
+    #academySidebar h2,
+    .parents-filter-accordion h3 {
+        font-size: 17px !important;
+        font-weight: 800 !important;
+        color: var(--deep-blue) !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        line-height: 1.3 !important;
+        letter-spacing: -0.5px !important;
+        text-align: left !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+    }
 }
+
+/* Floating Action Button (Top Right Icons) */
+.floating-action-btn {
+    width: 40px;
+    height: 40px;
+    background: var(--bg-card, #ffffff);
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    z-index: 10085;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted, #6c757d);
+    transition: var(--transition-smooth);
+    outline: none;
+}
+
+.floating-action-btn:hover {
+    color: var(--primary-blue, #4a90e2);
+    border-color: rgba(74, 144, 226, 0.3);
+    box-shadow: 0 6px 16px rgba(74, 144, 226, 0.15);
+    transform: translateY(-2px);
+}
+
+.floating-action-btn:active {
+    transform: translateY(0) scale(0.95);
+}
+
+/* 스크롤바 감추기 (터치 드래그 기능은 보존) */
+.hide-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
+/* PC용 우측 사이드바 좌측 플로팅 필터 버튼 그룹 (독립 형제 레이어 배치) */
+.pc-floating-filters {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 10080;
+    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 사이드바가 닫혀있을 때: 우측 화면 구석 20px */
+.app-container:not(.sidebar-open) .pc-floating-filters {
+    right: 20px !important;
+}
+
+/* 사이드바가 열려있을 때: 사이드바(400px) 바로 왼쪽 */
+.app-container.sidebar-open .pc-floating-filters {
+    right: 424px !important;
+}
+
+.pc-filter-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    outline: none;
+    padding: 0;
+}
+
+.pc-filter-btn svg {
+    width: 20px !important;
+    height: 20px !important;
+}
+
+.pc-filter-btn:hover {
+    color: var(--primary-blue);
+    background: #f8f9fa;
+    border-color: var(--primary-blue);
+    transform: scale(1.08);
+}
+
+.pc-filter-btn.active {
+    background: var(--primary-blue);
+    color: #ffffff;
+    border-color: var(--primary-blue);
+}
+
+/* 모바일 뷰(1024px 이하)에서는 PC용 플로팅 필터를 강제 숨김 */
+@media screen and (max-width: 1024px) {
+    .pc-floating-filters {
+        display: none !important;
+    }
+}
+
+/* PC 화면용 퀵 필터 활성 뱃지 패널 (상시 플로팅 타이틀) 디자인 */
+#mobileFilterToast {
+    position: absolute !important;
+    left: auto !important;
+    transform: none !important;
+    width: auto !important;
+    max-width: 350px !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 14px !important;
+    padding: 8px 12px !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08) !important;
+    z-index: 10080 !important;
+    flex-direction: column !important; /* 세로 누적형 칩 리스트 */
+    gap: 6px !important;
+    pointer-events: none !important;
+    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease !important; /* 사이드바 연동 무빙 */
+}
+
+/* 사이드바가 닫혀있을 때: 우측 상단 20px */
+.app-container:not(.sidebar-open) #mobileFilterToast {
+    right: 20px !important;
+    top: 20px !important;
+}
+
+/* 사이드바가 열려있을 때: 사이드바(400px) 바로 왼쪽 정렬 */
+.app-container.sidebar-open #mobileFilterToast {
+    right: 424px !important;
+    top: 20px !important;
+}
+
+/* PC용 개별 뱃지 스타일 칩 오버라이드 */
+#mobileFilterToast span {
+    display: flex !important;
+    align-items: center !important;
+    background: #e3f2fd !important;
+    color: #0d47a1 !important;
+    padding: 6px 12px !important; /* 글자 크기 증가에 비례하여 패딩을 6px 12px로 확대 */
+    border-radius: 6px !important;
+    font-size: 13px !important; /* 11px에서 13px로 한 단계 확대 */
+    font-weight: 600 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    border: 1px solid rgba(13, 71, 161, 0.08) !important;
+    white-space: nowrap !important;
+}
+
+/* 모바일 화면(1024px 이하)에서는 기존 중앙 하단 모바일 토스트 스타일로 복원 */
+@media screen and (max-width: 1024px) {
+    #mobileFilterToast {
+        left: 50% !important;
+        right: auto !important;
+        top: 120px !important;
+        transform: translateX(-50%) !important;
+        background: rgba(37, 99, 235, 0.95) !important;
+        border: none !important;
+        border-radius: 30px !important;
+        flex-direction: row !important; /* 가로형 정렬 복원 */
+        max-width: none !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
+        transition: opacity 0.3s ease !important;
+    }
+    #mobileFilterToast span {
+        background: rgba(37, 99, 235, 0.95) !important;
+        color: white !important;
+        border-radius: 15px !important;
+        font-size: 10px !important;
+        border: none !important;
+        margin: 2px !important;
+    }
+}
+
 
 

@@ -19,16 +19,16 @@
 
     <div class="app-container sidebar-open" style="position: relative;">
         <!-- Top Right Floating Toggle Button -->
-        <button id="btnToggleSidebarTop" style="position: absolute; right: 24px; top: 24px; width: 40px; height: 40px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10085; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 20px; transition: all 0.2s ease;" onclick="toggleSidebar()">
-            <!-- SVG Menu Icon (☰) -->
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button id="btnToggleSidebarTop" class="floating-action-btn" style="position: absolute; right: 24px; top: 24px;" onclick="toggleSidebar()">
+            <!-- SVG Close Icon (X) (기본 사이드바가 열려있으므로 X가 기본값) -->
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
         </button>
 
         <!-- Top Right Floating Help Guide Button -->
-        <button id="btnShowTutorial" style="position: absolute; right: 124px; top: 24px; width: 40px; height: 40px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10085; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all 0.2s ease;" title="도움말 가이드">
+        <button id="btnShowTutorial" class="floating-action-btn" style="position: absolute; right: 124px; top: 24px;" title="도움말 가이드">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
@@ -37,7 +37,7 @@
         </button>
 
         <!-- Top Right Floating Settings Button -->
-        <button id="btnOpenSettings" style="position: absolute; right: 74px; top: 24px; width: 40px; height: 40px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10085; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all 0.2s ease;" onclick="const s = document.getElementById('settingsModal'); const t = document.getElementById('tutorialSidebarCard'); if (t) t.style.display = 'none'; s.style.display = s.style.display === 'none' ? 'block' : 'none';">
+        <button id="btnOpenSettings" class="floating-action-btn" style="position: absolute; right: 74px; top: 24px;" onclick="const s = document.getElementById('settingsModal'); const t = document.getElementById('tutorialSidebarCard'); if (t) t.style.display = 'none'; s.style.display = s.style.display === 'none' ? 'block' : 'none';">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="3"></circle>
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -79,13 +79,25 @@
             </div>
             
             <!-- 모바일 지도 우측 플로팅 필터 버튼 그룹 -->
-            <div id="mobileFloatingMapFilters" class="mobile-floating-filters" style="display: none; position: absolute; right: 12px; top: 110px; z-index: 10080; flex-direction: column; gap: 8px;">
-                <button onclick="toggleMobileMapFilter('trendUpwardCheckbox', this)" title="3년 연속 우상향만 보기">📈</button>
-                <button onclick="toggleMobileMapFilter('safetyGuideCheckbox', this)" title="안심 가이드 지도 표시">🛡️</button>
-                <button onclick="toggleMobileMapFilter('crimeZoneToggleCheckbox', this)" title="우범 지역 영역 표시">🚨</button>
-                <button onclick="toggleMobileMapFilter('accidentStatisticsCheckbox', this)" title="치안사고 통계 표시">🎥</button>
-                <button onclick="toggleMobileMapFilter('trafficAccidentCheckbox', this)" title="교통사고 다발구역 표시">⚠️</button>
-                <button onclick="toggleMobileMapFilter('dongRatingCheckbox', this)" title="동 단위 학군 히트맵">🔥</button>
+            <div id="mobileFloatingMapFilters" class="mobile-floating-filters" style="display: none; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 10080; flex-direction: column; gap: 8px;">
+                <button onclick="toggleMobileMapFilter('trendUpwardCheckbox', this)" title="3년 연속 우상향만 보기">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                </button>
+                <button onclick="toggleMobileMapFilter('safetyGuideCheckbox', this)" title="안심 가이드 지도 표시">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                </button>
+                <button onclick="toggleMobileMapFilter('crimeZoneToggleCheckbox', this)" title="우범 지역 영역 표시">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V7a5 5 0 0 1 10 0v4"></path><path d="M12 2v5"></path><rect x="4" y="11" width="16" height="8" rx="2"></rect><path d="M9 19v3"></path><path d="M15 19v3"></path></svg>
+                </button>
+                <button onclick="toggleMobileMapFilter('accidentStatisticsCheckbox', this)" title="치안사고 통계 표시">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                </button>
+                <button onclick="toggleMobileMapFilter('trafficAccidentCheckbox', this)" title="교통사고 다발구역 표시">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                </button>
+                <button onclick="toggleMobileMapFilter('dongRatingCheckbox', this)" title="동 단위 학군 히트맵">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+                </button>
             </div>
             <!-- 모바일 필터 토스트 배너 알림 -->
             <div id="mobileFilterToast" style="display: none; position: absolute; top: 120px; left: 50%; transform: translateX(-50%); background: rgba(37, 99, 235, 0.95); backdrop-filter: blur(8px); color: white; padding: 10px 18px; border-radius: 30px; font-size: 11px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 10100; pointer-events: none; transition: opacity 0.3s ease; opacity: 0; white-space: nowrap; text-align: center; font-family: var(--font-primary);"></div>
@@ -99,19 +111,19 @@
                 <div id="legendContent" style="display: flex; flex-direction: column; gap: 6px;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--primary-blue);"></span>
-                        <span style="font-weight: 600; color: var(--text-main);"><span class="pc-text">3개 교과 기준 충족 (우수)</span><span class="mobile-text" style="display:none;">3개(우수)</span></span>
+                        <span style="font-weight: 600; color: var(--text-main);"><span class="pc-text">3개 교과 기준 충족 (우수)</span><span class="mobile-text" style="display:none;">우수</span></span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--success-green);"></span>
-                        <span style="font-weight: 600; color: var(--text-main);"><span class="pc-text">2개 교과 기준 충족</span><span class="mobile-text" style="display:none;">2개</span></span>
+                        <span style="font-weight: 600; color: var(--text-main);"><span class="pc-text">2개 교과 기준 충족</span><span class="mobile-text" style="display:none;">양호</span></span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--warning-yellow);"></span>
-                        <span style="font-weight: 600; color: var(--text-main);"><span class="pc-text">1개 교과 기준 충족</span><span class="mobile-text" style="display:none;">1개</span></span>
+                        <span style="font-weight: 600; color: var(--text-main);"><span class="pc-text">1개 교과 기준 충족</span><span class="mobile-text" style="display:none;">보통</span></span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--info-gray);"></span>
-                        <span style="font-weight: 600; color: var(--text-muted);"><span class="pc-text">기준 충족 과목 없음</span><span class="mobile-text" style="display:none;">0개</span></span>
+                        <span style="font-weight: 600; color: var(--text-muted);"><span class="pc-text">기준 충족 과목 없음</span><span class="mobile-text" style="display:none;">보완</span></span>
                     </div>
                 </div>
             </div>
@@ -139,8 +151,8 @@
                     const academySidebar = document.getElementById('academySidebar');
                     const button = document.getElementById('btnToggleSidebarTop');
                     
-                    const iconMenu = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>`;
-                    const iconClose = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+                    const iconMenu = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>`;
+                    const iconClose = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
 
                     if (sidebar.style.display === 'none') {
                         sidebar.style.display = 'flex';
@@ -217,18 +229,22 @@
                     container.style.opacity = '1';
                 }
 
-                // 모바일 플로팅 필터 상태 토글 및 실제 체크박스 이벤트 연동 함수
+                // 플로팅 필터 상태 토글 및 실제 체크박스 이벤트 연동 함수 (모바일 & PC 공용)
                 function toggleMobileMapFilter(checkboxId, btnEl) {
                     const cb = document.getElementById(checkboxId);
                     if (cb) {
                         cb.checked = !cb.checked;
                         cb.dispatchEvent(new Event('change', { bubbles: true }));
                         
-                        if (cb.checked) {
-                            btnEl.classList.add('active');
-                        } else {
-                            btnEl.classList.remove('active');
-                        }
+                        // 모바일 및 PC 상에 배치된 동일 기능 버튼들의 활성화(active) 클래스 상태를 일괄 동기화
+                        const buttons = document.querySelectorAll(`[onclick*="'${checkboxId}'"]`);
+                        buttons.forEach(btn => {
+                            if (cb.checked) {
+                                btn.classList.add('active');
+                            } else {
+                                btn.classList.remove('active');
+                            }
+                        });
                         
                         // 상시 플로팅 뱃지 상태 업데이트
                         updateFloatingActiveBadges();
@@ -240,7 +256,8 @@
                     const academySidebar = document.getElementById('academySidebar');
                     const sidebar = document.querySelector('.sidebar-section');
                     
-                    if (sidebar.style.display === 'none') return; // Cannot open if main is hidden
+                    // 모바일이 아닌 PC 환경에서만 학교 정보가 닫혀있을 때 여는 것을 제한합니다.
+                    if (window.innerWidth > 1024 && sidebar.style.display === 'none') return;
                     
                     if (academySidebar.style.display === 'flex' && !forceOpen) {
                         container.classList.remove('academy-open');
@@ -248,6 +265,7 @@
                         // 학원 리스트 닫을 때 학원상세(커뮤니티 패널)도 함께 닫고 학교 상세 복구
                         const commPanel = document.getElementById('communityPanel');
                         if (commPanel) commPanel.style.display = 'none';
+                        if (sidebar) sidebar.classList.remove('active-community');
                         const sidebarContent = document.getElementById('sidebarContent');
                         if (sidebarContent) sidebarContent.style.display = 'block';
                         const btnToggle = document.getElementById('btnToggleSidebarTop');
@@ -259,10 +277,21 @@
                             }
                         }, 300);
                     } else {
+                        // 모바일일 경우 학교 정보 창이 display: none 이었다면 강제로 열어줍니다.
+                        if (window.innerWidth <= 1024 && sidebar.style.display === 'none') {
+                            sidebar.style.display = 'flex';
+                        }
+                        
                         academySidebar.style.display = 'flex';
                         // Force a reflow to trigger transition
                         void academySidebar.offsetWidth;
+                        
                         container.classList.add('academy-open');
+                        
+                        // 모바일에서는 슬라이드 업 트랜지션을 위해 sidebar-open 클래스도 함께 활성화합니다.
+                        if (window.innerWidth <= 1024) {
+                            container.classList.add('sidebar-open');
+                        }
                     }
                     if (window.kakaoMapInstance) {
                         setTimeout(() => window.kakaoMapInstance.relayout(), 50);
@@ -322,12 +351,16 @@
 
                 <!-- Parents Advanced Analytics Filter Panel (Accordion) -->
                 <div class="parents-filter-accordion" style="background: rgba(255, 255, 255, var(--overlay-bg-alpha, 0.9)); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; overflow: hidden; font-size: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); display: flex; flex-direction: column; max-height: calc(100vh - 180px); z-index: 10500;">
-                    <div id="btnToggleParentsFilter" style="background: transparent; padding: 12px 16px; font-weight: bold; color: var(--deep-blue); cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; flex-shrink: 0;">
-                        <span style="font-size: 13px;">⚙️ 학부모 맞춤 분석 & 필터 설정</span>
-                        <span id="parentsFilterIndicator">▼</span>
-                        <button id="btnCloseParentsFilter" style="display: none; background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1;" title="닫기">&times;</button>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; box-sizing: border-box; flex-shrink: 0;" class="filter-header-bar">
+                        <div id="btnToggleParentsFilter" style="background: transparent; font-weight: bold; color: var(--deep-blue); cursor: pointer; display: flex; align-items: center; gap: 6px; user-select: none; flex: 1;">
+                            <h3 style="font-size: 17px; font-weight: 800; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
+                                <span>⚙️ 학부모 맞춤 분석 & 필터 설정</span>
+                            </h3>
+                            <span id="parentsFilterIndicator" style="font-size: 11px; margin-left: 4px;">▼</span>
+                        </div>
+                        <button id="btnCloseParentsFilter" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1;" title="닫기">&times;</button>
                     </div>
-                    <div id="parentsFilterContent" style="display: none; padding: 12px; border-top: 1px solid var(--border-color); flex-direction: column; gap: 10px; overflow-y: auto;">
+                    <div id="parentsFilterContent" class="hide-scrollbar" style="display: none; padding: 12px; border-top: 1px solid var(--border-color); flex-direction: column; gap: 10px; overflow-y: auto;">
                         
                         <!-- 자녀 수준 기반 추천 (자녀 프로필 설정) -->
                         <div style="border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
@@ -507,35 +540,35 @@
                                     <option value="1500">대중교통 (1.5km)</option>
                                 </select>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+                            <div class="pc-only-filter" style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
                                 <span>3년 연속 성적 우상향만 보기</span>
                                 <label class="switch">
                                     <input type="checkbox" id="trendUpwardCheckbox">
                                     <span class="slider"></span>
                                 </label>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+                            <div class="pc-only-filter" style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
                                 <span>안심 가이드 지도 표시 (CCTV/지킴이집/파출소)</span>
                                 <label class="switch">
                                     <input type="checkbox" id="safetyGuideCheckbox">
                                     <span class="slider"></span>
                                 </label>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+                            <div class="pc-only-filter" style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
                                 <span>우범 지역 영역 표시 (범죄주의구간)</span>
                                 <label class="switch">
                                     <input type="checkbox" id="crimeZoneToggleCheckbox">
                                     <span class="slider"></span>
                                 </label>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+                            <div class="pc-only-filter" style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
                                 <span>치안사고 통계 표시 (WMS)</span>
                                 <label class="switch">
                                     <input type="checkbox" id="accidentStatisticsCheckbox">
                                     <span class="slider"></span>
                                 </label>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+                            <div class="pc-only-filter" style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
                                 <span>교통사고 다발구역 표시 (WMS)</span>
                                 <label class="switch">
                                     <input type="checkbox" id="trafficAccidentCheckbox">
@@ -545,7 +578,7 @@
                             
                             <!-- B2B 확장 및 학군 부동산 연계 패널 -->
                             <div style="border-top: 1px dashed var(--border-color); padding-top: 10px; margin-top: 6px; display: flex; flex-direction: column; gap: 8px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+                                <div class="pc-only-filter" style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
                                     <strong>동 단위 학군 레이팅 히트맵</strong>
                                     <label class="switch">
                                         <input type="checkbox" id="dongRatingCheckbox">
@@ -557,6 +590,9 @@
                                 </button>
                                 <button class="btn-secondary" id="btnResetFilters" style="padding: 6px 12px; font-size: 11.5px; font-weight: bold; width: 100%; border: 1px solid var(--border-color); color: var(--text-muted); background: white; border-radius: 6px; cursor: pointer; transition: all 0.2s; margin-top: 4px;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
                                     🔄 필터 설정 초기화
+                                </button>
+                                <button class="btn-primary" id="btnApplyFilters" style="display: none; padding: 10px 12px; font-size: 13px; font-weight: bold; width: 100%; border: none; color: white; background: var(--primary-blue); border-radius: 6px; cursor: pointer; transition: all 0.2s; margin-top: 8px;">
+                                    🔍 필터 적용
                                 </button>
                             </div>
                         </div>
@@ -634,21 +670,21 @@
             <!-- 안심통학로 범례 플로팅 가이드 바 -->
             <div id="commuteLegendFloatingBar" style="display: none; position: absolute; bottom: 20px; left: 250px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border: 1px solid var(--border-color); border-radius: 30px; padding: 8px 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 9999; align-items: center; gap: 14px; font-size: 11px; font-weight: bold; color: var(--text-main); font-family: var(--font-primary); transition: all 0.3s ease;">
                 <span style="font-weight: 800; color: var(--deep-blue); display: flex; align-items: center; gap: 4px; border-right: 1px solid var(--border-color); padding-right: 10px; margin-right: -4px;">🛡️ 안심 가이드</span>
-                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="color: #ff3d00; font-size: 13px;">🚩</span> 출발지</span>
-                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="color: #2979ff; font-size: 13px;">🚩</span> 도착지(학교)</span>
+                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="color: #ff3d00; font-size: 13px;">🚩</span> 출발</span>
+                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="color: #2979ff; font-size: 13px;">🚩</span> 도착</span>
                 <span style="display: inline-flex; align-items: center; gap: 4px;">🎥 CCTV</span>
                 <span style="display: inline-flex; align-items: center; gap: 4px;">🛡️ 지킴이집</span>
                 <span style="display: inline-flex; align-items: center; gap: 4px;">🚨 파출소</span>
-                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: rgba(255, 179, 0, 0.2); border: 1.5px solid #ffb300;"></span> 스쿨존(300m)</span>
+                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: rgba(255, 179, 0, 0.2); border: 1.5px solid #ffb300;"></span> 스쿨존</span>
             </div>
 
             <!-- 우범 지역(범죄주의구간) 범례 플로팅 가이드 바 -->
             <div id="crimeZoneLegendFloatingBar" style="display: none; position: absolute; bottom: 20px; left: 250px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border: 1px solid var(--border-color); border-radius: 30px; padding: 8px 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 9999; align-items: center; gap: 14px; font-size: 11px; font-weight: bold; color: var(--text-main); font-family: var(--font-primary); transition: all 0.3s ease;">
                 <span class="crime-legend-title" style="font-weight: 800; color: var(--deep-blue); display: flex; align-items: center; gap: 4px; border-right: 1px solid var(--border-color); padding-right: 10px; margin-right: -4px;">⚠️ 범죄주의구간 등급 가이드</span>
-                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #d50000; border-radius: 2px;"></span> 1등급 (매우 높음)</span>
-                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #ff3d00; border-radius: 2px;"></span> 2~3등급 (높음)</span>
-                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #ff9100; border-radius: 2px;"></span> 4~7등급 (보통)</span>
-                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #ffea00; border-radius: 2px;"></span> 8~10등급 (낮음)</span>
+                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #d50000; border-radius: 2px;"></span> 1등급</span>
+                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #ff3d00; border-radius: 2px;"></span> 2~3등급</span>
+                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #ff9100; border-radius: 2px;"></span> 4~7등급</span>
+                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #ffea00; border-radius: 2px;"></span> 8~10등급</span>
                 <span class="crime-legend-desc" style="color: var(--text-muted); font-weight: normal; font-size: 10px;">*등급이 높을수록 우범 비율이 높은 지역입니다.</span>
             </div>
 
@@ -685,6 +721,28 @@
             <div id="academyPaginationContainer" style="margin-top: auto; padding-top: 12px;"></div>
         </section>
 
+        <!-- PC용 우측 사이드바 옆 플로팅 퀵 필터 버튼 그룹 -->
+        <div id="pcFloatingMapFilters" class="pc-floating-filters">
+            <button class="pc-filter-btn" onclick="toggleMobileMapFilter('trendUpwardCheckbox', this)" title="3년 연속 우상향만 보기">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+            </button>
+            <button class="pc-filter-btn" onclick="toggleMobileMapFilter('safetyGuideCheckbox', this)" title="안심 가이드 지도 표시 (CCTV/지킴이집/파출소)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            </button>
+            <button class="pc-filter-btn" onclick="toggleMobileMapFilter('crimeZoneToggleCheckbox', this)" title="우범 지역 영역 표시 (범죄주의구간)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V7a5 5 0 0 1 10 0v4"></path><path d="M12 2v5"></path><rect x="4" y="11" width="16" height="8" rx="2"></rect><path d="M9 19v3"></path><path d="M15 19v3"></path></svg>
+            </button>
+            <button class="pc-filter-btn" onclick="toggleMobileMapFilter('accidentStatisticsCheckbox', this)" title="치안사고 통계 표시 (WMS)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+            </button>
+            <button class="pc-filter-btn" onclick="toggleMobileMapFilter('trafficAccidentCheckbox', this)" title="교통사고 다발구역 표시 (WMS)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            </button>
+            <button class="pc-filter-btn" onclick="toggleMobileMapFilter('dongRatingCheckbox', this)" title="동 단위 학군 레이팅 히트맵">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+            </button>
+        </div>
+
         <!-- Right Section: Sidebar (Details, Child Diagnostic, etc.) -->
         <section class="sidebar-section">
             <div class="sidebar-header" style="position: relative;">
@@ -694,16 +752,18 @@
             </div>
 
             <!-- 설정 영역 (사이드바 내부로 통합 노출됨) -->
-            <div id="settingsModal" class="card" style="display: none; margin: 0 0 20px 0; position: relative;">
-                <div style="position: relative;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 12px;">
-                        <h3 style="font-size: 14px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
+            <div id="settingsModal" class="card" style="display: none; margin: 0 0 20px 0; position: relative; overflow: hidden;">
+                <div style="position: relative; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px; flex-shrink: 0;">
+                        <h3 style="font-size: 17px; font-weight: 800; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
                             <span>⚙️ 통합 설정</span>
                         </h3>
-                        <button id="btnCloseSettings" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1;">&times;</button>
+                        <button id="btnCloseSettings" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1;">&times;</button>
                     </div>
                     
-                    <!-- 1. 자녀 정보 및 최근 시험 성적 설정 (다중 자녀 지원) -->
+                    <!-- 통합설정 하단 스크롤 가능 콘텐츠 영역 -->
+                    <div class="settings-scroll-content hide-scrollbar" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 20px; box-sizing: border-box;">
+                        <!-- 1. 자녀 정보 및 최근 시험 성적 설정 (다중 자녀 지원) -->
                     <div style="margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
                         <h4 style="font-size: 13.5px; color: var(--deep-blue); margin-bottom: 10px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
                             <span>🏫 자녀 정보 및 성적 설정</span>
@@ -818,6 +878,7 @@
                             </div>
                         </div>
                     </div>
+                    </div><!-- /settings-scroll-content -->
                 </div>
             </div>
 
@@ -1296,11 +1357,11 @@
                         <table style="width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; text-align: center;">
                             <thead>
                                 <tr style="border-bottom: 2px solid var(--border-color); font-weight: bold; color: var(--deep-blue);">
-                                    <th style="padding: 6px 4px; text-align: left;">과목</th>
+                                    <th style="padding: 6px 4px; text-align: left; white-space: nowrap;">과목</th>
                                     <th style="padding: 6px 4px;">우리 아이</th>
                                     <th style="padding: 6px 4px;" id="thSelectedSchool">선택 학교</th>
                                     <th style="padding: 2px 4px;">
-                                        <select id="selCompareRegion" style="border: none; background: transparent; color: var(--deep-blue); font-weight: bold; outline: none; font-family: var(--font-primary); cursor: pointer; text-align-last: center; font-size: 12px; width: 100%;">
+                                        <select id="selCompareRegion" style="border: none; background: url('data:image/svg+xml;utf8,<svg fill=\'%232E5C8A\' height=\'14\' viewBox=\'0 0 24 24\' width=\'14\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/></svg>') no-repeat right 0px center; color: var(--deep-blue); font-weight: bold; outline: none; font-family: var(--font-primary); cursor: pointer; text-align-last: center; font-size: 12px; width: 100%; appearance: none; -webkit-appearance: none; -moz-appearance: none; padding-right: 16px;">
                                             <option value="서울특별시">서울특별시</option>
                                             <option value="부산광역시">부산광역시</option>
                                             <option value="대구광역시">대구광역시</option>
@@ -1345,39 +1406,43 @@
                 </div>
             </div>
             <!-- Floating Community Review Panel -->
-            <div id="communityPanel" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.95); z-index: 100; backdrop-filter: blur(5px); flex-direction: column; padding: 24px; overflow-y: auto; transition: opacity 0.3s ease;">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-blue); padding-bottom: 12px; margin-bottom: 12px;">
-                    <div>
-                        <h2 style="font-size: 18px; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 8px;">
+            <div id="communityPanel" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.95); z-index: 100; backdrop-filter: blur(5px); flex-direction: column; padding: 24px; overflow: hidden; transition: opacity 0.3s ease;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 16px; gap: 12px;">
+                    <div style="flex: 1; min-width: 0;">
+                        <h2 style="font-size: 19px; font-weight: 800; color: var(--deep-blue); margin: 0 0 6px 0; word-break: break-all; line-height: 1.3;">
                             <span id="communityAcademyName">학원명</span>
-                            <span id="communityAcademyType" style="font-size: 11px; padding: 2px 6px; border-radius: 4px; display: none;"></span>
-                            <span id="communityAcademySubject" style="font-size: 11px; font-weight: normal; background: #f5f5f5; color: #616161; padding: 2px 6px; border-radius: 4px; display: none;"></span>
                         </h2>
-                        <span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">학부모 커뮤니티 최신 후기</span>
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                            <span id="communityAcademyType" style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; display: none;"></span>
+                            <span id="communityAcademySubject" style="font-size: 11px; font-weight: 500; background: #f1f3f5; color: #495057; padding: 2px 8px; border-radius: 6px; display: none;"></span>
+                            <span style="font-size: 11px; color: var(--text-muted);">학부모 최신 후기</span>
+                        </div>
                     </div>
-                    <button onclick="if (typeof window.clearAcademyMarker === 'function') window.clearAcademyMarker(); document.getElementById('communityPanel').style.display='none'; document.getElementById('sidebarContent').style.display='block'; document.getElementById('btnToggleSidebarTop').style.display='flex';" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-muted);">&times;</button>
+                    <button onclick="if (typeof window.clearAcademyMarker === 'function') window.clearAcademyMarker(); document.getElementById('communityPanel').style.display='none'; document.getElementById('sidebarContent').style.display='block'; document.getElementById('btnToggleSidebarTop').style.display='flex'; const sb = document.querySelector('.sidebar-section'); if (sb) sb.classList.remove('active-community');" style="background: #f1f3f5; border: none; width: 32px; height: 32px; border-radius: 50%; font-size: 22px; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; justify-content: center; line-height: 1; flex-shrink: 0; transition: background 0.2s;" onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='#f1f3f5'">&times;</button>
                 </div>
 
-                <!-- 학원 기본 정보 (공공데이터) 컨테이너 -->
-                <div id="academyBasicInfoContainer" style="margin-bottom: 16px;"></div>
+                <!-- 학원 상세 하단 스크롤 가능 콘텐츠 영역 -->
+                <div class="community-scroll-content hide-scrollbar" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding-bottom: 20px;">
+                    <!-- 학원 기본 정보 (공공데이터) 컨테이너 -->
+                    <div id="academyBasicInfoContainer" style="margin-bottom: 16px;"></div>
 
 
                 <!-- 학원 상세 탭 메뉴 -->
-                <div style="display: flex; gap: 4px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px;">
-                    <button id="tabAcademyReviews" class="academy-tab-btn" style="flex: 1; padding: 10px 0; border: none; background: none; border-bottom: 3px solid var(--primary-blue); font-weight: bold; color: var(--primary-blue); cursor: pointer; font-size: 13px; font-family: var(--font-primary); text-align: center; transition: all 0.2s;">💬 학원 후기</button>
-                    <button id="tabAcademyCalculator" class="academy-tab-btn" style="flex: 1; padding: 10px 0; border: none; background: none; border-bottom: 3px solid transparent; font-weight: bold; color: var(--text-muted); cursor: pointer; font-size: 13px; font-family: var(--font-primary); text-align: center; transition: all 0.2s;">💳 혜택 계산기</button>
+                <div style="display: flex; background: #f1f3f5; padding: 4px; border-radius: 10px; margin-bottom: 16px; gap: 4px;">
+                    <button id="tabAcademyReviews" class="academy-tab-btn" style="flex: 1; padding: 8px 0; border: none; background: #ffffff; border-radius: 8px; font-weight: bold; color: var(--primary-blue); cursor: pointer; font-size: 13px; font-family: var(--font-primary); text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.06); transition: all 0.2s;">💬 학원 후기</button>
+                    <button id="tabAcademyCalculator" class="academy-tab-btn" style="flex: 1; padding: 8px 0; border: none; background: transparent; border-radius: 8px; font-weight: bold; color: var(--text-muted); cursor: pointer; font-size: 13px; font-family: var(--font-primary); text-align: center; transition: all 0.2s;">💳 혜택 계산기</button>
                 </div>
 
                 <!-- 탭 콘텐츠 1: 학원 후기 -->
                 <div id="sectionAcademyReviews">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <div style="display: flex; gap: 8px;" id="communityFilterContainer">
-                            <button class="community-filter-btn" data-type="all" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--primary-blue); background: var(--primary-blue); color: white; cursor: pointer; font-size: 12px;">전체</button>
-                            <button class="community-filter-btn" data-type="real" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); background: white; color: var(--text-muted); cursor: pointer; font-size: 12px;">찐후기</button>
-                            <button class="community-filter-btn" data-type="blog" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); background: white; color: var(--text-muted); cursor: pointer; font-size: 12px;">블로그</button>
-                            <button class="community-filter-btn" data-type="cafe" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); background: white; color: var(--text-muted); cursor: pointer; font-size: 12px;">카페</button>
+                    <div id="academyReviewFilterContainer" class="hide-scrollbar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px;">
+                        <div style="display: flex; gap: 6px; flex-shrink: 0;" id="communityFilterContainer">
+                            <button class="community-filter-btn" data-type="all" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--primary-blue); background: var(--primary-blue); color: white; cursor: pointer; font-size: 12px; white-space: nowrap; flex-shrink: 0;">전체</button>
+                            <button class="community-filter-btn" data-type="real" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); background: white; color: var(--text-muted); cursor: pointer; font-size: 12px; white-space: nowrap; flex-shrink: 0;">찐후기</button>
+                            <button class="community-filter-btn" data-type="blog" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); background: white; color: var(--text-muted); cursor: pointer; font-size: 12px; white-space: nowrap; flex-shrink: 0;">블로그</button>
+                            <button class="community-filter-btn" data-type="cafe" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); background: white; color: var(--text-muted); cursor: pointer; font-size: 12px; white-space: nowrap; flex-shrink: 0;">카페</button>
                         </div>
-                        <button onclick="window.openReviewModal()" style="padding: 6px 12px; border-radius: 6px; border: none; background: #e3f2fd; color: #1565c0; font-weight: bold; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 4px;">
+                        <button onclick="window.openReviewModal()" style="padding: 6px 12px; border-radius: 20px; border: none; background: #e3f2fd; color: #1565c0; font-weight: bold; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
                             ✍️ 후기 남기기
                         </button>
                     </div>
@@ -1399,6 +1464,7 @@
                         </div>
                     </div>
                 </div>
+                </div><!-- /community-scroll-content -->
             </div>
         </section>
     </div>
@@ -1686,7 +1752,7 @@
                 <button onclick="toggleCompetitionModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='var(--deep-blue)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
             </div>
             
-            <div id="competitionModalContent" style="font-size: 12px; max-height: 70vh; overflow-y: auto; padding-right: 4px;">
+            <div id="competitionModalContent" class="hide-scrollbar" style="font-size: 12px; max-height: 70vh; overflow-y: auto; padding-right: 4px;">
                 <!-- 콘텐츠가 app.js에 의해 동적으로 주입됩니다. -->
             </div>
         </div>
@@ -1871,10 +1937,10 @@
     <div id="simulationModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) document.getElementById('simulationModal').style.display='none'">
         <div style="background: white; border-radius: 16px; padding: 24px; width: 95%; max-width: 580px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color); position: relative;" onclick="event.stopPropagation();">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
-                <h3 style="font-size: 16px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
+                <h3 style="font-size: 17px; font-weight: 800; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
                     <span>🏡 학군 이사 시뮬레이션 대시보드</span>
                 </h3>
-                <button onclick="document.getElementById('simulationModal').style.display='none'" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1;">&times;</button>
+                <button onclick="document.getElementById('simulationModal').style.display='none'; if(window.innerWidth <= 1024) { const mapTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*=\'map\']'); window.onMobileNavClick('map', mapTabBtn); }" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1;">&times;</button>
             </div>
             
             <!-- 공통 비교 학교급 선택 -->
@@ -1912,8 +1978,31 @@
             <button id="btnRunSimulation" style="padding: 10px 16px; width: 100%; border: none; background: var(--primary-blue); color: white; font-weight: bold; border-radius: 8px; cursor: pointer; font-size: 13.5px; transition: background 0.2s; margin-bottom: 16px;" onmouseover="this.style.background='var(--deep-blue)'" onmouseout="this.style.background='var(--primary-blue)'">시뮬레이션 실행</button>
 
             <!-- 시뮬레이션 결과 대시보드 -->
-            <div id="simulationResultPanel" style="display: none; max-height: 480px; overflow-y: auto; padding-right: 4px;">
+            <div id="simulationResultPanel" class="hide-scrollbar" style="display: none; max-height: 480px; overflow-y: auto; padding-right: 4px;">
                 <!-- 비교 결과 동적 렌더링 -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- 이야기 전용 모바일 대시보드 전체 페이지 -->
+    <div id="storyModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: calc(100% - 60px); background: var(--bg-card, #ffffff); z-index: 10080; flex-direction: column; box-sizing: border-box;">
+        <div style="background: var(--bg-card, #ffffff); width: 100%; height: 100%; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 style="font-size: 17px; font-weight: 800; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
+                    <span>💬 런맵 교육 이야기</span>
+                </h3>
+                <button onclick="const mapTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*=\'map\']'); window.onMobileNavClick('map', mapTabBtn);" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1;">&times;</button>
+            </div>
+            
+            <!-- 이야기 카테고리 탭 선택 (찐학부모 리뷰 / 학원 후기) -->
+            <div style="display: flex; gap: 6px; margin-bottom: 16px; background: #f1f3f5; padding: 4px; border-radius: 8px;">
+                <button id="btnStorySchoolTab" onclick="window.switchStoryTab('school')" style="flex: 1; padding: 8px 4px; border: none; background: var(--primary-blue); color: white; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s;">🏫 찐학부모 학교 리뷰</button>
+                <button id="btnStoryAcademyTab" onclick="window.switchStoryTab('academy')" style="flex: 1; padding: 8px 4px; border: none; background: transparent; color: var(--text-muted); font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s;">✏️ 생생 학원 후기</button>
+            </div>
+
+            <!-- 이야기 리스트 출력 컨테이너 -->
+            <div id="storyListContainer" style="overflow-y: auto; flex: 1; padding-right: 4px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 20px;">
+                <div style="text-align: center; color: var(--text-muted); padding: 40px 0; font-size: 13px;">이야기를 불러오는 중입니다...</div>
             </div>
         </div>
     </div>
@@ -1927,17 +2016,33 @@
             </svg>
             <span>지도</span>
         </button>
+        <button class="nav-item" onclick="window.onMobileNavClick('story', this)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>이야기</span>
+        </button>
         <button class="nav-item" onclick="window.onMobileNavClick('filter', this)">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
             <span>필터</span>
         </button>
         <button class="nav-item" onclick="window.onMobileNavClick('region', this)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-            <span>지역</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <!-- 깃발과 깃대 -->
+                <path d="M12 2v4"></path>
+                <path d="M12 2l4 2-4 2"></path>
+                <!-- 지붕 -->
+                <path d="M2 10l10-4 10 4"></path>
+                <!-- 건물 몸체 -->
+                <path d="M6 10v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V10"></path>
+                <!-- 정문 -->
+                <path d="M10 21v-4a2 2 0 0 1 4 0v4"></path>
+            </svg>
+            <span>전학</span>
         </button>
         <button class="nav-item" onclick="window.onMobileNavClick('mypage', this)">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            <span>마이페이지</span>
+            <span>마이</span>
         </button>
     </div>
 

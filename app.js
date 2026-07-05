@@ -121,6 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const SUPABASE_URL = 'https://khwzgqnwlknawggugznd.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtod3pncW53bGtuYXdnZ3Vnem5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDQzNDksImV4cCI6MjA5NTc4MDM0OX0.P2g3Y_MYV_ca8ZRpfAT93pnEzP4osYWc2tfyBHKb7v4';
     const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+    window.supabaseInstance = supabase;
     const btnShowReviews = document.getElementById('btnShowReviews');
 
     // Comparison Overlay Elements
@@ -147,12 +148,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (parentsFilterToggle && parentsFilterContent) {
         parentsFilterToggle.addEventListener('click', () => {
+            // 헤더 클릭 시 열기/닫기 토글 수행
             if (parentsFilterContent.style.display === 'none' || parentsFilterContent.style.display === '') {
                 parentsFilterContent.style.display = 'flex';
-                parentsFilterIndicator.innerText = '▲';
+                if (parentsFilterIndicator) parentsFilterIndicator.innerText = '▲';
             } else {
                 parentsFilterContent.style.display = 'none';
-                parentsFilterIndicator.innerText = '▼';
+                if (parentsFilterIndicator) parentsFilterIndicator.innerText = '▼';
             }
         });
     }
@@ -909,9 +911,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dongRatingCheckbox.checked) {
                 renderDistrictRatings();
                 // 히트맵 시 지도 핀들 임시 제거
-                mapMarkers.forEach(marker => marker.setMap(null));
+                mapMarkers.forEach(item => {
+                    if (item.marker) item.marker.setMap(null);
+                    else item.setMap(null);
+                });
                 mapMarkers = [];
                 if (clusterer) clusterer.clear();
+                const pinsContainer = document.getElementById('pinsContainer');
+                if (pinsContainer) pinsContainer.innerHTML = '';
             } else {
                 clearDistrictRatings();
                 onMapAction();
@@ -1940,19 +1947,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (legendContent) legendContent.innerHTML = `
             <div style="display: flex; align-items: center; gap: 8px;">
                 <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--primary-blue);"></span>
-                <span style="font-weight: 600; color: var(--text-main);">80점 이상 (우수)</span>
+                <span style="font-weight: 600; color: var(--text-main);"><span class="pc-text">80점 이상 (우수)</span><span class="mobile-text" style="display:none;">우수(80↑)</span></span>
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
                 <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--success-green);"></span>
-                <span style="font-weight: 600; color: var(--text-main);">70점 ~ 80점 미만 (양호)</span>
+                <span style="font-weight: 600; color: var(--text-main);"><span class="pc-text">70점 ~ 80점 미만 (양호)</span><span class="mobile-text" style="display:none;">양호(70~80)</span></span>
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
                 <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--warning-yellow);"></span>
-                <span style="font-weight: 600; color: var(--text-main);">60점 ~ 70점 미만 (보통)</span>
+                <span style="font-weight: 600; color: var(--text-main);"><span class="pc-text">60점 ~ 70점 미만 (보통)</span><span class="mobile-text" style="display:none;">보통(60~70)</span></span>
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
                 <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--info-gray);"></span>
-                <span style="font-weight: 600; color: var(--text-muted);">60점 미만 (보완) / 결측치</span>
+                <span style="font-weight: 600; color: var(--text-muted);"><span class="pc-text">60점 미만 (보완) / 결측치</span><span class="mobile-text" style="display:none;">보완(60↓)</span></span>
             </div>
         `;
 
@@ -2358,6 +2365,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // 학원 상세 패널(커뮤니티 패널) 닫기 및 기본 사이드바 보이기
         const cp = document.getElementById('communityPanel');
         if (cp) cp.style.display = 'none';
+        const sidebar = document.querySelector('.sidebar-section');
+        if (sidebar) sidebar.classList.remove('active-community');
         const sc = document.getElementById('sidebarContent');
         if (sc) sc.style.display = 'block';
         const btnTop = document.getElementById('btnToggleSidebarTop');
@@ -2994,10 +3003,12 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const secRev = document.getElementById('sectionAcademyReviews');
                                 const secCalc = document.getElementById('sectionAcademyCalculator');
                                 if (tabRev && tabCalc && secRev && secCalc) {
-                                    tabRev.style.borderBottomColor = 'var(--primary-blue)';
+                                    tabRev.style.background = '#ffffff';
                                     tabRev.style.color = 'var(--primary-blue)';
-                                    tabCalc.style.borderBottomColor = 'transparent';
+                                    tabRev.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+                                    tabCalc.style.background = 'transparent';
                                     tabCalc.style.color = 'var(--text-muted)';
+                                    tabCalc.style.boxShadow = 'none';
                                     secRev.style.display = 'block';
                                     secCalc.style.display = 'none';
                                 }
@@ -3218,7 +3229,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             
             tr.innerHTML = `
-                <td style="padding: 8px 4px; text-align: left; font-weight: 600;">${subjectLabels[sub]}</td>
+                <td style="padding: 8px 4px; text-align: left; font-weight: 600; white-space: nowrap;">${subjectLabels[sub]}</td>
                 <td style="padding: 8px 4px; font-weight: bold; color: var(--primary-blue);">${childScore}점</td>
                 <td style="padding: 8px 4px; ${getColorStyle(childScore, schoolAvg)}">${schoolAvg}점</td>
                 <td style="padding: 8px 4px; ${getColorStyle(childScore, regionAvg)}">${regionAvg}점</td>
@@ -3452,7 +3463,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (schoolType && schoolType.includes('고등학교')) {
             label = `🎓 ${schoolName} - 대학교 진학률 상세`;
         } else if (schoolType && schoolType.includes('초등학교')) {
-            label = `🎓 ${schoolName} - 중학교 진학률 상세`;
+            label = `🎓 ${schoolName} - 중학교 진학률`;
         } else {
             label = `🎓 ${schoolName} - 특목/자사 진학률 상세`;
         }
@@ -4130,19 +4141,19 @@ document.addEventListener('DOMContentLoaded', () => {
             legendContent.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: rgba(37,99,235,0.4); border: 2px solid var(--primary-blue);"></span>
-                    <span style="font-weight: 600; color: var(--text-main);">학군 우수 (85점 이상)</span>
+                    <span style="font-weight: 600; color: var(--text-main);"><span class="pc-text">학군 우수 (85점 이상)</span><span class="mobile-text" style="display:none;">우수(85↑)</span></span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: rgba(22,165,74,0.4); border: 2px solid var(--success-green);"></span>
-                    <span style="font-weight: 600; color: var(--text-main);">학군 양호 (78점 ~ 85점 미만)</span>
+                    <span style="font-weight: 600; color: var(--text-main);"><span class="pc-text">학군 양호 (78점 ~ 85점 미만)</span><span class="mobile-text" style="display:none;">양호(78~85)</span></span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: rgba(202,138,4,0.4); border: 2px solid var(--warning-yellow);"></span>
-                    <span style="font-weight: 600; color: var(--text-main);">학군 보통 (70점 ~ 78점 미만)</span>
+                    <span style="font-weight: 600; color: var(--text-main);"><span class="pc-text">학군 보통 (70점 ~ 78점 미만)</span><span class="mobile-text" style="display:none;">보통(70~78)</span></span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: rgba(117,117,117,0.45); border: 2px solid #757575;"></span>
-                    <span style="font-weight: 600; color: var(--text-muted);">학군 보완 (70점 미만)</span>
+                    <span style="font-weight: 600; color: var(--text-muted);"><span class="pc-text">학군 보완 (70점 미만)</span><span class="mobile-text" style="display:none;">보완(70↓)</span></span>
                 </div>
             `;
         }
@@ -4757,12 +4768,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (welcomeCard) welcomeCard.style.display = 'block';
         }
 
-        // Close accordion if open
-        const parentsFilterContent = document.getElementById('parentsFilterContent');
-        const parentsFilterIndicator = document.getElementById('parentsFilterIndicator');
-        if (parentsFilterContent && parentsFilterIndicator) {
-            parentsFilterContent.style.display = 'none';
-            parentsFilterIndicator.innerText = '▼';
+        // Close accordion if open (PC 환경에서만 초기화 시 닫음)
+        if (window.innerWidth > 1024) {
+            const parentsFilterContent = document.getElementById('parentsFilterContent');
+            const parentsFilterIndicator = document.getElementById('parentsFilterIndicator');
+            if (parentsFilterContent && parentsFilterIndicator) {
+                parentsFilterContent.style.display = 'none';
+                parentsFilterIndicator.innerText = '▼';
+            }
         }
 
         // Reset map view using local variable in scope
@@ -4772,6 +4785,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         onMapAction();
+        
         alert('필터 설정과 탐색 프리셋이 모두 초기화되었습니다.');
     };
 
@@ -4879,6 +4893,8 @@ window.fetchCommunityReviews = async (acadName, type = 'all', subjectLabel = '',
         : '<div style="text-align: center; color: var(--text-muted); padding: 20px;">포털 커뮤니티 데이터를 검색 중입니다...</div>';
     
     panel.style.display = 'flex';
+    const sidebar = document.querySelector('.sidebar-section');
+    if (sidebar) sidebar.classList.add('active-community');
     const sidebarContent = document.getElementById('sidebarContent');
     if (sidebarContent) sidebarContent.style.display = 'none';
     document.getElementById('btnToggleSidebarTop').style.display = 'none';
@@ -6456,10 +6472,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const secRev = document.getElementById('sectionAcademyReviews');
             const secCalc = document.getElementById('sectionAcademyCalculator');
             if (tabRev && tabCalc && secRev && secCalc) {
-                tabRev.style.borderBottomColor = 'var(--primary-blue)';
+                tabRev.style.background = '#ffffff';
                 tabRev.style.color = 'var(--primary-blue)';
-                tabCalc.style.borderBottomColor = 'transparent';
+                tabRev.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+                tabCalc.style.background = 'transparent';
                 tabCalc.style.color = 'var(--text-muted)';
+                tabCalc.style.boxShadow = 'none';
                 secRev.style.display = 'block';
                 secCalc.style.display = 'none';
             }
@@ -6469,10 +6487,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const secRev = document.getElementById('sectionAcademyReviews');
             const secCalc = document.getElementById('sectionAcademyCalculator');
             if (tabRev && tabCalc && secRev && secCalc) {
-                tabRev.style.borderBottomColor = 'transparent';
+                tabRev.style.background = 'transparent';
                 tabRev.style.color = 'var(--text-muted)';
-                tabCalc.style.borderBottomColor = 'var(--primary-blue)';
+                tabRev.style.boxShadow = 'none';
+                tabCalc.style.background = '#ffffff';
                 tabCalc.style.color = 'var(--primary-blue)';
+                tabCalc.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
                 secRev.style.display = 'none';
                 secCalc.style.display = 'block';
             }
@@ -7007,6 +7027,16 @@ window.onMobileNavClick = function(menu, btnEl) {
     // 1024px 이하 모바일 환경에서만 하단 네비게이션 동작 적용
     if (window.innerWidth > 1024) return;
 
+    // 학원 상세 패널(커뮤니티 패널) 명시적 닫기 및 관련 UI 상태 초기화
+    const cp = document.getElementById('communityPanel');
+    if (cp) cp.style.display = 'none';
+    const sc = document.querySelector('.sidebar-section');
+    if (sc) sc.classList.remove('active-community');
+    const sidebarContent = document.getElementById('sidebarContent');
+    if (sidebarContent) sidebarContent.style.display = 'block';
+    const btnToggleTop = document.getElementById('btnToggleSidebarTop');
+    if (btnToggleTop) btnToggleTop.style.display = 'flex';
+
     // 하단 탭바 활성화 상태 변경
     document.querySelectorAll('.mobile-bottom-nav .nav-item').forEach(el => {
         el.classList.remove('active');
@@ -7020,6 +7050,14 @@ window.onMobileNavClick = function(menu, btnEl) {
     const academySidebar = document.getElementById('academySidebar');
     const filterAccordion = document.querySelector('.parents-filter-accordion');
 
+    // [공통] 다른 하단 메뉴를 터치할 때 화면을 덮고 있던 학교/학원 상세 페이지와 목록창을 우선 전부 닫고 걷어냅니다.
+    if (container) {
+        container.classList.remove('sidebar-open');
+        container.classList.remove('academy-open');
+    }
+    if (sidebar) sidebar.style.display = 'none';
+    if (academySidebar) academySidebar.style.display = 'none';
+
     // 모든 팝업 모달 및 리뷰 닫기 목록
     const modals = [
         'simulationModal', 
@@ -7028,7 +7066,8 @@ window.onMobileNavClick = function(menu, btnEl) {
         'tutorialModal', 
         'schoolReviewFormModal', 
         'schoolReviewListModal', 
-        'budgetModal'
+        'budgetModal',
+        'storyModal'
     ];
     modals.forEach(id => {
         const el = document.getElementById(id);
@@ -7041,14 +7080,6 @@ window.onMobileNavClick = function(menu, btnEl) {
     }
 
     if (menu === 'map') {
-        // 지도 보기: 모든 사이드바 닫기
-        if (container) {
-            container.classList.remove('sidebar-open');
-            container.classList.remove('academy-open');
-        }
-        if (sidebar) sidebar.style.display = 'none';
-        if (academySidebar) academySidebar.style.display = 'none';
-        
         // 상단 토글 버튼 상태도 맞춰줌
         const btnToggle = document.getElementById('btnToggleSidebarTop');
         if (btnToggle) {
@@ -7074,12 +7105,24 @@ window.onMobileNavClick = function(menu, btnEl) {
     } else if (menu === 'region') {
         // 지역 보기: 이사 시뮬레이션 모달 팝업
         const simModal = document.getElementById('simulationModal');
-        if (simModal) simModal.style.display = 'flex';
+        if (simModal) {
+            simModal.style.display = 'flex';
+            if (typeof initSimulationDropdowns === 'function') {
+                initSimulationDropdowns();
+            }
+        }
     } else if (menu === 'mypage') {
         // 마이페이지 보기: 설정 모달 팝업 노출 (최상위 컨테이너로 이동되어 단독 노출 가능)
         const setModal = document.getElementById('settingsModal');
         if (setModal) {
             setModal.style.display = 'block';
+        }
+    } else if (menu === 'story') {
+        // 이야기 보기: 이야기 모달 노출 및 기본 학교 탭 로드
+        const storyModal = document.getElementById('storyModal');
+        if (storyModal) {
+            storyModal.style.display = 'flex';
+            window.switchStoryTab('school');
         }
     }
 };
@@ -7212,6 +7255,21 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const btnApplyFilters = document.getElementById('btnApplyFilters');
+    if (btnApplyFilters) {
+        btnApplyFilters.addEventListener('click', () => {
+            // 지도 필터 적용
+            if (typeof onMapAction === 'function') {
+                onMapAction();
+            }
+            // 지도 탭으로 전환 (필터 페이지가 닫히고 지도가 보임)
+            const mapTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*="map"]');
+            if (window.onMobileNavClick) {
+                window.onMobileNavClick('map', mapTabBtn);
+            }
+        });
+    }
+
     const btnCloseSettings = document.getElementById('btnCloseSettings');
     if (btnCloseSettings) {
         btnCloseSettings.addEventListener('click', () => {
@@ -7263,5 +7321,292 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // 최초 로드 시 동기화
     setTimeout(syncMobileFloatingFilters, 500);
+
+    // --- 이야기 (찐학부모 리뷰 / 학원 후기) 모바일 탭 제어 로직 ---
+    window.switchStoryTab = function(type) {
+        const btnSchool = document.getElementById('btnStorySchoolTab');
+        const btnAcademy = document.getElementById('btnStoryAcademyTab');
+        if (!btnSchool || !btnAcademy) return;
+
+        if (type === 'school') {
+            btnSchool.style.background = 'var(--primary-blue)';
+            btnSchool.style.color = 'white';
+            btnAcademy.style.background = 'transparent';
+            btnAcademy.style.color = 'var(--text-muted)';
+            window.loadStoryData('school');
+        } else {
+            btnAcademy.style.background = 'var(--primary-blue)';
+            btnAcademy.style.color = 'white';
+            btnSchool.style.background = 'transparent';
+            btnSchool.style.color = 'var(--text-muted)';
+            window.loadStoryData('academy');
+        }
+    };
+
+    window.loadStoryData = async function(type) {
+        const container = document.getElementById('storyListContainer');
+        if (!container) return;
+
+        container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px 0; font-size: 13px;">리뷰를 불러오는 중입니다...</div>';
+
+        try {
+            const sb = window.supabaseInstance;
+            if (!sb) {
+                container.innerHTML = '<div style="text-align: center; color: var(--danger-red); padding: 40px 0; font-size: 13px;">데이터베이스가 준비되지 않았습니다.</div>';
+                return;
+            }
+
+            if (type === 'school') {
+                const { data, error } = await sb
+                    .from('school_reviews')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px 0; font-size: 13px;">등록된 찐학부모 학교 리뷰가 없습니다.</div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                data.forEach(item => {
+                    const card = document.createElement('div');
+                    card.style.background = '#f8f9fa';
+                    card.style.padding = '16px';
+                    card.style.borderRadius = '10px';
+                    card.style.border = '1px solid var(--border-color)';
+                    card.style.display = 'flex';
+                    card.style.flexDirection = 'column';
+                    card.style.gap = '6px';
+                    
+                    const stars = '⭐'.repeat(Math.min(5, Math.max(1, parseInt(item.rating) || 5)));
+                    const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString() : '';
+                    
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 800; color: var(--deep-blue); font-size: 13px;">🏫 ${item.school_name || '지정되지 않은 학교'}</span>
+                            <span style="font-size: 11px; color: var(--text-muted);">${dateStr}</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; margin: 2px 0;">
+                            <span style="color: #ffb300; font-size: 12px;">${stars}</span>
+                            <span style="font-weight: bold; font-size: 12px; color: var(--text-main);">${item.nickname || '익명의 학부모'}</span>
+                        </div>
+                        <div style="font-size: 12.5px; color: var(--text-main); line-height: 1.5; white-space: pre-wrap; word-break: break-all;">${item.content || ''}</div>
+                    `;
+                    container.appendChild(card);
+                });
+
+            } else {
+                const { data, error } = await sb
+                    .from('academy_reviews')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px 0; font-size: 13px;">등록된 생생 학원 후기가 없습니다.</div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                data.forEach(item => {
+                    const card = document.createElement('div');
+                    card.style.background = '#f8f9fa';
+                    card.style.padding = '16px';
+                    card.style.borderRadius = '10px';
+                    card.style.border = '1px solid var(--border-color)';
+                    card.style.display = 'flex';
+                    card.style.flexDirection = 'column';
+                    card.style.gap = '6px';
+                    
+                    const stars = '⭐'.repeat(Math.min(5, Math.max(1, parseInt(item.rating) || 5)));
+                    const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString() : '';
+                    
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 800; color: var(--success-green); font-size: 13px;">✏️ ${item.academyName || '지정되지 않은 학원'}</span>
+                            <span style="font-size: 11px; color: var(--text-muted);">${dateStr}</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; margin: 2px 0;">
+                            <span style="color: #ffb300; font-size: 12px;">${stars}</span>
+                            <span style="font-weight: bold; font-size: 12px; color: var(--text-main);">${item.nickname || '익명의 수강생'}</span>
+                        </div>
+                        <div style="font-size: 12.5px; color: var(--text-main); line-height: 1.5; white-space: pre-wrap; word-break: break-all;">${item.content || ''}</div>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+        } catch (e) {
+            console.error('Error loading stories:', e);
+            container.innerHTML = `<div style="text-align: center; color: var(--danger-red); padding: 40px 0; font-size: 13px;">리뷰 데이터를 불러오는데 실패했습니다: ${e.message}</div>`;
+        }
+    };
+
+    // 마우스 드래그 가로 스크롤 구현 (PC/시뮬레이터용 + 부드러운 관성 스크롤 추가)
+    const initDragScroll = () => {
+        const slider = document.getElementById('academyReviewFilterContainer');
+        if (!slider) return;
+        
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+        let velX = 0;
+        let momentumID;
+        let lastX;
+        let lastTime;
+        
+        const updateMomentum = () => {
+            slider.scrollLeft += velX;
+            velX *= 0.92; // 감속 비율 (마찰 계수)
+            if (Math.abs(velX) > 0.5) {
+                momentumID = requestAnimationFrame(updateMomentum);
+            }
+        };
+        
+        slider.addEventListener('mousedown', (e) => {
+            isDown = true;
+            slider.style.cursor = 'grabbing';
+            startX = e.pageX - slider.offsetLeft;
+            scrollLeft = slider.scrollLeft;
+            
+            // 드래그 시 기존의 움직이고 있던 관성 스레드 즉시 취소
+            cancelAnimationFrame(momentumID);
+            velX = 0;
+            
+            lastX = e.pageX;
+            lastTime = Date.now();
+        });
+        
+        slider.addEventListener('mouseleave', () => {
+            isDown = false;
+            slider.style.cursor = 'grab';
+            updateMomentum();
+        });
+        
+        slider.addEventListener('mouseup', () => {
+            isDown = false;
+            slider.style.cursor = 'grab';
+            updateMomentum();
+        });
+        
+        slider.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - slider.offsetLeft;
+            const walk = (x - startX) * 1.5; 
+            slider.scrollLeft = scrollLeft - walk;
+            
+            // 순간 속도 계산 (변위 / 시간차)
+            const now = Date.now();
+            const dt = now - lastTime;
+            if (dt > 0) {
+                const dx = e.pageX - lastX;
+                velX = -(dx / dt) * 12; // 드래그 탄성 가속치 보정
+            }
+            lastX = e.pageX;
+            lastTime = now;
+        });
+        
+        slider.style.cursor = 'grab';
+    };
+    initDragScroll();
+
+    // 세로 본문 영역 마우스 드래그 가로 스크롤 구현 (PC/시뮬레이터용 + 부드러운 관성 스크롤 추가)
+    const makeVerticalDragScrollable = (selector) => {
+        // PC 화면에서는 학교 상세 및 도움말 사이드바의 텍스트 긁기 등 기본 동작을 보호하기 위해 드래그를 걸지 않음
+        if ((selector === '#sidebarContent' || selector === '#tutorialSidebarCard' || selector === '.sidebar-section') && window.innerWidth > 1024) {
+            return;
+        }
+        const slider = document.querySelector(selector);
+        if (!slider) return;
+        
+        let isDown = false;
+        let startY;
+        let scrollTop;
+        let velY = 0;
+        let momentumID;
+        let lastY;
+        let lastTime;
+        
+        const updateMomentum = () => {
+            slider.scrollTop += velY;
+            velY *= 0.92; // 감속 비율 (마찰 계수)
+            if (Math.abs(velY) > 0.5) {
+                momentumID = requestAnimationFrame(updateMomentum);
+            }
+        };
+        
+        slider.addEventListener('mousedown', (e) => {
+            // 버튼, 인풋, 셀렉트 박스 등 폼 컨트롤들은 드래그에 방해 받지 않고 기본 동작 보장
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.closest('button') || e.target.closest('select') || e.target.closest('input') || e.target.closest('.community-filter-btn') || e.target.closest('.academy-tab-btn')) {
+                return;
+            }
+            // 헤더 바 영역을 클릭하고 드래그를 시도할 경우 스크롤 작동을 방지
+            if (e.target.closest('.sidebar-header') || 
+                e.target.closest('#academySidebar > div:first-child') || 
+                e.target.closest('#communityPanel > div:first-child') || 
+                e.target.closest('.filter-header-bar') || 
+                e.target.closest('#settingsModal > div:first-child > div:first-child') ||
+                e.target.closest('#storyModal > div:first-child > div:first-child')) {
+                return;
+            }
+            isDown = true;
+            slider.style.cursor = 'grabbing';
+            startY = e.pageY - slider.offsetTop;
+            scrollTop = slider.scrollTop;
+            
+            cancelAnimationFrame(momentumID);
+            velY = 0;
+            
+            lastY = e.pageY;
+            lastTime = Date.now();
+        });
+        
+        slider.addEventListener('mouseleave', () => {
+            if (!isDown) return;
+            isDown = false;
+            slider.style.cursor = 'grab';
+            updateMomentum();
+        });
+        
+        slider.addEventListener('mouseup', () => {
+            if (!isDown) return;
+            isDown = false;
+            slider.style.cursor = 'grab';
+            updateMomentum();
+        });
+        
+        slider.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const y = e.pageY - slider.offsetTop;
+            const walk = (y - startY) * 1.5; // 드래그 감도
+            slider.scrollTop = scrollTop - walk;
+            
+            // 순간 속도 계산 (변위 / 시간차)
+            const now = Date.now();
+            const dt = now - lastTime;
+            if (dt > 0) {
+                const dy = e.pageY - lastY;
+                velY = -(dy / dt) * 12; // 드래그 탄성 가속치 보정
+            }
+            lastY = e.pageY;
+            lastTime = now;
+        });
+        
+        slider.style.cursor = 'grab';
+    };
+    
+    // 학교 상세 본문, 도움말 가이드, 학원 상세 본문, 필터 설정, 통합 설정, 시뮬레이션 결과 영역 각각에 세로 드래그 스크롤 주입
+    makeVerticalDragScrollable('#sidebarContent');
+    makeVerticalDragScrollable('#tutorialSidebarCard');
+    makeVerticalDragScrollable('.community-scroll-content');
+    makeVerticalDragScrollable('#parentsFilterContent');
+    makeVerticalDragScrollable('.settings-scroll-content');
+    makeVerticalDragScrollable('#simulationResultPanel');
 });
 
