@@ -1660,13 +1660,17 @@ body {
     right: 424px !important;
 }
 
-/* 모바일 마이페이지 가로 비교카드 목록의 스크롤바 트랙/핸들 제거 (스와이프 기능은 보존) */
+/* 모바일 마이페이지 가로 비교카드 목록의 스크롤바 트랙/핸들 제거 및 터치 드래그 강도 보정 */
 .mypage-compare-scroll-container {
     -ms-overflow-style: none !important;  /* IE and Edge */
     scrollbar-width: none !important;  /* Firefox */
+    touch-action: pan-x !important;      /* 모바일 가로 드래그 터치 반응성 보정 */
 }
 .mypage-compare-scroll-container::-webkit-scrollbar {
     display: none !important;  /* Chrome, Safari, Opera */
+}
+.mypage-compare-card {
+    touch-action: pan-x !important;      /* 카드 내부 터치 인터랙션 차단 방지 */
 }
 
 
