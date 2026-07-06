@@ -751,133 +751,208 @@
                 <p>학교알리미 공시 기반 학부모용 교육 진단 도구</p>
             </div>
 
-            <!-- 설정 영역 (사이드바 내부로 통합 노출됨) -->
-            <div id="settingsModal" class="card" style="display: none; margin: 0 0 20px 0; position: relative; overflow: hidden;">
-                <div style="position: relative; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px; flex-shrink: 0;">
+            <!-- 설정 영역 (사이드바 내부로 통합 노출됨 - 호갱노노 스타일 마이페이지 개편) -->
+            <div id="settingsModal" class="card" style="display: none; margin: 0 0 20px 0; position: relative; overflow: hidden; border: none; background: #f8f9fa; padding: 0;">
+                <div style="position: relative; height: 100%; overflow: hidden;">
+                    <!-- Header -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: white; border-bottom: 1px solid var(--border-color); height: 57px; box-sizing: border-box;">
                         <h3 style="font-size: 17px; font-weight: 800; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
-                            <span>⚙️ 통합 설정</span>
+                            <span>⚙️ 마이 페이지</span>
                         </h3>
                         <button id="btnCloseSettings" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1;">&times;</button>
                     </div>
                     
-                    <!-- 통합설정 하단 스크롤 가능 콘텐츠 영역 -->
-                    <div class="settings-scroll-content hide-scrollbar" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 20px; box-sizing: border-box;">
-                        <!-- 1. 자녀 정보 및 최근 시험 성적 설정 (다중 자녀 지원) -->
-                    <div style="margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
-                        <h4 style="font-size: 13.5px; color: var(--deep-blue); margin-bottom: 10px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
-                            <span>🏫 자녀 정보 및 성적 설정</span>
-                            <button id="btnAddNewChild" style="background: var(--primary-blue); color: white; border: none; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: bold; cursor: pointer;">+ 자녀 추가</button>
-                        </h4>
-                        <div style="display: flex; flex-direction: column; gap: 8px;">
-                            <!-- 자녀 선택 목록 -->
-                            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12px; gap: 8px;">
-                                <span style="font-weight: 600; color: var(--text-main); width: 80px;">자녀 선택</span>
-                                <select id="settingsChildSelect" style="flex: 1; padding: 6px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
-                                    <!-- 동적 로드 -->
-                                </select>
-                                <button id="btnDeleteSelectedChild" style="background: none; border: 1px solid var(--danger-red); color: var(--danger-red); border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer;">삭제</button>
+                    <div class="settings-scroll-content hide-scrollbar" style="height: calc(100% - 57px); overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 16px; padding: 16px 20px; box-sizing: border-box;">
+                        
+                        <!-- 1. Hogangnono Style Profile Card -->
+                        <div style="background: white; border-radius: 12px; padding: 16px; border: 1px solid var(--border-color); box-shadow: 0 2px 8px rgba(0,0,0,0.02); display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+                            <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--light-blue); display: flex; align-items: center; justify-content: center; font-size: 24px;">
+                                👦
                             </div>
+                            <div style="flex: 1; text-align: left;">
+                                <div style="font-size: 14px; font-weight: 700; color: var(--text-main);" id="mypageProfileName">자녀 정보를 등록해 주세요</div>
+                                <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;" id="mypageProfileScores">성적 기반 추천 미연동</div>
+                            </div>
+                        </div>
 
-                            <!-- 선택된 자녀 정보 수정 영역 -->
-                            <div id="settingsChildEditForm" style="display: flex; flex-direction: column; gap: 8px; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
-                                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
-                                    <span style="font-weight: 600; color: var(--text-main); width: 90px; text-align: left;">자녀 이름</span>
-                                    <input type="text" id="settingsChildName" placeholder="예: 홍길동" style="flex: 1; width: 100%; min-width: 0; padding: 6px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 6px; box-sizing: border-box;">
-                                </div>
-                                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
-                                    <span style="font-weight: 600; color: var(--text-main); width: 90px; text-align: left;">학년</span>
-                                    <select id="settingsChildGrade" style="flex: 1; width: 100%; min-width: 0; padding: 6px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 6px; box-sizing: border-box;">
-                                        <option value="e1">초등 1학년</option>
-                                        <option value="e2">초등 2학년</option>
-                                        <option value="e3">초등 3학년</option>
-                                        <option value="e4">초등 4학년</option>
-                                        <option value="e5">초등 5학년</option>
-                                        <option value="e6">초등 6학년</option>
-                                        <option value="m1">중등 1학년</option>
-                                        <option value="m2" selected>중등 2학년</option>
-                                        <option value="m3">중등 3학년</option>
-                                        <option value="h1">고등 1학년</option>
-                                        <option value="h2">고등 2학년</option>
-                                        <option value="h3">고등 3학년</option>
-                                    </select>
-                                </div>
-                                
-                                <!-- 국영수 과목 점수 입력 (슬라이더 형태) -->
-                                <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
-                                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
-                                        <span style="font-weight: 600; color: var(--text-main); width: 90px; text-align: left;">국어 점수: <strong id="valSettingsChildKor">80점</strong></span>
-                                        <input type="range" id="settingsChildKor" min="0" max="100" value="80" style="flex: 1; width: 100%; min-width: 0; cursor: pointer;">
-                                    </div>
-                                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
-                                        <span style="font-weight: 600; color: var(--text-main); width: 90px; text-align: left;">영어 점수: <strong id="valSettingsChildEng">80점</strong></span>
-                                        <input type="range" id="settingsChildEng" min="0" max="100" value="80" style="flex: 1; width: 100%; min-width: 0; cursor: pointer;">
-                                    </div>
-                                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
-                                        <span style="font-weight: 600; color: var(--text-main); width: 90px; text-align: left;">수학 점수: <strong id="valSettingsChildMath">80점</strong></span>
-                                        <input type="range" id="settingsChildMath" min="0" max="100" value="80" style="flex: 1; width: 100%; min-width: 0; cursor: pointer;">
-                                    </div>
-                                </div>
-                            </div>
+                        <!-- 2. Hogangnono Style Menu Sections -->
+                        
+                        <!-- Section: 나의 활동 -->
+                        <div style="display: flex; flex-direction: column; gap: 1px; background: white; border-radius: 12px; border: 1px solid var(--border-color); overflow: hidden; flex-shrink: 0;">
+                            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); background: #f8f9fa; padding: 10px 16px; border-bottom: 1px solid var(--border-color); text-align: left;">나의 활동</div>
                             
-                            <button class="btn-primary" id="btnSaveSettingsScores" style="padding: 8px; font-size: 12px; border-radius: 6px; width: 100%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">💾 자녀 성적 저장 및 동기화</button>
-                        </div>
-                    </div>
+                            <!-- Menu Item: 즐겨찾는 학교 -->
+                            <div onclick="if(typeof window.toggleMypageAccordion === 'function') window.toggleMypageAccordion('favorites');" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; cursor: pointer; transition: background 0.2s; background: white;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 16px;">⭐</span>
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">즐겨찾는 학교</span>
+                                </div>
+                                <span style="font-size: 12px; color: var(--text-muted);" id="mypageAccordionArrow-favorites">▼</span>
+                            </div>
+                            <!-- Accordion Content: 즐겨찾는 학교 리스트 -->
+                            <div id="mypageAccordionContent-favorites" style="display: none; padding: 12px 16px; border-top: 1px dashed var(--border-color); background: #fcfcfc;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 11px; color: var(--text-muted);">관심 저장된 학교 목록</span>
+                                    <button onclick="if(typeof window.clearAllFavorites === 'function') window.clearAllFavorites();" style="background: none; border: none; font-size: 10px; color: var(--danger-red, #ff3b30); cursor: pointer; padding: 2px 4px; font-weight: 600;">전체 삭제</button>
+                                </div>
+                                <div id="mypageFavoriteSchoolsList" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                            </div>
 
-                    <!-- 2. 플로팅 창 알파값(불투명도) 조정 -->
-                    <div style="margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
-                        <h4 style="font-size: 13.5px; color: var(--deep-blue); margin-bottom: 10px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
-                            <span>🎨 플로팅 창 알파값 조정</span>
-                            <span id="valOverlayOpacity" style="font-size: 12px; color: var(--primary-blue);">0.9</span>
-                        </h4>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span style="font-size: 11px; color: var(--text-muted);">투명</span>
-                            <input type="range" id="overlayOpacityRange" min="10" max="100" value="90" style="flex: 1; cursor: pointer;">
-                            <span style="font-size: 11px; color: var(--text-muted);">불투명</span>
-                        </div>
-                    </div>
+                            <!-- Divider -->
+                            <div style="height: 1px; background: var(--border-color); margin: 0 16px;"></div>
 
-                    <!-- 3. 서비스 문의 및 제보 -->
-                    <div>
-                        <h4 style="font-size: 13.5px; color: var(--deep-blue); margin-bottom: 10px; font-weight: 700;">📢 서비스 문의 및 제보</h4>
-                        <div style="font-size: 12px; line-height: 1.8; display: flex; flex-direction: column; gap: 6px;">
-                            <a href="javascript:void(0)" onclick="document.getElementById('infoEditRequestCard').style.display='block'; document.getElementById('welcomeCard').style.display='none'; document.getElementById('settingsModal').style.display='none'; document.getElementById('academyRegisterCard').style.display='none'; document.getElementById('adInquiryCard').style.display='none';" style="text-decoration: none; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.03); padding-bottom: 4px;" onmouseover="this.style.color='var(--primary-blue)'" onmouseout="this.style.color='var(--text-main)'">
-                                <span>✏️ 잘못된 정보 수정 요청</span>
-                                <span style="color: var(--primary-blue); font-weight: 600; font-size: 11px;">수정 요청 ↗</span>
-                            </a>
-                            <a href="javascript:void(0)" onclick="document.getElementById('adInquiryCard').style.display='block'; document.getElementById('welcomeCard').style.display='none'; document.getElementById('settingsModal').style.display='none'; document.getElementById('academyRegisterCard').style.display='none'; document.getElementById('infoEditRequestCard').style.display='none';" style="text-decoration: none; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.03); padding-bottom: 4px;" onmouseover="this.style.color='var(--primary-blue)'" onmouseout="this.style.color='var(--text-main)'">
-                                <span>💼 광고 및 제휴 문의</span>
-                                <span style="color: var(--primary-blue); font-weight: 600; font-size: 11px;">문의하기 ↗</span>
-                            </a>
-                            <a href="javascript:void(0)" onclick="document.getElementById('academyRegisterCard').style.display='block'; document.getElementById('welcomeCard').style.display='none'; document.getElementById('settingsModal').style.display='none'; document.getElementById('infoEditRequestCard').style.display='none'; document.getElementById('adInquiryCard').style.display='none';" style="text-decoration: none; color: var(--text-main); display: flex; align-items: center; justify-content: space-between;" onmouseover="this.style.color='var(--primary-blue)'" onmouseout="this.style.color='var(--text-main)'">
-                                <span>🏫 학원 정보 신규 등록 요청</span>
-                                <span style="color: var(--primary-blue); font-weight: 600; font-size: 11px;">등록 신청 ↗</span>
-                            </a>
+                            <!-- Menu Item: 자녀 성적 설정 -->
+                            <div onclick="if(typeof window.toggleMypageAccordion === 'function') window.toggleMypageAccordion('child');" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; cursor: pointer; transition: background 0.2s; background: white;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 16px;">🏫</span>
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">자녀 정보 및 성적 관리</span>
+                                </div>
+                                <span style="font-size: 12px; color: var(--text-muted);" id="mypageAccordionArrow-child">▼</span>
+                            </div>
+                            <!-- Accordion Content: 자녀 성적 입력 양식 -->
+                            <div id="mypageAccordionContent-child" style="display: none; padding: 12px 16px; border-top: 1px dashed var(--border-color); background: #fcfcfc;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 11px;">
+                                    <span style="font-weight: bold; color: var(--deep-blue);">🏫 다중 자녀 프로필 설정</span>
+                                    <button id="btnAddNewChild" style="background: var(--primary-blue); color: white; border: none; border-radius: 4px; padding: 2px 8px; font-size: 10px; font-weight: bold; cursor: pointer;">+ 자녀 추가</button>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
+                                        <span style="font-weight: 600; color: var(--text-main); width: 80px;">자녀 선택</span>
+                                        <select id="settingsChildSelect" style="flex: 1; padding: 6px; font-size: 11px; border: 1px solid var(--border-color); border-radius: 6px; min-width: 0;"></select>
+                                        <button id="btnSetDefaultChild" style="background: none; border: 1px solid var(--primary-blue); color: var(--primary-blue); border-radius: 4px; padding: 4px 8px; font-size: 10px; cursor: pointer; font-weight: bold; flex-shrink: 0;">기본 설정</button>
+                                        <button id="btnDeleteSelectedChild" style="background: none; border: 1px solid var(--danger-red); color: var(--danger-red); border-radius: 4px; padding: 4px 8px; font-size: 10px; cursor: pointer; flex-shrink: 0;">삭제</button>
+                                    </div>
+                                    <div id="settingsChildEditForm" style="display: flex; flex-direction: column; gap: 6px; background: white; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
+                                            <span style="font-weight: 600; color: var(--text-main); width: 80px;">이름</span>
+                                            <input type="text" id="settingsChildName" placeholder="예: 홍길동" style="flex: 1; padding: 4px; font-size: 11px; border: 1px solid var(--border-color); border-radius: 4px;">
+                                        </div>
+                                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
+                                            <span style="font-weight: 600; color: var(--text-main); width: 80px;">학년</span>
+                                            <select id="settingsChildGrade" style="flex: 1; padding: 4px; font-size: 11px; border: 1px solid var(--border-color); border-radius: 4px;">
+                                                <option value="e1">초등 1학년</option>
+                                                <option value="e2">초등 2학년</option>
+                                                <option value="e3">초등 3학년</option>
+                                                <option value="e4">초등 4학년</option>
+                                                <option value="e5">초등 5학년</option>
+                                                <option value="e6">초등 6학년</option>
+                                                <option value="m1">중등 1학년</option>
+                                                <option value="m2" selected>중등 2학년</option>
+                                                <option value="m3">중등 3학년</option>
+                                                <option value="h1">고등 1학년</option>
+                                                <option value="h2">고등 2학년</option>
+                                                <option value="h3">고등 3학년</option>
+                                            </select>
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
+                                            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px;">
+                                                <span>국어: <strong id="valSettingsChildKor">80점</strong></span>
+                                                <input type="range" id="settingsChildKor" min="0" max="100" value="80" style="width: 120px;">
+                                            </div>
+                                            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px;">
+                                                <span>영어: <strong id="valSettingsChildEng">80점</strong></span>
+                                                <input type="range" id="settingsChildEng" min="0" max="100" value="80" style="width: 120px;">
+                                            </div>
+                                            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px;">
+                                                <span>수학: <strong id="valSettingsChildMath">80점</strong></span>
+                                                <input type="range" id="settingsChildMath" min="0" max="100" value="80" style="width: 120px;">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button class="btn-primary" id="btnSaveSettingsScores" style="padding: 8px; font-size: 11px; border-radius: 6px; width: 100%; font-weight: bold; cursor: pointer;">💾 성적 저장 및 동기화</button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- 모바일 마이페이지 도움말 영역 -->
-                    <div id="mobileMypageTutorial" style="display: none; margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
-                        <h4 style="font-size: 13.5px; color: var(--deep-blue); margin-bottom: 12px; font-weight: 700;">💡 서비스 이용 도움말 가이드</h4>
-                        <div style="font-size: 11.5px; line-height: 1.6; color: var(--text-main); display: flex; flex-direction: column; gap: 10px; text-align: left;">
-                            <div>
-                                <strong style="color: var(--primary-blue);">1. 학교 탐색 및 필터링</strong>
-                                <p style="margin: 2px 0 0 0; color: var(--text-muted); font-size: 11px;">지도 상단 검색창에 학교명을 검색하거나 필터를 조정해 학교 핀을 클릭하세요.</p>
+                        <!-- Section: 환경 설정 -->
+                        <div style="display: flex; flex-direction: column; gap: 1px; background: white; border-radius: 12px; border: 1px solid var(--border-color); overflow: hidden; flex-shrink: 0;">
+                            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); background: #f8f9fa; padding: 10px 16px; border-bottom: 1px solid var(--border-color); text-align: left;">환경 설정</div>
+                            
+                            <!-- Menu Item: 화면 알파값 조절 -->
+                            <div onclick="if(typeof window.toggleMypageAccordion === 'function') window.toggleMypageAccordion('display');" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; cursor: pointer; transition: background 0.2s; background: white;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 16px;">🎨</span>
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">지도 불투명도 조절</span>
+                                </div>
+                                <span style="font-size: 12px; color: var(--text-muted);" id="mypageAccordionArrow-display">▼</span>
                             </div>
-                            <div>
-                                <strong style="color: var(--primary-blue);">2. 우리 아이 분석하기</strong>
-                                <p style="margin: 2px 0 0 0; color: var(--text-muted); font-size: 11px;">자녀 정보를 저장한 뒤 학교 상세 카드에서 분석을 누르면 맞춤 학업 진단서가 생성됩니다.</p>
-                            </div>
-                            <div>
-                                <strong style="color: var(--primary-blue);">3. 안심 통학로 도보 분석</strong>
-                                <p style="margin: 2px 0 0 0; color: var(--text-muted); font-size: 11px;">'안심 통학로' 체크 후 지도를 터치하여 출발지를 찍으면 치안 인프라 연계 경로가 계산됩니다.</p>
-                            </div>
-                            <div>
-                                <strong style="color: var(--primary-blue);">4. 학교 비교 보드 활용</strong>
-                                <p style="margin: 2px 0 0 0; color: var(--text-muted); font-size: 11px;">'비교 보드 추가' 버튼을 눌러 최대 5개 학교의 성적과 예산 지표를 비교 분석할 수 있습니다.</p>
+                            <div id="mypageAccordionContent-display" style="display: none; padding: 12px 16px; border-top: 1px dashed var(--border-color); background: #fcfcfc;">
+                                <h5 style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px; display: flex; justify-content: space-between;">
+                                    <span>플로팅 창 알파값</span>
+                                    <span id="valOverlayOpacity" style="color: var(--primary-blue); font-weight: bold;">0.9</span>
+                                </h5>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 10px; color: var(--text-muted);">투명</span>
+                                    <input type="range" id="overlayOpacityRange" min="10" max="100" value="90" style="flex: 1; cursor: pointer;">
+                                    <span style="font-size: 10px; color: var(--text-muted);">불투명</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
+
+                        <!-- Section: 고객 지원 -->
+                        <div style="display: flex; flex-direction: column; gap: 1px; background: white; border-radius: 12px; border: 1px solid var(--border-color); overflow: hidden; flex-shrink: 0;">
+                            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); background: #f8f9fa; padding: 10px 16px; border-bottom: 1px solid var(--border-color); text-align: left;">고객지원 및 문의</div>
+                            
+                            <a href="javascript:void(0)" onclick="document.getElementById('infoEditRequestCard').style.display='block'; document.getElementById('welcomeCard').style.display='none'; document.getElementById('settingsModal').style.display='none';" style="text-decoration: none; display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; transition: background 0.2s; background: white;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 16px;">✏️</span>
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">잘못된 정보 수정 요청</span>
+                                </div>
+                                <span style="font-size: 11px; color: var(--primary-blue); font-weight: bold;">신청 ↗</span>
+                            </a>
+                            <div style="height: 1px; background: var(--border-color); margin: 0 16px;"></div>
+                            
+                            <a href="javascript:void(0)" onclick="document.getElementById('adInquiryCard').style.display='block'; document.getElementById('welcomeCard').style.display='none'; document.getElementById('settingsModal').style.display='none';" style="text-decoration: none; display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; transition: background 0.2s; background: white;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 16px;">💼</span>
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">광고 및 제휴 문의</span>
+                                </div>
+                                <span style="font-size: 11px; color: var(--primary-blue); font-weight: bold;">문의 ↗</span>
+                            </a>
+                            <div style="height: 1px; background: var(--border-color); margin: 0 16px;"></div>
+
+                            <a href="javascript:void(0)" onclick="document.getElementById('academyRegisterCard').style.display='block'; document.getElementById('welcomeCard').style.display='none'; document.getElementById('settingsModal').style.display='none';" style="text-decoration: none; display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; transition: background 0.2s; background: white;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 16px;">🏫</span>
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">학원 정보 신규 등록 요청</span>
+                                </div>
+                                <span style="font-size: 11px; color: var(--primary-blue); font-weight: bold;">신청 ↗</span>
+                            </a>
+                        </div>
+
+                        <!-- Section: 도움말 -->
+                        <div style="display: flex; flex-direction: column; gap: 1px; background: white; border-radius: 12px; border: 1px solid var(--border-color); overflow: hidden; flex-shrink: 0;">
+                            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); background: #f8f9fa; padding: 10px 16px; border-bottom: 1px solid var(--border-color); text-align: left;">도움말</div>
+                            
+                            <div onclick="if(typeof window.toggleMypageAccordion === 'function') window.toggleMypageAccordion('help');" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; cursor: pointer; transition: background 0.2s; background: white;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 16px;">💡</span>
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">서비스 이용 도움말 가이드</span>
+                                </div>
+                                <span style="font-size: 12px; color: var(--text-muted);" id="mypageAccordionArrow-help">▼</span>
+                            </div>
+                            <div id="mypageAccordionContent-help" style="display: none; padding: 12px 16px; border-top: 1px dashed var(--border-color); background: #fcfcfc;">
+                                <div style="font-size: 11.5px; line-height: 1.6; color: var(--text-main); display: flex; flex-direction: column; gap: 10px; text-align: left;">
+                                    <div>
+                                        <strong style="color: var(--primary-blue);">1. 학교 탐색 및 필터링</strong>
+                                        <p style="margin: 2px 0 0 0; color: var(--text-muted); font-size: 11px;">지도 상단 검색창에 학교명을 검색하거나 필터를 조정해 학교 핀을 클릭하세요.</p>
+                                    </div>
+                                    <div>
+                                        <strong style="color: var(--primary-blue);">2. 우리 아이 분석하기</strong>
+                                        <p style="margin: 2px 0 0 0; color: var(--text-muted); font-size: 11px;">자녀 정보를 저장한 뒤 학교 상세 카드에서 분석을 누르면 맞춤 학업 진단서가 생성됩니다.</p>
+                                    </div>
+                                    <div>
+                                        <strong style="color: var(--primary-blue);">3. 안심 통학로 도보 분석</strong>
+                                        <p style="margin: 2px 0 0 0; color: var(--text-muted); font-size: 11px;">'안심 통학로' 체크 후 지도를 터치하여 출발지를 찍으면 치안 인프라 연계 경로가 계산됩니다.</p>
+                                    </div>
+                                    <div>
+                                        <strong style="color: var(--primary-blue);">4. 학교 비교 보드 활용</strong>
+                                        <p style="margin: 2px 0 0 0; color: var(--text-muted); font-size: 11px;">'비교 보드 추가' 버튼을 눌러 최대 5개 학교의 성적과 예산 지표를 비교 분석할 수 있습니다.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div><!-- /settings-scroll-content -->
                 </div>
             </div>

@@ -846,7 +846,7 @@ body {
         height: calc(100% - 60px) !important;
         margin: 0 !important;
         z-index: 10090 !important;
-        overflow-y: auto !important;
+        overflow: hidden !important;
         border-radius: 0 !important;
         border: none !important;
         box-sizing: border-box !important;
@@ -1154,7 +1154,23 @@ body {
     }
 
     /* 모바일에서 설정창과 이사 시뮬레이션 창을 팝업 모달이 아닌 전체 페이지로 일관성 있게 오버라이딩 */
-    #settingsModal.card,
+    #settingsModal.card {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: calc(100% - 60px) !important;
+        max-width: none !important;
+        max-height: none !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        box-sizing: border-box !important;
+        background: var(--bg-card, #ffffff) !important;
+        z-index: 10080 !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+    }
     #simulationModal > div {
         position: fixed !important;
         top: 0 !important;
@@ -1172,11 +1188,6 @@ body {
         overflow-y: auto !important;
         -ms-overflow-style: none !important;
         scrollbar-width: none !important;
-    }
-    #settingsModal.card {
-        padding: 0 !important;
-    }
-    #simulationModal > div {
         padding: 20px !important;
     }
     #settingsModal.card::-webkit-scrollbar,

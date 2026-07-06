@@ -229,6 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'child_1', name: '자녀 1', grade: 'm2', korean: 85, english: 78, math: 72 }
     ];
     let selectedChildId = 'child_1';
+    let defaultChildId = localStorage.getItem('learnmap_default_child_id');
 
     // Supabase DB 자녀 프로필 데이터 동기화
     async function loadChildProfilesFromSupabase() {
@@ -252,7 +253,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     english: parseInt(item.english) || 0,
                     math: parseInt(item.math) || 0
                 }));
-                selectedChildId = childProfiles[0].id;
+                const hasDefault = childProfiles.some(c => c.id === defaultChildId);
+                selectedChildId = hasDefault ? defaultChildId : childProfiles[0].id;
             } else {
                 // 데이터가 없을 경우 초기 기본 자녀 1명 insert
                 const defaultChild = { name: '자녀 1', grade: 'm2', korean: 85, english: 78, math: 72 };
@@ -285,7 +287,8 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 childProfiles = JSON.parse(saved);
                 if (childProfiles.length > 0) {
-                    selectedChildId = childProfiles[0].id;
+                    const hasDefault = childProfiles.some(c => c.id === defaultChildId);
+                    selectedChildId = hasDefault ? defaultChildId : childProfiles[0].id;
                 }
             } catch (e) {
                 console.error(e);
@@ -395,10 +398,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (analysisChildSelect) analysisChildSelect.innerHTML = '';
 
         childProfiles.forEach(child => {
+            const isDefault = child.id === defaultChildId;
             // 모달용 옵션
             const opt1 = document.createElement('option');
             opt1.value = child.id;
-            opt1.innerText = `${child.name} (${child.grade.toUpperCase()})`;
+            opt1.innerText = `${child.name} (${child.grade.toUpperCase()})` + (isDefault ? ' 👑' : '');
             if (child.id === selectedChildId) {
                 opt1.selected = true;
             }
@@ -420,7 +424,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateFormWithSelectedChild() {
         const child = childProfiles.find(c => c.id === selectedChildId);
+        const profileNameEl = document.getElementById('mypageProfileName');
+        const profileScoresEl = document.getElementById('mypageProfileScores');
+
         if (!child) {
+            if (profileNameEl) profileNameEl.innerText = '자녀 정보를 등록해 주세요';
+            if (profileScoresEl) profileScoresEl.innerText = '성적 기반 추천 미연동';
+
             // 자녀설정이 없으면 중학교(middle)를 기본으로 설정
             const schoolTypeFilter = document.getElementById('schoolTypeFilter');
             if (schoolTypeFilter) {
@@ -430,6 +440,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return;
         }
+
+        if (profileNameEl) {
+            profileNameEl.innerText = `${child.name} 학부모님 (${child.grade.toUpperCase().replace('E', '초등 ').replace('M', '중등 ').replace('H', '고등 ')})`;
+        }
+        if (profileScoresEl) {
+            profileScoresEl.innerText = `성적: 국 ${child.korean} / 영 ${child.english} / 수 ${child.math}`;
+        }
+
         if (settingsChildName) settingsChildName.value = child.name;
         if (settingsChildGrade) settingsChildGrade.value = child.grade;
         if (settingsChildKor) settingsChildKor.value = child.korean;
@@ -539,11 +557,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 const targetId = selectedChildId;
                 childProfiles = childProfiles.filter(c => c.id !== targetId);
                 selectedChildId = childProfiles[0].id;
+                if (defaultChildId === targetId) {
+                    defaultChildId = selectedChildId;
+                    localStorage.setItem('learnmap_default_child_id', defaultChildId);
+                }
                 
                 await deleteChildProfileFromSupabase(targetId);
                 saveChildProfilesToLocalStorage();
                 refreshChildSelectUI();
             }
+        });
+    }
+
+    // 기본 자녀 설정 버튼 이벤트
+    const btnSetDefaultChild = document.getElementById('btnSetDefaultChild');
+    if (btnSetDefaultChild) {
+        btnSetDefaultChild.addEventListener('click', () => {
+            if (!selectedChildId) return;
+            defaultChildId = selectedChildId;
+            localStorage.setItem('learnmap_default_child_id', defaultChildId);
+            refreshChildSelectUI();
+            alert('선택한 자녀가 기본 분석 자녀로 설정되었습니다.');
         });
     }
 
@@ -2916,189 +2950,376 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
+                    const isMobile = window.innerWidth <= 1024;
 
-                    function renderAcademyPage(page) {
-                        academyListContainer.innerHTML = '';
-                        const start = (page - 1) * PAGE_SIZE;
-                        const pageItems = filtered.slice(start, start + PAGE_SIZE);
+                    // Remove previous scroll listener if any to avoid duplicates
+                    if (academyListContainer._academyScrollHandler) {
+                        academyListContainer.removeEventListener('scroll', academyListContainer._academyScrollHandler);
+                        const sidebarEl = document.getElementById('academySidebar');
+                        if (sidebarEl) sidebarEl.removeEventListener('scroll', academyListContainer._academyScrollHandler);
+                        window.removeEventListener('scroll', academyListContainer._academyScrollHandler);
+                        academyListContainer._academyScrollHandler = null;
+                    }
 
-                        pageItems.forEach(place => {
-                            const acadName = place.place_name;
-
-                            let typeLabel = acadName.includes('교습소') ? '교습소' : '학원';
-                            let subjectLabel = '';
-                            if (place.category_name) {
-                                const parts = place.category_name.split('>').map(s => s.trim());
-                                // 상세 과목명은 가장 하위 카테고리를 우선적으로 사용
-                                if (parts.length > 2) {
-                                    subjectLabel = parts[parts.length - 1];
-                                } else if (parts.length === 2) {
-                                    subjectLabel = parts[1];
+                    if (isMobile) {
+                        const sidebarEl = document.getElementById('academySidebar');
+                        if (sidebarEl) {
+                            sidebarEl.style.overflow = 'hidden';
+                        }
+                        
+                        // Hide scrollbars while maintaining scrollability
+                        academyListContainer.style.maxHeight = 'calc(100vh - 220px)';
+                        academyListContainer.style.overflowY = 'auto';
+                        academyListContainer.style.msOverflowStyle = 'none';
+                        academyListContainer.style.scrollbarWidth = 'none';
+                        
+                        let styleEl = document.getElementById('hideScrollbarStyle');
+                        if (!styleEl) {
+                            styleEl = document.createElement('style');
+                            styleEl.id = 'hideScrollbarStyle';
+                            styleEl.innerHTML = `
+                                #sideAcademyList::-webkit-scrollbar {
+                                    display: none !important;
                                 }
-                            }
+                            `;
+                            document.head.appendChild(styleEl);
+                        }
+                        
+                        const paginationContainer = document.getElementById('academyPaginationContainer');
+                        if (paginationContainer) paginationContainer.style.display = 'none';
 
-                            const item = document.createElement('div');
-                            item.style.padding = '6px 0px';
-                            item.style.borderBottom = '1px solid var(--border-color)';
-                            item.style.background = 'transparent';
-                            item.style.display = 'flex';
-                            item.style.alignItems = 'center';
-                            item.style.justifyContent = 'space-between';
-                            item.style.gap = '6px';
-                            item.style.fontWeight = '500';
-                            item.style.cursor = 'pointer';
-                            item.style.transition = 'all 0.2s ease';
-                            item.style.color = 'var(--text-main)';
+                        const MOBILE_PAGE_SIZE = 15;
+                        const totalPagesMobile = Math.ceil(filtered.length / MOBILE_PAGE_SIZE) || 1;
+                        let currentPage = 1;
 
-                            const nameSpan = document.createElement('span');
-                            nameSpan.innerText = acadName;
+                        function appendAcademyPage(page) {
+                            const start = (page - 1) * MOBILE_PAGE_SIZE;
+                            const pageItems = filtered.slice(start, start + MOBILE_PAGE_SIZE);
 
-                            const badgeContainer = document.createElement('div');
-                            badgeContainer.style.display = 'flex';
-                            badgeContainer.style.gap = '4px';
+                            pageItems.forEach(place => {
+                                const acadName = place.place_name;
 
-                            let shortSubject = '';
-                            if (subjectLabel) {
-                                shortSubject = subjectLabel.replace('학원', '').replace('교습소', '').replace('전문', '').trim();
-                                if (shortSubject === '') shortSubject = subjectLabel;
-                            }
+                                let typeLabel = acadName.includes('교습소') ? '교습소' : '학원';
+                                let subjectLabel = '';
+                                if (place.category_name) {
+                                    const parts = place.category_name.split('>').map(s => s.trim());
+                                    // 상세 과목명은 가장 하위 카테고리를 우선적으로 사용
+                                    if (parts.length > 2) {
+                                        subjectLabel = parts[parts.length - 1];
+                                    } else if (parts.length === 2) {
+                                        subjectLabel = parts[1];
+                                    }
+                                }
 
-                            const leftWrapper = document.createElement('div');
-                            leftWrapper.style.display = 'flex';
-                            leftWrapper.style.alignItems = 'center';
-                            leftWrapper.style.gap = '6px';
-                            leftWrapper.appendChild(nameSpan);
-
-                            item.appendChild(leftWrapper);
-                            item.appendChild(badgeContainer);
-
-                            item.onmouseover = () => {
-                                item.style.borderBottom = '1px solid var(--primary-blue)';
-                                nameSpan.style.color = 'var(--primary-blue)';
-                            };
-                            item.onmouseout = () => {
+                                const item = document.createElement('div');
+                                item.style.padding = '6px 0px';
                                 item.style.borderBottom = '1px solid var(--border-color)';
-                                nameSpan.style.color = 'var(--text-main)';
-                            };
+                                item.style.background = 'transparent';
+                                item.style.display = 'flex';
+                                item.style.alignItems = 'center';
+                                item.style.justifyContent = 'space-between';
+                                item.style.gap = '6px';
+                                item.style.fontWeight = '500';
+                                item.style.cursor = 'pointer';
+                                item.style.transition = 'all 0.2s ease';
+                                item.style.color = 'var(--text-main)';
 
-                            item.onclick = () => {
-                                window.currentAcademyForCommunity = acadName;
-                                document.querySelectorAll('.community-filter-btn').forEach(btn => {
-                                    btn.style.background = 'white';
-                                    btn.style.color = 'var(--text-muted)';
-                                    btn.style.borderColor = 'var(--border-color)';
-                                });
-                                const allBtn = document.querySelector('.community-filter-btn[data-type="all"]');
-                                if (allBtn) {
-                                    allBtn.style.background = 'var(--primary-blue)';
-                                    allBtn.style.color = 'white';
-                                    allBtn.style.borderColor = 'var(--primary-blue)';
-                                }
-                                window.fetchCommunityReviews(acadName, 'all', shortSubject, typeLabel);
+                                const nameSpan = document.createElement('span');
+                                nameSpan.innerText = acadName;
 
-                                // 신규 학원 부가 서비스 연동 (계산기 & 타운 톡)
-                                // 탭 상태 기본값(후기 & 톡)으로 초기화
-                                const tabRev = document.getElementById('tabAcademyReviews');
-                                const tabCalc = document.getElementById('tabAcademyCalculator');
-                                const secRev = document.getElementById('sectionAcademyReviews');
-                                const secCalc = document.getElementById('sectionAcademyCalculator');
-                                if (tabRev && tabCalc && secRev && secCalc) {
-                                    tabRev.style.background = '#ffffff';
-                                    tabRev.style.color = 'var(--primary-blue)';
-                                    tabRev.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
-                                    tabCalc.style.background = 'transparent';
-                                    tabCalc.style.color = 'var(--text-muted)';
-                                    tabCalc.style.boxShadow = 'none';
-                                    secRev.style.display = 'block';
-                                    secCalc.style.display = 'none';
+                                const badgeContainer = document.createElement('div');
+                                badgeContainer.style.display = 'flex';
+                                badgeContainer.style.gap = '4px';
+
+                                let shortSubject = '';
+                                if (subjectLabel) {
+                                    shortSubject = subjectLabel.replace('학원', '').replace('교습소', '').replace('전문', '').trim();
+                                    if (shortSubject === '') shortSubject = subjectLabel;
                                 }
 
-                                if (typeof window.renderAcademyFeeCalculator === 'function') {
-                                    window.renderAcademyFeeCalculator(acadName, shortSubject, place.address_name);
-                                }
-                                if (typeof window.fetchTownTalkList === 'function') {
-                                    window.fetchTownTalkList(acadName, 'academyTownTalkList');
-                                    const btnSendAcademyTalk = document.getElementById('btnSendAcademyTalk');
-                                    if (btnSendAcademyTalk) {
-                                        const newBtn = btnSendAcademyTalk.cloneNode(true);
-                                        btnSendAcademyTalk.parentNode.replaceChild(newBtn, btnSendAcademyTalk);
-                                        newBtn.addEventListener('click', () => {
-                                            window.sendTownTalk(acadName, 'txtAcademyTalkNick', 'txtAcademyTalkContent', 'academyTownTalkList');
-                                        });
+                                const leftWrapper = document.createElement('div');
+                                leftWrapper.style.display = 'flex';
+                                leftWrapper.style.alignItems = 'center';
+                                leftWrapper.style.gap = '6px';
+                                leftWrapper.appendChild(nameSpan);
+
+                                item.appendChild(leftWrapper);
+                                item.appendChild(badgeContainer);
+
+                                item.onmouseover = () => {
+                                    item.style.borderBottom = '1px solid var(--primary-blue)';
+                                    nameSpan.style.color = 'var(--primary-blue)';
+                                };
+                                item.onmouseout = () => {
+                                    item.style.borderBottom = '1px solid var(--border-color)';
+                                    nameSpan.style.color = 'var(--text-main)';
+                                };
+
+                                item.onclick = () => {
+                                    window.currentAcademyForCommunity = acadName;
+                                    document.querySelectorAll('.community-filter-btn').forEach(btn => {
+                                        btn.style.background = 'white';
+                                        btn.style.color = 'var(--text-muted)';
+                                        btn.style.borderColor = 'var(--border-color)';
+                                    });
+                                    const allBtn = document.querySelector('.community-filter-btn[data-type="all"]');
+                                    if (allBtn) {
+                                        allBtn.style.background = 'var(--primary-blue)';
+                                        allBtn.style.color = 'white';
+                                        allBtn.style.borderColor = 'var(--primary-blue)';
+                                    }
+                                    window.fetchCommunityReviews(acadName, 'all', shortSubject, typeLabel);
+
+                                    // 신규 학원 부가 서비스 연동 (계산기 & 타운 톡)
+                                    const tabRev = document.getElementById('tabAcademyReviews');
+                                    const tabCalc = document.getElementById('tabAcademyCalculator');
+                                    const secRev = document.getElementById('sectionAcademyReviews');
+                                    const secCalc = document.getElementById('sectionAcademyCalculator');
+                                    if (tabRev && tabCalc && secRev && secCalc) {
+                                        tabRev.style.background = '#ffffff';
+                                        tabRev.style.color = 'var(--primary-blue)';
+                                        tabRev.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+                                        tabCalc.style.background = 'transparent';
+                                        tabCalc.style.color = 'var(--text-muted)';
+                                        tabCalc.style.boxShadow = 'none';
+                                        secRev.style.display = 'block';
+                                        secCalc.style.display = 'none';
+                                    }
+
+                                    if (typeof window.renderAcademyFeeCalculator === 'function') {
+                                        window.renderAcademyFeeCalculator(acadName, shortSubject, place.address_name);
+                                    }
+                                    if (typeof window.fetchTownTalkList === 'function') {
+                                        window.fetchTownTalkList(acadName, 'academyTownTalkList');
+                                        const btnSendAcademyTalk = document.getElementById('btnSendAcademyTalk');
+                                        if (btnSendAcademyTalk) {
+                                            const newBtn = btnSendAcademyTalk.cloneNode(true);
+                                            btnSendAcademyTalk.parentNode.replaceChild(newBtn, btnSendAcademyTalk);
+                                            newBtn.addEventListener('click', () => {
+                                                window.sendTownTalk(acadName, 'txtAcademyTalkNick', 'txtAcademyTalkContent', 'academyTownTalkList');
+                                            });
+                                        }
+                                    }
+                                };
+
+                                academyListContainer.appendChild(item);
+                            });
+                        }
+
+                        if (filtered.length === 0) {
+                            academyListContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">조건에 맞는 검색 결과가 없습니다.</div>';
+                        } else {
+                            academyListContainer.innerHTML = '';
+                            appendAcademyPage(1);
+
+                            const handleScroll = () => {
+                                const isContainerBottom = academyListContainer.scrollTop + academyListContainer.clientHeight >= academyListContainer.scrollHeight - 100;
+                                const isSidebarBottom = sidebarEl && (sidebarEl.scrollTop + sidebarEl.clientHeight >= sidebarEl.scrollHeight - 100);
+                                const isWindowBottom = (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100);
+
+                                if (isContainerBottom || isSidebarBottom || isWindowBottom) {
+                                    if (currentPage < totalPagesMobile) {
+                                        currentPage++;
+                                        appendAcademyPage(currentPage);
                                     }
                                 }
                             };
 
-                            academyListContainer.appendChild(item);
-                        });
+                            academyListContainer.addEventListener('scroll', handleScroll);
+                            if (sidebarEl) sidebarEl.addEventListener('scroll', handleScroll);
+                            window.addEventListener('scroll', handleScroll);
 
-                        let paginationEl = document.getElementById('academyPagination');
-                        if (!paginationEl) {
-                            paginationEl = document.createElement('div');
-                            paginationEl.id = 'academyPagination';
-                            paginationEl.style.display = 'flex';
-                            paginationEl.style.flexWrap = 'wrap';
-                            paginationEl.style.justifyContent = 'center';
-                            paginationEl.style.gap = '4px';
-                            document.getElementById('academyPaginationContainer').appendChild(paginationEl);
+                            academyListContainer._academyScrollHandler = handleScroll;
                         }
-                        paginationEl.innerHTML = '';
-
-                        // Pagination block size
-                        const MAX_PAGES = 3;
-                        const currentBlock = Math.ceil(page / MAX_PAGES);
-                        const startPage = (currentBlock - 1) * MAX_PAGES + 1;
-                        const endPage = Math.min(startPage + MAX_PAGES - 1, totalPages);
-
-                        if (startPage > 1) {
-                            const prevBtn = document.createElement('button');
-                            prevBtn.innerText = '<';
-                            prevBtn.style.padding = '4px 10px';
-                            prevBtn.style.border = '1px solid var(--border-color)';
-                            prevBtn.style.borderRadius = '4px';
-                            prevBtn.style.background = 'white';
-                            prevBtn.style.color = 'var(--text-main)';
-                            prevBtn.style.cursor = 'pointer';
-                            prevBtn.style.fontSize = '12px';
-                            prevBtn.onclick = () => renderAcademyPage(startPage - 1);
-                            paginationEl.appendChild(prevBtn);
-                        }
-
-                        for (let i = startPage; i <= endPage; i++) {
-                            const btn = document.createElement('button');
-                            btn.innerText = i;
-                            btn.style.padding = '4px 10px';
-                            btn.style.border = '1px solid var(--border-color)';
-                            btn.style.borderRadius = '4px';
-                            btn.style.background = (i === page) ? 'var(--primary-blue)' : 'white';
-                            btn.style.color = (i === page) ? 'white' : 'var(--text-main)';
-                            btn.style.cursor = 'pointer';
-                            btn.style.fontSize = '12px';
-                            btn.onclick = () => renderAcademyPage(i);
-                            paginationEl.appendChild(btn);
-                        }
-
-                        if (endPage < totalPages) {
-                            const nextBtn = document.createElement('button');
-                            nextBtn.innerText = '>';
-                            nextBtn.style.padding = '4px 10px';
-                            nextBtn.style.border = '1px solid var(--border-color)';
-                            nextBtn.style.borderRadius = '4px';
-                            nextBtn.style.background = 'white';
-                            nextBtn.style.color = 'var(--text-main)';
-                            nextBtn.style.cursor = 'pointer';
-                            nextBtn.style.fontSize = '12px';
-                            nextBtn.onclick = () => renderAcademyPage(endPage + 1);
-                            paginationEl.appendChild(nextBtn);
-                        }
-                    } // end renderAcademyPage
-
-                    if (filtered.length === 0) {
-                        academyListContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">조건에 맞는 검색 결과가 없습니다.</div>';
-                        const paginationEl = document.getElementById('academyPagination');
-                        if(paginationEl) paginationEl.innerHTML = '';
                     } else {
-                        renderAcademyPage(1);
+                        // Desktop - Pagination
+                        academyListContainer.style.overflowY = 'hidden';
+                        const paginationContainer = document.getElementById('academyPaginationContainer');
+                        if (paginationContainer) paginationContainer.style.display = '';
+
+                        function renderAcademyPage(page) {
+                            academyListContainer.innerHTML = '';
+                            const start = (page - 1) * PAGE_SIZE;
+                            const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+                            pageItems.forEach(place => {
+                                const acadName = place.place_name;
+
+                                let typeLabel = acadName.includes('교습소') ? '교습소' : '학원';
+                                let subjectLabel = '';
+                                if (place.category_name) {
+                                    const parts = place.category_name.split('>').map(s => s.trim());
+                                    // 상세 과목명은 가장 하위 카테고리를 우선적으로 사용
+                                    if (parts.length > 2) {
+                                        subjectLabel = parts[parts.length - 1];
+                                    } else if (parts.length === 2) {
+                                        subjectLabel = parts[1];
+                                    }
+                                }
+
+                                const item = document.createElement('div');
+                                item.style.padding = '6px 0px';
+                                item.style.borderBottom = '1px solid var(--border-color)';
+                                item.style.background = 'transparent';
+                                item.style.display = 'flex';
+                                item.style.alignItems = 'center';
+                                item.style.justifyContent = 'space-between';
+                                item.style.gap = '6px';
+                                item.style.fontWeight = '500';
+                                item.style.cursor = 'pointer';
+                                item.style.transition = 'all 0.2s ease';
+                                item.style.color = 'var(--text-main)';
+
+                                const nameSpan = document.createElement('span');
+                                nameSpan.innerText = acadName;
+
+                                const badgeContainer = document.createElement('div');
+                                badgeContainer.style.display = 'flex';
+                                badgeContainer.style.gap = '4px';
+
+                                let shortSubject = '';
+                                if (subjectLabel) {
+                                    shortSubject = subjectLabel.replace('학원', '').replace('교습소', '').replace('전문', '').trim();
+                                    if (shortSubject === '') shortSubject = subjectLabel;
+                                }
+
+                                const leftWrapper = document.createElement('div');
+                                leftWrapper.style.display = 'flex';
+                                leftWrapper.style.alignItems = 'center';
+                                leftWrapper.style.gap = '6px';
+                                leftWrapper.appendChild(nameSpan);
+
+                                item.appendChild(leftWrapper);
+                                item.appendChild(badgeContainer);
+
+                                item.onmouseover = () => {
+                                    item.style.borderBottom = '1px solid var(--primary-blue)';
+                                    nameSpan.style.color = 'var(--primary-blue)';
+                                };
+                                item.onmouseout = () => {
+                                    item.style.borderBottom = '1px solid var(--border-color)';
+                                    nameSpan.style.color = 'var(--text-main)';
+                                };
+
+                                item.onclick = () => {
+                                    window.currentAcademyForCommunity = acadName;
+                                    document.querySelectorAll('.community-filter-btn').forEach(btn => {
+                                        btn.style.background = 'white';
+                                        btn.style.color = 'var(--text-muted)';
+                                        btn.style.borderColor = 'var(--border-color)';
+                                    });
+                                    const allBtn = document.querySelector('.community-filter-btn[data-type="all"]');
+                                    if (allBtn) {
+                                        allBtn.style.background = 'var(--primary-blue)';
+                                        allBtn.style.color = 'white';
+                                        allBtn.style.borderColor = 'var(--primary-blue)';
+                                    }
+                                    window.fetchCommunityReviews(acadName, 'all', shortSubject, typeLabel);
+
+                                    // 신규 학원 부가 서비스 연동 (계산기 & 타운 톡)
+                                    // 탭 상태 기본값(후기 & 톡)으로 초기화
+                                    const tabRev = document.getElementById('tabAcademyReviews');
+                                    const tabCalc = document.getElementById('tabAcademyCalculator');
+                                    const secRev = document.getElementById('sectionAcademyReviews');
+                                    const secCalc = document.getElementById('sectionAcademyCalculator');
+                                    if (tabRev && tabCalc && secRev && secCalc) {
+                                        tabRev.style.background = '#ffffff';
+                                        tabRev.style.color = 'var(--primary-blue)';
+                                        tabRev.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+                                        tabCalc.style.background = 'transparent';
+                                        tabCalc.style.color = 'var(--text-muted)';
+                                        tabCalc.style.boxShadow = 'none';
+                                        secRev.style.display = 'block';
+                                        secCalc.style.display = 'none';
+                                    }
+
+                                    if (typeof window.renderAcademyFeeCalculator === 'function') {
+                                        window.renderAcademyFeeCalculator(acadName, shortSubject, place.address_name);
+                                    }
+                                    if (typeof window.fetchTownTalkList === 'function') {
+                                        window.fetchTownTalkList(acadName, 'academyTownTalkList');
+                                        const btnSendAcademyTalk = document.getElementById('btnSendAcademyTalk');
+                                        if (btnSendAcademyTalk) {
+                                            const newBtn = btnSendAcademyTalk.cloneNode(true);
+                                            btnSendAcademyTalk.parentNode.replaceChild(newBtn, btnSendAcademyTalk);
+                                            newBtn.addEventListener('click', () => {
+                                                window.sendTownTalk(acadName, 'txtAcademyTalkNick', 'txtAcademyTalkContent', 'academyTownTalkList');
+                                            });
+                                        }
+                                    }
+                                };
+
+                                academyListContainer.appendChild(item);
+                            });
+
+                            let paginationEl = document.getElementById('academyPagination');
+                            if (!paginationEl) {
+                                paginationEl = document.createElement('div');
+                                paginationEl.id = 'academyPagination';
+                                paginationEl.style.display = 'flex';
+                                paginationEl.style.flexWrap = 'wrap';
+                                paginationEl.style.justifyContent = 'center';
+                                paginationEl.style.gap = '4px';
+                                document.getElementById('academyPaginationContainer').appendChild(paginationEl);
+                            }
+                            paginationEl.innerHTML = '';
+
+                            // Pagination block size
+                            const MAX_PAGES = 3;
+                            const currentBlock = Math.ceil(page / MAX_PAGES);
+                            const startPage = (currentBlock - 1) * MAX_PAGES + 1;
+                            const endPage = Math.min(startPage + MAX_PAGES - 1, totalPages);
+
+                            if (startPage > 1) {
+                                const prevBtn = document.createElement('button');
+                                prevBtn.innerText = '<';
+                                prevBtn.style.padding = '4px 10px';
+                                prevBtn.style.border = '1px solid var(--border-color)';
+                                prevBtn.style.borderRadius = '4px';
+                                prevBtn.style.background = 'white';
+                                prevBtn.style.color = 'var(--text-main)';
+                                prevBtn.style.cursor = 'pointer';
+                                prevBtn.style.fontSize = '12px';
+                                prevBtn.onclick = () => renderAcademyPage(startPage - 1);
+                                paginationEl.appendChild(prevBtn);
+                            }
+
+                            for (let i = startPage; i <= endPage; i++) {
+                                const btn = document.createElement('button');
+                                btn.innerText = i;
+                                btn.style.padding = '4px 10px';
+                                btn.style.border = '1px solid var(--border-color)';
+                                btn.style.borderRadius = '4px';
+                                btn.style.background = (i === page) ? 'var(--primary-blue)' : 'white';
+                                btn.style.color = (i === page) ? 'white' : 'var(--text-main)';
+                                btn.style.cursor = 'pointer';
+                                btn.style.fontSize = '12px';
+                                btn.onclick = () => renderAcademyPage(i);
+                                paginationEl.appendChild(btn);
+                            }
+
+                            if (endPage < totalPages) {
+                                const nextBtn = document.createElement('button');
+                                nextBtn.innerText = '>';
+                                nextBtn.style.padding = '4px 10px';
+                                nextBtn.style.border = '1px solid var(--border-color)';
+                                nextBtn.style.borderRadius = '4px';
+                                nextBtn.style.background = 'white';
+                                nextBtn.style.color = 'var(--text-main)';
+                                nextBtn.style.cursor = 'pointer';
+                                nextBtn.style.fontSize = '12px';
+                                nextBtn.onclick = () => renderAcademyPage(endPage + 1);
+                                paginationEl.appendChild(nextBtn);
+                            }
+                        }
+
+                        if (filtered.length === 0) {
+                            academyListContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">조건에 맞는 검색 결과가 없습니다.</div>';
+                            const paginationEl = document.getElementById('academyPagination');
+                            if(paginationEl) paginationEl.innerHTML = '';
+                        } else {
+                            renderAcademyPage(1);
+                        }
                     }
                 } // end applyFiltersAndRender
 
@@ -5375,6 +5596,8 @@ document.addEventListener('DOMContentLoaded', () => {
  
     const updateFavUI = () => {
         const favs = JSON.parse(localStorage.getItem('favoriteSchools') || '[]');
+        
+        // Welcome Card UI
         if (favs.length === 0) {
             if (favContainer) favContainer.style.display = 'none';
         } else {
@@ -5404,6 +5627,47 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
                     
                     favList.appendChild(btn);
+                });
+            }
+        }
+
+        // My Page Favorites UI
+        const mypageFavList = document.getElementById('mypageFavoriteSchoolsList');
+        if (mypageFavList) {
+            mypageFavList.innerHTML = '';
+            if (favs.length === 0) {
+                mypageFavList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 12px;">즐겨찾는 학교가 없습니다.</div>';
+            } else {
+                favs.forEach(school => {
+                    const btn = document.createElement('div');
+                    btn.style.cssText = 'padding: 8px 12px; font-size: 12px; font-weight: 600; text-align: left; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; color: var(--deep-blue); display: flex; flex-direction: column; gap: 4px; transition: all 0.2s; margin-bottom: 6px;';
+                    
+                    const priorityLabels = { '1': '🥇 1순위', '2': '🥈 2순위', '3': '⭐ 관심' };
+                    const priLabel = priorityLabels[school.priority || '3'] || '⭐ 관심';
+                    
+                    btn.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <span style="font-weight: 700;">🏫 ${school.name} <span style="font-size:10px; color:#ef6c00; background:#fff3e0; padding:2px 6px; border-radius:4px; margin-left:4px; font-weight:bold;">${priLabel}</span></span>
+                            <span style="font-size:10px; color:var(--text-muted); font-weight:bold;">이동 ➔</span>
+                        </div>
+                        ${school.memo ? `<div style="font-size: 11px; font-weight: normal; color: var(--text-muted); border-top: 1px dashed var(--border-color); padding-top: 4px; margin-top: 2px; white-space: pre-wrap;">📝 ${school.memo}</div>` : ''}
+                    `;
+                    
+                    btn.onmouseover = () => btn.style.borderColor = 'var(--primary-blue)';
+                    btn.onmouseout = () => btn.style.borderColor = 'var(--border-color)';
+                    
+                    btn.onclick = () => {
+                        if (window.innerWidth <= 1024 && typeof window.onMobileNavClick === 'function') {
+                            const mapTabBtn = document.querySelector('.mobile-bottom-nav .nav-item');
+                            window.onMobileNavClick('map', mapTabBtn);
+                        } else {
+                            const setModal = document.getElementById('settingsModal');
+                            if (setModal) setModal.style.display = 'none';
+                        }
+                        window.selectSchoolById(school.id);
+                    };
+                    
+                    mypageFavList.appendChild(btn);
                 });
             }
         }
@@ -7116,6 +7380,9 @@ window.onMobileNavClick = function(menu, btnEl) {
         const setModal = document.getElementById('settingsModal');
         if (setModal) {
             setModal.style.display = 'block';
+            if (typeof window.switchMypageTab === 'function') {
+                window.switchMypageTab('child');
+            }
         }
     } else if (menu === 'story') {
         // 이야기 보기: 이야기 모달 노출 및 기본 학교 탭 로드
@@ -7125,6 +7392,38 @@ window.onMobileNavClick = function(menu, btnEl) {
             window.switchStoryTab('school');
         }
     }
+};
+
+// --- 마이페이지 탭 및 아코디언 제어 로직 ---
+window.toggleMypageAccordion = function(sectionName) {
+    const content = document.getElementById('mypageAccordionContent-' + sectionName);
+    const arrow = document.getElementById('mypageAccordionArrow-' + sectionName);
+    if (!content) return;
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        if (arrow) arrow.textContent = '▲';
+    } else {
+        content.style.display = 'none';
+        if (arrow) arrow.textContent = '▼';
+    }
+};
+
+window.switchMypageTab = function(tabName) {
+    const accordions = ['child', 'favorites', 'display', 'help'];
+    accordions.forEach(name => {
+        const content = document.getElementById('mypageAccordionContent-' + name);
+        const arrow = document.getElementById('mypageAccordionArrow-' + name);
+        if (content) {
+            if (name === tabName) {
+                content.style.display = 'block';
+                if (arrow) arrow.textContent = '▲';
+            } else {
+                content.style.display = 'none';
+                if (arrow) arrow.textContent = '▼';
+            }
+        }
+    });
 };
 
 // --- 화면 크기 변경 감지 및 PC 버전 스타일 복원 ---
