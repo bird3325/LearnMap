@@ -851,6 +851,12 @@ body {
         border: none !important;
         box-sizing: border-box !important;
     }
+    #settingsModal .settings-inner-wrapper {
+        height: 100% !important;
+    }
+    #settingsModal .settings-scroll-content {
+        height: calc(100% - 57px) !important;
+    }
 
     /* 모바일에서 학부모 필터 설정창을 전체 화면으로 표시 */
     .parents-filter-accordion {
@@ -988,6 +994,17 @@ body {
         padding: 16px 16px 24px 16px !important;
         margin: 0 !important;
         background: transparent !important;
+    }
+
+    /* 모바일 학교 상세 스크롤 시 헤더 고정 처리 */
+    .school-card-sticky-header {
+        position: sticky !important;
+        top: 0 !important;
+        background: #ffffff !important;
+        z-index: 100 !important;
+        margin: -16px -16px 12px -16px !important;
+        padding: 16px 16px 12px 16px !important;
+        border-bottom: 1px solid var(--border-color) !important;
     }
 
     /* 모바일에서 외곽의 공통 브랜드 로고 헤더 영역 자체를 완전히 제거 */
@@ -1166,10 +1183,16 @@ body {
         border: none !important;
         box-shadow: none !important;
         box-sizing: border-box !important;
-        background: var(--bg-card, #ffffff) !important;
+        background: #f8f9fa !important;
         z-index: 10080 !important;
         overflow: hidden !important;
         padding: 0 !important;
+    }
+    #settingsModal.card .settings-inner-wrapper {
+        height: 100% !important;
+    }
+    #settingsModal.card .settings-scroll-content {
+        height: calc(100% - 57px) !important;
     }
     #simulationModal > div {
         position: fixed !important;
@@ -1564,14 +1587,6 @@ body {
     }
 }
 
-/* 기본값 (PC/웹): PC 버전 설정만 표시하고 모바일 버전은 숨김 */
-.pc-settings-content {
-    display: block !important;
-}
-.mobile-settings-content {
-    display: none !important;
-}
-
 @media (min-width: 1025px) {
     /* PC(웹) 뷰에서 마이페이지 레이아웃 복원 및 스크롤 붕괴 방지 */
     .settings-inner-wrapper {
@@ -1581,6 +1596,30 @@ body {
     .settings-scroll-content {
         height: auto !important;
         overflow: visible !important;
+    }
+    /* PC/웹: PC 버전 설정만 표시하고 모바일 버전은 숨김 */
+    .pc-settings-content {
+        display: block !important;
+    }
+    .mobile-settings-content {
+        display: none !important;
+    }
+    /* PC/웹: 사이드바가 열려 있을 때 비교보드가 우측 사이드 아이콘 위에 배치되도록 (사이드바 경계인 400px까지 확장) */
+    .app-container.sidebar-open #compareOverlay {
+        right: 400px !important;
+        width: calc(100% - 420px) !important;
+        z-index: 12000 !important;
+    }
+    /* PC/웹: 사이드바가 닫혀 있을 때 비교보드가 전체 화면 크기로 확장 */
+    .app-container:not(.sidebar-open) #compareOverlay {
+        right: 20px !important;
+        width: calc(100% - 40px) !important;
+    }
+    /* PC/웹: 비교보드가 열려 있을 때 우측 사이드 아이콘들을 가려서 보이지 않도록 숨김 처리 */
+    .app-container:has(#compareOverlay[style*="display: flex"]) .pc-floating-filters,
+    .app-container:has(#compareOverlay[style*="display: block"]) .pc-floating-filters {
+        opacity: 0 !important;
+        pointer-events: none !important;
     }
 }
 

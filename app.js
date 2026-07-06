@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div id="customConfirmMessage" style="font-size:16px; font-weight:600; color:var(--text-main, #333); margin-bottom:24px; line-height:1.5; white-space:pre-wrap;"></div>
                         <div style="display:flex; gap:12px; justify-content:center;">
                             <button id="btnConfirmCancel" style="background:#e5e7eb; color:#374151; border:none; border-radius:8px; padding:12px 24px; font-size:15px; font-weight:bold; cursor:pointer; outline:none; transition:background 0.2s;">취소</button>
-                            <button id="btnConfirmOk" style="background:var(--danger-red, #d9534f); color:white; border:none; border-radius:8px; padding:12px 24px; font-size:15px; font-weight:bold; cursor:pointer; outline:none; transition:background 0.2s;">확인</button>
+                            <button id="btnConfirmOk" style="background:var(--primary-blue, #2563eb); color:white; border:none; border-radius:8px; padding:12px 24px; font-size:15px; font-weight:bold; cursor:pointer; outline:none; transition:background 0.2s;">확인</button>
                         </div>
                     </div>
                 `;
@@ -62,8 +62,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 resolve(result);
             };
             
-            document.getElementById('btnConfirmOk').onclick = () => close(true);
-            document.getElementById('btnConfirmCancel').onclick = () => close(false);
+            const okBtn = document.getElementById('btnConfirmOk');
+            const cancelBtn = document.getElementById('btnConfirmCancel');
+            
+            const onOk = (e) => {
+                if (e) {
+                    e.stopPropagation();
+                }
+                close(true);
+            };
+            
+            const onCancel = (e) => {
+                if (e) {
+                    e.stopPropagation();
+                }
+                close(false);
+            };
+            
+            okBtn.onclick = onOk;
+            okBtn.ontouchstart = onOk;
+            cancelBtn.onclick = onCancel;
+            cancelBtn.ontouchstart = onCancel;
         });
     };
     // ------------------------------------
@@ -662,6 +681,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnOpenSettings) {
         btnOpenSettings.addEventListener('click', async () => {
             await loadChildProfilesFromSupabase();
+            if (typeof updateMypageComparisonUI === 'function') {
+                updateMypageComparisonUI();
+            }
         });
     }
 
@@ -1175,24 +1197,60 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    btnCompareBoard.addEventListener('click', () => {
+    btnCompareBoard.addEventListener('click', async () => {
         if (!orchestrator.state.selectedSchool) return;
         
-        const exists = orchestrator.state.comparisonList.some(s => s.school_id === orchestrator.state.selectedSchool.school_id);
-        if (exists) {
-            // 이미 추가되었을 경우 비교보드 매트릭스를 그대로 다시 렌더링하여 화면에 보여줍니다.
-            const comparisonTable = orchestrator.compareAgent.generateComparisonMatrix(orchestrator.state.comparisonList, orchestrator.state.childProfile.scores);
-            renderComparisonBoard(comparisonTable);
-            compareOverlay.style.display = 'flex';
-            updateCompareFloatingButton();
+        const exists = orchestrator.state.comparisonList.some(s => {
+            const sId = s.school_id || s.id;
+            const selId = orchestrator.state.selectedSchool.school_id || orchestrator.state.selectedSchool.id;
+            if (!sId || !selId) return false;
+            return String(sId) === String(selId);
+        });
+        
+        if (window.innerWidth <= 1024) {
+            // 모바일 환경: 모달창을 띄우지 않고 마이페이지의 '비교중인 학교' 탭으로 즉시 전환
+            if (exists) {
+                alert('이미 비교 보드에 추가된 학교입니다.');
+            } else {
+                const res = orchestrator.addToComparison(orchestrator.state.selectedSchool);
+                if (res.success) {
+                    updateCompareFloatingButton();
+                    
+                    if (await confirm('비교보드에 추가되었습니다. 이동하시겠습니까?')) {
+                        // 마이페이지 탭 활성화
+                        const mypageTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*="mypage"]');
+                        if (typeof window.onMobileNavClick === 'function') {
+                            window.onMobileNavClick('mypage', mypageTabBtn);
+                        }
+                        
+                        // 비교 아코디언 강제 오픈
+                        const compArrow = document.getElementById('mypageAccordionArrow-comparison');
+                        const compContent = document.getElementById('mypageAccordionContent-comparison');
+                        if (compArrow && compContent) {
+                            compArrow.innerText = '▲';
+                            compContent.style.display = 'block';
+                        }
+                    }
+                } else {
+                    alert(res.message);
+                }
+            }
         } else {
-            const res = orchestrator.addToComparison(orchestrator.state.selectedSchool);
-            if (res.success) {
-                renderComparisonBoard(res.data);
+            // PC 환경: 기존 모달창 노출 유지
+            if (exists) {
+                const comparisonTable = orchestrator.compareAgent.generateComparisonMatrix(orchestrator.state.comparisonList, orchestrator.state.childProfile.scores);
+                renderComparisonBoard(comparisonTable);
                 compareOverlay.style.display = 'flex';
                 updateCompareFloatingButton();
             } else {
-                alert(res.message);
+                const res = orchestrator.addToComparison(orchestrator.state.selectedSchool);
+                if (res.success) {
+                    renderComparisonBoard(res.data);
+                    compareOverlay.style.display = 'flex';
+                    updateCompareFloatingButton();
+                } else {
+                    alert(res.message);
+                }
             }
         }
     });
@@ -1203,19 +1261,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function updateCompareFloatingButton() {
-        if (!btnOpenCompareFloating) return;
         const count = (orchestrator && orchestrator.state && orchestrator.state.comparisonList) 
             ? orchestrator.state.comparisonList.length 
             : 0;
         const isOverlayVisible = compareOverlay && compareOverlay.style.display !== 'none';
         
-        if (count > 0 && !isOverlayVisible) {
-            btnOpenCompareFloating.style.display = 'flex';
-            if (compareCountBadge) {
-                compareCountBadge.innerText = count;
+        if (btnOpenCompareFloating) {
+            if (window.innerWidth <= 1024) {
+                btnOpenCompareFloating.style.display = 'none';
+            } else {
+                if (count > 0 && !isOverlayVisible) {
+                    btnOpenCompareFloating.style.display = 'flex';
+                    if (compareCountBadge) {
+                        compareCountBadge.innerText = count;
+                    }
+                } else {
+                    btnOpenCompareFloating.style.display = 'none';
+                }
             }
-        } else {
-            btnOpenCompareFloating.style.display = 'none';
+        }
+
+        // 실시간으로 마이페이지의 비교중인 학교 UI도 함께 갱신 처리
+        if (typeof updateMypageComparisonUI === 'function') {
+            updateMypageComparisonUI();
         }
     }
 
@@ -1234,6 +1302,11 @@ document.addEventListener('DOMContentLoaded', () => {
         btnClearCompare.addEventListener('click', async () => {
             if (await confirm('비교 보드에 담긴 모든 학교를 삭제하시겠습니까?')) {
                 orchestrator.state.comparisonList = [];
+                try {
+                    localStorage.setItem('learnmap_comparison_list', JSON.stringify([]));
+                } catch (err) {
+                    console.error('Failed to sync comparisonList to localStorage', err);
+                }
                 if (compareOverlay) {
                     compareOverlay.style.display = 'none';
                 }
@@ -2148,9 +2221,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Global selector callback
     window.selectSchoolById = (schoolId) => {
-        let school = currentLoadedSchools.find(s => s.school_id === schoolId);
+        let school = currentLoadedSchools.find(s => String(s.school_id) === String(schoolId));
         if (!school) {
-            school = schoolsDatabase.find(s => s.school_id === schoolId);
+            school = schoolsDatabase.find(s => String(s.school_id) === String(schoolId));
         }
         if (school) {
             const summary = orchestrator.selectSchool(school);
@@ -5747,6 +5820,123 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // 마이페이지 비교중인 학교 UI 동적 갱신
+    function updateMypageComparisonUI() {
+        try {
+            const mypageCompList = document.getElementById('mypageComparisonSchoolsList');
+            if (!mypageCompList) return;
+            
+            mypageCompList.innerHTML = '';
+            
+            // 로컬 스토리지에서 직접 한 번 더 파싱하여 신뢰성 극대화
+            let list = [];
+            try {
+                list = JSON.parse(localStorage.getItem('learnmap_comparison_list') || '[]');
+            } catch (e) {
+                console.error("Failed to load comparison list from localStorage in UI", e);
+                list = (orchestrator && orchestrator.state && orchestrator.state.comparisonList) ? orchestrator.state.comparisonList : [];
+            }
+            
+            if (!list || list.length === 0) {
+                mypageCompList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 12px;">비교중인 학교가 없습니다.</div>';
+                return;
+            }
+            
+            list.forEach(school => {
+                if (!school) return;
+                const schoolName = school.school_name || school.name || '학교';
+                const typeVal = school.school_type || school.type || '';
+                const typeText = (typeof typeVal === 'string' && (typeVal.includes('초등') || typeVal === 'elementary')) ? '초등' : ((typeof typeVal === 'string' && (typeVal.includes('중') || typeVal.includes('middle'))) ? '중등' : '고등');
+                const sigunName = school.sigun_name || school.sigun || '서울시';
+                const targetSchoolId = school.school_id || school.id;
+                
+                if (!targetSchoolId) return;
+                
+                const item = document.createElement('div');
+                item.style.cssText = 'padding: 8px 12px; font-size: 12px; font-weight: 600; text-align: left; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--deep-blue); display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; transition: all 0.2s;';
+                
+                item.innerHTML = `
+                    <div style="display: flex; flex-direction: column; gap: 2px; cursor: pointer; flex: 1; min-width: 0;" class="mypage-comp-school-btn">
+                        <span style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">🏫 ${schoolName}</span>
+                        <span style="font-size: 10px; color: var(--text-muted);">${typeText} / ${sigunName}</span>
+                    </div>
+                    <button class="mypage-comp-delete-btn" style="background: none; border: none; font-size: 14px; color: var(--danger-red, #ff3b30); cursor: pointer; padding: 4px; font-weight: bold; margin-left: 8px;">&times;</button>
+                `;
+                
+                item.onmouseover = () => item.style.borderColor = 'var(--primary-blue)';
+                item.onmouseout = () => item.style.borderColor = 'var(--border-color)';
+                
+                // 학교 클릭 시 지도 이동 및 상세 카드 열기
+                const clickBtn = item.querySelector('.mypage-comp-school-btn');
+                if (clickBtn) {
+                    clickBtn.onclick = () => {
+                        if (window.innerWidth <= 1024 && typeof window.onMobileNavClick === 'function') {
+                            const mapTabBtn = document.querySelector('.mobile-bottom-nav .nav-item');
+                            window.onMobileNavClick('map', mapTabBtn);
+                        } else {
+                            const setModal = document.getElementById('settingsModal');
+                            if (setModal) setModal.style.display = 'none';
+                        }
+                        window.selectSchoolById(targetSchoolId);
+                    };
+                }
+                
+                // 삭제 버튼 클릭 시 비교 보드에서 제거
+                const delBtn = item.querySelector('.mypage-comp-delete-btn');
+                if (delBtn) {
+                    delBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        
+                        // 메모리 상태 필터링
+                        if (orchestrator && orchestrator.state) {
+                            orchestrator.state.comparisonList = orchestrator.state.comparisonList.filter(s => String(s.school_id || s.id) !== String(targetSchoolId));
+                        }
+                        // 스토리지 상태 필터링
+                        try {
+                            const currentList = JSON.parse(localStorage.getItem('learnmap_comparison_list') || '[]');
+                            const updatedList = currentList.filter(s => String(s.school_id || s.id) !== String(targetSchoolId));
+                            localStorage.setItem('learnmap_comparison_list', JSON.stringify(updatedList));
+                            if (orchestrator && orchestrator.state) {
+                                orchestrator.state.comparisonList = updatedList;
+                            }
+                        } catch (err) {
+                            console.error('Failed to sync comparisonList deletion to localStorage', err);
+                        }
+                        
+                        updateCompareFloatingButton();
+                        
+                        const comparisonTable = orchestrator.compareAgent.generateComparisonMatrix(orchestrator.state.comparisonList, orchestrator.state.childProfile.scores);
+                        renderComparisonBoard(comparisonTable);
+                        
+                        updateMypageComparisonUI();
+                    };
+                }
+                
+                mypageCompList.appendChild(item);
+            });
+        } catch (error) {
+            console.error("Error in updateMypageComparisonUI:", error);
+        }
+    }
+
+    window.clearMypageComparison = async () => {
+        const list = (orchestrator && orchestrator.state && orchestrator.state.comparisonList) ? orchestrator.state.comparisonList : [];
+        if (list.length === 0) return;
+        if (await confirm('비교 보드에 담긴 모든 학교를 삭제하시겠습니까?')) {
+            orchestrator.state.comparisonList = [];
+            try {
+                localStorage.setItem('learnmap_comparison_list', JSON.stringify([]));
+            } catch (err) {
+                console.error('Failed to sync comparisonList to localStorage', err);
+            }
+            updateCompareFloatingButton();
+            if (compareOverlay) {
+                compareOverlay.style.display = 'none';
+            }
+            updateMypageComparisonUI();
+        }
+    };
+
     // 관심 메모 저장 이벤트 연결
     const btnSaveFavMemo = document.getElementById('btnSaveFavMemo');
     if (btnSaveFavMemo) {
@@ -7358,6 +7548,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     updateFavUI();
+    updateMypageComparisonUI();
 });
 
 // --- 모바일 하단 내비게이션 클릭 이벤트 처리 ---
@@ -7456,6 +7647,13 @@ window.onMobileNavClick = function(menu, btnEl) {
             setModal.style.display = 'block';
             if (typeof window.switchMypageTab === 'function') {
                 window.switchMypageTab('child');
+            }
+            // 모바일 탭 이동 시 최신 즐겨찾기 및 비교 목록 렌더링 강제 업데이트
+            if (typeof updateFavUI === 'function') {
+                updateFavUI();
+            }
+            if (typeof updateMypageComparisonUI === 'function') {
+                updateMypageComparisonUI();
             }
         }
     } else if (menu === 'story') {

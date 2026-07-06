@@ -74,12 +74,15 @@ export class CompareAgent {
         }
 
         const matrix = schools.map(school => {
+            if (!school) return null;
             // 자녀 성적 대비 매칭도 계산 (적합도 상/중/하)
             let suitability = '중';
             let diffVal = 0;
             let suitabilityDesc = '자녀 성적 정보가 올바르게 입력되지 않았습니다.';
             
-            if (scores && scores.math !== null && scores.english !== null && scores.korean !== null) {
+            const hasSubjects = school.subjects && school.subjects.korean && school.subjects.english && school.subjects.math;
+            
+            if (hasSubjects && scores && scores.math !== null && scores.english !== null && scores.korean !== null) {
                 const totalAvg = (school.subjects.korean.avg + school.subjects.english.avg + school.subjects.math.avg) / 3;
                 const childAvg = (scores.korean + scores.english + scores.math) / 3;
                 
@@ -90,22 +93,27 @@ export class CompareAgent {
                 
                 if (diffVal > 5) {
                     suitability = '상';
-                    suitabilityDesc = `우리 아이 평균(${roundedChild}점)이 school 평균(${roundedSchool}점)보다 ${roundedDiff}점 높아 학업 소화가 수월한 '상' 수준입니다.`;
+                    suitabilityDesc = `우리 아이 평균(${roundedChild}점)이 학교 평균(${roundedSchool}점)보다 ${roundedDiff}점 높아 학업 소화가 수월한 '상' 수준입니다.`;
                 } else if (diffVal < -5) {
                     suitability = '하';
-                    suitabilityDesc = `우리 아이 평균(${roundedChild}점)이 school 평균(${roundedSchool}점)보다 ${roundedDiff}점 낮아 보강 학습이 권장되는 '하' 수준입니다.`;
+                    suitabilityDesc = `우리 아이 평균(${roundedChild}점)이 학교 평균(${roundedSchool}점)보다 ${roundedDiff}점 낮아 보강 학습이 권장되는 '하' 수준입니다.`;
                 } else {
                     suitability = '중';
                     const diffText = diffVal >= 0 ? `${roundedDiff}점 높음` : `${roundedDiff}점 낮음`;
-                    suitabilityDesc = `우리 아이 평균(${roundedChild}점)이 school 평균(${roundedSchool}점)과 편차 ${diffText} 수준으로 적절히 부합하는 '중' 수준입니다.`;
+                    suitabilityDesc = `우리 아이 평균(${roundedChild}점)이 학교 평균(${roundedSchool}점)과 편차 ${diffText} 수준으로 적절히 부합하는 '중' 수준입니다.`;
                 }
+            } else if (!hasSubjects) {
+                suitabilityDesc = '학교의 성적 통계 정보가 공시되어 있지 않아 적합도 분석이 불가능합니다.';
             }
 
             // 강점 과목 판단
-            const subjects = ['korean', 'english', 'math'];
-            const strongSubject = subjects.reduce((prev, curr) => {
-                return (school.subjects[prev].avg > school.subjects[curr].avg) ? prev : curr;
-            });
+            let strongSubject = 'math';
+            if (hasSubjects) {
+                const subjects = ['korean', 'english', 'math'];
+                strongSubject = subjects.reduce((prev, curr) => {
+                    return (school.subjects[prev].avg > school.subjects[curr].avg) ? prev : curr;
+                });
+            }
 
             const subjectLabels = {
                 korean: '국어',
@@ -126,29 +134,29 @@ export class CompareAgent {
             return {
                 school_id: school.school_id,
                 school_name: school.school_name,
-                student_count: `${school.student_count}명`,
-                class_avg_size: `${school.class_avg_size}명`,
-                korean_avg: school.subjects.korean.avg,
-                english_avg: school.subjects.english.avg,
-                math_avg: school.subjects.math.avg,
-                strong_subject: subjectLabels[strongSubject],
-                updated_at: school.updated_at,
+                student_count: `${school.student_count || 0}명`,
+                class_avg_size: `${school.class_avg_size || 0}명`,
+                korean_avg: hasSubjects ? school.subjects.korean.avg : '-',
+                english_avg: hasSubjects ? school.subjects.english.avg : '-',
+                math_avg: hasSubjects ? school.subjects.math.avg : '-',
+                strong_subject: hasSubjects ? subjectLabels[strongSubject] : '없음',
+                updated_at: school.updated_at || '-',
                 extracurricular_budget: school.extracurricular_budget || 120,
-                suitability: suitability, // 상 / 중 / 하 적합도
-                suitabilityDesc: suitabilityDesc, // 상세 설명
-                suitabilityDiff: diffVal, // 격차 점수
-                weightedAvg: school.weightedAvg,
-                envScore: school.envScore,
-                envScoresDetails: school.envScoresDetails,
-                violence_stats: school.violence_stats,
-                trendData: school.trendData,
+                suitability: suitability,
+                suitabilityDesc: suitabilityDesc,
+                suitabilityDiff: diffVal,
+                weightedAvg: school.weightedAvg || 0,
+                envScore: school.envScore || 0,
+                envScoresDetails: school.envScoresDetails || null,
+                violence_stats: school.violence_stats || null,
+                trendData: school.trendData || null,
                 housing_sale: saleText,
                 housing_jeonse: jeonseText,
                 academy_count_est: housingAca.academies,
                 fee_eng: `${housingAca.feeEng.toLocaleString()}원`,
                 fee_math: `${housingAca.feeMath.toLocaleString()}원`
             };
-        });
+        }).filter(item => item !== null);
 
         return matrix;
     }

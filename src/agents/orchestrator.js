@@ -16,6 +16,13 @@ export class Orchestrator {
         this.compareAgent = new CompareAgent();
         
         // 애플리케이션 상태 (Application State)
+        let savedCompList = [];
+        try {
+            savedCompList = JSON.parse(localStorage.getItem('learnmap_comparison_list') || '[]');
+        } catch (e) {
+            console.error('Failed to parse comparisonList from localStorage', e);
+        }
+
         this.state = {
             selectedSchool: null,
             childProfile: {
@@ -23,7 +30,7 @@ export class Orchestrator {
                 grade: 2,
                 scores: { korean: null, english: null, math: null }
             },
-            comparisonList: [], // 최대 3개 학교
+            comparisonList: savedCompList, // 최대 5개 학교
             filters: {
                 schoolType: 'middle', // 'middle' | 'high'
                 location: { lat: 37.5665, lng: 126.9780 } // default (Seoul)
@@ -65,16 +72,32 @@ export class Orchestrator {
      * 비교 보드에 학교 추가
      */
     addToComparison(school) {
+        if (!school) return { success: false, message: "유효하지 않은 학교 정보입니다." };
+
+        // 데이터 규격 표준화 (school_id / id 및 school_name / name 혼용 대비)
+        const normalizedSchool = {
+            ...school,
+            school_id: school.school_id || school.id,
+            school_name: school.school_name || school.name,
+            school_type: school.school_type || school.type,
+            sigun_name: school.sigun_name || school.sigun || '서울시'
+        };
+
         if (this.state.comparisonList.length >= 5) {
             return { success: false, message: "비교는 최대 5개 학교까지 가능합니다." };
         }
         
-        const exists = this.state.comparisonList.some(s => s.school_id === school.school_id);
+        const exists = this.state.comparisonList.some(s => String(s.school_id || s.id) === String(normalizedSchool.school_id));
         if (exists) {
             return { success: false, message: "이미 비교 보드에 추가된 학교입니다." };
         }
 
-        this.state.comparisonList.push(school);
+        this.state.comparisonList.push(normalizedSchool);
+        try {
+            localStorage.setItem('learnmap_comparison_list', JSON.stringify(this.state.comparisonList));
+        } catch (e) {
+            console.error('Failed to save comparisonList to localStorage', e);
+        }
         const comparisonTable = this.compareAgent.generateComparisonMatrix(this.state.comparisonList, this.state.childProfile.scores);
         return { success: true, data: comparisonTable };
     }
@@ -84,6 +107,11 @@ export class Orchestrator {
      */
     removeFromComparison(schoolId) {
         this.state.comparisonList = this.state.comparisonList.filter(s => s.school_id !== schoolId);
+        try {
+            localStorage.setItem('learnmap_comparison_list', JSON.stringify(this.state.comparisonList));
+        } catch (e) {
+            console.error('Failed to save comparisonList to localStorage', e);
+        }
         return this.compareAgent.generateComparisonMatrix(this.state.comparisonList, this.state.childProfile.scores);
     }
 }
