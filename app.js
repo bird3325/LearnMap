@@ -211,17 +211,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-    // 플로팅 창 알파값 조정 이벤트 연동
+    // 플로팅 창 알파값 조정 이벤트 연동 (PC / 모바일 동기화)
     const opacityRange = document.getElementById('overlayOpacityRange');
+    const opacityRangePc = document.getElementById('overlayOpacityRange-pc');
     const opacityValText = document.getElementById('valOverlayOpacity');
+    const opacityValTextPc = document.getElementById('valOverlayOpacity-pc');
     if (opacityRange && opacityValText) {
-        const updateOpacity = () => {
-            const val = (opacityRange.value / 100).toFixed(2);
-            opacityValText.innerText = val;
+        const updateOpacity = (value) => {
+            const val = (value / 100).toFixed(2);
+            if (opacityRange) opacityRange.value = value;
+            if (opacityRangePc) opacityRangePc.value = value;
+            if (opacityValText) opacityValText.innerText = val;
+            if (opacityValTextPc) opacityValTextPc.innerText = val;
             document.documentElement.style.setProperty('--overlay-bg-alpha', val);
         };
-        opacityRange.addEventListener('input', updateOpacity);
-        updateOpacity(); // 초기값 적용
+        opacityRange.addEventListener('input', (e) => updateOpacity(e.target.value));
+        if (opacityRangePc) {
+            opacityRangePc.addEventListener('input', (e) => updateOpacity(e.target.value));
+        }
+        updateOpacity(opacityRange.value); // 초기값 적용
     }
 
     // 다중 자녀 상태 (1명 이상 지원)
@@ -355,11 +363,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const settingsChildSelect = document.getElementById('settingsChildSelect');
+    const settingsChildSelectPc = document.getElementById('settingsChildSelect-pc');
     const settingsChildName = document.getElementById('settingsChildName');
+    const settingsChildNamePc = document.getElementById('settingsChildName-pc');
     const settingsChildGrade = document.getElementById('settingsChildGrade');
+    const settingsChildGradePc = document.getElementById('settingsChildGrade-pc');
     const settingsChildKor = document.getElementById('settingsChildKor');
+    const settingsChildKorPc = document.getElementById('settingsChildKor-pc');
     const settingsChildEng = document.getElementById('settingsChildEng');
+    const settingsChildEngPc = document.getElementById('settingsChildEng-pc');
     const settingsChildMath = document.getElementById('settingsChildMath');
+    const settingsChildMathPc = document.getElementById('settingsChildMath-pc');
 
     // 분석 결과창 내 자녀 변경 시 실시간 분석 실행 바인딩
     const analysisChildSelect = document.getElementById('analysisChildSelect');
@@ -369,8 +383,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const child = childProfiles.find(c => c.id === targetId);
             if (child) {
                 selectedChildId = targetId;
-                // 통합 설정 양방향 동기화
+                // 통합 설정 양방향 동기화 (PC 및 모바일 둘다 동기화)
                 if (settingsChildSelect) settingsChildSelect.value = targetId;
+                if (settingsChildSelectPc) settingsChildSelectPc.value = targetId;
                 updateFormWithSelectedChild();
                 
                 // 새로운 자녀의 성적으로 즉각 재분석 실행
@@ -391,28 +406,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function refreshChildSelectUI() {
-        if (!settingsChildSelect) return;
-        settingsChildSelect.innerHTML = '';
+        if (settingsChildSelect) settingsChildSelect.innerHTML = '';
+        if (settingsChildSelectPc) settingsChildSelectPc.innerHTML = '';
         
         // 분석창 자녀 셀렉트도 동시에 갱신
         if (analysisChildSelect) analysisChildSelect.innerHTML = '';
 
         childProfiles.forEach(child => {
             const isDefault = child.id === defaultChildId;
-            // 모달용 옵션
-            const opt1 = document.createElement('option');
-            opt1.value = child.id;
-            opt1.innerText = `${child.name} (${child.grade.toUpperCase()})` + (isDefault ? ' 👑' : '');
-            if (child.id === selectedChildId) {
-                opt1.selected = true;
+            
+            // 모바일용 옵션
+            if (settingsChildSelect) {
+                const opt1 = document.createElement('option');
+                opt1.value = child.id;
+                opt1.innerText = `${child.name} (${child.grade.toUpperCase()})` + (isDefault ? ' 👑' : '');
+                if (child.id === selectedChildId) {
+                    opt1.selected = true;
+                }
+                settingsChildSelect.appendChild(opt1);
             }
-            settingsChildSelect.appendChild(opt1);
+
+            // PC용 옵션
+            if (settingsChildSelectPc) {
+                const optPc = document.createElement('option');
+                optPc.value = child.id;
+                optPc.innerText = `${child.name} (${child.grade.toUpperCase()})` + (isDefault ? ' 👑' : '');
+                if (child.id === selectedChildId) {
+                    optPc.selected = true;
+                }
+                settingsChildSelectPc.appendChild(optPc);
+            }
 
             // 분석 결과창용 옵션
             if (analysisChildSelect) {
                 const opt2 = document.createElement('option');
                 opt2.value = child.id;
-                opt2.innerText = child.name;
+                opt2.innerText = child.name + (isDefault ? ' (기본)' : '');
                 if (child.id === selectedChildId) {
                     opt2.selected = true;
                 }
@@ -448,11 +477,19 @@ document.addEventListener('DOMContentLoaded', () => {
             profileScoresEl.innerText = `성적: 국 ${child.korean} / 영 ${child.english} / 수 ${child.math}`;
         }
 
+        // 모바일 입력 폼 바인딩
         if (settingsChildName) settingsChildName.value = child.name;
         if (settingsChildGrade) settingsChildGrade.value = child.grade;
         if (settingsChildKor) settingsChildKor.value = child.korean;
         if (settingsChildEng) settingsChildEng.value = child.english;
         if (settingsChildMath) settingsChildMath.value = child.math;
+
+        // PC 입력 폼 바인딩
+        if (settingsChildNamePc) settingsChildNamePc.value = child.name;
+        if (settingsChildGradePc) settingsChildGradePc.value = child.grade;
+        if (settingsChildKorPc) settingsChildKorPc.value = child.korean;
+        if (settingsChildEngPc) settingsChildEngPc.value = child.english;
+        if (settingsChildMathPc) settingsChildMathPc.value = child.math;
         
         // 자녀설정의 학년에 따라 학교급 필터 기본값 자동 선택
         const schoolTypeFilter = document.getElementById('schoolTypeFilter');
@@ -469,7 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
             schoolTypeFilter.dispatchEvent(event);
         }
 
-        // 자녀별 점수 텍스트(Label)도 동적 갱신
+        // 모바일 점수 텍스트(Label) 동적 갱신
         const lblKor = document.getElementById('valSettingsChildKor');
         const lblEng = document.getElementById('valSettingsChildEng');
         const lblMath = document.getElementById('valSettingsChildMath');
@@ -477,22 +514,40 @@ document.addEventListener('DOMContentLoaded', () => {
         if (lblEng) lblEng.innerText = `${child.english}점`;
         if (lblMath) lblMath.innerText = `${child.math}점`;
 
+        // PC 점수 텍스트(Label) 동적 갱신
+        const lblKorPc = document.getElementById('valSettingsChildKor-pc');
+        const lblEngPc = document.getElementById('valSettingsChildEng-pc');
+        const lblMathPc = document.getElementById('valSettingsChildMath-pc');
+        if (lblKorPc) lblKorPc.innerText = `${child.korean}점`;
+        if (lblEngPc) lblEngPc.innerText = `${child.english}점`;
+        if (lblMathPc) lblMathPc.innerText = `${child.math}점`;
+
         // 현재 선택된 자녀 정보로 Orchestrator 상태 동기화 및 사이드바 인풋 동기화
         syncActiveChildWithOrchestrator(child);
     }
 
-    // 슬라이더 조작 시 텍스트 즉각 갱신 이벤트 등록
-    const setupSliderIndicatorSync = (sliderEl, labelId) => {
-        if (sliderEl) {
-            sliderEl.addEventListener('input', (e) => {
-                const label = document.getElementById(labelId);
-                if (label) label.innerText = `${e.target.value}점`;
-            });
-        }
+    // 슬라이더 및 입력 필드 PC-모바일 실시간 양방향 동기화 및 라벨 즉각 갱신
+    const syncInputs = (el1, el2, isSlider, label1, label2) => {
+        if (!el1 || !el2) return;
+        
+        const updateVal = (val) => {
+            el1.value = val;
+            el2.value = val;
+            if (isSlider) {
+                if (label1) label1.innerText = `${val}점`;
+                if (label2) label2.innerText = `${val}점`;
+            }
+        };
+
+        el1.addEventListener('input', (e) => updateVal(e.target.value));
+        el2.addEventListener('input', (e) => updateVal(e.target.value));
     };
-    setupSliderIndicatorSync(settingsChildKor, 'valSettingsChildKor');
-    setupSliderIndicatorSync(settingsChildEng, 'valSettingsChildEng');
-    setupSliderIndicatorSync(settingsChildMath, 'valSettingsChildMath');
+
+    syncInputs(settingsChildName, settingsChildNamePc, false);
+    syncInputs(settingsChildGrade, settingsChildGradePc, false);
+    syncInputs(settingsChildKor, settingsChildKorPc, true, document.getElementById('valSettingsChildKor'), document.getElementById('valSettingsChildKor-pc'));
+    syncInputs(settingsChildEng, settingsChildEngPc, true, document.getElementById('valSettingsChildEng'), document.getElementById('valSettingsChildEng-pc'));
+    syncInputs(settingsChildMath, settingsChildMathPc, true, document.getElementById('valSettingsChildMath'), document.getElementById('valSettingsChildMath-pc'));
 
     function syncActiveChildWithOrchestrator(child) {
         if (!child) return;
@@ -519,65 +574,86 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // PC 및 모바일 셀렉트 변경 시 양방향 싱크
     if (settingsChildSelect) {
         settingsChildSelect.addEventListener('change', () => {
             selectedChildId = settingsChildSelect.value;
+            if (settingsChildSelectPc) settingsChildSelectPc.value = selectedChildId;
+            updateFormWithSelectedChild();
+        });
+    }
+    if (settingsChildSelectPc) {
+        settingsChildSelectPc.addEventListener('change', () => {
+            selectedChildId = settingsChildSelectPc.value;
+            if (settingsChildSelect) settingsChildSelect.value = selectedChildId;
             updateFormWithSelectedChild();
         });
     }
 
     // 자녀 추가 버튼 이벤트
     const btnAddNewChild = document.getElementById('btnAddNewChild');
-    if (btnAddNewChild) {
-        btnAddNewChild.addEventListener('click', () => {
-            const newId = `child_${Date.now()}`;
-            const newChild = {
-                id: newId,
-                name: `자녀 ${childProfiles.length + 1}`,
-                grade: 'm2',
-                korean: 80,
-                english: 80,
-                math: 80
-            };
-            childProfiles.push(newChild);
-            selectedChildId = newId;
-            refreshChildSelectUI();
-        });
-    }
+    const btnAddNewChildPc = document.getElementById('btnAddNewChild-pc');
+    const onAddNewChild = () => {
+        const newId = `child_${Date.now()}`;
+        const newChild = {
+            id: newId,
+            name: `자녀 ${childProfiles.length + 1}`,
+            grade: 'm2',
+            korean: 80,
+            english: 80,
+            math: 80
+        };
+        childProfiles.push(newChild);
+        selectedChildId = newId;
+        refreshChildSelectUI();
+    };
+    if (btnAddNewChild) btnAddNewChild.addEventListener('click', onAddNewChild);
+    if (btnAddNewChildPc) btnAddNewChildPc.addEventListener('click', onAddNewChild);
 
     // 자녀 삭제 버튼 이벤트
     const btnDeleteSelectedChild = document.getElementById('btnDeleteSelectedChild');
-    if (btnDeleteSelectedChild) {
-        btnDeleteSelectedChild.addEventListener('click', async () => {
-            if (childProfiles.length <= 1) {
-                alert('최소 1명의 자녀 정보는 필요합니다.');
-                return;
+    const btnDeleteSelectedChildPc = document.getElementById('btnDeleteSelectedChild-pc');
+    const onDeleteChild = async () => {
+        if (childProfiles.length <= 1) {
+            alert('최소 1명의 자녀 정보는 필요합니다.');
+            return;
+        }
+        if (await confirm('선택된 자녀 정보를 삭제하시겠습니까?')) {
+            const targetId = selectedChildId;
+            childProfiles = childProfiles.filter(c => c.id !== targetId);
+            selectedChildId = childProfiles[0].id;
+            if (defaultChildId === targetId) {
+                defaultChildId = selectedChildId;
+                localStorage.setItem('learnmap_default_child_id', defaultChildId);
             }
-            if (await confirm('선택된 자녀 정보를 삭제하시겠습니까?')) {
-                const targetId = selectedChildId;
-                childProfiles = childProfiles.filter(c => c.id !== targetId);
-                selectedChildId = childProfiles[0].id;
-                if (defaultChildId === targetId) {
-                    defaultChildId = selectedChildId;
-                    localStorage.setItem('learnmap_default_child_id', defaultChildId);
-                }
-                
-                await deleteChildProfileFromSupabase(targetId);
-                saveChildProfilesToLocalStorage();
-                refreshChildSelectUI();
-            }
-        });
-    }
+            
+            await deleteChildProfileFromSupabase(targetId);
+            saveChildProfilesToLocalStorage();
+            refreshChildSelectUI();
+        }
+    };
+    if (btnDeleteSelectedChild) btnDeleteSelectedChild.addEventListener('click', onDeleteChild);
+    if (btnDeleteSelectedChildPc) btnDeleteSelectedChildPc.addEventListener('click', onDeleteChild);
 
     // 기본 자녀 설정 버튼 이벤트
     const btnSetDefaultChild = document.getElementById('btnSetDefaultChild');
-    if (btnSetDefaultChild) {
-        btnSetDefaultChild.addEventListener('click', () => {
-            if (!selectedChildId) return;
-            defaultChildId = selectedChildId;
-            localStorage.setItem('learnmap_default_child_id', defaultChildId);
-            refreshChildSelectUI();
-            alert('선택한 자녀가 기본 분석 자녀로 설정되었습니다.');
+    const btnSetDefaultChildPc = document.getElementById('btnSetDefaultChild-pc');
+    const onSetDefaultChild = () => {
+        if (!selectedChildId) return;
+        defaultChildId = selectedChildId;
+        localStorage.setItem('learnmap_default_child_id', defaultChildId);
+        refreshChildSelectUI();
+        alert('선택한 자녀가 기본 분석 자녀로 설정되었습니다.');
+    };
+    if (btnSetDefaultChild) btnSetDefaultChild.addEventListener('click', onSetDefaultChild);
+    if (btnSetDefaultChildPc) btnSetDefaultChildPc.addEventListener('click', onSetDefaultChild);
+
+    // PC 닫기 버튼 이벤트
+    const btnCloseSettingsPc = document.getElementById('btnCloseSettings-pc');
+    if (btnCloseSettingsPc) {
+        btnCloseSettingsPc.addEventListener('click', () => {
+            const settingsModal = document.getElementById('settingsModal');
+            if (settingsModal) settingsModal.style.display = 'none';
         });
     }
 
@@ -589,55 +665,53 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 자녀 성적 저장 및 동기화 버튼 클릭 이벤트
+    // 자녀 성적 저장 및 동기화 버튼 클릭 이벤트 (PC/모바일 공용)
     const btnSaveSettingsScores = document.getElementById('btnSaveSettingsScores');
-    if (btnSaveSettingsScores) {
-        btnSaveSettingsScores.addEventListener('click', async () => {
-            const child = childProfiles.find(c => c.id === selectedChildId);
-            if (!child) return;
+    const btnSaveSettingsScoresPc = document.getElementById('btnSaveSettingsScores-pc');
+    const onSaveSettingsScores = async () => {
+        const child = childProfiles.find(c => c.id === selectedChildId);
+        if (!child) return;
 
-            const elModalName = document.getElementById('settingsChildName');
-            const elModalGrade = document.getElementById('settingsChildGrade');
-            const elModalKor = document.getElementById('settingsChildKor');
-            const elModalEng = document.getElementById('settingsChildEng');
-            const elModalMath = document.getElementById('settingsChildMath');
+        const elModalName = document.getElementById('settingsChildName');
+        const elModalGrade = document.getElementById('settingsChildGrade');
+        const elModalKor = document.getElementById('settingsChildKor');
+        const elModalEng = document.getElementById('settingsChildEng');
+        const elModalMath = document.getElementById('settingsChildMath');
 
-            child.name = elModalName ? elModalName.value.trim() || '자녀' : '자녀';
-            child.grade = elModalGrade ? elModalGrade.value : 'm2';
-            child.korean = elModalKor ? parseInt(elModalKor.value) || 0 : 0;
-            child.english = elModalEng ? parseInt(elModalEng.value) || 0 : 0;
-            child.math = elModalMath ? parseInt(elModalMath.value) || 0 : 0;
+        child.name = elModalName ? elModalName.value.trim() || '자녀' : '자녀';
+        child.grade = elModalGrade ? elModalGrade.value : 'm2';
+        child.korean = elModalKor ? parseInt(elModalKor.value) || 0 : 0;
+        child.english = elModalEng ? parseInt(elModalEng.value) || 0 : 0;
+        child.math = elModalMath ? parseInt(elModalMath.value) || 0 : 0;
 
-            // 로컬 스토리지 저장 및 동기화
-            saveChildProfilesToLocalStorage();
-            syncActiveChildWithOrchestrator(child);
+        // 로컬 스토리지 저장 및 동기화
+        saveChildProfilesToLocalStorage();
+        syncActiveChildWithOrchestrator(child);
 
-            // Supabase 비동기 업서트 처리
-            await saveChildProfileToSupabase(child);
+        // Supabase 비동기 업서트 처리
+        await saveChildProfileToSupabase(child);
 
-            // 학업 진단 다시 실행 (선택된 학교가 있을 때)
-            if (orchestrator.state.selectedSchool && typeof orchestrator.childPerformanceDiagnosis === 'function') {
-                const result = orchestrator.childPerformanceDiagnosis(orchestrator.state.childProfile.scores);
-                if (typeof renderDiagnosisResults === 'function') {
-                    renderDiagnosisResults(result);
-                }
+        // 학업 진단 다시 실행 (선택된 학교가 있을 때)
+        if (orchestrator.state.selectedSchool && typeof orchestrator.childPerformanceDiagnosis === 'function') {
+            const result = orchestrator.childPerformanceDiagnosis(orchestrator.state.childProfile.scores);
+            if (typeof renderDiagnosisResults === 'function') {
+                renderDiagnosisResults(result);
             }
+        }
 
-            // 비교 보드 적합도 및 산출근거 실시간 갱신
-            if (orchestrator.state.comparisonList.length > 0) {
-                const comparisonTable = orchestrator.compareAgent.generateComparisonMatrix(orchestrator.state.comparisonList, orchestrator.state.childProfile.scores);
-                renderComparisonBoard(comparisonTable);
-            }
+        // 비교 보드 적합도 및 산출근거 실시간 갱신
+        if (orchestrator.state.comparisonList.length > 0) {
+            const comparisonTable = orchestrator.compareAgent.generateComparisonMatrix(orchestrator.state.comparisonList, orchestrator.state.childProfile.scores);
+            renderComparisonBoard(comparisonTable);
+        }
 
-            // 자녀 선택 목록 옵션 텍스트 최신화
-            refreshChildSelectUI();
+        // 자녀 선택 목록 옵션 텍스트 최신화
+        refreshChildSelectUI();
 
-            alert('자녀 성적 정보가 성공적으로 저장되었습니다.');
-            // 자녀 성적 저장 및 동기화 시 설정 모달을 닫지 않고 상태를 유지하도록 수정함
-            // const settingsModal = document.getElementById('settingsModal');
-            // if (settingsModal) settingsModal.style.display = 'none';
-        });
-    }
+        alert('자녀 성적 정보가 성공적으로 저장되었습니다.');
+    };
+    if (btnSaveSettingsScores) btnSaveSettingsScores.addEventListener('click', onSaveSettingsScores);
+    if (btnSaveSettingsScoresPc) btnSaveSettingsScoresPc.addEventListener('click', onSaveSettingsScores);
 
     // 초기 로딩 시 자녀 정보 연동
     loadChildProfilesFromLocalStorage();

@@ -523,7 +523,7 @@ body {
     box-sizing: border-box;
     padding: 20px;
     box-shadow: -10px 0 30px rgba(0,0,0,0.05);
-    z-index: 10070;
+    z-index: 10090;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -1554,6 +1554,33 @@ body {
         font-size: 10px !important;
         border: none !important;
         margin: 2px !important;
+    }
+    /* 모바일에서는 PC 버전 설정을 숨기고 모바일 버전만 표시 */
+    .pc-settings-content {
+        display: none !important;
+    }
+    .mobile-settings-content {
+        display: block !important;
+    }
+}
+
+/* 기본값 (PC/웹): PC 버전 설정만 표시하고 모바일 버전은 숨김 */
+.pc-settings-content {
+    display: block !important;
+}
+.mobile-settings-content {
+    display: none !important;
+}
+
+@media (min-width: 1025px) {
+    /* PC(웹) 뷰에서 마이페이지 레이아웃 복원 및 스크롤 붕괴 방지 */
+    .settings-inner-wrapper {
+        height: auto !important;
+        overflow: visible !important;
+    }
+    .settings-scroll-content {
+        height: auto !important;
+        overflow: visible !important;
     }
 }
 
