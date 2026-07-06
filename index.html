@@ -664,7 +664,7 @@
         </div> <!-- compare-overlay closing tag -->
 
             <!-- 안심통학로 범례 플로팅 가이드 바 -->
-            <div id="commuteLegendFloatingBar" style="display: none; position: absolute; bottom: 20px; left: 250px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border: 1px solid var(--border-color); border-radius: 30px; padding: 8px 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 9999; align-items: center; gap: 14px; font-size: 11px; font-weight: bold; color: var(--text-main); font-family: var(--font-primary); transition: all 0.3s ease;">
+            <div id="commuteLegendFloatingBar" style="display: none; position: absolute; bottom: 20px; left: 250px; background: rgba(255, 255, 255, var(--overlay-bg-alpha, 0.95)); backdrop-filter: blur(8px); border: 1px solid var(--border-color); border-radius: 30px; padding: 8px 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 9999; align-items: center; gap: 14px; font-size: 11px; font-weight: bold; color: var(--text-main); font-family: var(--font-primary); transition: all 0.3s ease;">
                 <span style="font-weight: 800; color: var(--deep-blue); display: flex; align-items: center; gap: 4px; border-right: 1px solid var(--border-color); padding-right: 10px; margin-right: -4px;">🛡️ 안심 가이드</span>
                 <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="color: #ff3d00; font-size: 13px;">🚩</span> 출발</span>
                 <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="color: #2979ff; font-size: 13px;">🚩</span> 도착</span>
@@ -675,7 +675,7 @@
             </div>
 
             <!-- 우범 지역(범죄주의구간) 범례 플로팅 가이드 바 -->
-            <div id="crimeZoneLegendFloatingBar" style="display: none; position: absolute; bottom: 20px; left: 250px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border: 1px solid var(--border-color); border-radius: 30px; padding: 8px 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 9999; align-items: center; gap: 14px; font-size: 11px; font-weight: bold; color: var(--text-main); font-family: var(--font-primary); transition: all 0.3s ease;">
+            <div id="crimeZoneLegendFloatingBar" style="display: none; position: absolute; bottom: 20px; left: 250px; background: rgba(255, 255, 255, var(--overlay-bg-alpha, 0.95)); backdrop-filter: blur(8px); border: 1px solid var(--border-color); border-radius: 30px; padding: 8px 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 9999; align-items: center; gap: 14px; font-size: 11px; font-weight: bold; color: var(--text-main); font-family: var(--font-primary); transition: all 0.3s ease;">
                 <span class="crime-legend-title" style="font-weight: 800; color: var(--deep-blue); display: flex; align-items: center; gap: 4px; border-right: 1px solid var(--border-color); padding-right: 10px; margin-right: -4px;">⚠️ 범죄주의구간 등급 가이드</span>
                 <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #d50000; border-radius: 2px;"></span> 1등급</span>
                 <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #ff3d00; border-radius: 2px;"></span> 2~3등급</span>

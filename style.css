@@ -1514,7 +1514,7 @@ body {
     transform: none !important;
     width: auto !important;
     max-width: 350px !important;
-    background: rgba(255, 255, 255, 0.9) !important;
+    background: rgba(255, 255, 255, var(--overlay-bg-alpha, 0.9)) !important;
     backdrop-filter: blur(10px) !important;
     border: 1px solid var(--border-color) !important;
     border-radius: 14px !important;
@@ -1564,7 +1564,7 @@ body {
         right: auto !important;
         top: 122px !important; /* 모바일 검색바(지역/학교급 필터 포함 약 118px) 바로 밑 4px 여백 위치에 노출 */
         transform: translateX(-50%) !important;
-        background: rgba(37, 99, 235, 0.95) !important;
+        background: rgba(37, 99, 235, var(--overlay-bg-alpha, 0.95)) !important;
         border: none !important;
         border-radius: 30px !important;
         flex-direction: row !important; /* 가로형 정렬 복원 */
@@ -1575,7 +1575,7 @@ body {
         padding: 1px 2px !important; /* 부모 자체 여백을 극단적으로 축소 */
     }
     #mobileFilterToast span {
-        background: rgba(37, 99, 235, 0.95) !important;
+        background: rgba(37, 99, 235, var(--overlay-bg-alpha, 0.95)) !important;
         color: white !important;
         border-radius: 15px !important;
         font-size: 9.5px !important; /* 폰트 크기 미세 축소 */

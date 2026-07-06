@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-    // 플로팅 창 알파값 조정 이벤트 연동 (PC / 모바일 동기화)
+    // 플로팅 창 알파값 조정 이벤트 연동 (PC / 모바일 동기화 및 로컬스토리지 저장)
     const opacityRange = document.getElementById('overlayOpacityRange');
     const opacityRangePc = document.getElementById('overlayOpacityRange-pc');
     const opacityValText = document.getElementById('valOverlayOpacity');
@@ -243,12 +243,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (opacityValText) opacityValText.innerText = val;
             if (opacityValTextPc) opacityValTextPc.innerText = val;
             document.documentElement.style.setProperty('--overlay-bg-alpha', val);
+            
+            // 로컬스토리지에 투명도 저장
+            localStorage.setItem('learnmap_overlay_opacity', value);
         };
         opacityRange.addEventListener('input', (e) => updateOpacity(e.target.value));
         if (opacityRangePc) {
             opacityRangePc.addEventListener('input', (e) => updateOpacity(e.target.value));
         }
-        updateOpacity(opacityRange.value); // 초기값 적용
+        
+        // 새로고침 시 로컬스토리지 복구 또는 기본 범위값 적용
+        const savedOpacity = localStorage.getItem('learnmap_overlay_opacity');
+        if (savedOpacity !== null) {
+            updateOpacity(parseInt(savedOpacity, 10));
+        } else {
+            updateOpacity(opacityRange.value); // 초기값 적용
+        }
     }
 
     // 다중 자녀 상태 (1명 이상 지원)
