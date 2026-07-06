@@ -675,13 +675,29 @@
             </div>
 
             <!-- 우범 지역(범죄주의구간) 범례 플로팅 가이드 바 -->
-            <div id="crimeZoneLegendFloatingBar" style="display: none; position: absolute; bottom: 20px; left: 250px; background: rgba(255, 255, 255, var(--overlay-bg-alpha, 0.95)); backdrop-filter: blur(8px); border: 1px solid var(--border-color); border-radius: 30px; padding: 8px 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 9999; align-items: center; gap: 14px; font-size: 11px; font-weight: bold; color: var(--text-main); font-family: var(--font-primary); transition: all 0.3s ease;">
-                <span class="crime-legend-title" style="font-weight: 800; color: var(--deep-blue); display: flex; align-items: center; gap: 4px; border-right: 1px solid var(--border-color); padding-right: 10px; margin-right: -4px;">⚠️ 범죄주의구간 등급 가이드</span>
-                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #d50000; border-radius: 2px;"></span> 1등급</span>
-                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #ff3d00; border-radius: 2px;"></span> 2~3등급</span>
-                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #ff9100; border-radius: 2px;"></span> 4~7등급</span>
-                <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 12px; height: 12px; background: #ffea00; border-radius: 2px;"></span> 8~10등급</span>
-                <span class="crime-legend-desc" style="color: var(--text-muted); font-weight: normal; font-size: 10px;">*등급이 높을수록 우범 비율이 높은 지역입니다.</span>
+            <div id="crimeZoneLegendFloatingBar" style="display: none; position: absolute; bottom: 20px; left: 20px; background: rgba(255, 255, 255, var(--overlay-bg-alpha, 0.9)); border: 1px solid var(--border-color); padding: 12px 16px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); z-index: 9999; font-size: 11px; line-height: 1.6; display: flex; flex-direction: column; gap: 6px; pointer-events: auto; transition: all 0.3s ease; font-family: var(--font-primary);">
+                <div class="legend-header" style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--deep-blue); font-size: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; gap: 20px;">
+                    <span class="crime-legend-title">⚠️ 범죄주의구간 등급 가이드</span>
+                </div>
+                <div id="crimeLegendContent" style="display: flex; flex-direction: column; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #d50000;"></span>
+                        <span style="font-weight: 600; color: var(--text-main);">1등급</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #ff3d00;"></span>
+                        <span style="font-weight: 600; color: var(--text-main);">2~3등급</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #ff9100;"></span>
+                        <span style="font-weight: 600; color: var(--text-main);">4~7등급</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #ffea00;"></span>
+                        <span style="font-weight: 600; color: var(--text-main);">8~10등급</span>
+                    </div>
+                    <span class="crime-legend-desc" style="color: var(--text-muted); font-weight: normal; font-size: 10px; margin-top: 4px; display: block;">*등급이 높을수록 우범 비율이 높은 지역입니다.</span>
+                </div>
             </div>
 
         </section>

@@ -1080,10 +1080,23 @@ body {
     /* 모바일 페이지에 맞춤 압축화 (타이틀 및 부가 설명 생략 및 글자/갭 축소) */
     #crimeZoneLegendFloatingBar {
         gap: 4px 10px !important;
-        padding: 10px 16px !important;
+        padding: 6px 12px !important;
     }
 
-    #crimeZoneLegendFloatingBar .crime-legend-title,
+    #crimeZoneLegendFloatingBar .legend-header {
+        display: none !important; /* 모바일에서 타이틀 헤더 삭제 */
+    }
+
+    #crimeZoneLegendFloatingBar #crimeLegendContent {
+        display: flex !important;
+        flex-direction: row !important; /* 가로 수평 정렬 */
+        gap: 4px 8px !important;
+        justify-content: flex-start !important;
+        font-size: 10px !important;
+        flex-wrap: nowrap !important;
+        white-space: nowrap !important;
+    }
+
     #crimeZoneLegendFloatingBar .crime-legend-desc {
         display: none !important;
     }
@@ -1564,12 +1577,12 @@ body {
         right: auto !important;
         top: 122px !important; /* 모바일 검색바(지역/학교급 필터 포함 약 118px) 바로 밑 4px 여백 위치에 노출 */
         transform: translateX(-50%) !important;
-        background: rgba(37, 99, 235, var(--overlay-bg-alpha, 0.95)) !important;
+        background: transparent !important; /* 부모 배경을 투명화하여 겹침 방지 */
         border: none !important;
-        border-radius: 30px !important;
+        border-radius: 0 !important;
         flex-direction: row !important; /* 가로형 정렬 복원 */
         max-width: none !important;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
+        box-shadow: none !important; /* 부모 그림자 제거 */
         transition: opacity 0.3s ease !important;
         z-index: 10100 !important;
         padding: 1px 2px !important; /* 부모 자체 여백을 극단적으로 축소 */

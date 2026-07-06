@@ -6971,6 +6971,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const legendBar = document.getElementById('crimeZoneLegendFloatingBar');
         if (legendBar) legendBar.style.display = 'none';
+        
+        // 범죄주의구간 가이드가 숨겨졌으므로, 기본 학업성취도 범례(mapLegend)를 다시 노출
+        const mapLegend = document.getElementById('mapLegend');
+        if (mapLegend) mapLegend.style.display = 'flex';
     };
 
     let crimeZoneTimeout = null;
@@ -6996,6 +7000,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // 범례 플로팅 가이드 바 노출
             const legendBar = document.getElementById('crimeZoneLegendFloatingBar');
             if (legendBar) legendBar.style.display = 'flex';
+            
+            // 범죄주의구간 가이드가 보이므로, 기본 학업성취도 범례(mapLegend)는 숨김
+            const mapLegend = document.getElementById('mapLegend');
+            if (mapLegend) mapLegend.style.display = 'none';
 
             if (window.kakaoMapInstance.getLevel() >= 7) {
                 return;
