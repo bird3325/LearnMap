@@ -6119,28 +6119,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 mypageCompList.scrollLeft = scrollLeft - walk;
             });
 
-            // 터치 제스처 드래그 스크롤 활성화 (모바일 터치 디바이스 직접 스크롤 감도 강화)
-            let isTouchDown = false;
-            let touchStartX;
-            let touchScrollLeft;
-            
-            mypageCompList.addEventListener('touchstart', (e) => {
-                if (e.target.closest('button') || e.target.closest('.mypage-comp-school-btn')) return;
-                isTouchDown = true;
-                touchStartX = e.touches[0].pageX - mypageCompList.offsetLeft;
-                touchScrollLeft = mypageCompList.scrollLeft;
-            }, { passive: true });
-            
-            mypageCompList.addEventListener('touchend', () => {
-                isTouchDown = false;
-            });
-            
-            mypageCompList.addEventListener('touchmove', (e) => {
-                if (!isTouchDown) return;
-                const x = e.touches[0].pageX - mypageCompList.offsetLeft;
-                const walk = (x - touchStartX) * 1.5; // 가로 드래그 감도 배율
-                mypageCompList.scrollLeft = touchScrollLeft - walk;
-            }, { passive: true });
+            // 모바일 터치 환경에서는 브라우저 기본의 부드러운 가로 스크롤 및 상하 스크롤을 이용하기 위해 커스텀 touchstart/touchmove 이벤트를 리슨하지 않습니다.
 
             // 스크롤 한계 지점 도달 시 화살표 감춤 처리
             const updateArrowVisibility = () => {
