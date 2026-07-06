@@ -1520,7 +1520,7 @@ body {
     border-radius: 14px !important;
     padding: 8px 12px !important;
     box-shadow: 0 4px 15px rgba(0,0,0,0.08) !important;
-    z-index: 10080 !important;
+    z-index: 10100 !important;
     flex-direction: column !important; /* 세로 누적형 칩 리스트 */
     gap: 6px !important;
     pointer-events: none !important;
@@ -1555,12 +1555,14 @@ body {
     white-space: nowrap !important;
 }
 
-/* 모바일 화면(1024px 이하)에서는 기존 중앙 하단 모바일 토스트 스타일로 복원 */
+/* 모바일 화면(1024px 이하)에서는 PC용 고정 위치 규칙을 완전히 덮어쓰고 중앙 상단 검색바 아래에 노출 */
 @media screen and (max-width: 1024px) {
+    .app-container:not(.sidebar-open) #mobileFilterToast,
+    .app-container.sidebar-open #mobileFilterToast,
     #mobileFilterToast {
         left: 50% !important;
         right: auto !important;
-        top: 120px !important;
+        top: 122px !important; /* 모바일 검색바(지역/학교급 필터 포함 약 118px) 바로 밑 4px 여백 위치에 노출 */
         transform: translateX(-50%) !important;
         background: rgba(37, 99, 235, 0.95) !important;
         border: none !important;
@@ -1569,14 +1571,19 @@ body {
         max-width: none !important;
         box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
         transition: opacity 0.3s ease !important;
+        z-index: 10100 !important;
+        padding: 1px 2px !important; /* 부모 자체 여백을 극단적으로 축소 */
     }
     #mobileFilterToast span {
         background: rgba(37, 99, 235, 0.95) !important;
         color: white !important;
         border-radius: 15px !important;
-        font-size: 10px !important;
+        font-size: 9.5px !important; /* 폰트 크기 미세 축소 */
         border: none !important;
-        margin: 2px !important;
+        margin: 1px !important; /* 1px 여백 환원 */
+        letter-spacing: -0.7px !important; /* 자간 극대화 축소 */
+        padding: 3px 7px !important; /* 1px 더 여백(3px 7px) 부여 */
+        line-height: 1.0 !important; /* 행간 높이 1.0으로 최적 밀착 */
     }
     /* 모바일에서는 PC 버전 설정을 숨기고 모바일 버전만 표시 */
     .pc-settings-content {
