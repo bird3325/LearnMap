@@ -5820,7 +5820,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // 마이페이지 비교중인 학교 UI 동적 갱신
     function updateMypageComparisonUI() {
         try {
             const mypageCompList = document.getElementById('mypageComparisonSchoolsList');
@@ -5838,36 +5837,110 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             if (!list || list.length === 0) {
+                mypageCompList.className = '';
+                mypageCompList.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
                 mypageCompList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 12px;">비교중인 학교가 없습니다.</div>';
                 return;
             }
             
-            list.forEach(school => {
-                if (!school) return;
-                const schoolName = school.school_name || school.name || '학교';
-                const typeVal = school.school_type || school.type || '';
-                const typeText = (typeof typeVal === 'string' && (typeVal.includes('초등') || typeVal === 'elementary')) ? '초등' : ((typeof typeVal === 'string' && (typeVal.includes('중') || typeVal.includes('middle'))) ? '중등' : '고등');
-                const sigunName = school.sigun_name || school.sigun || '서울시';
-                const targetSchoolId = school.school_id || school.id;
+            // PC 비교보드와 동일한 비교 매트릭스 데이터 생성
+            const matrix = orchestrator.compareAgent.generateComparisonMatrix(list, orchestrator.state.childProfile.scores);
+            
+            // 가로 스크롤 컨테이너 스타일 지정
+            mypageCompList.className = 'mypage-compare-scroll-container';
+            mypageCompList.style.cssText = 'display: flex; gap: 12px; overflow-x: auto; padding: 8px 4px; width: 100%; box-sizing: border-box; -webkit-overflow-scrolling: touch; scroll-behavior: smooth;';
+            
+            matrix.forEach(item => {
+                if (!item) return;
                 
-                if (!targetSchoolId) return;
+                // 3개년 성적 스파크라인 SVG 렌더링
+                let sparklineHtml = '';
+                if (item.trendData && item.trendData.length >= 3) {
+                    const pts = item.trendData;
+                    const width = 100;
+                    const height = 26;
+                    const minVal = 50;
+                    const maxVal = 100;
+                    
+                    const getX = (idx) => 8 + idx * 42;
+                    const getY = (val) => height - 5 - ((val - minVal) / (maxVal - minVal)) * (height - 10);
+                    
+                    const p1 = `${getX(0)},${getY(pts[0])}`;
+                    const p2 = `${getX(1)},${getY(pts[1])}`;
+                    const p3 = `${getX(2)},${getY(pts[2])}`;
+                    
+                    sparklineHtml = `
+                        <div style="margin: 6px 0; background: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); padding: 4px; display: flex; align-items: center; justify-content: space-between;">
+                            <svg width="${width}" height="${height}">
+                                <path d="M ${p1} L ${p2} L ${p3}" fill="none" stroke="var(--primary-blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                <circle cx="${getX(0)}" cy="${getY(pts[0])}" r="2" fill="var(--deep-blue)" stroke="white" stroke-width="1"></circle>
+                                <circle cx="${getX(1)}" cy="${getY(pts[1])}" r="2" fill="var(--deep-blue)" stroke="white" stroke-width="1"></circle>
+                                <circle cx="${getX(2)}" cy="${getY(pts[2])}" r="2" fill="var(--deep-blue)" stroke="white" stroke-width="1"></circle>
+                            </svg>
+                            <span style="font-size: 8.5px; color: var(--text-muted); line-height: 1.1;">최근: <strong>${pts[2]}점</strong></span>
+                        </div>
+                    `;
+                }
+
+                const weightedAvgLabel = item.weightedAvg !== undefined ? `${item.weightedAvg}점` : '-';
+                const envScoreLabel = item.envScore !== undefined ? `${item.envScore}점` : '-';
+                const violenceCases = item.violence_stats ? `${item.violence_stats.total_cases}건` : '0건';
                 
-                const item = document.createElement('div');
-                item.style.cssText = 'padding: 8px 12px; font-size: 12px; font-weight: 600; text-align: left; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--deep-blue); display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; transition: all 0.2s;';
+                // 세부 환경 스코어
+                let envDetailsHtml = '';
+                if (item.envScoresDetails) {
+                    const details = item.envScoresDetails;
+                    envDetailsHtml = `
+                        <div style="font-size:9.5px; color:var(--text-muted); margin-top: 4px; background:#f1f3f5; padding:6px; border-radius:6px; display:flex; flex-direction:column; gap:2px;">
+                            <div style="display:flex; justify-content:space-between;"><span>학업 성적:</span> <span>${Math.round(details.scoreScore)}점</span></div>
+                            <div style="display:flex; justify-content:space-between;"><span>교사 비율:</span> <span>${Math.round(details.teacherScore)}점</span></div>
+                            <div style="display:flex; justify-content:space-between;"><span>학폭 안전:</span> <span>${Math.round(details.safetyScore)}점</span></div>
+                            <div style="display:flex; justify-content:space-between;"><span>창체 예산:</span> <span>${Math.round(details.budgetScore)}점</span></div>
+                        </div>
+                    `;
+                }
+
+                const card = document.createElement('div');
+                card.className = 'mypage-compare-card';
+                card.style.cssText = 'flex: 0 0 250px; background: #ffffff; border: 1px solid var(--border-color); border-radius: 12px; padding: 14px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; box-sizing: border-box;';
                 
-                item.innerHTML = `
-                    <div style="display: flex; flex-direction: column; gap: 2px; cursor: pointer; flex: 1; min-width: 0;" class="mypage-comp-school-btn">
-                        <span style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">🏫 ${schoolName}</span>
-                        <span style="font-size: 10px; color: var(--text-muted);">${typeText} / ${sigunName}</span>
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 8px;">
+                        <span style="font-weight: 700; font-size: 13px; color: var(--deep-blue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; cursor: pointer;" class="mypage-comp-school-btn">🏫 ${item.school_name}</span>
+                        <button class="mypage-comp-delete-btn" style="background: none; border: none; font-size: 16px; color: var(--danger-red, #ff3b30); cursor: pointer; padding: 2px; font-weight: bold; line-height: 1;">&times;</button>
                     </div>
-                    <button class="mypage-comp-delete-btn" style="background: none; border: none; font-size: 14px; color: var(--danger-red, #ff3b30); cursor: pointer; padding: 4px; font-weight: bold; margin-left: 8px;">&times;</button>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text-main);">
+                        <div>🧑‍🎓 학생수: <strong>${item.student_count}</strong></div>
+                        <div>🏫 학급 평균: <strong>${item.class_avg_size}</strong></div>
+                        <div>📊 국·영·수 평균: <strong>${item.korean_avg} / ${item.english_avg} / ${item.math_avg}</strong></div>
+                        <div>⚖️ 가중 평균 점수: <strong>${weightedAvgLabel}</strong></div>
+                        <div>🎯 강점 과목: <strong>${item.strong_subject}</strong></div>
+                        <div>🏠 평균 매매가: <strong style="color:var(--success-green);">${item.housing_sale}</strong></div>
+                        <div>🔑 평균 전세가: <strong style="color:var(--success-green);">${item.housing_jeonse}</strong></div>
+                        <div>📚 주변 학원 수: <strong>${item.academy_count_est}개</strong></div>
+                        <div>💰 창체 활동비: <strong>${item.extracurricular_budget}만원</strong></div>
+                        <div>🛡️ 학교폭력 건수: <strong style="color:${item.violence_stats && item.violence_stats.total_cases > 3 ? 'var(--danger-red)' : 'var(--text-main)'}">${violenceCases}</strong></div>
+                        
+                        <div style="margin-top: 6px; border-top: 1px dashed var(--border-color); padding-top: 6px;">
+                            🏫 교육환경 스코어: <strong style="color:var(--primary-blue);">${envScoreLabel}</strong>
+                            ${envDetailsHtml}
+                        </div>
+                        
+                        <div style="margin-top: 4px;">
+                            📈 성취도 추세
+                            ${sparklineHtml}
+                        </div>
+                        
+                        <div style="margin-top: 6px; border-top: 1px dashed var(--border-color); padding-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+                            <span>✨ 우리 아이 적합도:</span>
+                            <strong style="color:${item.suitability === '상' ? 'var(--success-green)' : (item.suitability === '중' ? 'var(--warning-yellow)' : 'var(--danger-red)')};">${item.suitability}</strong>
+                        </div>
+                    </div>
                 `;
-                
-                item.onmouseover = () => item.style.borderColor = 'var(--primary-blue)';
-                item.onmouseout = () => item.style.borderColor = 'var(--border-color)';
-                
-                // 학교 클릭 시 지도 이동 및 상세 카드 열기
-                const clickBtn = item.querySelector('.mypage-comp-school-btn');
+
+                // 학교 이름 클릭 시 지도 이동 및 상세 카드 열기
+                const clickBtn = card.querySelector('.mypage-comp-school-btn');
                 if (clickBtn) {
                     clickBtn.onclick = () => {
                         if (window.innerWidth <= 1024 && typeof window.onMobileNavClick === 'function') {
@@ -5877,24 +5950,24 @@ document.addEventListener('DOMContentLoaded', () => {
                             const setModal = document.getElementById('settingsModal');
                             if (setModal) setModal.style.display = 'none';
                         }
-                        window.selectSchoolById(targetSchoolId);
+                        window.selectSchoolById(item.school_id);
                     };
                 }
-                
+
                 // 삭제 버튼 클릭 시 비교 보드에서 제거
-                const delBtn = item.querySelector('.mypage-comp-delete-btn');
+                const delBtn = card.querySelector('.mypage-comp-delete-btn');
                 if (delBtn) {
                     delBtn.onclick = (e) => {
                         e.stopPropagation();
                         
                         // 메모리 상태 필터링
                         if (orchestrator && orchestrator.state) {
-                            orchestrator.state.comparisonList = orchestrator.state.comparisonList.filter(s => String(s.school_id || s.id) !== String(targetSchoolId));
+                            orchestrator.state.comparisonList = orchestrator.state.comparisonList.filter(s => String(s.school_id || s.id) !== String(item.school_id));
                         }
                         // 스토리지 상태 필터링
                         try {
                             const currentList = JSON.parse(localStorage.getItem('learnmap_comparison_list') || '[]');
-                            const updatedList = currentList.filter(s => String(s.school_id || s.id) !== String(targetSchoolId));
+                            const updatedList = currentList.filter(s => String(s.school_id || s.id) !== String(item.school_id));
                             localStorage.setItem('learnmap_comparison_list', JSON.stringify(updatedList));
                             if (orchestrator && orchestrator.state) {
                                 orchestrator.state.comparisonList = updatedList;
@@ -5911,8 +5984,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         updateMypageComparisonUI();
                     };
                 }
-                
-                mypageCompList.appendChild(item);
+
+                mypageCompList.appendChild(card);
             });
         } catch (error) {
             console.error("Error in updateMypageComparisonUI:", error);
