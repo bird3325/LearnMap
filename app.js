@@ -1,5 +1,6 @@
 // Main entry point
 import { Orchestrator } from './src/agents/orchestrator.js';
+import defaultDistrictData from './src/data/korea-administrative-district.json';
 let orchestrator;
 let currentLoadedSchools = [];
 window.customCommuteStart = null;
@@ -8681,7 +8682,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const academicSortContainer = document.getElementById('academicSortContainer');
         const transferSortContainer = document.getElementById('transferSortContainer');
 
-        let rawDistrictData = [];
+        let rawDistrictData = (typeof defaultDistrictData !== 'undefined' && defaultDistrictData && defaultDistrictData.data) ? defaultDistrictData.data : [];
         let allSchoolsCache = [];
         let currentTopic = 'violence'; // 'violence' | 'composite' | 'academic' | 'transfer'
 
@@ -8770,17 +8771,37 @@ window.addEventListener('DOMContentLoaded', () => {
         // 1. 행정구역 데이터 로드 및 시도/구군/동 셀렉트 구성
         async function loadDistrictData() {
             try {
-                const res = await fetch('./src/data/korea-administrative-district.json');
-                const contentType = res.headers.get('content-type');
-                if (res.ok && contentType && contentType.includes('application/json')) {
-                    const json = await res.json();
-                    rawDistrictData = json.data || [];
-                } else if (res.ok) {
-                    const text = await res.text();
-                    const json = JSON.parse(text);
-                    rawDistrictData = json.data || [];
-                } else {
-                    throw new Error(`HTTP status ${res.status}`);
+                // 1단계: import된 기본 행정구역 데이터가 있으면 즉시 반영
+                if ((!rawDistrictData || rawDistrictData.length === 0) && typeof defaultDistrictData !== 'undefined' && defaultDistrictData && defaultDistrictData.data) {
+                    rawDistrictData = defaultDistrictData.data;
+                }
+
+                // 2단계: 데이터가 아직 없으면 정적 파일 경로 순차 시도 (HTML 에러 페이지 파싱 방지)
+                if (!rawDistrictData || rawDistrictData.length === 0) {
+                    const pathsToTry = [
+                        './src/data/korea-administrative-district.json',
+                        './data/korea-administrative-district.json',
+                        '/src/data/korea-administrative-district.json',
+                        '/data/korea-administrative-district.json'
+                    ];
+                    for (const p of pathsToTry) {
+                        try {
+                            const res = await fetch(p);
+                            const contentType = res.headers.get('content-type') || '';
+                            if (res.ok && !contentType.includes('text/html')) {
+                                const text = await res.text();
+                                if (text && !text.trim().startsWith('<')) {
+                                    const json = JSON.parse(text);
+                                    if (json && Array.isArray(json.data) && json.data.length > 0) {
+                                        rawDistrictData = json.data;
+                                        break;
+                                    }
+                                }
+                            }
+                        } catch (pErr) {
+                            // 다음 경로 시도
+                        }
+                    }
                 }
 
                 if (sidoSelect) {
@@ -8790,21 +8811,29 @@ window.addEventListener('DOMContentLoaded', () => {
                     optAll.textContent = '전국 (전체 시/도)';
                     sidoSelect.appendChild(optAll);
 
-                    rawDistrictData.forEach(item => {
-                        const sidoName = Object.keys(item)[0];
-                        if (sidoName) {
-                            const opt = document.createElement('option');
-                            opt.value = sidoName;
-                            opt.textContent = sidoName;
-                            if (sidoName === '서울특별시') opt.selected = true;
-                            sidoSelect.appendChild(opt);
-                        }
-                    });
+                    if (rawDistrictData && rawDistrictData.length > 0) {
+                        rawDistrictData.forEach(item => {
+                            const sidoName = Object.keys(item)[0];
+                            if (sidoName) {
+                                const opt = document.createElement('option');
+                                opt.value = sidoName;
+                                opt.textContent = sidoName;
+                                if (sidoName === '서울특별시') opt.selected = true;
+                                sidoSelect.appendChild(opt);
+                            }
+                        });
+                    } else {
+                        sidoSelect.innerHTML = `
+                            <option value="all">전국 (전체 시/도)</option>
+                            <option value="서울특별시" selected>서울특별시</option>
+                            <option value="경기도">경기도</option>
+                        `;
+                    }
                 }
                 updateGugunOptions('서울특별시');
                 updateDongOptions('서울특별시', 'all');
             } catch (err) {
-                console.error('[TopicStats] 행정구역 데이터 로드 에러:', err);
+                console.warn('[TopicStats] 행정구역 데이터 로드 안내:', err);
                 if (sidoSelect) {
                     sidoSelect.innerHTML = `
                         <option value="all">전국 (전체 시/도)</option>
@@ -8938,35 +8967,77 @@ window.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // 2. 전체 학교 데이터 로드 (서버 API, 로컬 JSON, REGIONAL_SCHOOL_PRESETS 합산)
+        // 2. 전체 학교 데이터 로드 (서버 API, Supabase, 로컬 JSON, REGIONAL_SCHOOL_PRESETS 합산)
         async function fetchAllSchools() {
             if (allSchoolsCache.length > 0) return allSchoolsCache;
 
+            // 0) 상위 전역 스코프에 이미 로드된 학교 데이터가 있다면 즉시 활용
+            if (typeof schoolsDatabase !== 'undefined' && Array.isArray(schoolsDatabase) && schoolsDatabase.length > 0) {
+                allSchoolsCache = schoolsDatabase;
+                return allSchoolsCache;
+            }
+
+            // 1) 백엔드 API 시도
             try {
                 const res = await fetch('/api/schools');
-                const contentType = res.headers.get('content-type');
-                if (res.ok && contentType && contentType.includes('application/json')) {
+                const contentType = res.headers.get('content-type') || '';
+                if (res.ok && contentType.includes('application/json')) {
                     const data = await res.json();
                     if (Array.isArray(data) && data.length > 0) {
                         allSchoolsCache = data;
                     }
                 }
             } catch (e) {
-                console.warn('[TopicStats] /api/schools 실패, 로컬 JSON으로 폴백 시도');
+                console.warn('[TopicStats] /api/schools 실패, Supabase/로컬 JSON 폴백 시도');
             }
 
+            // 2) Supabase 직접 조회 폴백
             if (allSchoolsCache.length === 0) {
                 try {
-                    const resLocal = await fetch('./src/data/schools_seoul.json');
-                    const contentType = resLocal.headers.get('content-type');
-                    if (resLocal.ok && contentType && contentType.includes('application/json')) {
-                        allSchoolsCache = await resLocal.json();
-                    } else if (resLocal.ok) {
-                        const text = await resLocal.text();
-                        allSchoolsCache = JSON.parse(text);
+                    const SUPABASE_URL = 'https://khwzgqnwlknawggugznd.supabase.co';
+                    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtod3pncW53bGtuYXdnZ3Vnem5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDQzNDksImV4cCI6MjA5NTc4MDM0OX0.P2g3Y_MYV_ca8ZRpfAT93pnEzP4osYWc2tfyBHKb7v4';
+                    const supaResp = await fetch(`${SUPABASE_URL}/rest/v1/schools_seoul?select=*&limit=3000`, {
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_KEY}`
+                        }
+                    });
+                    if (supaResp.ok) {
+                        const supaSchools = await supaResp.json();
+                        if (Array.isArray(supaSchools) && supaSchools.length > 0) {
+                            allSchoolsCache = supaSchools;
+                        }
                     }
-                } catch (err) {
-                    console.error('[TopicStats] 학교 데이터 로드 에러:', err);
+                } catch (supaErr) {
+                    console.warn('[TopicStats] Supabase 학교 데이터 폴백 실패:', supaErr);
+                }
+            }
+
+            // 3) 로컬 static JSON 파일 시도
+            if (allSchoolsCache.length === 0) {
+                const pathsToTry = [
+                    './src/data/schools_seoul.json',
+                    './data/schools_seoul.json',
+                    '/src/data/schools_seoul.json',
+                    '/data/schools_seoul.json'
+                ];
+                for (const p of pathsToTry) {
+                    try {
+                        const resLocal = await fetch(p);
+                        const contentType = resLocal.headers.get('content-type') || '';
+                        if (resLocal.ok && !contentType.includes('text/html')) {
+                            const text = await resLocal.text();
+                            if (text && !text.trim().startsWith('<')) {
+                                const parsed = JSON.parse(text);
+                                if (Array.isArray(parsed) && parsed.length > 0) {
+                                    allSchoolsCache = parsed;
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        // 다음 경로 시도
+                    }
                 }
             }
 

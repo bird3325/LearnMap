@@ -230,17 +230,51 @@ async function loadStoredSchools() {
     }
 
     if (!Array.isArray(schools) || schools.length === 0) {
+        // Supabase 폴백 시도
         try {
-            const resLocal = await fetch('./src/data/schools_seoul.json');
-            const ctLocal = resLocal.headers.get('content-type');
-            if (resLocal.ok && ctLocal && ctLocal.includes('application/json')) {
-                schools = await resLocal.json();
-            } else if (resLocal.ok) {
-                const text = await resLocal.text();
-                schools = JSON.parse(text);
+            const SUPABASE_URL = 'https://khwzgqnwlknawggugznd.supabase.co';
+            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtod3pncW53bGtuYXdnZ3Vnem5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDQzNDksImV4cCI6MjA5NTc4MDM0OX0.P2g3Y_MYV_ca8ZRpfAT93pnEzP4osYWc2tfyBHKb7v4';
+            const supaResp = await fetch(`${SUPABASE_URL}/rest/v1/schools_seoul?select=*&limit=3000`, {
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
+            });
+            if (supaResp.ok) {
+                const supaSchools = await supaResp.json();
+                if (Array.isArray(supaSchools) && supaSchools.length > 0) {
+                    schools = supaSchools;
+                }
             }
-        } catch (err) {
-            console.error('[Admin] 로컬 JSON 로드 에러:', err);
+        } catch (supaErr) {
+            console.warn('[Admin] Supabase 학교 데이터 폴백 실패:', supaErr);
+        }
+    }
+
+    if (!Array.isArray(schools) || schools.length === 0) {
+        const pathsToTry = [
+            './src/data/schools_seoul.json',
+            './data/schools_seoul.json',
+            '/src/data/schools_seoul.json',
+            '/data/schools_seoul.json'
+        ];
+        for (const p of pathsToTry) {
+            try {
+                const resLocal = await fetch(p);
+                const ctLocal = resLocal.headers.get('content-type') || '';
+                if (resLocal.ok && !ctLocal.includes('text/html')) {
+                    const text = await resLocal.text();
+                    if (text && !text.trim().startsWith('<')) {
+                        const parsed = JSON.parse(text);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            schools = parsed;
+                            break;
+                        }
+                    }
+                }
+            } catch (err) {
+                // 다음 경로 시도
+            }
         }
     }
 
