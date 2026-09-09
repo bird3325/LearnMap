@@ -8338,25 +8338,25 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // 모바일 플로팅 지도 필터와 실제 폼 체크박스들 상태 동기화 함수
     function syncMobileFloatingFilters() {
-        const mapping = {
-            'trendUpwardCheckbox': 0,
-            'safetyGuideCheckbox': 1,
-            'crimeZoneToggleCheckbox': 2,
-            'accidentStatisticsCheckbox': 3,
-            'trafficAccidentCheckbox': 4,
-            'dongRatingCheckbox': 5
-        };
-        const buttons = document.querySelectorAll('.mobile-floating-filters button');
-        if (buttons.length === 6) {
-            Object.entries(mapping).forEach(([id, idx]) => {
-                const cb = document.getElementById(id);
+        const checkboxIds = [
+            'trendUpwardCheckbox',
+            'safetyGuideCheckbox',
+            'crimeZoneToggleCheckbox',
+            'accidentStatisticsCheckbox',
+            'trafficAccidentCheckbox',
+            'dongRatingCheckbox'
+        ];
+        checkboxIds.forEach(id => {
+            const cb = document.getElementById(id);
+            const buttons = document.querySelectorAll(`[onclick*="'${id}'"]`);
+            buttons.forEach(btn => {
                 if (cb && cb.checked) {
-                    buttons[idx].classList.add('active');
+                    btn.classList.add('active');
                 } else {
-                    buttons[idx].classList.remove('active');
+                    btn.classList.remove('active');
                 }
             });
-        }
+        });
         
         // 플로팅 활성화 뱃지 상시 노출 동기화 호출
         if (typeof window.updateFloatingActiveBadges === 'function') {

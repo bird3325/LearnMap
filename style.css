@@ -1447,6 +1447,61 @@ body {
     transform: translateY(0) scale(0.95);
 }
 
+/* 상단 우측 플로팅 액션 버튼 마우스 오버 시 플로팅 타이틀 툴팁 */
+.floating-action-btn[data-title] {
+    position: relative;
+}
+
+.floating-action-btn[data-title]::after {
+    content: attr(data-title);
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 50%;
+    transform: translateX(50%) translateY(-6px);
+    background: rgba(15, 23, 42, 0.94);
+    color: #ffffff;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.4;
+    padding: 5px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+    z-index: 10100;
+    letter-spacing: -0.2px;
+    font-family: var(--font-primary, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.floating-action-btn[data-title]::before {
+    content: '';
+    position: absolute;
+    top: calc(100% + 3px);
+    right: 50%;
+    transform: translateX(50%) translateY(-6px);
+    border-width: 0 5px 6px 5px;
+    border-style: solid;
+    border-color: transparent transparent rgba(15, 23, 42, 0.94) transparent;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+    z-index: 10101;
+}
+
+.floating-action-btn[data-title]:hover::after,
+.floating-action-btn[data-title]:hover::before {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(50%) translateY(0);
+}
+
 /* 스크롤바 감추기 (터치 드래그 기능은 보존) */
 .hide-scrollbar {
     -ms-overflow-style: none; /* IE and Edge */
@@ -1479,6 +1534,7 @@ body {
 }
 
 .pc-filter-btn {
+    position: relative;
     width: 42px;
     height: 42px;
     border-radius: 50%;
@@ -1511,6 +1567,57 @@ body {
     background: var(--primary-blue);
     color: #ffffff;
     border-color: var(--primary-blue);
+}
+
+/* 마우스 오버 시 플로팅 타이틀 툴팁 (말풍선) */
+.pc-filter-btn[data-title]::after {
+    content: attr(data-title);
+    position: absolute;
+    right: calc(100% + 12px);
+    top: 50%;
+    transform: translateY(-50%) translateX(8px);
+    background: rgba(15, 23, 42, 0.94);
+    color: #ffffff;
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.4;
+    padding: 6px 12px;
+    border-radius: 8px;
+    white-space: nowrap;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+    z-index: 10100;
+    letter-spacing: -0.3px;
+    font-family: var(--font-primary, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pc-filter-btn[data-title]::before {
+    content: '';
+    position: absolute;
+    right: calc(100% + 5px);
+    top: 50%;
+    transform: translateY(-50%) translateX(8px);
+    border-width: 5px 0 5px 6px;
+    border-style: solid;
+    border-color: transparent transparent transparent rgba(15, 23, 42, 0.94);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+    z-index: 10101;
+}
+
+.pc-filter-btn[data-title]:hover::after,
+.pc-filter-btn[data-title]:hover::before {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(-50%) translateX(0);
 }
 
 /* 모바일 뷰(1024px 이하)에서는 PC용 플로팅 필터를 강제 숨김 */
