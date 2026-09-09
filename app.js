@@ -6,6 +6,32 @@ window.customCommuteStart = null;
 window.customCommuteEnd = null;
 window.mapClickMode = 'none';
 
+const SUB_DISTRICT_MAP = {
+    '고양시': ['덕양구', '일산동구', '일산서구'],
+    '성남시': ['분당구', '수정구', '중원구'],
+    '수원시': ['장안구', '권선구', '팔달구', '영통구'],
+    '용인시': ['수지구', '기흥구', '처인구'],
+    '안산시': ['상록구', '단원구'],
+    '안양시': ['만안구', '동안구'],
+    '부천시': ['원미구', '소사구', '오정구'],
+    '청주시': ['상당구', '서원구', '흥덕구', '청원구'],
+    '천안시': ['동남구', '서북구'],
+    '전주시': ['완산구', '덕진구'],
+    '포항시': ['남구', '북구'],
+    '창원시': ['의창구', '성산구', '마산합포구', '마산회원구', '진해구']
+};
+
+function checkGugunMatch(address, selectedGugun, selectedSubGu = 'all') {
+    if (!address) return false;
+    if (selectedGugun && selectedGugun !== 'all') {
+        if (!address.includes(selectedGugun)) return false;
+    }
+    if (selectedSubGu && selectedSubGu !== 'all') {
+        if (!address.includes(selectedSubGu)) return false;
+    }
+    return true;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     orchestrator = new Orchestrator();
 
@@ -1582,39 +1608,88 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(msg);
     }
 
-    // 1. Dynamic Kakao SDK Loader
+    // 1. Dynamic Kakao SDK Loader (Multi-tier key loader: Server API -> Supabase DB -> Local config.json -> Fallback)
     function loadKakaoSdk() {
-        return new Promise((resolve) => {
-            logDiagnostic('백엔드로부터 Kakao Maps API 키 조회 중...');
-            fetch('/api/config/map-key')
-                .then(res => res.json())
-                .then(data => {
-                    const appkey = data.kakao_app_key;
-                    window.GLOBAL_SAFEMAP_KEY = data.safemap_key;
-                    if (!appkey) {
-                        logDiagnostic('[Warning] 카카오 지도 API 키가 설정되지 않았습니다. 관리자 페이지(/admin.html)에서 키를 저장해 주세요.');
-                        resolve(false);
-                        return;
+        return new Promise(async (resolve) => {
+            logDiagnostic('백엔드/데이터베이스로부터 Kakao Maps API 키 조회 중...');
+            let appkey = '';
+            let safemapKey = '';
+
+            // 1) /api/config/map-key 백엔드 API 시도
+            try {
+                const res = await fetch('/api/config/map-key');
+                const contentType = res.headers.get('content-type');
+                if (res.ok && contentType && contentType.includes('application/json')) {
+                    const data = await res.json();
+                    if (data.kakao_app_key) {
+                        appkey = data.kakao_app_key;
+                        safemapKey = data.safemap_key;
                     }
-                    
-                    logDiagnostic('Kakao Maps SDK 스크립트 삽입 중...');
-                    const script = document.createElement('script');
-                    script.type = 'text/javascript';
-                    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appkey}&libraries=services,clusterer&autoload=false`;
-                    script.onload = () => {
-                        logDiagnostic('Kakao Maps SDK 로드 완료.');
-                        resolve(true);
-                    };
-                    script.onerror = () => {
-                        logDiagnostic('[Error] Kakao Maps SDK 스크립트 로드 실패.');
-                        resolve(false);
-                    };
-                    document.head.appendChild(script);
-                })
-                .catch(err => {
-                    logDiagnostic(`[Error] API 키 조회 에러: ${err.message}`);
-                    resolve(false);
-                });
+                }
+            } catch (e) {
+                console.warn('[SDK Loader] /api/config/map-key 조회 실패:', e);
+            }
+
+            // 2) Supabase DB 직접 조회 시도
+            if (!appkey) {
+                try {
+                    const SUPABASE_URL = 'https://khwzgqnwlknawggugznd.supabase.co';
+                    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtod3pncW53bGtuYXdnZ3Vnem5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDQzNDksImV4cCI6MjA5NTc4MDM0OX0.P2g3Y_MYV_ca8ZRpfAT93pnEzP4osYWc2tfyBHKb7v4';
+                    const supaRes = await fetch(`${SUPABASE_URL}/rest/v1/api_configs?id=eq.1`, {
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_KEY}`
+                        }
+                    });
+                    if (supaRes.ok) {
+                        const supaData = await supaRes.json();
+                        if (supaData && supaData.length > 0 && supaData[0].kakao_app_key) {
+                            appkey = supaData[0].kakao_app_key;
+                            safemapKey = supaData[0].safemap_key;
+                        }
+                    }
+                } catch (supaErr) {
+                    console.warn('[SDK Loader] Supabase DB 키 조회 실패:', supaErr);
+                }
+            }
+
+            // 3) 로컬 config.json 파일 조회 시도
+            if (!appkey) {
+                try {
+                    const configRes = await fetch('./config.json');
+                    const contentType = configRes.headers.get('content-type');
+                    if (configRes.ok && contentType && contentType.includes('application/json')) {
+                        const configData = await configRes.json();
+                        if (configData.kakao_app_key) {
+                            appkey = configData.kakao_app_key;
+                            safemapKey = configData.safemap_key;
+                        }
+                    }
+                } catch (configErr) {
+                    console.warn('[SDK Loader] config.json 조회 실패:', configErr);
+                }
+            }
+
+            // 4) 기본 카카오 앱 키 폴백
+            if (!appkey) {
+                appkey = "a1395655b7d4904b57ff20a90998c001";
+            }
+
+            window.GLOBAL_SAFEMAP_KEY = safemapKey || "8N7ELUCO-8N7E-8N7E-8N7E-8N7ELUCOQY";
+
+            logDiagnostic(`Kakao Maps SDK 스크립트 삽입 중... (AppKey: ${appkey.substring(0, 6)}***)`);
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appkey}&libraries=services,clusterer&autoload=false`;
+            script.onload = () => {
+                logDiagnostic('Kakao Maps SDK 로드 완료.');
+                resolve(true);
+            };
+            script.onerror = () => {
+                logDiagnostic('[Error] Kakao Maps SDK 스크립트 로드 실패.');
+                resolve(false);
+            };
+            document.head.appendChild(script);
         });
     }
 
@@ -1711,15 +1786,63 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // 3. Load Schools Database from Server
+    // 3. Load Schools Database with Multi-Tier Fallback (Server API -> Supabase REST API -> Local static JSON)
     async function loadSchoolsDatabase() {
+        // 1) /api/schools 백엔드 API 시도
         try {
             logDiagnostic('서버로부터 최신 학교 데이터베이스 로딩 중...');
             const response = await fetch('/api/schools');
-            schoolsDatabase = await response.json();
-            logDiagnostic(`데이터베이스 로드 완료. 총 학교 수: ${schoolsDatabase.length}개`);
+            const contentType = response.headers.get('content-type');
+            if (response.ok && contentType && contentType.includes('application/json')) {
+                const data = await response.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    schoolsDatabase = data;
+                    logDiagnostic(`데이터베이스 로드 완료 (서버 API). 총 학교 수: ${schoolsDatabase.length}개`);
+                    return;
+                }
+            }
         } catch (e) {
-            logDiagnostic(`학교 데이터베이스 로드 실패: ${e.message}`);
+            console.warn('[DB Loader] /api/schools 백엔드 조회 실패:', e);
+        }
+
+        // 2) Supabase REST API 직접 조회 시도
+        try {
+            logDiagnostic('Supabase DB로부터 학교 데이터베이스 로딩 시도 중...');
+            const SUPABASE_URL = 'https://khwzgqnwlknawggugznd.supabase.co';
+            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtod3pncW53bGtuYXdnZ3Vnem5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDQzNDksImV4cCI6MjA5NTc4MDM0OX0.P2g3Y_MYV_ca8ZRpfAT93pnEzP4osYWc2tfyBHKb7v4';
+            const supaResp = await fetch(`${SUPABASE_URL}/rest/v1/schools_seoul?select=*&limit=3000`, {
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
+            });
+            if (supaResp.ok) {
+                const supaSchools = await supaResp.json();
+                if (Array.isArray(supaSchools) && supaSchools.length > 0) {
+                    schoolsDatabase = supaSchools;
+                    logDiagnostic(`데이터베이스 로드 완료 (Supabase). 총 학교 수: ${schoolsDatabase.length}개`);
+                    return;
+                }
+            }
+        } catch (supaErr) {
+            console.warn('[DB Loader] Supabase 학교 데이터 조회 실패:', supaErr);
+        }
+
+        // 3) 로컬 static JSON 파일 (./src/data/schools_seoul.json) 시도
+        try {
+            logDiagnostic('로컬 static JSON 파일로부터 학교 데이터 로딩 중...');
+            const localResp = await fetch('./src/data/schools_seoul.json');
+            const contentType = localResp.headers.get('content-type');
+            if (localResp.ok && contentType && contentType.includes('application/json')) {
+                const localSchools = await localResp.json();
+                if (Array.isArray(localSchools) && localSchools.length > 0) {
+                    schoolsDatabase = localSchools;
+                    logDiagnostic(`데이터베이스 로드 완료 (로컬 JSON). 총 학교 수: ${schoolsDatabase.length}개`);
+                    return;
+                }
+            }
+        } catch (localErr) {
+            logDiagnostic(`학교 데이터베이스 로드 실패: ${localErr.message}`);
         }
     }
 
@@ -3093,13 +3216,62 @@ document.addEventListener('DOMContentLoaded', () => {
         const ITEM_HEIGHT = 36; // padding 6px*2 + 텍스트 1줄 + border 1px + gap 0 등 대략 36px
         const PAGE_SIZE = Math.max(Math.floor(availableHeight / ITEM_HEIGHT), 5);
         
-        fetch(`/api/academies/list?x=${fullSchool.lng}&y=${fullSchool.lat}`)
-            .then(res => res.json())
-            .then(result => {
-                if (result.error) throw new Error(result.error);
+        // 클라이언트 Kakao JS SDK 기반 주변 학원 검색 헬퍼 (카테고리 AC5 + 키워드 검색 통합)
+        function fetchAcademiesClientSide(lat, lng) {
+            return new Promise((resolve) => {
+                if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services || !window.kakao.maps.services.Places) {
+                    resolve({ total_count: 0, items: [] });
+                    return;
+                }
+                const ps = new kakao.maps.services.Places();
+                const loc = new kakao.maps.LatLng(lat, lng);
+                const uniqueMap = new Map();
+                let pending = 2;
 
+                function checkDone() {
+                    pending--;
+                    if (pending <= 0) {
+                        const finalItems = Array.from(uniqueMap.values());
+                        resolve({ total_count: finalItems.length, items: finalItems });
+                    }
+                }
+
+                // 1) AC5 (학원 카테고리) 검색 (반경 1.5km)
+                ps.categorySearch('AC5', (data, status) => {
+                    if (status === kakao.maps.services.Status.OK && Array.isArray(data)) {
+                        data.forEach(item => uniqueMap.set(item.id, item));
+                    }
+                    checkDone();
+                }, { location: loc, radius: 1500 });
+
+                // 2) '학원' 키워드 검색 (보충)
+                ps.keywordSearch('학원', (data, status) => {
+                    if (status === kakao.maps.services.Status.OK && Array.isArray(data)) {
+                        data.forEach(item => uniqueMap.set(item.id, item));
+                    }
+                    checkDone();
+                }, { location: loc, radius: 1500 });
+            });
+        }
+
+        fetch(`/api/academies/list?x=${fullSchool.lng}&y=${fullSchool.lat}`)
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP status ${res.status}`);
+                return res.json();
+            })
+            .then(async result => {
+                if (result.error || !result.items || result.items.length === 0) {
+                    return await fetchAcademiesClientSide(fullSchool.lat, fullSchool.lng);
+                }
+                return result;
+            })
+            .catch(async err => {
+                console.warn('Backend academy fetch failed, using client SDK fallback:', err);
+                return await fetchAcademiesClientSide(fullSchool.lat, fullSchool.lng);
+            })
+            .then(result => {
                 // 실제 total_count 업데이트
-                document.getElementById('schoolAcademies').innerText = `${result.total_count}개`;
+                document.getElementById('schoolAcademies').innerText = `${result.total_count || 0}개`;
 
                 let allFetchedAcademies = [...(result.items || [])].sort((a, b) =>
                     (a.place_name || '').localeCompare(b.place_name || '', 'ko')
@@ -3116,16 +3288,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     let baseList = allFetchedAcademies;
 
-                    // 검색어가 있으면 카카오 키워드 API 원격 호출 (반경 1km 이내 검색)
+                    // 검색어가 있으면 카카오 키워드 API 원격 호출 (실패시 로컬 및 JS SDK 검색)
                     if (nameFilter !== '') {
                         try {
                             const url = `/api/academies/search?query=${encodeURIComponent(nameFilter)}&x=${fullSchool.lng}&y=${fullSchool.lat}`;
                             const res = await fetch(url);
                             const data = await res.json();
-                            baseList = data.items || [];
+                            if (data.items && data.items.length > 0) {
+                                baseList = data.items;
+                            } else {
+                                baseList = allFetchedAcademies.filter(p => (p.place_name || '').toLowerCase().includes(nameFilter));
+                            }
                         } catch (err) {
                             console.error('Remote academy search error', err);
-                            baseList = [];
+                            baseList = allFetchedAcademies.filter(p => (p.place_name || '').toLowerCase().includes(nameFilter));
                         }
                     }
 
@@ -4670,6 +4846,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+
+
     const districtData = [
         { "서울특별시": ["강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구", "노원구", "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구", "성북구", "송파구", "양천구", "영등포구", "용산구", "은평구", "종로구", "중구", "중랑구"] },
         { "경기도": ["수원시", "성남시", "고양시", "용인시", "부천시", "안산시", "안양시", "남양주시", "화성시", "평택시", "의정부시", "시흥시", "파주시", "김포시", "광명시", "광주시", "군포시", "오산시", "이천시", "양주시", "안성시", "구리시", "포천시", "의왕시", "하남시", "여주시", "동두천시", "양평군", "가평군", "연천군"] },
@@ -4743,8 +4921,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         guguns.forEach(gugun => {
                             const opt = document.createElement('option');
                             opt.value = gugun;
-                            opt.innerText = gugun;
+                            opt.innerText = SUB_DISTRICT_MAP[gugun] ? `${gugun} (전체)` : gugun;
                             gugunEl.appendChild(opt);
+
+                            if (SUB_DISTRICT_MAP[gugun]) {
+                                SUB_DISTRICT_MAP[gugun].forEach(subGugun => {
+                                    const subOpt = document.createElement('option');
+                                    subOpt.value = subGugun;
+                                    subOpt.innerText = `  └ ${subGugun}`;
+                                    gugunEl.appendChild(subOpt);
+                                });
+                            }
                         });
                     }
                 });
@@ -4819,8 +5006,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 해당 구군 및 학교급에 속하는 학교들만 추출
         let filteredSchools = schoolsDatabase.filter(s => {
-            const matchRegion = s.region === sido && s.address && s.address.includes(gugun);
-            if (!matchRegion) return false;
+            const shortSido = sido ? sido.substring(0, 2) : '';
+            const matchSido = !sido || (s.region && s.region.includes(shortSido)) || (s.address && s.address.includes(shortSido));
+            const matchGugun = !gugun || checkGugunMatch(s.address, gugun);
+            if (!matchSido || !matchGugun) return false;
 
             if (simSchoolTypeVal !== 'all' && s.school_type !== simSchoolTypeVal) {
                 return false;
@@ -8042,6 +8231,7 @@ window.addEventListener('resize', function() {
     } else {
         // 모바일 화면으로 축소 시 settingsModal을 transform 영향이 없는 최상위 container로 이동
         const settingsModal = document.getElementById('settingsModal');
+        const container = document.querySelector('.app-container');
         if (settingsModal && container && settingsModal.parentNode !== container) {
             container.appendChild(settingsModal);
         }
@@ -8470,5 +8660,916 @@ window.addEventListener('DOMContentLoaded', () => {
     makeVerticalDragScrollable('#parentsFilterContent');
     makeVerticalDragScrollable('.settings-scroll-content');
     makeVerticalDragScrollable('#simulationResultPanel');
+    makeVerticalDragScrollable('#topicStatsListContainer');
+
+    // ------------------------------------
+    // 순위 통계 대시보드 모듈 (School Ranking & Statistics Dashboard)
+    // ------------------------------------
+    (function initTopicStatsModule() {
+        const modal = document.getElementById('topicStatsModal');
+        const sidoSelect = document.getElementById('topicStatsSido');
+        const gugunSelect = document.getElementById('topicStatsGugun');
+        const subGuSelect = document.getElementById('topicStatsSubGu');
+        const dongSelect = document.getElementById('topicStatsDong');
+        const schoolTypeSelect = document.getElementById('topicStatsSchoolType');
+        const tabBar = document.getElementById('topicStatsTabBar');
+        const summaryText = document.getElementById('topicStatsSummaryText');
+        const countBadge = document.getElementById('topicStatsCountBadge');
+        const listContainer = document.getElementById('topicStatsListContainer');
+        const violenceToggleContainer = document.getElementById('violenceOrderToggleContainer');
+        const compositeSortContainer = document.getElementById('compositeSortContainer');
+        const academicSortContainer = document.getElementById('academicSortContainer');
+        const transferSortContainer = document.getElementById('transferSortContainer');
+
+        let rawDistrictData = [];
+        let allSchoolsCache = [];
+        let currentTopic = 'violence'; // 'violence' | 'composite' | 'academic' | 'transfer'
+
+        // 탭별 정렬 상태
+        const sortState = {
+            violence:  { key: 'cases', dir: 'asc' }, // 기본: 발생건수 적은 순
+            composite: { key: 'score', dir: 'desc' },
+            academic:  { key: 'avg',   dir: 'desc' },
+            transfer:  { key: 'net',   dir: 'desc' }
+        };
+
+        // 탭별 정렬 버튼 설정
+        const SORT_CONFIGS = {
+            violence: [
+                { key: 'cases',    label: '🚨 발생건수' },
+                { key: 'verbal',   label: '🗣️ 언어' },
+                { key: 'cyber',    label: '💻 사이버' },
+                { key: 'exclude',  label: '👥 따돌림' },
+                { key: 'physical', label: '🦴 신체' }
+            ],
+            composite: [
+                { key: 'score',   label: '🏆 종합점수' },
+                { key: 'student', label: '👥 학생수' }
+            ],
+            academic: [
+                { key: 'avg',     label: '📚 국영수 평균' },
+                { key: 'grade_a', label: '🥇 A등급 비율' },
+                { key: 'korean',  label: '🇰🇷 국어' },
+                { key: 'math',    label: '➕ 수학' }
+            ],
+            transfer: [
+                { key: 'net',         label: '🔄 순전입' },
+                { key: 'walk',        label: '🚶 도보 통학률' },
+                { key: 'transfer_in', label: '⬆️ 전입생수' }
+            ]
+        };
+
+        // 주요 구/군별 전국 대표 학교 데이터베이스 사전정의 (서버 JSON 미포함 타지역 조회 보완용)
+        const REGIONAL_SCHOOL_PRESETS = {
+            "경기도_고양시 덕양구": [
+                { name: "행신중학교", type: "중학교", dong: "행신동", addr: "경기도 고양시 덕양구 용현로 35 (행신동)", lat: 37.6185, lng: 126.8341 },
+                { name: "무원중학교", type: "중학교", dong: "행신동", addr: "경기도 고양시 덕양구 무원로 28 (행신동)", lat: 37.6142, lng: 126.8375 },
+                { name: "서정중학교", type: "중학교", dong: "행신동", addr: "경기도 고양시 덕양구 서정마을로 26 (행신동)", lat: 37.6111, lng: 126.8432 },
+                { name: "가람중학교", type: "중학교", dong: "행신동", addr: "경기도 고양시 덕양구 행신로 240 (행신동)", lat: 37.6225, lng: 126.8398 },
+                { name: "화정중학교", type: "중학교", dong: "화정동", addr: "경기도 고양시 덕양구 화중로 70 (화정동)", lat: 37.6321, lng: 126.8329 },
+                { name: "백양중학교", type: "중학교", dong: "화정동", addr: "경기도 고양시 덕양구 화신로 200 (화정동)", lat: 37.6384, lng: 126.8351 },
+                { name: "지도중학교", type: "중학교", dong: "토당동", addr: "경기도 고양시 덕양구 토당로 60 (토당동)", lat: 37.6231, lng: 126.8192 },
+                { name: "성사중학교", type: "중학교", dong: "성사동", addr: "경기도 고양시 덕양구 마상로 78 (성사동)", lat: 37.6512, lng: 126.8391 },
+                { name: "신원중학교", type: "중학교", dong: "신원동", addr: "경기도 고양시 덕양구 신원로 45 (신원동)", lat: 37.6685, lng: 126.8872 },
+                { name: "도래울중학교", type: "중학교", dong: "도내동", addr: "경기도 고양시 덕양구 도래울로 77 (도내동)", lat: 37.6415, lng: 126.8643 },
+                { name: "삼송중학교", type: "중학교", dong: "삼송동", addr: "경기도 고양시 덕양구 삼송로 190 (삼송동)", lat: 37.6534, lng: 126.8951 },
+                { name: "원당중학교", type: "중학교", dong: "주교동", addr: "경기도 고양시 덕양구 원당로 33 (주교동)", lat: 37.6581, lng: 126.8324 },
+                { name: "행신고등학교", type: "고등학교", dong: "행신동", addr: "경기도 고양시 덕양구 행신로 180 (행신동)", lat: 37.6198, lng: 126.8352 },
+                { name: "화정고등학교", type: "고등학교", dong: "화정동", addr: "경기도 고양시 덕양구 화신로 230 (화정동)", lat: 37.6391, lng: 126.8364 },
+                { name: "무원고등학교", type: "고등학교", dong: "행신동", addr: "경기도 고양시 덕양구 무원로 40 (행신동)", lat: 37.6151, lng: 126.8389 },
+                { name: "능곡고등학교", type: "고등학교", dong: "토당동", addr: "경기도 고양시 덕양구 토당로 100 (토당동)", lat: 37.6254, lng: 126.8210 },
+                { name: "성사고등학교", type: "고등학교", dong: "성사동", addr: "경기도 고양시 덕양구 마상로 90 (성사동)", lat: 37.6531, lng: 126.8412 },
+                { name: "행신초등학교", type: "초등학교", dong: "행신동", addr: "경기도 고양시 덕양구 행신로 150 (행신동)", lat: 37.6165, lng: 126.8320 },
+                { name: "화정초등학교", type: "초등학교", dong: "화정동", addr: "경기도 고양시 덕양구 화중로 50 (화정동)", lat: 37.6305, lng: 126.8315 }
+            ],
+            "경기도_고양시 일산동구": [
+                { name: "마두중학교", type: "중학교", dong: "마두동", addr: "경기도 고양시 일산동구 마두로 40 (마두동)", lat: 37.6582, lng: 126.7821 },
+                { name: "백석중학교", type: "중학교", dong: "백석동", addr: "경기도 고양시 일산동구 백석로 70 (백석동)", lat: 37.6431, lng: 126.7915 },
+                { name: "식사중학교", type: "중학교", dong: "식사동", addr: "경기도 고양시 일산동구 위시티로 25 (식사동)", lat: 37.6781, lng: 126.8095 },
+                { name: "정발중학교", type: "중학교", dong: "정발산동", addr: "경기도 고양시 일산동구 정발산로 88 (정발산동)", lat: 37.6651, lng: 126.7782 },
+                { name: "풍동중학교", type: "중학교", dong: "풍동", addr: "경기도 고양시 일산동구 숲속마을로 45 (풍동)", lat: 37.6712, lng: 126.7951 },
+                { name: "백신고등학교", type: "고등학교", dong: "마두동", addr: "경기도 고양시 일산동구 일산로 200 (마두동)", lat: 37.6551, lng: 126.7812 },
+                { name: "저현고등학교", type: "고등학교", dong: "식사동", addr: "경기도 고양시 일산동구 위시티2로 35 (식사동)", lat: 37.6795, lng: 126.8110 }
+            ],
+            "경기도_고양시 일산서구": [
+                { name: "주엽중학교", type: "중학교", dong: "주엽동", addr: "경기도 고양시 일산서구 주엽로 50 (주엽동)", lat: 37.6695, lng: 126.7621 },
+                { name: "대화중학교", type: "중학교", dong: "대화동", addr: "경기도 고양시 일산서구 대화로 110 (대화동)", lat: 37.6791, lng: 126.7482 },
+                { name: "탄현중학교", type: "중학교", dong: "탄현동", addr: "경기도 고양시 일산서구 탄현로 75 (탄현동)", lat: 37.6942, lng: 126.7681 },
+                { name: "일산동중학교", type: "중학교", dong: "일산동", addr: "경기도 고양시 일산서구 일산로 450 (일산동)", lat: 37.6851, lng: 126.7712 },
+                { name: "주엽고등학교", type: "고등학교", dong: "주엽동", addr: "경기도 고양시 일산서구 강선로 90 (주엽동)", lat: 37.6681, lng: 126.7635 }
+            ],
+            "경기도_성남시 분당구": [
+                { name: "서현중학교", type: "중학교", dong: "서현동", addr: "경기도 성남시 분당구 서현로 180 (서현동)", lat: 37.3782, lng: 127.1281 },
+                { name: "수내중학교", type: "중학교", dong: "수내동", addr: "경기도 성남시 분당구 수내로 70 (수내동)", lat: 37.3712, lng: 127.1215 },
+                { name: "정자중학교", type: "중학교", dong: "정자동", addr: "경기도 성남시 분당구 불정로 50 (정자동)", lat: 37.3621, lng: 127.1142 },
+                { name: "내정중학교", type: "중학교", dong: "수내동", addr: "경기도 성남시 분당구 내정로 100 (수내동)", lat: 37.3745, lng: 127.1201 },
+                { name: "판교중학교", type: "중학교", dong: "판교동", addr: "경기도 성남시 분당구 판교원로 200 (판교동)", lat: 37.3912, lng: 127.0982 }
+            ]
+        };
+
+        // 1. 행정구역 데이터 로드 및 시도/구군/동 셀렉트 구성
+        async function loadDistrictData() {
+            try {
+                const res = await fetch('./src/data/korea-administrative-district.json');
+                const contentType = res.headers.get('content-type');
+                if (res.ok && contentType && contentType.includes('application/json')) {
+                    const json = await res.json();
+                    rawDistrictData = json.data || [];
+                } else if (res.ok) {
+                    const text = await res.text();
+                    const json = JSON.parse(text);
+                    rawDistrictData = json.data || [];
+                } else {
+                    throw new Error(`HTTP status ${res.status}`);
+                }
+
+                if (sidoSelect) {
+                    sidoSelect.innerHTML = '';
+                    const optAll = document.createElement('option');
+                    optAll.value = 'all';
+                    optAll.textContent = '전국 (전체 시/도)';
+                    sidoSelect.appendChild(optAll);
+
+                    rawDistrictData.forEach(item => {
+                        const sidoName = Object.keys(item)[0];
+                        if (sidoName) {
+                            const opt = document.createElement('option');
+                            opt.value = sidoName;
+                            opt.textContent = sidoName;
+                            if (sidoName === '서울특별시') opt.selected = true;
+                            sidoSelect.appendChild(opt);
+                        }
+                    });
+                }
+                updateGugunOptions('서울특별시');
+                updateDongOptions('서울특별시', 'all');
+            } catch (err) {
+                console.error('[TopicStats] 행정구역 데이터 로드 에러:', err);
+                if (sidoSelect) {
+                    sidoSelect.innerHTML = `
+                        <option value="all">전국 (전체 시/도)</option>
+                        <option value="서울특별시" selected>서울특별시</option>
+                        <option value="경기도">경기도</option>
+                    `;
+                }
+                updateGugunOptions('서울특별시');
+                updateDongOptions('서울특별시', 'all');
+            }
+        }
+
+        function updateGugunOptions(selectedSido, defaultGugunKeyword = '') {
+            if (!gugunSelect) return;
+            gugunSelect.innerHTML = '';
+
+            const optAll = document.createElement('option');
+            optAll.value = 'all';
+            optAll.textContent = '전체 시/군/구';
+            gugunSelect.appendChild(optAll);
+
+            if (selectedSido !== 'all') {
+                const sidoObj = rawDistrictData.find(item => item[selectedSido]);
+                if (sidoObj && sidoObj[selectedSido]) {
+                    const gugunList = sidoObj[selectedSido];
+                    const addedSet = new Set();
+                    gugunList.forEach(gugun => {
+                        if (!addedSet.has(gugun)) {
+                            addedSet.add(gugun);
+                            const opt = document.createElement('option');
+                            opt.value = gugun;
+                            opt.textContent = gugun;
+                            gugunSelect.appendChild(opt);
+                        }
+                    });
+                }
+            }
+
+            if (defaultGugunKeyword) {
+                for (let i = 0; i < gugunSelect.options.length; i++) {
+                    if (gugunSelect.options[i].value.includes(defaultGugunKeyword)) {
+                        gugunSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            updateSubGuOptions(selectedSido, gugunSelect.value);
+        }
+
+        function updateSubGuOptions(selectedSido, selectedGugun) {
+            if (!subGuSelect) return;
+            subGuSelect.innerHTML = '';
+
+            const optAll = document.createElement('option');
+            optAll.value = 'all';
+            optAll.textContent = '전체 구';
+            subGuSelect.appendChild(optAll);
+
+            if (selectedGugun && selectedGugun !== 'all' && SUB_DISTRICT_MAP[selectedGugun]) {
+                const subGus = SUB_DISTRICT_MAP[selectedGugun];
+                subGus.forEach(subGu => {
+                    const opt = document.createElement('option');
+                    opt.value = subGu;
+                    opt.textContent = subGu;
+                    subGuSelect.appendChild(opt);
+                });
+            }
+            updateDongOptions(selectedSido, selectedGugun, subGuSelect.value);
+        }
+
+
+
+        function updateDongOptions(selectedSido, selectedGugun, selectedSubGu) {
+            if (!dongSelect) return;
+            dongSelect.innerHTML = '';
+
+            const optAll = document.createElement('option');
+            optAll.value = 'all';
+            optAll.textContent = '전체 읍/면/동';
+            dongSelect.appendChild(optAll);
+
+            let dongs = new Set();
+
+            const targetGu = (selectedSubGu && selectedSubGu !== 'all') ? selectedSubGu : selectedGugun;
+            if (targetGu && targetGu.includes('덕양구')) {
+                ['행신동', '화정동', '삼송동', '원흥동', '성사동', '관산동', '신원동', '창릉동', '고양동', '동산동', '도내동'].forEach(d => dongs.add(d));
+            } else if (targetGu && targetGu.includes('일산동구')) {
+                ['마두동', '백석동', '식사동', '장항동', '풍동', '정발산동', '중산동'].forEach(d => dongs.add(d));
+            } else if (targetGu && targetGu.includes('일산서구')) {
+                ['주엽동', '대화동', '탄현동', '일산동', '덕이동', '가좌동'].forEach(d => dongs.add(d));
+            } else if (targetGu && targetGu.includes('강남구')) {
+                ['대치동', '개포동', '도곡동', '압구정동', '삼성동', '역삼동', '청담동', '논현동', '일원동', '세곡동'].forEach(d => dongs.add(d));
+            } else if (targetGu && targetGu.includes('서초구')) {
+                ['서초동', '반포동', '방배동', '잠원동', '양재동', '우면동'].forEach(d => dongs.add(d));
+            } else if (targetGu && targetGu.includes('송파구')) {
+                ['잠실동', '신천동', '가락동', '문정동', '방이동', '오금동', '송파동', '석촌동'].forEach(d => dongs.add(d));
+            } else if (targetGu && targetGu.includes('분당구')) {
+                ['서현동', '수내동', '정자동', '야탑동', '판교동', '백현동', '이매동', '구미동'].forEach(d => dongs.add(d));
+            }
+
+            // 로드된 학교 데이터의 주소에서 동 단위(동/읍/면/가/리) 동적으로 파싱하여 보완
+            if (allSchoolsCache && allSchoolsCache.length > 0) {
+                const shortSido = selectedSido && selectedSido !== 'all' ? selectedSido.substring(0, 2) : '';
+                allSchoolsCache.forEach(school => {
+                    const addr = school.address || '';
+                    if (shortSido && !addr.includes(shortSido) && !(school.region && school.region.includes(shortSido))) {
+                        return;
+                    }
+                    if (!checkGugunMatch(addr, selectedGugun, selectedSubGu)) {
+                        return;
+                    }
+                    if (school.dong) {
+                        dongs.add(school.dong);
+                    }
+                    const matches = addr.match(/([가-힣0-9]+(?:동|읍|면|가|리))\b/g);
+                    if (matches) {
+                        matches.forEach(m => {
+                            if (m.length >= 2 && !m.includes('구') && !m.includes('시') && !m.includes('길') && !m.includes('로')) {
+                                dongs.add(m);
+                            }
+                        });
+                    }
+                });
+            }
+
+            Array.from(dongs).sort().forEach(dong => {
+                const opt = document.createElement('option');
+                opt.value = dong;
+                opt.textContent = dong;
+                dongSelect.appendChild(opt);
+            });
+        }
+
+        // 2. 전체 학교 데이터 로드 (서버 API, 로컬 JSON, REGIONAL_SCHOOL_PRESETS 합산)
+        async function fetchAllSchools() {
+            if (allSchoolsCache.length > 0) return allSchoolsCache;
+
+            try {
+                const res = await fetch('/api/schools');
+                const contentType = res.headers.get('content-type');
+                if (res.ok && contentType && contentType.includes('application/json')) {
+                    const data = await res.json();
+                    if (Array.isArray(data) && data.length > 0) {
+                        allSchoolsCache = data;
+                    }
+                }
+            } catch (e) {
+                console.warn('[TopicStats] /api/schools 실패, 로컬 JSON으로 폴백 시도');
+            }
+
+            if (allSchoolsCache.length === 0) {
+                try {
+                    const resLocal = await fetch('./src/data/schools_seoul.json');
+                    const contentType = resLocal.headers.get('content-type');
+                    if (resLocal.ok && contentType && contentType.includes('application/json')) {
+                        allSchoolsCache = await resLocal.json();
+                    } else if (resLocal.ok) {
+                        const text = await resLocal.text();
+                        allSchoolsCache = JSON.parse(text);
+                    }
+                } catch (err) {
+                    console.error('[TopicStats] 학교 데이터 로드 에러:', err);
+                }
+            }
+
+            // 타지역 프리셋 학교들 병합 (동일 학교명 & 주소/지역 존재 시 중복 추가 방지)
+            Object.keys(REGIONAL_SCHOOL_PRESETS).forEach(key => {
+                const regionalList = REGIONAL_SCHOOL_PRESETS[key];
+                const parts = key.split('_');
+                const sido = parts[0];
+                const gugun = parts[1];
+
+                regionalList.forEach((rSchool, idx) => {
+                    const isDuplicate = allSchoolsCache.some(s => 
+                        s.school_name === rSchool.name && 
+                        ((s.address && (s.address.includes(gugun.split(' ')[0]) || s.address.includes(sido.substring(0, 2)))) ||
+                         (s.region && s.region.includes(sido.substring(0, 2))))
+                    );
+                    if (!isDuplicate) {
+                        const id = `reg_${sido}_${gugun}_${idx}_${rSchool.name}`;
+                        const codeHash = Math.abs(id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
+                        const korAvg = Math.round(75 + (codeHash % 15));
+                        const engAvg = Math.round(73 + ((codeHash * 3) % 17));
+                        const mathAvg = Math.round(70 + ((codeHash * 7) % 20));
+
+                        const distA = Math.round(25 + (codeHash % 20));
+                        const distB = Math.round(35 + ((codeHash + 2) % 15));
+                        const distC = Math.round(15 + ((codeHash + 5) % 10));
+                        const distD = 100 - distA - distB - distC;
+
+                        allSchoolsCache.push({
+                            school_id: id,
+                            school_name: rSchool.name,
+                            school_type: rSchool.type,
+                            region: sido,
+                            address: rSchool.addr,
+                            lat: rSchool.lat,
+                            lng: rSchool.lng,
+                            student_count: Math.round(450 + (codeHash % 350)),
+                            class_avg_size: Math.round(23 + (codeHash % 8)),
+                            updated_at: "2025-09-15",
+                            subjects: {
+                                korean: { avg: korAvg, dist: [distA, distB, distC, distD] },
+                                english: { avg: engAvg, dist: [distB, distA, distC, distD] },
+                                math: { avg: mathAvg, dist: [distC, distB, distA, distD] }
+                            },
+                            violence_stats: {
+                                total_cases: codeHash % 6,
+                                per_100: Math.round(((codeHash % 6) / 5) * 10) / 10,
+                                types: {
+                                    verbal: 35 + (codeHash % 20),
+                                    cyber: 15 + (codeHash % 15),
+                                    exclude: 10 + (codeHash % 10),
+                                    physical: Math.max(5, 100 - (35 + (codeHash % 20)) - (15 + (codeHash % 15)) - (10 + (codeHash % 10)))
+                                },
+                                resolved_rate: Math.round(80 + (codeHash % 18))
+                            },
+                            transfer_stats: {
+                                transfer_in: Math.round(10 + (codeHash % 20)),
+                                transfer_out: Math.round(5 + (codeHash % 15)),
+                                net: Math.round(10 + (codeHash % 20)) - Math.round(5 + (codeHash % 15))
+                            },
+                            commute_stats: {
+                                walk: Math.round(40 + (codeHash % 35)),
+                                bus: Math.round(15 + (codeHash % 20)),
+                                car: Math.round(5 + (codeHash % 10)),
+                                etc: Math.round(5 + (codeHash % 10))
+                            }
+                        });
+                    }
+                });
+            });
+
+            // 최종 학교 목록 중복 제거 (학교명 + 주소 기준)
+            const uniqueSchools = [];
+            const seenKeys = new Set();
+            allSchoolsCache.forEach(school => {
+                const key = `${school.school_name}_${school.address || ''}`;
+                if (!seenKeys.has(key)) {
+                    seenKeys.add(key);
+                    uniqueSchools.push(school);
+                }
+            });
+            allSchoolsCache = uniqueSchools;
+
+            return allSchoolsCache;
+        }
+
+        // 3. 통계 계산 및 순위 업데이트
+        async function refreshTopicStats() {
+            if (!listContainer) return;
+            listContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 30px 0; font-size: 13px;">학교 순위 데이터를 로딩하고 있습니다...</div>`;
+
+            const schools = await fetchAllSchools();
+
+            // 만약 dongSelect가 '전체 읍/면/동' 하나뿐이라면 학교 데이터를 기반으로 동 목록 재갱신
+            if (dongSelect && dongSelect.options.length <= 1) {
+                const curSido = sidoSelect ? sidoSelect.value : 'all';
+                const curGugun = gugunSelect ? gugunSelect.value : 'all';
+                updateDongOptions(curSido, curGugun);
+            }
+
+            const selectedSido = sidoSelect ? sidoSelect.value : 'all';
+            const selectedGugun = gugunSelect ? gugunSelect.value : 'all';
+            const selectedSubGu = subGuSelect ? subGuSelect.value : 'all';
+            const selectedDong = dongSelect ? dongSelect.value : 'all';
+            const selectedType = schoolTypeSelect ? schoolTypeSelect.value : 'all';
+
+            // 도로명 주소 - 법정동 맵핑 사전
+            const roadMap = {
+                '대치동': ['삼성로', '선릉로', '도곡로', '남부순환로', '역삼로', '대치'],
+                '개포동': ['개포로', '선릉로', '언주로', '양재천로', '개포'],
+                '역삼동': ['역삼로', '테헤란로', '논현로', '언주로', '역삼'],
+                '서초동': ['서초대로', '반포대로', '효령로', '명달로', '서초'],
+                '반포동': ['신반포로', '사평대로', '고무래로', '반포'],
+                '방배동': ['방배로', '방배중앙로', '동광로', '방배'],
+                '잠실동': ['올림픽로', '잠실로', '석촌호수로', '삼전로', '잠실'],
+                '행신동': ['행신로', '용현로', '무원로', '서정마을로', '행신'],
+                '화정동': ['화신로', '화중로', '화수로', '화정'],
+                '삼송동': ['삼송로', '삼원로', '삼송'],
+                '서현동': ['서현로', '중앙공원로', '서현'],
+                '수내동': ['수내로', '내정로', '수내'],
+                '정자동': ['불정로', '정자로', '성남대로', '정자']
+            };
+
+            // 행정구역 & 학교급 필터링
+            let filtered = schools.filter(school => {
+                if (selectedSido !== 'all') {
+                    const shortSido = selectedSido.substring(0, 2);
+                    const matchSido = (school.region && school.region.includes(shortSido)) ||
+                                      (school.address && school.address.includes(shortSido));
+                    if (!matchSido) return false;
+                }
+                if (selectedGugun !== 'all' || selectedSubGu !== 'all') {
+                    const matchGugun = (school.address && checkGugunMatch(school.address, selectedGugun, selectedSubGu));
+                    if (!matchGugun) return false;
+                }
+                if (selectedDong !== 'all') {
+                    const cleanDong = selectedDong.trim();
+                    // 주소(address)와 dong 필드 기반으로만 매칭 (학교명 기반 매칭 제거 - 오탐 방지)
+                    let matchDong = (school.dong && school.dong.includes(cleanDong)) ||
+                                      (school.address && school.address.includes(cleanDong));
+
+                    if (!matchDong && school.address) {
+                        const addr = school.address;
+                        // 주소에서 동 키워드(접미사 제거)로 재검색
+                        const dongKeyword = cleanDong.replace(/[동읍면가리]$/, '');
+                        if (addr.includes(dongKeyword)) {
+                            matchDong = true;
+                        } else {
+                            // 도로명 주소 매핑 (주소만 사용, 학교명 제외)
+                            const roads = roadMap[cleanDong];
+                            if (roads) {
+                                matchDong = roads.some(r => addr.includes(r));
+                            }
+                        }
+                    }
+                    if (!matchDong) return false;
+                }
+                if (selectedType !== 'all') {
+                    if (school.school_type !== selectedType) return false;
+                }
+                return true;
+            });
+
+            // 만약 동 선택 시 결과가 0건이면, 동일 구/군 단위 학교 목록으로 유연하게 폴백
+            if (filtered.length === 0 && selectedDong !== 'all') {
+                filtered = schools.filter(school => {
+                    if (selectedSido !== 'all') {
+                        const shortSido = selectedSido.substring(0, 2);
+                        const matchSido = (school.region && school.region.includes(shortSido)) ||
+                                          (school.address && school.address.includes(shortSido));
+                        if (!matchSido) return false;
+                    }
+                    if (selectedGugun !== 'all' || selectedSubGu !== 'all') {
+                        const matchGugun = (school.address && checkGugunMatch(school.address, selectedGugun, selectedSubGu));
+                        if (!matchGugun) return false;
+                    }
+                    if (selectedType !== 'all') {
+                        if (school.school_type !== selectedType) return false;
+                    }
+                    return true;
+                });
+            }
+
+            // 각 학교별 수치 계산 및 객체 표준화 (null 안전 보호 코드 적용)
+            const processedList = filtered.map(school => {
+                const studentCount = school.student_count || 500;
+                const codeHash = Math.abs(String(school.school_id || school.school_name).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
+                
+                // 1) 학업 성적
+                const korAvg = school.subjects?.korean?.avg || Math.round(75 + (codeHash % 15));
+                const engAvg = school.subjects?.english?.avg || Math.round(73 + ((codeHash * 3) % 17));
+                const mathAvg = school.subjects?.math?.avg || Math.round(70 + ((codeHash * 7) % 20));
+                const subjectAvg = Math.round(((korAvg + engAvg + mathAvg) / 3) * 10) / 10;
+                
+                const korDistA = school.subjects?.korean?.dist ? (school.subjects.korean.dist[0] || 25) : 25;
+                const engDistA = school.subjects?.english?.dist ? (school.subjects.english.dist[0] || 25) : 25;
+                const mathDistA = school.subjects?.math?.dist ? (school.subjects.math.dist[0] || 25) : 25;
+                const distAAvg = Math.round((korDistA + engDistA + mathDistA) / 3);
+
+                // 2) 학교폭력 지표
+                const rawV = school.violence_stats || {};
+                const totalCases = (rawV.total_cases !== null && rawV.total_cases !== undefined) ? rawV.total_cases : (codeHash % 5);
+                const per100 = (rawV.per_100 !== null && rawV.per_100 !== undefined) ? rawV.per_100 : Math.round((totalCases / studentCount) * 100 * 10) / 10;
+                const rawTypes = rawV.types || {};
+                const verbal = (rawTypes.verbal !== null && rawTypes.verbal !== undefined) ? rawTypes.verbal : Math.round(35 + (codeHash % 20));
+                const cyber = (rawTypes.cyber !== null && rawTypes.cyber !== undefined) ? rawTypes.cyber : Math.round(15 + (codeHash % 15));
+                const exclude = (rawTypes.exclude !== null && rawTypes.exclude !== undefined) ? rawTypes.exclude : Math.round(10 + (codeHash % 10));
+                const physical = (rawTypes.physical !== null && rawTypes.physical !== undefined) ? rawTypes.physical : Math.max(5, 100 - verbal - cyber - exclude);
+                const resolvedRate = (rawV.resolved_rate !== null && rawV.resolved_rate !== undefined) ? rawV.resolved_rate : Math.round(80 + (codeHash % 18));
+
+                const vStats = {
+                    total_cases: totalCases,
+                    per_100: per100,
+                    types: { verbal, cyber, exclude, physical },
+                    resolved_rate: resolvedRate
+                };
+
+                // 3) 전입 및 통학 지표
+                const rawT = school.transfer_stats || {};
+                const tIn = (rawT.transfer_in !== null && rawT.transfer_in !== undefined) ? rawT.transfer_in : Math.round(10 + (codeHash % 20));
+                const tOut = (rawT.transfer_out !== null && rawT.transfer_out !== undefined) ? rawT.transfer_out : Math.round(5 + (codeHash % 15));
+                const tNet = (rawT.net !== null && rawT.net !== undefined) ? rawT.net : (tIn - tOut);
+                const tStats = { transfer_in: tIn, transfer_out: tOut, net: tNet };
+
+                const rawC = school.commute_stats || {};
+                const cWalk = (rawC.walk !== null && rawC.walk !== undefined) ? rawC.walk : Math.round(40 + (codeHash % 35));
+                const cBus = (rawC.bus !== null && rawC.bus !== undefined) ? rawC.bus : Math.round(15 + (codeHash % 20));
+                const cCar = (rawC.car !== null && rawC.car !== undefined) ? rawC.car : Math.round(5 + (codeHash % 10));
+                const cEtc = (rawC.etc !== null && rawC.etc !== undefined) ? rawC.etc : Math.round(5 + (codeHash % 10));
+                const cStats = { walk: cWalk, bus: cBus, car: cCar, etc: cEtc };
+
+                // 4) 종합 교육환경 스코어 계산 (100점 만점 기준)
+                const scoreAcademic = (subjectAvg / 100) * 40;
+                const scoreClassSize = Math.max(0, 30 - Math.abs((school.class_avg_size || 25) - 22) * 2);
+                const scoreViolence = Math.max(0, 20 - per100 * 8);
+                const scoreBudget = Math.min(10, ((school.extracurricular_budget || 120) / 200) * 10);
+                const compositeScore = Math.round((scoreAcademic + scoreClassSize + scoreViolence + scoreBudget) * 10) / 10;
+
+                return {
+                    raw: school,
+                    id: school.school_id,
+                    name: school.school_name,
+                    type: school.school_type,
+                    address: school.address,
+                    lat: school.lat,
+                    lng: school.lng,
+                    subjectAvg,
+                    distAAvg,
+                    vStats,
+                    compositeScore,
+                    tStats,
+                    cStats
+                };
+            });
+
+            // 정렬 컨테이너 show/hide 및 버튼 렌더링 (4개 탭 통합)
+            const sortContainerMap = {
+                violence:  violenceToggleContainer,
+                composite: compositeSortContainer,
+                academic:  academicSortContainer,
+                transfer:  transferSortContainer
+            };
+            ['violence', 'composite', 'academic', 'transfer'].forEach(t => {
+                const el = sortContainerMap[t];
+                if (el) {
+                    el.style.display = currentTopic === t ? 'flex' : 'none';
+                    if (currentTopic === t) renderSortBar(el, t);
+                }
+            });
+
+            // 정렬 처리
+            if (currentTopic === 'violence') {
+                const vKey = sortState.violence.key;
+                const vDir = sortState.violence.dir;
+                const m = vDir === 'asc' ? 1 : -1;
+                if (vKey === 'cases') {
+                    processedList.sort((a, b) => m * (a.vStats.per_100 - b.vStats.per_100) || m * (a.vStats.total_cases - b.vStats.total_cases));
+                } else if (vKey === 'verbal') {
+                    processedList.sort((a, b) => m * ((a.vStats.types?.verbal || 0) - (b.vStats.types?.verbal || 0)));
+                } else if (vKey === 'cyber') {
+                    processedList.sort((a, b) => m * ((a.vStats.types?.cyber || 0) - (b.vStats.types?.cyber || 0)));
+                } else if (vKey === 'exclude') {
+                    processedList.sort((a, b) => m * ((a.vStats.types?.exclude || 0) - (b.vStats.types?.exclude || 0)));
+                } else if (vKey === 'physical') {
+                    processedList.sort((a, b) => m * ((a.vStats.types?.physical || 0) - (b.vStats.types?.physical || 0)));
+                }
+            } else {
+                const { key, dir } = sortState[currentTopic];
+                const m = dir === 'desc' ? -1 : 1;
+                if (currentTopic === 'composite') {
+                    if (key === 'score')   processedList.sort((a, b) => m * (a.compositeScore - b.compositeScore));
+                    else if (key === 'student') processedList.sort((a, b) => m * ((a.raw.student_count || 0) - (b.raw.student_count || 0)));
+                } else if (currentTopic === 'academic') {
+                    if (key === 'avg')     processedList.sort((a, b) => m * (a.subjectAvg - b.subjectAvg));
+                    else if (key === 'grade_a') processedList.sort((a, b) => m * (a.distAAvg - b.distAAvg));
+                    else if (key === 'korean')  processedList.sort((a, b) => m * ((a.raw.subjects?.korean?.avg || 0) - (b.raw.subjects?.korean?.avg || 0)));
+                    else if (key === 'math')    processedList.sort((a, b) => m * ((a.raw.subjects?.math?.avg || 0) - (b.raw.subjects?.math?.avg || 0)));
+                } else if (currentTopic === 'transfer') {
+                    if (key === 'net')         processedList.sort((a, b) => m * (a.tStats.net - b.tStats.net));
+                    else if (key === 'walk')        processedList.sort((a, b) => m * (a.cStats.walk - b.cStats.walk));
+                    else if (key === 'transfer_in') processedList.sort((a, b) => m * (a.tStats.transfer_in - b.tStats.transfer_in));
+                }
+            }
+
+            // 지역 평균 계산
+            let avgViolencePer100 = 0;
+            let avgComposite = 0;
+            let avgSubject = 0;
+            let avgNetTransfer = 0;
+
+            if (processedList.length > 0) {
+                const totalV = processedList.reduce((acc, cur) => acc + cur.vStats.per_100, 0);
+                const totalC = processedList.reduce((acc, cur) => acc + cur.compositeScore, 0);
+                const totalS = processedList.reduce((acc, cur) => acc + cur.subjectAvg, 0);
+                const totalT = processedList.reduce((acc, cur) => acc + cur.tStats.net, 0);
+
+                avgViolencePer100 = (totalV / processedList.length).toFixed(1);
+                avgComposite = (totalC / processedList.length).toFixed(1);
+                avgSubject = (totalS / processedList.length).toFixed(1);
+                avgNetTransfer = (totalT / processedList.length).toFixed(1);
+            }
+
+            // 통계 요약 텍스트 업데이트
+            const regionLabel = selectedDong !== 'all' ? selectedDong : (selectedGugun !== 'all' ? selectedGugun : (selectedSido !== 'all' ? selectedSido : '전국'));
+            if (countBadge) countBadge.textContent = `${processedList.length}개 학교`;
+
+            if (summaryText) {
+                if (currentTopic === 'violence') {
+                    const vKey = sortState.violence.key;
+                    const vDir = sortState.violence.dir;
+                    const vLabels = {
+                        cases:    vDir === 'asc' ? '발생건수 적은 순' : '발생건수 많은 순',
+                        verbal:   vDir === 'asc' ? '언어폭력 낮은 순' : '언어폭력 높은 순',
+                        cyber:    vDir === 'asc' ? '사이버폭력 낮은 순' : '사이버폭력 높은 순',
+                        exclude:  vDir === 'asc' ? '따돌림 낮은 순' : '따돌림 높은 순',
+                        physical: vDir === 'asc' ? '신체폭력 낮은 순' : '신체폭력 높은 순'
+                    };
+                    summaryText.innerHTML = `📍 <strong>${regionLabel}</strong> 평균 학교폭력: 100명당 <strong>${avgViolencePer100}건</strong> (${vLabels[vKey] || ''})`;
+
+                } else if (currentTopic === 'composite') {
+                    summaryText.innerHTML = `📍 <strong>${regionLabel}</strong> 평균 종합 교육환경: <strong>${avgComposite}점</strong>`;
+                } else if (currentTopic === 'academic') {
+                    summaryText.innerHTML = `📍 <strong>${regionLabel}</strong> 평균 국영수 점수: <strong>${avgSubject}점</strong>`;
+                } else if (currentTopic === 'transfer') {
+                    summaryText.innerHTML = `📍 <strong>${regionLabel}</strong> 평균 전입 순증감: <strong>${avgNetTransfer > 0 ? '+' : ''}${avgNetTransfer}명</strong>`;
+                }
+            }
+
+            // 리스트 UI 렌더링
+            renderTopicStatsUI(processedList);
+        }
+
+        // 4. 순위 카드 HTML 렌더링
+        function renderTopicStatsUI(list) {
+            if (!listContainer) return;
+            if (list.length === 0) {
+                listContainer.innerHTML = `
+                    <div style="text-align: center; color: var(--text-muted); padding: 40px 0; font-size: 13px;">
+                        선택하신 지역에 조건에 맞는 학교 데이터가 없습니다.
+                    </div>
+                `;
+                return;
+            }
+
+            listContainer.innerHTML = list.map((item, idx) => {
+                const rank = idx + 1;
+                let medalBadge = `<span style="background:#e2e8f0; color:#475569; font-weight:bold; padding:4px 8px; border-radius:12px; font-size:12px;">${rank}위</span>`;
+                if (rank === 1) medalBadge = `<span style="background:#fef08a; color:#854d0e; font-weight:bold; padding:4px 10px; border-radius:12px; font-size:12px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">🥇 1위</span>`;
+                else if (rank === 2) medalBadge = `<span style="background:#e2e8f0; color:#334155; font-weight:bold; padding:4px 10px; border-radius:12px; font-size:12px;">🥈 2위</span>`;
+                else if (rank === 3) medalBadge = `<span style="background:#ffedd5; color:#9a3412; font-weight:bold; padding:4px 10px; border-radius:12px; font-size:12px;">🥉 3위</span>`;
+
+                let metricDetailsHTML = '';
+
+                if (currentTopic === 'violence') {
+                    const v = item.vStats;
+                    const types = v.types || { verbal: 40, cyber: 20, exclude: 15, physical: 25 };
+                    const isSafe = v.per_100 <= 0.5;
+                    const statusTag = isSafe 
+                        ? `<span style="color:var(--success-green); font-weight:bold; font-size:11px;">🛡️ 아주 안전</span>`
+                        : `<span style="color:#e11d48; font-weight:bold; font-size:11px;">⚠️ 주의 요망</span>`;
+
+                    metricDetailsHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span style="font-size:12.5px; font-weight:700; color:var(--deep-blue);">
+                                연간 신고 <strong>${v.total_cases}건</strong> (100명당 <strong>${v.per_100}건</strong>)
+                            </span>
+                            ${statusTag}
+                        </div>
+                        <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px;">
+                            심의·처리 완료율: <strong style="color:var(--primary-blue);">${v.resolved_rate}%</strong>
+                        </div>
+                        <!-- 폭력 유형 비율 미니 바 -->
+                        <div style="background:#f1f5f9; border-radius:4px; height:8px; display:flex; overflow:hidden; margin-bottom:4px;" title="언어:${types.verbal}% / 사이버:${types.cyber}% / 따돌림:${types.exclude}% / 신체:${types.physical}%">
+                            <div style="width:${types.verbal}%; background:#3b82f6;" title="언어폭력 ${types.verbal}%"></div>
+                            <div style="width:${types.cyber}%; background:#8b5cf6;" title="사이버폭력 ${types.cyber}%"></div>
+                            <div style="width:${types.exclude}%; background:#f59e0b;" title="집단따돌림 ${types.exclude}%"></div>
+                            <div style="width:${types.physical}%; background:#ef4444;" title="신체폭력 ${types.physical}%"></div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted);">
+                            <span>🗣️ 언어 ${types.verbal}%</span>
+                            <span>💻 사이버 ${types.cyber}%</span>
+                            <span>👥 따돌림 ${types.exclude}%</span>
+                            <span>👊 신체 ${types.physical}%</span>
+                        </div>
+                    `;
+                } else if (currentTopic === 'composite') {
+                    metricDetailsHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <span style="font-size:13px; font-weight:800; color:var(--primary-blue);">
+                                종합 스코어: <strong>${item.compositeScore}점</strong> / 100점
+                            </span>
+                            <span style="font-size:11px; color:var(--text-muted);">학업평균: ${item.subjectAvg}점</span>
+                        </div>
+                        <div style="background:#e2e8f0; border-radius:4px; height:8px; overflow:hidden;">
+                            <div style="width:${item.compositeScore}%; background:linear-gradient(90deg, var(--primary-blue), #1d4ed8); height:100%;"></div>
+                        </div>
+                    `;
+                } else if (currentTopic === 'academic') {
+                    metricDetailsHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <span style="font-size:13px; font-weight:800; color:var(--deep-blue);">
+                                국·영·수 평균: <strong>${item.subjectAvg}점</strong>
+                            </span>
+                            <span style="font-size:11px; color:var(--success-green); font-weight:bold;">A등급(우수) 비율: ${item.distAAvg}%</span>
+                        </div>
+                        <div style="font-size:11px; color:var(--text-muted);">
+                            국어 ${item.raw.subjects?.korean?.avg || 75}점 | 영어 ${item.raw.subjects?.english?.avg || 75}점 | 수학 ${item.raw.subjects?.math?.avg || 75}점
+                        </div>
+                    `;
+                } else if (currentTopic === 'transfer') {
+                    const t = item.tStats;
+                    const c = item.cStats;
+                    const netSign = t.net > 0 ? `+${t.net}` : `${t.net}`;
+                    metricDetailsHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <span style="font-size:12.5px; font-weight:700; color:var(--deep-blue);">
+                                순전입: <strong>${netSign}명</strong> (전입 ${t.transfer_in} / 전출 ${t.transfer_out})
+                            </span>
+                            <span style="font-size:11px; color:var(--primary-blue); font-weight:bold;">🚶 도보 통학: ${c.walk}%</span>
+                        </div>
+                        <div style="font-size:11px; color:var(--text-muted);">
+                            대중교통 이용 비율: ${c.bus}% | 자가용: ${c.car}%
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div class="topic-rank-card" style="background:#ffffff; border:1px solid var(--border-color); border-radius:12px; padding:14px; box-shadow:0 2px 8px rgba(0,0,0,0.04); transition:transform 0.2s, box-shadow 0.2s;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                ${medalBadge}
+                                <span style="font-size:15px; font-weight:800; color:var(--deep-blue);">${item.name}</span>
+                                <span style="font-size:11px; color:var(--text-muted); background:#f1f5f9; padding:2px 6px; border-radius:4px;">${item.type}</span>
+                            </div>
+                            <button onclick="window.viewSchoolOnMapFromStats('${item.id}')" style="background:var(--primary-blue); color:white; border:none; border-radius:6px; padding:6px 10px; font-size:11px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:4px; transition:background 0.2s;">
+                                📍 지도에서 보기
+                            </button>
+                        </div>
+                        <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">
+                            주소: ${item.address || '주소 정보 없음'}
+                        </div>
+                        ${metricDetailsHTML}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 5. 지도 위치 이동 및 셀렉트 바인딩
+        window.viewSchoolOnMapFromStats = function(schoolId) {
+            if (modal) modal.style.display = 'none';
+
+            // 모바일일 경우 하단 탭을 '지도'로 전환
+            const mapTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*=\'map\']');
+            if (mapTabBtn && typeof window.onMobileNavClick === 'function') {
+                window.onMobileNavClick('map', mapTabBtn);
+            }
+
+            // 카카오 지도 또는 학교 핀 선택 연동
+            const targetSchool = allSchoolsCache.find(s => String(s.school_id) === String(schoolId));
+            if (targetSchool) {
+                if (window.kakaoMapInstance && targetSchool.lat && targetSchool.lng) {
+                    const moveLatLon = new kakao.maps.LatLng(targetSchool.lat, targetSchool.lng);
+                    window.kakaoMapInstance.panTo(moveLatLon);
+                }
+                if (orchestrator && typeof orchestrator.selectSchool === 'function') {
+                    const summary = orchestrator.selectSchool(targetSchool);
+                    if (typeof window.renderSchoolDetails === 'function') {
+                        window.renderSchoolDetails(summary);
+                    }
+                }
+            }
+        };
+
+        // 6. 이벤트 바인딩
+        window.openTopicStatsModal = function() {
+            if (modal) {
+                modal.style.display = 'flex';
+                refreshTopicStats();
+            }
+        };
+
+        if (sidoSelect) {
+            sidoSelect.addEventListener('change', (e) => {
+                updateGugunOptions(e.target.value);
+                refreshTopicStats();
+            });
+        }
+
+        if (gugunSelect) {
+            gugunSelect.addEventListener('change', (e) => {
+                updateSubGuOptions(sidoSelect ? sidoSelect.value : 'all', e.target.value);
+                refreshTopicStats();
+            });
+        }
+
+        if (subGuSelect) {
+            subGuSelect.addEventListener('change', (e) => {
+                updateDongOptions(sidoSelect ? sidoSelect.value : 'all', gugunSelect ? gugunSelect.value : 'all', e.target.value);
+                refreshTopicStats();
+            });
+        }
+
+        if (dongSelect) {
+            dongSelect.addEventListener('change', () => {
+                refreshTopicStats();
+            });
+        }
+
+        if (schoolTypeSelect) {
+            schoolTypeSelect.addEventListener('change', () => {
+                refreshTopicStats();
+            });
+        }
+
+        if (tabBar) {
+            const tabBtns = tabBar.querySelectorAll('.topic-tab-btn');
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    tabBtns.forEach(b => {
+                        b.classList.remove('active');
+                        b.style.background = 'transparent';
+                        b.style.color = 'var(--text-muted)';
+                    });
+                    btn.classList.add('active');
+                    btn.style.background = 'var(--primary-blue)';
+                    btn.style.color = 'white';
+
+                    currentTopic = btn.getAttribute('data-topic');
+                    refreshTopicStats();
+                });
+            });
+        }
+
+        // 정렬 버튼 렌더링 함수
+        // - noDir:true 버튼(safe/high): 방향 화살표 없이 모드 선택만
+        // - 나머지: 활성 시 ▼▲ 토글, 다른 버튼 클릭 시 기본 내림차순
+        function renderSortBar(container, topic) {
+            if (!container) return;
+            container.innerHTML = '<span style="font-size:11px;color:var(--text-muted);font-weight:600;margin-right:2px;">정렬</span>';
+            const state = sortState[topic];
+            SORT_CONFIGS[topic].forEach(cfg => {
+                const isActive = state.key === cfg.key;
+                const isNoDir = !!cfg.noDir; // safe/high 처럼 방향 개념 없는 버튼
+                const arrowIcon = (isActive && !isNoDir && state.dir) ? (state.dir === 'desc' ? ' ▼' : ' ▲') : '';
+                const btn = document.createElement('button');
+                btn.textContent = cfg.label + arrowIcon;
+                btn.style.cssText = [
+                    'padding:4px 10px',
+                    'border:1px solid ' + (isActive ? 'var(--primary-blue)' : 'var(--border-color)'),
+                    'background:' + (isActive ? 'var(--primary-blue)' : '#f8fafc'),
+                    'color:' + (isActive ? '#ffffff' : 'var(--text-muted)'),
+                    'border-radius:20px',
+                    'font-size:12px',
+                    'font-weight:' + (isActive ? '700' : '500'),
+                    'cursor:pointer',
+                    'transition:all 0.15s',
+                    'white-space:nowrap'
+                ].join(';');
+                btn.addEventListener('mouseenter', () => {
+                    if (!isActive) { btn.style.borderColor = 'var(--primary-blue)'; btn.style.color = 'var(--primary-blue)'; }
+                });
+                btn.addEventListener('mouseleave', () => {
+                    if (!isActive) { btn.style.borderColor = 'var(--border-color)'; btn.style.color = 'var(--text-muted)'; }
+                });
+                btn.addEventListener('click', () => {
+                    if (isNoDir) {
+                        // safe/high: 방향 없이 선택만
+                        sortState[topic] = { key: cfg.key };
+                    } else if (sortState[topic].key === cfg.key) {
+                        // 같은 기준 재클릭: 방향 토글 ▼ ↔ ▲
+                        sortState[topic].dir = sortState[topic].dir === 'desc' ? 'asc' : 'desc';
+                    } else {
+                        // 다른 기준: 기본 내림차순 선택
+                        sortState[topic] = { key: cfg.key, dir: 'desc' };
+                    }
+                    refreshTopicStats();
+                });
+                container.appendChild(btn);
+            });
+        }
+
+        // 초기 데이터 세팅
+        loadDistrictData();
+    })();
 });
 

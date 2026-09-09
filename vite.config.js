@@ -3,13 +3,21 @@ import { resolve } from 'path';
 
 export default defineConfig({
   server: {
-    port: 5173,
-    strictPort: true,
+    port: 3000,
+    strictPort: false,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
+        configure: (proxy, _options) => {
+          proxy.on('error', (_err, _req, res) => {
+            if (!res.headersSent) {
+              res.writeHead(404, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Backend proxy target unreachable', fallback: true }));
+            }
+          });
+        }
       }
     }
   },
@@ -22,3 +30,4 @@ export default defineConfig({
     }
   }
 });
+

@@ -324,6 +324,16 @@ app.get('/api/community', async (req, res) => {
     }
 });
 
+// Helper to build Kakao headers with valid origin matching registered Kakao domain
+function getKakaoHeaders(req, appkey) {
+    const rawOrigin = req.headers.origin || `http://${req.headers.host || 'localhost:3000'}`;
+    const cleanOrigin = rawOrigin.startsWith('http') ? rawOrigin : `http://${rawOrigin}`;
+    return {
+        'Authorization': `KakaoAK ${appkey}`,
+        'KA': `sdk/1.25.3 os/javascript lang/en-US device/Win32 origin/${encodeURIComponent(cleanOrigin)}`
+    };
+}
+
 // 8. GET /api/academies/count - Fetch true academy count bypassing JS SDK limit
 app.get('/api/academies/count', async (req, res) => {
     const { x, y } = req.query;
@@ -335,10 +345,7 @@ app.get('/api/academies/count', async (req, res) => {
 
     try {
         const url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=AC5&x=${x}&y=${y}&radius=1000`;
-        const data = await httpsGet(url, {
-            'Authorization': `KakaoAK ${appkey}`,
-            'KA': 'sdk/1.25.3 os/javascript lang/en-US device/Win32 origin/http%3A%2F%2Flocalhost%3A5173'
-        });
+        const data = await httpsGet(url, getKakaoHeaders(req, appkey));
         res.json({ total_count: data.meta ? data.meta.total_count : 0 });
     } catch (err) {
         console.error('Kakao Fetch Error:', err);
@@ -355,10 +362,7 @@ app.get('/api/academies/list', async (req, res) => {
     const appkey = config.kakao_app_key;
     if (!appkey) return res.status(500).json({ error: '카카오 앱 키가 없습니다.' });
 
-    const headers = {
-        'Authorization': `KakaoAK ${appkey}`,
-        'KA': 'sdk/1.25.3 os/javascript lang/en-US device/Win32 origin/http%3A%2F%2Flocalhost%3A5173'
-    };
+    const headers = getKakaoHeaders(req, appkey);
 
     try {
         // 1페이지 먼저 호출해서 total_count 파악 (학원 카테고리 + 교습소 키워드)
@@ -366,8 +370,8 @@ app.get('/api/academies/list', async (req, res) => {
         const gyoUrl = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent('교습소')}&x=${x}&y=${y}&radius=1000&size=15&page=1`;
         
         const [ac5First, gyoFirst] = await Promise.all([
-            httpsGet(ac5Url, headers),
-            httpsGet(gyoUrl, headers)
+            httpsGet(ac5Url, headers).catch(() => ({ meta: { total_count: 0 }, documents: [] })),
+            httpsGet(gyoUrl, headers).catch(() => ({ meta: { total_count: 0 }, documents: [] }))
         ]);
 
         const ac5Total = ac5First.meta ? ac5First.meta.total_count : 0;
@@ -382,11 +386,11 @@ app.get('/api/academies/list', async (req, res) => {
         
         // 학원 나머지 페이지
         for (let page = 2; page <= ac5Pages; page++) {
-            pageRequests.push(httpsGet(`https://dapi.kakao.com/v2/local/search/category.json?category_group_code=AC5&x=${x}&y=${y}&radius=1000&size=15&page=${page}`, headers));
+            pageRequests.push(httpsGet(`https://dapi.kakao.com/v2/local/search/category.json?category_group_code=AC5&x=${x}&y=${y}&radius=1000&size=15&page=${page}`, headers).catch(() => ({ documents: [] })));
         }
         // 교습소 나머지 페이지
         for (let page = 2; page <= gyoPages; page++) {
-            pageRequests.push(httpsGet(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent('교습소')}&x=${x}&y=${y}&radius=1000&size=15&page=${page}`, headers));
+            pageRequests.push(httpsGet(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent('교습소')}&x=${x}&y=${y}&radius=1000&size=15&page=${page}`, headers).catch(() => ({ documents: [] })));
         }
 
         if (pageRequests.length > 0) {
@@ -405,7 +409,6 @@ app.get('/api/academies/list', async (req, res) => {
         });
         
         const finalItems = Array.from(uniqueMap.values());
-        // totalCount는 두 결과를 합친 값으로 하되 정확하지 않을 수 있으므로 finalItems.length 또는 원래 값으로
         const totalCount = finalItems.length > (ac5Total + gyoTotal) ? finalItems.length : (ac5Total + gyoTotal);
 
         res.json({ items: finalItems, total_count: totalCount });
@@ -424,14 +427,11 @@ app.get('/api/academies/search', async (req, res) => {
     const appkey = config.kakao_app_key;
     if (!appkey) return res.status(500).json({ error: '카카오 앱 키가 없습니다.' });
 
-    const headers = {
-        'Authorization': `KakaoAK ${appkey}`,
-        'KA': 'sdk/1.25.3 os/javascript lang/en-US device/Win32 origin/http%3A%2F%2Flocalhost%3A5173'
-    };
+    const headers = getKakaoHeaders(req, appkey);
 
     try {
         const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&category_group_code=AC5&x=${x}&y=${y}&radius=1000&size=15&page=1`;
-        const firstData = await httpsGet(url, headers);
+        const firstData = await httpsGet(url, headers).catch(() => ({ meta: { total_count: 0 }, documents: [] }));
         const totalCount = firstData.meta ? firstData.meta.total_count : 0;
         const totalPages = Math.min(Math.ceil(totalCount / 15), 3); // 최대 3페이지 제한
 
@@ -441,7 +441,7 @@ app.get('/api/academies/search', async (req, res) => {
             const pageRequests = [];
             for (let page = 2; page <= totalPages; page++) {
                 const pUrl = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&category_group_code=AC5&x=${x}&y=${y}&radius=1000&size=15&page=${page}`;
-                pageRequests.push(httpsGet(pUrl, headers));
+                pageRequests.push(httpsGet(pUrl, headers).catch(() => ({ documents: [] })));
             }
             const results = await Promise.all(pageRequests);
             results.forEach(result => {

@@ -13,6 +13,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>학업성취도 지도 - Academic Achievement Map</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -24,6 +25,15 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+
+        <!-- Top Right Floating Topic Stats Button -->
+        <button id="btnOpenTopicStats" class="floating-action-btn" style="position: absolute; right: 174px; top: 24px;" title="주제별 학교 순위 통계" onclick="if(window.openTopicStatsModal) window.openTopicStatsModal();">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
             </svg>
         </button>
 
@@ -2204,6 +2214,65 @@
             <!-- 시뮬레이션 결과 대시보드 -->
             <div id="simulationResultPanel" class="hide-scrollbar" style="display: none; max-height: 480px; overflow-y: auto; padding-right: 4px;">
                 <!-- 비교 결과 동적 렌더링 -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- 순위 통계 대시보드 모달 -->
+    <div id="topicStatsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) document.getElementById('topicStatsModal').style.display='none'">
+        <div style="background: white; border-radius: 16px; padding: 24px; width: 95%; max-width: 620px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color); position: relative;" onclick="event.stopPropagation();">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 style="font-size: 17px; font-weight: 800; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
+                    <span>📊 순위 통계 대시보드</span>
+                </h3>
+                <button onclick="document.getElementById('topicStatsModal').style.display='none'" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1;">&times;</button>
+            </div>
+            
+            <!-- 지역 및 학교급 선택 바 (시/도, 시/군, 구, 읍/면/동) -->
+            <div style="background: #f8f9fa; padding: 12px; border-radius: 10px; border: 1px solid var(--border-color); margin-bottom: 14px;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <select id="topicStatsSido" style="flex: 1; min-width: 80px; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; outline: none; font-size: 12.5px; background: white; cursor: pointer;"></select>
+                    <select id="topicStatsGugun" style="flex: 1; min-width: 80px; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; outline: none; font-size: 12.5px; background: white; cursor: pointer;"></select>
+                    <select id="topicStatsSubGu" style="flex: 1; min-width: 80px; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; outline: none; font-size: 12.5px; background: white; cursor: pointer;"></select>
+                    <select id="topicStatsDong" style="flex: 1; min-width: 80px; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; outline: none; font-size: 12.5px; background: white; cursor: pointer;"></select>
+                    <select id="topicStatsSchoolType" style="flex: 1; min-width: 80px; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; outline: none; font-size: 12.5px; background: white; cursor: pointer;">
+                        <option value="all">전체 학교급</option>
+                        <option value="초등학교">초등학교</option>
+                        <option value="중학교" selected>중학교</option>
+                        <option value="고등학교">고등학교</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 주제 탭 버튼 바 -->
+            <div id="topicStatsTabBar" style="display: flex; gap: 6px; margin-bottom: 16px; background: #f1f3f5; padding: 4px; border-radius: 8px; overflow-x: auto;" class="hide-scrollbar">
+                <button class="topic-tab-btn active" data-topic="violence" style="flex: 1; min-width: 90px; padding: 8px 6px; border: none; background: var(--primary-blue); color: white; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s; white-space: nowrap;">🚨 학교폭력 안전</button>
+                <button class="topic-tab-btn" data-topic="composite" style="flex: 1; min-width: 90px; padding: 8px 6px; border: none; background: transparent; color: var(--text-muted); font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s; white-space: nowrap;">🏆 교육환경 점수</button>
+                <button class="topic-tab-btn" data-topic="academic" style="flex: 1; min-width: 90px; padding: 8px 6px; border: none; background: transparent; color: var(--text-muted); font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s; white-space: nowrap;">📚 학업성취도</button>
+                <button class="topic-tab-btn" data-topic="transfer" style="flex: 1; min-width: 90px; padding: 8px 6px; border: none; background: transparent; color: var(--text-muted); font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s; white-space: nowrap;">🔄 전입/통학 환경</button>
+            </div>
+
+            <!-- 학교폭력 정렬 버튼 바 (violence 탭, JS가 버튼 렌더링) -->
+            <div id="violenceOrderToggleContainer" style="display: flex; flex-wrap: wrap; align-items: center; margin-bottom: 10px; gap: 5px;"></div>
+
+            <!-- 교육환경점수 정렬 버튼 바 (composite 탭, JS가 버튼 렌더링) -->
+            <div id="compositeSortContainer" style="display: none; flex-wrap: wrap; align-items: center; margin-bottom: 10px; gap: 5px;"></div>
+
+            <!-- 학업성취도 정렬 버튼 바 (academic 탭, JS가 버튼 렌더링) -->
+            <div id="academicSortContainer" style="display: none; flex-wrap: wrap; align-items: center; margin-bottom: 10px; gap: 5px;"></div>
+
+            <!-- 전입/통학환경 정렬 버튼 바 (transfer 탭, JS가 버튼 렌더링) -->
+            <div id="transferSortContainer" style="display: none; flex-wrap: wrap; align-items: center; margin-bottom: 10px; gap: 5px;"></div>
+
+            <!-- 지역 평균 요약 헤더 카드 -->
+            <div id="topicStatsSummaryCard" style="background: rgba(37, 99, 235, 0.05); border: 1px solid rgba(37, 99, 235, 0.15); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                <span id="topicStatsSummaryText" style="color: var(--deep-blue); font-weight: 600;">지역 통계를 계산 중입니다...</span>
+                <span id="topicStatsCountBadge" style="background: var(--primary-blue); color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">0개 학교</span>
+            </div>
+
+            <!-- 순위 목록 컨테이너 -->
+            <div id="topicStatsListContainer" class="hide-scrollbar" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
+                <div style="text-align: center; color: var(--text-muted); padding: 30px 0; font-size: 13px;">순위 데이터를 로딩 중입니다...</div>
             </div>
         </div>
     </div>
