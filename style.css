@@ -1015,30 +1015,50 @@ body {
     /* 모바일 지도 우측 플로팅 필터 노출 및 버튼 스타일 */
     .mobile-floating-filters {
         display: flex !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
     }
 
     .mobile-floating-filters button {
-        width: 38px;
-        height: 38px;
+        width: 42px;
+        height: 42px;
         border-radius: 50%;
         background: #ffffff;
-        border: 1px solid var(--border-color, #e5e7eb);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 16px;
         cursor: pointer;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        color: var(--text-main);
+        transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
         outline: none;
     }
 
+    .mobile-floating-filters button svg {
+        width: 20px !important;
+        height: 20px !important;
+        stroke-width: 2.3px !important;
+        stroke: currentColor !important;
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.12));
+        transition: transform 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
+    }
+
+    .mobile-floating-filters button:hover {
+        color: #2563eb !important;
+        background: #eff6ff !important;
+        border-color: #2563eb !important;
+        transform: scale(1.12);
+        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.28) !important;
+    }
+
     .mobile-floating-filters button.active {
-        background: var(--primary-blue, #2563eb) !important;
-        border-color: var(--primary-blue, #2563eb) !important;
-        transform: scale(1.1);
-        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3) !important;
+        background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+        border-color: #1d4ed8 !important;
+        transform: scale(1.08);
+        box-shadow: 0 4px 18px rgba(37, 99, 235, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.3) !important;
         color: #ffffff !important;
     }
 
@@ -1227,14 +1247,36 @@ body {
         padding: 20px !important;
     }
     #settingsModal.card::-webkit-scrollbar,
-    #simulationModal > div::-webkit-scrollbar {
+    #simulationModal > div::-webkit-scrollbar,
+    #topicStatsModal > div::-webkit-scrollbar {
         display: none !important;
     }
     
-    #simulationModal {
+    #simulationModal,
+    #topicStatsModal {
         background: transparent !important;
         backdrop-filter: none !important;
         z-index: 10080 !important;
+    }
+
+    #topicStatsModal > div {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: calc(100% - 60px) !important;
+        max-width: none !important;
+        max-height: none !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        box-sizing: border-box !important;
+        background: var(--bg-card, #ffffff) !important;
+        z-index: 10080 !important;
+        overflow-y: auto !important;
+        -ms-overflow-style: none !important;
+        scrollbar-width: none !important;
+        padding: 20px !important;
     }
 
     /* 모바일에서 학부모 필터 설정창 전체 페이지화 및 여백 통일 */
@@ -1314,7 +1356,8 @@ body {
     #storyModal > div:first-child > div:first-child,
     .filter-header-bar,
     #settingsModal > div:first-child > div:first-child,
-    #simulationModal > div:first-child > div:first-child {
+    #simulationModal > div:first-child > div:first-child,
+    #topicStatsModal > div > div:first-child {
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
@@ -1365,7 +1408,8 @@ body {
     #academySidebar button[onclick*="toggleAcademySidebar"],
     #communityPanel button[onclick*="clearAcademyMarker"],
     #simulationModal button[onclick*="simulationModal"],
-    #storyModal button[onclick*="mapTabBtn"] {
+    #storyModal button[onclick*="mapTabBtn"],
+    #topicStatsModal button[onclick*="topicStatsModal"] {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -1392,7 +1436,8 @@ body {
     #academySidebar button[onclick*="toggleAcademySidebar"]:hover,
     #communityPanel button[onclick*="clearAcademyMarker"]:hover,
     #simulationModal button[onclick*="simulationModal"]:hover,
-    #storyModal button[onclick*="mapTabBtn"]:hover {
+    #storyModal button[onclick*="mapTabBtn"]:hover,
+    #topicStatsModal button[onclick*="topicStatsModal"]:hover {
         background: #e9ecef !important;
     }
 
@@ -1403,7 +1448,8 @@ body {
     #simulationModal h3,
     #storyModal h3,
     #academySidebar h2,
-    .parents-filter-accordion h3 {
+    .parents-filter-accordion h3,
+    #topicStatsModal h3 {
         font-size: 17px !important;
         font-weight: 800 !important;
         color: var(--deep-blue) !important;
@@ -1511,21 +1557,63 @@ body {
     display: none; /* Chrome, Safari, Opera */
 }
 
-/* PC용 우측 사이드바 좌측 플로팅 필터 버튼 그룹 (독립 형제 레이어 배치) */
+/* 드래그 가능 메뉴 스크롤 화살표 버튼 시스템 */
+.draggable-scroll-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.draggable-scroll-content {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    user-select: none;
+}
+.draggable-scroll-content::-webkit-scrollbar {
+    display: none;
+}
+
+.scroll-arrow {
+    display: none !important;
+}
+
+.scroll-arrow:hover {
+    background: var(--primary-blue, #2563eb);
+    color: #ffffff;
+    border-color: var(--primary-blue, #2563eb);
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+}
+
+.scroll-arrow:active {
+    transform: translateY(-50%) scale(0.92);
+}
+
+.scroll-arrow-left {
+    left: 2px;
+}
+
+.scroll-arrow-right {
+    right: 2px;
+}
+
+/* PC용 우측 사이드바 좌측 플로팅 필터 버튼 그룹 (개별 플로팅 클린 스타일) */
 .pc-floating-filters {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
     z-index: 10080;
     transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-/* 사이드바가 닫혀있을 때: 우측 화면 구석 20px */
+/* 사이드바가 닫혀있을 때: 우측 화면 구석 24px */
 .app-container:not(.sidebar-open) .pc-floating-filters {
-    right: 20px !important;
+    right: 24px !important;
 }
 
 /* 사이드바가 열려있을 때: 사이드바(400px) 바로 왼쪽 */
@@ -1535,77 +1623,103 @@ body {
 
 .pc-filter-btn {
     position: relative;
-    width: 42px;
-    height: 42px;
+    width: 46px;
+    height: 46px;
     border-radius: 50%;
     background: #ffffff;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10), 0 1px 3px rgba(0, 0, 0, 0.05);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-muted);
     cursor: pointer;
-    transition: all 0.25s ease;
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     outline: none;
     padding: 0;
 }
 
 .pc-filter-btn svg {
-    width: 20px !important;
-    height: 20px !important;
+    width: 21px !important;
+    height: 21px !important;
+    stroke-width: 2.3px !important;
+    stroke: currentColor !important;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.12));
+    transition: transform 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
 }
 
-.pc-filter-btn:hover {
-    color: var(--primary-blue);
-    background: #f8f9fa;
-    border-color: var(--primary-blue);
-    transform: scale(1.08);
-}
+/* 기능별 개별 고대비 시맨틱 아이콘 컬러 코딩 모듈 */
+/* 1. 학교 순위 통계 (Royal Blue) */
+#btnOpenTopicStats, #btnOpenTopicStatsMobile { color: #2563eb !important; }
+#btnOpenTopicStats:hover, #btnOpenTopicStatsMobile:hover { background: #dbeafe !important; transform: scale(1.14); }
+#btnOpenTopicStats.active, #btnOpenTopicStatsMobile.active { background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; color: #ffffff !important; box-shadow: 0 0 18px rgba(37, 99, 235, 0.8) !important; }
 
-.pc-filter-btn.active {
-    background: var(--primary-blue);
-    color: #ffffff;
-    border-color: var(--primary-blue);
-}
+/* 2. 3년 연속 우상향 (Emerald Green) */
+[onclick*="'trendUpwardCheckbox'"] { color: #059669 !important; }
+[onclick*="'trendUpwardCheckbox'"]:hover { background: #d1fae5 !important; transform: scale(1.14); }
+[onclick*="'trendUpwardCheckbox'"].active { background: linear-gradient(135deg, #10b981, #059669) !important; color: #ffffff !important; box-shadow: 0 0 18px rgba(16, 185, 129, 0.8) !important; }
 
-/* 마우스 오버 시 플로팅 타이틀 툴팁 (말풍선) */
+/* 3. 안심 가이드 지도 (Sky Blue / Cyan) */
+[onclick*="'safetyGuideCheckbox'"] { color: #0284c7 !important; }
+[onclick*="'safetyGuideCheckbox'"]:hover { background: #e0f2fe !important; transform: scale(1.14); }
+[onclick*="'safetyGuideCheckbox'"].active { background: linear-gradient(135deg, #0284c7, #0369a1) !important; color: #ffffff !important; box-shadow: 0 0 18px rgba(2, 132, 199, 0.8) !important; }
+
+/* 4. 우범 지역 영역 (Amber Gold) */
+[onclick*="'crimeZoneToggleCheckbox'"] { color: #d97706 !important; }
+[onclick*="'crimeZoneToggleCheckbox'"]:hover { background: #fef3c7 !important; transform: scale(1.14); }
+[onclick*="'crimeZoneToggleCheckbox'"].active { background: linear-gradient(135deg, #f59e0b, #d97706) !important; color: #ffffff !important; box-shadow: 0 0 18px rgba(245, 158, 11, 0.8) !important; }
+
+/* 5. 치안사고 통계 (Vivid Purple) */
+[onclick*="'accidentStatisticsCheckbox'"] { color: #9333ea !important; }
+[onclick*="'accidentStatisticsCheckbox'"]:hover { background: #f3e8ff !important; transform: scale(1.14); }
+[onclick*="'accidentStatisticsCheckbox'"].active { background: linear-gradient(135deg, #a855f7, #7e22ce) !important; color: #ffffff !important; box-shadow: 0 0 18px rgba(168, 85, 247, 0.8) !important; }
+
+/* 6. 교통사고 다발구역 (Crimson Red) */
+[onclick*="'trafficAccidentCheckbox'"] { color: #dc2626 !important; }
+[onclick*="'trafficAccidentCheckbox'"]:hover { background: #fee2e2 !important; transform: scale(1.14); }
+[onclick*="'trafficAccidentCheckbox'"].active { background: linear-gradient(135deg, #ef4444, #dc2626) !important; color: #ffffff !important; box-shadow: 0 0 18px rgba(239, 68, 68, 0.8) !important; }
+
+/* 7. 동 단위 학군 히트맵 (Vivid Fire Orange) */
+[onclick*="'dongRatingCheckbox'"] { color: #ea580c !important; }
+[onclick*="'dongRatingCheckbox'"]:hover { background: #ffedd5 !important; transform: scale(1.14); }
+[onclick*="'dongRatingCheckbox'"].active { background: linear-gradient(135deg, #f97316, #ea580c) !important; color: #ffffff !important; box-shadow: 0 0 18px rgba(249, 115, 22, 0.8) !important; }
+
+/* 마우스 오버 시 플로팅 타이틀 툴팁 (일반 표준 툴팁 스타일) */
 .pc-filter-btn[data-title]::after {
     content: attr(data-title);
     position: absolute;
-    right: calc(100% + 12px);
+    right: calc(100% + 10px);
     top: 50%;
-    transform: translateY(-50%) translateX(8px);
-    background: rgba(15, 23, 42, 0.94);
+    transform: translateY(-50%) translateX(6px);
+    background: rgba(30, 41, 59, 0.92);
     color: #ffffff;
-    font-size: 12.5px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 500;
     line-height: 1.4;
-    padding: 6px 12px;
-    border-radius: 8px;
+    padding: 5px 10px;
+    border-radius: 6px;
     white-space: nowrap;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
     transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
     z-index: 10100;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.2px;
     font-family: var(--font-primary, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .pc-filter-btn[data-title]::before {
     content: '';
     position: absolute;
-    right: calc(100% + 5px);
+    right: calc(100% + 4px);
     top: 50%;
-    transform: translateY(-50%) translateX(8px);
+    transform: translateY(-50%) translateX(6px);
     border-width: 5px 0 5px 6px;
     border-style: solid;
-    border-color: transparent transparent transparent rgba(15, 23, 42, 0.94);
+    border-color: transparent transparent transparent rgba(30, 41, 59, 0.92);
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
