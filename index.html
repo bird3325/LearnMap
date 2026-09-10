@@ -2234,7 +2234,7 @@
     
     <!-- 순위 통계 대시보드 모달 -->
     <div id="topicStatsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.45); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px); padding: 32px 16px; box-sizing: border-box;" onclick="if(event.target === this) document.getElementById('topicStatsModal').style.display='none'">
-        <div class="hide-scrollbar" style="background: white; border-radius: 16px; padding: 24px 24px 20px 24px; width: 95%; max-width: 620px; max-height: calc(100vh - 64px); display: flex; flex-direction: column; overflow-y: auto; -ms-overflow-style: none; scrollbar-width: none; box-shadow: 0 12px 32px rgba(0,0,0,0.2); border: 1px solid var(--border-color); position: relative; margin: auto; box-sizing: border-box;" onclick="event.stopPropagation();">
+        <div class="hide-scrollbar" style="background: white; border-radius: 16px; padding: 24px 24px 20px 24px; width: 95%; max-width: 620px; max-height: calc(100vh - 64px); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,0.2); border: 1px solid var(--border-color); position: relative; margin: auto; box-sizing: border-box;" onclick="event.stopPropagation();">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 14px; flex-shrink: 0;">
                 <h3 style="font-size: 17px; font-weight: 800; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
                     <span>📊 학교 순위 통계</span>
@@ -2258,52 +2258,55 @@
                 </div>
             </div>
 
-            <!-- 주제 탭 버튼 바 (드래그 가능 스크롤 바) -->
-            <div class="draggable-scroll-wrapper" style="position: relative; margin-bottom: 12px; display: flex; align-items: center; width: 100%;">
-                <button type="button" class="scroll-arrow scroll-arrow-left" id="topicStatsTabBarScrollLeft" aria-label="이전 탭" style="display: none;">◀</button>
-                <div id="topicStatsTabBar" class="hide-scrollbar draggable-scroll-content" style="display: flex; gap: 6px; width: 100%; background: #f1f3f5; padding: 4px; border-radius: 8px; overflow-x: auto; flex-shrink: 0; white-space: nowrap; cursor: grab;">
-                    <button class="topic-tab-btn active" data-topic="violence" style="flex: 0 0 auto; min-width: 90px; padding: 8px 6px; border: none; background: var(--primary-blue); color: white; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s; white-space: nowrap;">🚨 학교폭력 안전</button>
-                    <button class="topic-tab-btn" data-topic="composite" style="flex: 0 0 auto; min-width: 90px; padding: 8px 6px; border: none; background: transparent; color: var(--text-muted); font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s; white-space: nowrap;">🏆 교육환경 점수</button>
-                    <button class="topic-tab-btn" data-topic="academic" style="flex: 0 0 auto; min-width: 90px; padding: 8px 6px; border: none; background: transparent; color: var(--text-muted); font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s; white-space: nowrap;">📚 학업성취도</button>
-                    <button class="topic-tab-btn" data-topic="transfer" style="flex: 0 0 auto; min-width: 90px; padding: 8px 6px; border: none; background: transparent; color: var(--text-muted); font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s; white-space: nowrap;">🔄 전입/통학 환경</button>
+            <!-- 지역 선택 아래 스크롤 가능 컨테이너 -->
+            <div class="topic-stats-scroll-body hide-scrollbar" style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; -ms-overflow-style: none; scrollbar-width: none;">
+                <!-- 주제 탭 버튼 바 (드래그 가능 스크롤 바) -->
+                <div class="draggable-scroll-wrapper" style="position: relative; margin-bottom: 12px; display: flex; align-items: center; width: 100%; flex-shrink: 0;">
+                    <button type="button" class="scroll-arrow scroll-arrow-left" id="topicStatsTabBarScrollLeft" aria-label="이전 탭" style="display: none;">◀</button>
+                    <div id="topicStatsTabBar" class="hide-scrollbar draggable-scroll-content" style="display: flex; gap: 6px; width: 100%; background: #f1f3f5; padding: 4px; border-radius: 8px; overflow-x: auto; flex-shrink: 0; white-space: nowrap; cursor: grab;">
+                        <button class="topic-tab-btn active" data-topic="violence" style="flex: 0 0 auto; min-width: 90px; padding: 8px 6px; border: none; background: var(--primary-blue); color: white; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s; white-space: nowrap;">🚨 학교폭력 안전</button>
+                        <button class="topic-tab-btn" data-topic="composite" style="flex: 0 0 auto; min-width: 90px; padding: 8px 6px; border: none; background: transparent; color: var(--text-muted); font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s; white-space: nowrap;">🏆 교육환경 점수</button>
+                        <button class="topic-tab-btn" data-topic="academic" style="flex: 0 0 auto; min-width: 90px; padding: 8px 6px; border: none; background: transparent; color: var(--text-muted); font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s; white-space: nowrap;">📚 학업성취도</button>
+                        <button class="topic-tab-btn" data-topic="transfer" style="flex: 0 0 auto; min-width: 90px; padding: 8px 6px; border: none; background: transparent; color: var(--text-muted); font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s; white-space: nowrap;">🔄 전입/통학 환경</button>
+                    </div>
+                    <button type="button" class="scroll-arrow scroll-arrow-right" id="topicStatsTabBarScrollRight" aria-label="다음 탭" style="display: none;">▶</button>
                 </div>
-                <button type="button" class="scroll-arrow scroll-arrow-right" id="topicStatsTabBarScrollRight" aria-label="다음 탭" style="display: none;">▶</button>
-            </div>
 
-            <!-- 정렬 버튼 바 (드래그 가능 스크롤 바) -->
-            <div class="draggable-scroll-wrapper sort-wrapper-violence" style="position: relative; margin-bottom: 8px; display: flex; align-items: center; width: 100%;">
-                <button type="button" class="scroll-arrow scroll-arrow-left" id="violenceSortScrollLeft" aria-label="이전 정렬" style="display: none;">◀</button>
-                <div id="violenceOrderToggleContainer" class="hide-scrollbar draggable-scroll-content" style="display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; flex-shrink: 0; width: 100%; overflow-x: auto; cursor: grab;"></div>
-                <button type="button" class="scroll-arrow scroll-arrow-right" id="violenceSortScrollRight" aria-label="다음 정렬" style="display: none;">▶</button>
-            </div>
+                <!-- 정렬 버튼 바 (드래그 가능 스크롤 바) -->
+                <div class="draggable-scroll-wrapper sort-wrapper-violence" style="position: relative; margin-bottom: 8px; display: flex; align-items: center; width: 100%; flex-shrink: 0;">
+                    <button type="button" class="scroll-arrow scroll-arrow-left" id="violenceSortScrollLeft" aria-label="이전 정렬" style="display: none;">◀</button>
+                    <div id="violenceOrderToggleContainer" class="hide-scrollbar draggable-scroll-content" style="display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; flex-shrink: 0; width: 100%; overflow-x: auto; cursor: grab;"></div>
+                    <button type="button" class="scroll-arrow scroll-arrow-right" id="violenceSortScrollRight" aria-label="다음 정렬" style="display: none;">▶</button>
+                </div>
 
-            <div class="draggable-scroll-wrapper sort-wrapper-composite" style="position: relative; margin-bottom: 8px; display: none; align-items: center; width: 100%;">
-                <button type="button" class="scroll-arrow scroll-arrow-left" id="compositeSortScrollLeft" aria-label="이전 정렬" style="display: none;">◀</button>
-                <div id="compositeSortContainer" class="hide-scrollbar draggable-scroll-content" style="display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; flex-shrink: 0; width: 100%; overflow-x: auto; cursor: grab;"></div>
-                <button type="button" class="scroll-arrow scroll-arrow-right" id="compositeSortScrollRight" aria-label="다음 정렬" style="display: none;">▶</button>
-            </div>
+                <div class="draggable-scroll-wrapper sort-wrapper-composite" style="position: relative; margin-bottom: 8px; display: none; align-items: center; width: 100%; flex-shrink: 0;">
+                    <button type="button" class="scroll-arrow scroll-arrow-left" id="compositeSortScrollLeft" aria-label="이전 정렬" style="display: none;">◀</button>
+                    <div id="compositeSortContainer" class="hide-scrollbar draggable-scroll-content" style="display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; flex-shrink: 0; width: 100%; overflow-x: auto; cursor: grab;"></div>
+                    <button type="button" class="scroll-arrow scroll-arrow-right" id="compositeSortScrollRight" aria-label="다음 정렬" style="display: none;">▶</button>
+                </div>
 
-            <div class="draggable-scroll-wrapper sort-wrapper-academic" style="position: relative; margin-bottom: 8px; display: none; align-items: center; width: 100%;">
-                <button type="button" class="scroll-arrow scroll-arrow-left" id="academicSortScrollLeft" aria-label="이전 정렬" style="display: none;">◀</button>
-                <div id="academicSortContainer" class="hide-scrollbar draggable-scroll-content" style="display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; flex-shrink: 0; width: 100%; overflow-x: auto; cursor: grab;"></div>
-                <button type="button" class="scroll-arrow scroll-arrow-right" id="academicSortScrollRight" aria-label="다음 정렬" style="display: none;">▶</button>
-            </div>
+                <div class="draggable-scroll-wrapper sort-wrapper-academic" style="position: relative; margin-bottom: 8px; display: none; align-items: center; width: 100%; flex-shrink: 0;">
+                    <button type="button" class="scroll-arrow scroll-arrow-left" id="academicSortScrollLeft" aria-label="이전 정렬" style="display: none;">◀</button>
+                    <div id="academicSortContainer" class="hide-scrollbar draggable-scroll-content" style="display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; flex-shrink: 0; width: 100%; overflow-x: auto; cursor: grab;"></div>
+                    <button type="button" class="scroll-arrow scroll-arrow-right" id="academicSortScrollRight" aria-label="다음 정렬" style="display: none;">▶</button>
+                </div>
 
-            <div class="draggable-scroll-wrapper sort-wrapper-transfer" style="position: relative; margin-bottom: 8px; display: none; align-items: center; width: 100%;">
-                <button type="button" class="scroll-arrow scroll-arrow-left" id="transferSortScrollLeft" aria-label="이전 정렬" style="display: none;">◀</button>
-                <div id="transferSortContainer" class="hide-scrollbar draggable-scroll-content" style="display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; flex-shrink: 0; width: 100%; overflow-x: auto; cursor: grab;"></div>
-                <button type="button" class="scroll-arrow scroll-arrow-right" id="transferSortScrollRight" aria-label="다음 정렬" style="display: none;">▶</button>
-            </div>
+                <div class="draggable-scroll-wrapper sort-wrapper-transfer" style="position: relative; margin-bottom: 8px; display: none; align-items: center; width: 100%; flex-shrink: 0;">
+                    <button type="button" class="scroll-arrow scroll-arrow-left" id="transferSortScrollLeft" aria-label="이전 정렬" style="display: none;">◀</button>
+                    <div id="transferSortContainer" class="hide-scrollbar draggable-scroll-content" style="display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; flex-shrink: 0; width: 100%; overflow-x: auto; cursor: grab;"></div>
+                    <button type="button" class="scroll-arrow scroll-arrow-right" id="transferSortScrollRight" aria-label="다음 정렬" style="display: none;">▶</button>
+                </div>
 
-            <!-- 지역 평균 요약 헤더 카드 -->
-            <div id="topicStatsSummaryCard" style="background: rgba(37, 99, 235, 0.05); border: 1px solid rgba(37, 99, 235, 0.15); border-radius: 8px; padding: 8px 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; flex-shrink: 0;">
-                <span id="topicStatsSummaryText" style="color: var(--deep-blue); font-weight: 600;">지역 통계를 계산 중입니다...</span>
-                <span id="topicStatsCountBadge" style="background: var(--primary-blue); color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">0개 학교</span>
-            </div>
+                <!-- 지역 평균 요약 헤더 카드 -->
+                <div id="topicStatsSummaryCard" style="background: rgba(37, 99, 235, 0.05); border: 1px solid rgba(37, 99, 235, 0.15); border-radius: 8px; padding: 8px 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; flex-shrink: 0;">
+                    <span id="topicStatsSummaryText" style="color: var(--deep-blue); font-weight: 600;">지역 통계를 계산 중입니다...</span>
+                    <span id="topicStatsCountBadge" style="background: var(--primary-blue); color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">0개 학교</span>
+                </div>
 
-            <!-- 순위 목록 컨테이너 -->
-            <div id="topicStatsListContainer" class="hide-scrollbar" style="flex: 1; min-height: 0; max-height: 360px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 2px; -ms-overflow-style: none; scrollbar-width: none;">
-                <div style="text-align: center; color: var(--text-muted); padding: 30px 0; font-size: 13px;">순위 데이터를 로딩 중입니다...</div>
+                <!-- 순위 목록 컨테이너 -->
+                <div id="topicStatsListContainer" class="hide-scrollbar" style="display: flex; flex-direction: column; gap: 8px; padding-right: 2px; -ms-overflow-style: none; scrollbar-width: none;">
+                    <div style="text-align: center; color: var(--text-muted); padding: 30px 0; font-size: 13px;">순위 데이터를 로딩 중입니다...</div>
+                </div>
             </div>
         </div>
     </div>

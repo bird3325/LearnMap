@@ -1273,10 +1273,27 @@ body {
         box-sizing: border-box !important;
         background: var(--bg-card, #ffffff) !important;
         z-index: 10080 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        padding: 20px !important;
+    }
+
+    .topic-stats-scroll-body {
+        flex: 1 !important;
+        min-height: 0 !important;
         overflow-y: auto !important;
         -ms-overflow-style: none !important;
         scrollbar-width: none !important;
-        padding: 20px !important;
+    }
+
+    .topic-stats-scroll-body::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    #topicStatsListContainer {
+        max-height: none !important;
+        overflow-y: visible !important;
     }
 
     /* 모바일에서 학부모 필터 설정창 전체 페이지화 및 여백 통일 */

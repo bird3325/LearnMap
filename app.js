@@ -8674,6 +8674,7 @@ window.addEventListener('DOMContentLoaded', () => {
     makeVerticalDragScrollable('.settings-scroll-content');
     makeVerticalDragScrollable('#simulationResultPanel');
     makeVerticalDragScrollable('#topicStatsListContainer');
+    makeVerticalDragScrollable('.topic-stats-scroll-body');
 
     // ------------------------------------
     // 순위 통계 대시보드 모듈 (School Ranking & Statistics Dashboard)
