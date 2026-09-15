@@ -822,6 +822,7 @@ btnRunUpdate.addEventListener('click', () => {
                                 school_id: row.SD_SCHUL_CODE,
                                 school_name: row.SCHUL_NM,
                                 school_type: row.SCHUL_KND_SC_NM,
+                                establishment_type: row.FOND_SC_NM || '공립',
                                 region: row.LCTN_SC_NM,
                                 address: address,
                                 lat: coords.lat,

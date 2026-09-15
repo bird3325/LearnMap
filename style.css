@@ -298,14 +298,18 @@ body {
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
     margin-bottom: 16px;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .meta-item {
     background: var(--bg-primary);
-    padding: 6px 12px;
+    padding: 7px 10px;
     border-radius: 6px;
     color: var(--text-muted);
+    white-space: nowrap;
+    word-break: keep-all;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .meta-item strong {

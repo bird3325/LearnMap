@@ -2749,9 +2749,16 @@ document.addEventListener('DOMContentLoaded', () => {
         diagnosisResultCard.style.display = 'none';
         schoolCard.style.display = 'block';
 
-        schoolCardName.innerText = fullSchool.school_name;
-        schoolCardType.innerText = fullSchool.school_type;
-        schoolCardStudents.innerText = `${fullSchool.student_count}명`;
+        if (schoolCardName) schoolCardName.innerText = fullSchool.school_name;
+        if (schoolCardType) schoolCardType.innerText = fullSchool.school_type;
+        
+        const foundingType = fullSchool.establishment_type || fullSchool.fond_sc_nm || '공립';
+        const schoolCardFoundingDetail = document.getElementById('schoolCardFoundingDetail');
+        if (schoolCardFoundingDetail) {
+            schoolCardFoundingDetail.innerText = foundingType;
+        }
+
+        if (schoolCardStudents) schoolCardStudents.innerText = `${fullSchool.student_count}명`;
         schoolCardClassSize.innerText = `${fullSchool.class_avg_size}명`;
         schoolCardUpdate.innerText = fullSchool.updated_at;
         const isMissingData = !fullSchool.subjects || !fullSchool.subjects.korean || fullSchool.subjects.korean.avg === 0;
@@ -8693,18 +8700,20 @@ window.addEventListener('DOMContentLoaded', () => {
         const violenceToggleContainer = document.getElementById('violenceOrderToggleContainer');
         const compositeSortContainer = document.getElementById('compositeSortContainer');
         const academicSortContainer = document.getElementById('academicSortContainer');
+        const extracurricularSortContainer = document.getElementById('extracurricularSortContainer');
         const transferSortContainer = document.getElementById('transferSortContainer');
 
         let rawDistrictData = (typeof defaultDistrictData !== 'undefined' && defaultDistrictData && defaultDistrictData.data) ? defaultDistrictData.data : [];
         let allSchoolsCache = [];
-        let currentTopic = 'violence'; // 'violence' | 'composite' | 'academic' | 'transfer'
+        let currentTopic = 'violence'; // 'violence' | 'composite' | 'academic' | 'extracurricular' | 'transfer'
 
         // 탭별 정렬 상태
         const sortState = {
-            violence:  { key: 'cases', dir: 'asc' }, // 기본: 발생건수 적은 순
-            composite: { key: 'score', dir: 'desc' },
-            academic:  { key: 'avg',   dir: 'desc' },
-            transfer:  { key: 'net',   dir: 'desc' }
+            violence:        { key: 'cases',  dir: 'asc' }, // 기본: 발생건수 적은 순
+            composite:       { key: 'score',  dir: 'desc' },
+            academic:        { key: 'avg',    dir: 'desc' },
+            extracurricular: { key: 'budget', dir: 'desc' },
+            transfer:        { key: 'net',    dir: 'desc' }
         };
 
         // 탭별 정렬 버튼 설정
@@ -8717,14 +8726,19 @@ window.addEventListener('DOMContentLoaded', () => {
                 { key: 'physical', label: '🦴 신체' }
             ],
             composite: [
-                { key: 'score',   label: '🏆 종합점수' },
-                { key: 'student', label: '👥 학생수' }
+                { key: 'score',        label: '🏆 종합점수' },
+                { key: 'extra_budget', label: '🎨 창제활동비' },
+                { key: 'student',      label: '👥 학생수' }
             ],
             academic: [
                 { key: 'avg',     label: '📚 국영수 평균' },
                 { key: 'grade_a', label: '🥇 A등급 비율' },
                 { key: 'korean',  label: '🇰🇷 국어' },
                 { key: 'math',    label: '➕ 수학' }
+            ],
+            extracurricular: [
+                { key: 'budget',  label: '💰 예산 높은순' },
+                { key: 'student', label: '👥 학생수' }
             ],
             transfer: [
                 { key: 'net',         label: '🔄 순전입' },
@@ -9536,11 +9550,12 @@ window.addEventListener('DOMContentLoaded', () => {
                 const cEtc = (rawC.etc !== null && rawC.etc !== undefined) ? rawC.etc : Math.round(5 + (codeHash % 10));
                 const cStats = { walk: cWalk, bus: cBus, car: cCar, etc: cEtc };
 
-                // 4) 종합 교육환경 스코어 계산 (100점 만점 기준)
+                // 4) 종합 교육환경 스코어 및 창제활동비 계산 (100점 만점 기준)
+                const extraBudget = (school.extracurricular_budget !== null && school.extracurricular_budget !== undefined) ? school.extracurricular_budget : Math.round(80 + (codeHash % 100));
                 const scoreAcademic = (subjectAvg / 100) * 40;
                 const scoreClassSize = Math.max(0, 30 - Math.abs((school.class_avg_size || 25) - 22) * 2);
                 const scoreViolence = Math.max(0, 20 - per100 * 8);
-                const scoreBudget = Math.min(10, ((school.extracurricular_budget || 120) / 200) * 10);
+                const scoreBudget = Math.min(10, (extraBudget / 200) * 10);
                 const compositeScore = Math.round((scoreAcademic + scoreClassSize + scoreViolence + scoreBudget) * 10) / 10;
 
                 return {
@@ -9556,7 +9571,8 @@ window.addEventListener('DOMContentLoaded', () => {
                     vStats,
                     compositeScore,
                     tStats,
-                    cStats
+                    cStats,
+                    extraBudget
                 };
             });
 
@@ -9572,14 +9588,15 @@ window.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // 정렬 컨테이너 show/hide 및 버튼 렌더링 (4개 탭 통합)
+            // 정렬 컨테이너 show/hide 및 버튼 렌더링 (5개 탭 통합)
             const sortContainerMap = {
-                violence:  violenceToggleContainer,
-                composite: compositeSortContainer,
-                academic:  academicSortContainer,
-                transfer:  transferSortContainer
+                violence:        violenceToggleContainer,
+                composite:       compositeSortContainer,
+                academic:        academicSortContainer,
+                extracurricular: extracurricularSortContainer,
+                transfer:        transferSortContainer
             };
-            ['violence', 'composite', 'academic', 'transfer'].forEach(t => {
+            ['violence', 'composite', 'academic', 'extracurricular', 'transfer'].forEach(t => {
                 const el = sortContainerMap[t];
                 if (el) {
                     const wrapper = el.closest('.draggable-scroll-wrapper');
@@ -9613,13 +9630,17 @@ window.addEventListener('DOMContentLoaded', () => {
                 const { key, dir } = sortState[currentTopic];
                 const m = dir === 'desc' ? -1 : 1;
                 if (currentTopic === 'composite') {
-                    if (key === 'score')   processedList.sort((a, b) => m * (a.compositeScore - b.compositeScore));
-                    else if (key === 'student') processedList.sort((a, b) => m * ((a.raw.student_count || 0) - (b.raw.student_count || 0)));
+                    if (key === 'score')            processedList.sort((a, b) => m * (a.compositeScore - b.compositeScore));
+                    else if (key === 'extra_budget') processedList.sort((a, b) => m * (a.extraBudget - b.extraBudget));
+                    else if (key === 'student')      processedList.sort((a, b) => m * ((a.raw.student_count || 0) - (b.raw.student_count || 0)));
                 } else if (currentTopic === 'academic') {
                     if (key === 'avg')     processedList.sort((a, b) => m * (a.subjectAvg - b.subjectAvg));
                     else if (key === 'grade_a') processedList.sort((a, b) => m * (a.distAAvg - b.distAAvg));
                     else if (key === 'korean')  processedList.sort((a, b) => m * ((a.raw.subjects?.korean?.avg || 0) - (b.raw.subjects?.korean?.avg || 0)));
                     else if (key === 'math')    processedList.sort((a, b) => m * ((a.raw.subjects?.math?.avg || 0) - (b.raw.subjects?.math?.avg || 0)));
+                } else if (currentTopic === 'extracurricular') {
+                    if (key === 'budget')      processedList.sort((a, b) => m * (a.extraBudget - b.extraBudget));
+                    else if (key === 'student') processedList.sort((a, b) => m * ((a.raw.student_count || 0) - (b.raw.student_count || 0)));
                 } else if (currentTopic === 'transfer') {
                     if (key === 'net')         processedList.sort((a, b) => m * (a.tStats.net - b.tStats.net));
                     else if (key === 'walk')        processedList.sort((a, b) => m * (a.cStats.walk - b.cStats.walk));
@@ -9631,17 +9652,20 @@ window.addEventListener('DOMContentLoaded', () => {
             let avgViolencePer100 = 0;
             let avgComposite = 0;
             let avgSubject = 0;
+            let avgExtraBudget = 0;
             let avgNetTransfer = 0;
 
             if (processedList.length > 0) {
                 const totalV = processedList.reduce((acc, cur) => acc + cur.vStats.per_100, 0);
                 const totalC = processedList.reduce((acc, cur) => acc + cur.compositeScore, 0);
                 const totalS = processedList.reduce((acc, cur) => acc + cur.subjectAvg, 0);
+                const totalE = processedList.reduce((acc, cur) => acc + cur.extraBudget, 0);
                 const totalT = processedList.reduce((acc, cur) => acc + cur.tStats.net, 0);
 
                 avgViolencePer100 = (totalV / processedList.length).toFixed(1);
                 avgComposite = (totalC / processedList.length).toFixed(1);
                 avgSubject = (totalS / processedList.length).toFixed(1);
+                avgExtraBudget = Math.round(totalE / processedList.length);
                 avgNetTransfer = (totalT / processedList.length).toFixed(1);
             }
 
@@ -9652,11 +9676,12 @@ window.addEventListener('DOMContentLoaded', () => {
             if (summaryText) {
                 if (currentTopic === 'violence') {
                     summaryText.innerHTML = `📍 <strong>${regionLabel}</strong> 평균 학교폭력: 100명당 <strong>${avgViolencePer100}건</strong>`;
-
                 } else if (currentTopic === 'composite') {
                     summaryText.innerHTML = `📍 <strong>${regionLabel}</strong> 평균 종합 교육환경: <strong>${avgComposite}점</strong>`;
                 } else if (currentTopic === 'academic') {
                     summaryText.innerHTML = `📍 <strong>${regionLabel}</strong> 평균 국영수 점수: <strong>${avgSubject}점</strong>`;
+                } else if (currentTopic === 'extracurricular') {
+                    summaryText.innerHTML = `📍 <strong>${regionLabel}</strong> 평균 창제활동비: 학생 1인당 <strong>${avgExtraBudget}만원</strong>`;
                 } else if (currentTopic === 'transfer') {
                     summaryText.innerHTML = `📍 <strong>${regionLabel}</strong> 평균 전입 순증감: <strong>${avgNetTransfer > 0 ? '+' : ''}${avgNetTransfer}명</strong>`;
                 }
@@ -9717,12 +9742,16 @@ window.addEventListener('DOMContentLoaded', () => {
                         </div>
                     `;
                 } else if (currentTopic === 'composite') {
+                    const extraInfo = (sortState.composite.key === 'extra_budget') 
+                        ? `<span style="font-size:10.5px; color:#8b5cf6; font-weight:bold;">🎨 창제활동비: ${item.extraBudget}만원</span>`
+                        : `<span style="font-size:10.5px; color:var(--text-muted);">학업평균: ${item.subjectAvg}점</span>`;
+
                     metricDetailsHTML = `
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
                             <span style="font-size:12px; font-weight:800; color:var(--primary-blue);">
                                 종합 스코어: <strong>${item.compositeScore}점</strong> / 100점
                             </span>
-                            <span style="font-size:10.5px; color:var(--text-muted);">학업평균: ${item.subjectAvg}점</span>
+                            ${extraInfo}
                         </div>
                         <div style="background:#e2e8f0; border-radius:3px; height:6px; overflow:hidden;">
                             <div style="width:${item.compositeScore}%; background:linear-gradient(90deg, var(--primary-blue), #1d4ed8); height:100%;"></div>
@@ -9738,6 +9767,23 @@ window.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div style="font-size:10.5px; color:var(--text-muted);">
                             국어 ${item.raw.subjects?.korean?.avg || 75}점 | 영어 ${item.raw.subjects?.english?.avg || 75}점 | 수학 ${item.raw.subjects?.math?.avg || 75}점
+                        </div>
+                    `;
+                } else if (currentTopic === 'extracurricular') {
+                    const budgetVal = item.extraBudget || 0;
+                    const studentCount = item.raw.student_count || 0;
+                    const maxBudget = 250;
+                    const budgetPct = Math.min(100, Math.round((budgetVal / maxBudget) * 100));
+
+                    metricDetailsHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                            <span style="font-size:12px; font-weight:800; color:var(--deep-blue);">
+                                🎨 창제활동비 예산: <strong>${budgetVal}만원</strong> / 학생 1인당
+                            </span>
+                            <span style="font-size:10.5px; color:var(--text-muted);">학생수: ${studentCount}명</span>
+                        </div>
+                        <div style="background:#e2e8f0; border-radius:3px; height:6px; overflow:hidden;">
+                            <div style="width:${budgetPct}%; background:linear-gradient(90deg, #ec4899, #8b5cf6); height:100%;"></div>
                         </div>
                     `;
                 } else if (currentTopic === 'transfer') {
@@ -10067,6 +10113,11 @@ window.addEventListener('DOMContentLoaded', () => {
             academicSortContainer,
             document.getElementById('academicSortScrollLeft'),
             document.getElementById('academicSortScrollRight')
+        );
+        setupDraggableScroll(
+            extracurricularSortContainer,
+            document.getElementById('extracurricularSortScrollLeft'),
+            document.getElementById('extracurricularSortScrollRight')
         );
         setupDraggableScroll(
             transferSortContainer,

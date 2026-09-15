@@ -1335,18 +1335,18 @@
                     <!-- Sticky Header Wrapper for Mobile -->
                     <div class="school-card-sticky-header">
                         <button id="btnDeselectSchool" style="position: absolute; top: 12px; right: 12px; background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted); font-weight: bold; line-height: 1;" title="선택 초기화">&times;</button>
-                        <div class="card-title" style="padding-right: 32px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 0;">
-                            <div style="display: inline-flex; align-items: center; gap: 6px;">
-                                <span id="schoolCardName">○○중학교</span>
+                        <div class="card-title" style="padding-right: 32px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                            <div style="display: inline-flex; align-items: center; gap: 6px; min-width: 0;">
+                                <span id="schoolCardName" style="font-size: 17px; font-weight: 700; color: var(--deep-blue); word-break: keep-all; white-space: nowrap;">○○중학교</span>
                                 <button id="btnSaveFavorite" onclick="if(typeof window.toggleFavoriteSchool === 'function') window.toggleFavoriteSchool();" style="background: none; border: none; font-size: 18px; cursor: pointer; padding: 0; display: inline-flex; align-items: center; color: #ffb800; line-height: 1;" title="관심 학교 저장">⭐</button>
                             </div>
-                            <span style="font-size: 12px; background: var(--light-blue); color: var(--primary-blue); padding: 4px 8px; border-radius: 4px; flex-shrink: 0;" id="schoolCardType">중학교</span>
                         </div>
                     </div>
                     <div class="school-meta-grid">
+                        <div class="meta-item">설립: <strong id="schoolCardFoundingDetail">공립</strong></div>
                         <div class="meta-item">학생수: <strong id="schoolCardStudents">0명</strong></div>
-                        <div class="meta-item">학급당 학생수: <strong id="schoolCardClassSize">0명</strong></div>
-                        <div style="grid-column: span 2;">공시 기준일: <strong id="schoolCardUpdate">2025.09</strong></div>
+                        <div class="meta-item">학급당: <strong id="schoolCardClassSize">0명</strong></div>
+                        <div class="meta-item">공시일: <strong id="schoolCardUpdate">2025.09.15</strong></div>
                     </div>
 
 
@@ -2268,6 +2268,7 @@
                         <button class="topic-tab-btn active" data-topic="violence" style="flex: 0 0 auto; min-width: 85px; padding: 6px 8px; border: none; background: var(--primary-blue); color: white; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 11.5px; transition: all 0.2s; white-space: nowrap;">🚨 학교폭력 안전</button>
                         <button class="topic-tab-btn" data-topic="composite" style="flex: 0 0 auto; min-width: 85px; padding: 6px 8px; border: none; background: transparent; color: var(--text-muted); font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 11.5px; transition: all 0.2s; white-space: nowrap;">🏆 교육환경 점수</button>
                         <button class="topic-tab-btn" data-topic="academic" style="flex: 0 0 auto; min-width: 85px; padding: 6px 8px; border: none; background: transparent; color: var(--text-muted); font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 11.5px; transition: all 0.2s; white-space: nowrap;">📚 학업성취도</button>
+                        <button class="topic-tab-btn" data-topic="extracurricular" style="flex: 0 0 auto; min-width: 85px; padding: 6px 8px; border: none; background: transparent; color: var(--text-muted); font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 11.5px; transition: all 0.2s; white-space: nowrap;">🎨 창제활동비</button>
                         <button class="topic-tab-btn" data-topic="transfer" style="flex: 0 0 auto; min-width: 85px; padding: 6px 8px; border: none; background: transparent; color: var(--text-muted); font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 11.5px; transition: all 0.2s; white-space: nowrap;">🔄 전입/통학 환경</button>
                     </div>
                     <button type="button" class="scroll-arrow scroll-arrow-right" id="topicStatsTabBarScrollRight" aria-label="다음 탭" style="display: none;">▶</button>
@@ -2290,6 +2291,12 @@
                     <button type="button" class="scroll-arrow scroll-arrow-left" id="academicSortScrollLeft" aria-label="이전 정렬" style="display: none;">◀</button>
                     <div id="academicSortContainer" class="hide-scrollbar draggable-scroll-content" style="display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; flex-shrink: 0; width: 100%; overflow-x: auto; cursor: grab;"></div>
                     <button type="button" class="scroll-arrow scroll-arrow-right" id="academicSortScrollRight" aria-label="다음 정렬" style="display: none;">▶</button>
+                </div>
+
+                <div class="draggable-scroll-wrapper sort-wrapper-extracurricular" style="position: relative; margin-bottom: 6px; display: none; align-items: center; width: 100%; flex-shrink: 0;">
+                    <button type="button" class="scroll-arrow scroll-arrow-left" id="extracurricularSortScrollLeft" aria-label="이전 정렬" style="display: none;">◀</button>
+                    <div id="extracurricularSortContainer" class="hide-scrollbar draggable-scroll-content" style="display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; flex-shrink: 0; width: 100%; overflow-x: auto; cursor: grab;"></div>
+                    <button type="button" class="scroll-arrow scroll-arrow-right" id="extracurricularSortScrollRight" aria-label="다음 정렬" style="display: none;">▶</button>
                 </div>
 
                 <div class="draggable-scroll-wrapper sort-wrapper-transfer" style="position: relative; margin-bottom: 6px; display: none; align-items: center; width: 100%; flex-shrink: 0;">
