@@ -1276,7 +1276,7 @@ body {
         display: flex !important;
         flex-direction: column !important;
         overflow: hidden !important;
-        padding: 20px !important;
+        padding: 12px 14px !important;
     }
 
     .topic-stats-scroll-body {

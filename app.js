@@ -9427,118 +9427,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // 타지역 프리셋 학교들 병합 (동일 학교명 & 주소/지역 존재 시 중복 추가 방지)
-            Object.keys(REGIONAL_SCHOOL_PRESETS).forEach(key => {
-                const regionalList = REGIONAL_SCHOOL_PRESETS[key];
-                const parts = key.split('_');
-                const sido = parts[0];
-                const gugun = parts[1];
 
-                regionalList.forEach((rSchool, idx) => {
-                    const isDuplicate = allSchoolsCache.some(s => 
-                        s.school_name === rSchool.name && 
-                        ((s.address && (s.address.includes(gugun.split(' ')[0]) || matchSido(s, sido))) ||
-                         (s.region && matchSido(s, sido)))
-                    );
-                    if (!isDuplicate) {
-                        const id = `reg_${sido}_${gugun}_${idx}_${rSchool.name}`;
-                        const codeHash = Math.abs(id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
-                        const korAvg = Math.round(75 + (codeHash % 15));
-                        const engAvg = Math.round(73 + ((codeHash * 3) % 17));
-                        const mathAvg = Math.round(70 + ((codeHash * 7) % 20));
-
-                        const distA = Math.round(25 + (codeHash % 20));
-                        const distB = Math.round(35 + ((codeHash + 2) % 15));
-                        const distC = Math.round(15 + ((codeHash + 5) % 10));
-                        const distD = 100 - distA - distB - distC;
-
-                        allSchoolsCache.push({
-                            school_id: id,
-                            school_name: rSchool.name,
-                            school_type: rSchool.type,
-                            region: sido,
-                            dong: rSchool.dong,
-                            address: rSchool.addr,
-                            lat: rSchool.lat,
-                            lng: rSchool.lng,
-                            student_count: Math.round(450 + (codeHash % 350)),
-                            class_avg_size: Math.round(23 + (codeHash % 8)),
-                            updated_at: "2025-09-15",
-                            subjects: {
-                                korean: { avg: korAvg, dist: [distA, distB, distC, distD] },
-                                english: { avg: engAvg, dist: [distB, distA, distC, distD] },
-                                math: { avg: mathAvg, dist: [distC, distB, distA, distD] }
-                            },
-                            violence_stats: {
-                                total_cases: codeHash % 6,
-                                per_100: Math.round(((codeHash % 6) / 5) * 10) / 10,
-                                types: {
-                                    verbal: 35 + (codeHash % 20),
-                                    cyber: 15 + (codeHash % 15),
-                                    exclude: 10 + (codeHash % 10),
-                                    physical: Math.max(5, 100 - (35 + (codeHash % 20)) - (15 + (codeHash % 15)) - (10 + (codeHash % 10)))
-                                },
-                                resolved_rate: Math.round(80 + (codeHash % 18))
-                            },
-                            transfer_stats: {
-                                transfer_in: Math.round(10 + (codeHash % 20)),
-                                transfer_out: Math.round(5 + (codeHash % 15)),
-                                net: Math.round(10 + (codeHash % 20)) - Math.round(5 + (codeHash % 15))
-                            },
-                            commute_stats: {
-                                walk: Math.round(40 + (codeHash % 35)),
-                                bus: Math.round(15 + (codeHash % 20)),
-                                car: Math.round(5 + (codeHash % 10)),
-                                etc: Math.round(5 + (codeHash % 10))
-                            }
-                        });
-                    }
-                });
-            });
-
-            // 전국 시/군/구별 대표 학교 자동 생성 시스템 (지방 시/군 조회 시 데이터가 없어도 동 목록과 학교 순위가 100% 정상 작동하도록 지원)
-            Object.keys(CITY_DONG_PRESETS).forEach(cityKey => {
-                const dongList = CITY_DONG_PRESETS[cityKey];
-                const cleanCity = cityKey.replace(/(시|구|군)$/, '');
-                
-                const hasExisting = allSchoolsCache.some(s => s.address && s.address.includes(cleanCity));
-                if (!hasExisting) {
-                    dongList.slice(0, 5).forEach((dongName, idx) => {
-                        const types = ['중학교', '고등학교', '초등학교'];
-                        const type = types[idx % 3];
-                        const schoolName = `${cleanCity}${dongName.replace(/(동|읍|면|가|리)$/, '')}${type}`;
-                        const id = `auto_${cityKey}_${idx}_${schoolName}`;
-                        const codeHash = Math.abs(id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
-                        
-                        allSchoolsCache.push({
-                            school_id: id,
-                            school_name: schoolName,
-                            school_type: type,
-                            region: cityKey,
-                            dong: dongName,
-                            address: `${cityKey} ${dongName} 100`,
-                            lat: 36.0 + (codeHash % 100) * 0.01,
-                            lng: 128.0 + (codeHash % 100) * 0.01,
-                            student_count: Math.round(400 + (codeHash % 400)),
-                            class_avg_size: Math.round(22 + (codeHash % 8)),
-                            updated_at: "2025-09-15",
-                            subjects: {
-                                korean: { avg: Math.round(75 + (codeHash % 15)), dist: [25, 35, 25, 15] },
-                                english: { avg: Math.round(73 + ((codeHash * 3) % 17)), dist: [30, 25, 25, 20] },
-                                math: { avg: Math.round(70 + ((codeHash * 7) % 20)), dist: [20, 30, 30, 20] }
-                            },
-                            violence_stats: {
-                                total_cases: codeHash % 5,
-                                per_100: Math.round(((codeHash % 5) / 4) * 10) / 10,
-                                types: { verbal: 35, cyber: 15, exclude: 10, physical: 40 },
-                                resolved_rate: Math.round(80 + (codeHash % 18))
-                            },
-                            transfer_stats: { transfer_in: 15, transfer_out: 8, net: 7 },
-                            commute_stats: { walk: 50, bus: 30, car: 10, etc: 10 }
-                        });
-                    });
-                }
-            });
 
             // 최종 학교 목록 중복 제거 (학교명 + 주소 기준)
             const uniqueSchools = [];
@@ -9777,7 +9666,7 @@ window.addEventListener('DOMContentLoaded', () => {
             renderTopicStatsUI(processedList);
         }
 
-        // 4. 순위 카드 HTML 렌더링
+        // 4. 순위 카드 HTML 렌더링 (컴팩트 고밀도 뷰)
         function renderTopicStatsUI(list) {
             if (!listContainer) return;
             if (list.length === 0) {
@@ -9791,10 +9680,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
             listContainer.innerHTML = list.map((item, idx) => {
                 const rank = idx + 1;
-                let medalBadge = `<span style="background:#e2e8f0; color:#475569; font-weight:bold; padding:4px 8px; border-radius:12px; font-size:12px;">${rank}위</span>`;
-                if (rank === 1) medalBadge = `<span style="background:#fef08a; color:#854d0e; font-weight:bold; padding:4px 10px; border-radius:12px; font-size:12px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">🥇 1위</span>`;
-                else if (rank === 2) medalBadge = `<span style="background:#e2e8f0; color:#334155; font-weight:bold; padding:4px 10px; border-radius:12px; font-size:12px;">🥈 2위</span>`;
-                else if (rank === 3) medalBadge = `<span style="background:#ffedd5; color:#9a3412; font-weight:bold; padding:4px 10px; border-radius:12px; font-size:12px;">🥉 3위</span>`;
+                let medalBadge = `<span style="background:#e2e8f0; color:#475569; font-weight:bold; padding:2px 6px; border-radius:10px; font-size:11px;">${rank}위</span>`;
+                if (rank === 1) medalBadge = `<span style="background:#fef08a; color:#854d0e; font-weight:bold; padding:2px 7px; border-radius:10px; font-size:11px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">🥇 1위</span>`;
+                else if (rank === 2) medalBadge = `<span style="background:#e2e8f0; color:#334155; font-weight:bold; padding:2px 7px; border-radius:10px; font-size:11px;">🥈 2위</span>`;
+                else if (rank === 3) medalBadge = `<span style="background:#ffedd5; color:#9a3412; font-weight:bold; padding:2px 7px; border-radius:10px; font-size:11px;">🥉 3위</span>`;
 
                 let metricDetailsHTML = '';
 
@@ -9803,27 +9692,24 @@ window.addEventListener('DOMContentLoaded', () => {
                     const types = v.types || { verbal: 40, cyber: 20, exclude: 15, physical: 25 };
                     const isSafe = v.per_100 <= 0.5;
                     const statusTag = isSafe 
-                        ? `<span style="color:var(--success-green); font-weight:bold; font-size:11px;">🛡️ 아주 안전</span>`
-                        : `<span style="color:#e11d48; font-weight:bold; font-size:11px;">⚠️ 주의 요망</span>`;
+                        ? `<span style="color:var(--success-green); font-weight:bold; font-size:10.5px;">🛡️ 아주 안전</span>`
+                        : `<span style="color:#e11d48; font-weight:bold; font-size:10.5px;">⚠️ 주의 요망</span>`;
 
                     metricDetailsHTML = `
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                            <span style="font-size:12.5px; font-weight:700; color:var(--deep-blue);">
-                                연간 신고 <strong>${v.total_cases}건</strong> (100명당 <strong>${v.per_100}건</strong>)
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                            <span style="font-size:11.5px; font-weight:700; color:var(--deep-blue);">
+                                연간 신고 <strong>${v.total_cases}건</strong> (100명당 <strong>${v.per_100}건</strong>) · 처리율 <strong>${v.resolved_rate}%</strong>
                             </span>
                             ${statusTag}
                         </div>
-                        <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px;">
-                            심의·처리 완료율: <strong style="color:var(--primary-blue);">${v.resolved_rate}%</strong>
-                        </div>
                         <!-- 폭력 유형 비율 미니 바 -->
-                        <div style="background:#f1f5f9; border-radius:4px; height:8px; display:flex; overflow:hidden; margin-bottom:4px;" title="언어:${types.verbal}% / 사이버:${types.cyber}% / 따돌림:${types.exclude}% / 신체:${types.physical}%">
+                        <div style="background:#f1f5f9; border-radius:3px; height:5px; display:flex; overflow:hidden; margin:3px 0 2px 0;" title="언어:${types.verbal}% / 사이버:${types.cyber}% / 따돌림:${types.exclude}% / 신체:${types.physical}%">
                             <div style="width:${types.verbal}%; background:#3b82f6;" title="언어폭력 ${types.verbal}%"></div>
                             <div style="width:${types.cyber}%; background:#8b5cf6;" title="사이버폭력 ${types.cyber}%"></div>
                             <div style="width:${types.exclude}%; background:#f59e0b;" title="집단따돌림 ${types.exclude}%"></div>
                             <div style="width:${types.physical}%; background:#ef4444;" title="신체폭력 ${types.physical}%"></div>
                         </div>
-                        <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted);">
+                        <div style="display:flex; justify-content:space-between; font-size:9.5px; color:var(--text-muted);">
                             <span>🗣️ 언어 ${types.verbal}%</span>
                             <span>💻 사이버 ${types.cyber}%</span>
                             <span>👥 따돌림 ${types.exclude}%</span>
@@ -9832,25 +9718,25 @@ window.addEventListener('DOMContentLoaded', () => {
                     `;
                 } else if (currentTopic === 'composite') {
                     metricDetailsHTML = `
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                            <span style="font-size:13px; font-weight:800; color:var(--primary-blue);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                            <span style="font-size:12px; font-weight:800; color:var(--primary-blue);">
                                 종합 스코어: <strong>${item.compositeScore}점</strong> / 100점
                             </span>
-                            <span style="font-size:11px; color:var(--text-muted);">학업평균: ${item.subjectAvg}점</span>
+                            <span style="font-size:10.5px; color:var(--text-muted);">학업평균: ${item.subjectAvg}점</span>
                         </div>
-                        <div style="background:#e2e8f0; border-radius:4px; height:8px; overflow:hidden;">
+                        <div style="background:#e2e8f0; border-radius:3px; height:6px; overflow:hidden;">
                             <div style="width:${item.compositeScore}%; background:linear-gradient(90deg, var(--primary-blue), #1d4ed8); height:100%;"></div>
                         </div>
                     `;
                 } else if (currentTopic === 'academic') {
                     metricDetailsHTML = `
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                            <span style="font-size:13px; font-weight:800; color:var(--deep-blue);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+                            <span style="font-size:12px; font-weight:800; color:var(--deep-blue);">
                                 국·영·수 평균: <strong>${item.subjectAvg}점</strong>
                             </span>
-                            <span style="font-size:11px; color:var(--success-green); font-weight:bold;">A등급(우수) 비율: ${item.distAAvg}%</span>
+                            <span style="font-size:10.5px; color:var(--success-green); font-weight:bold;">A등급 비율: ${item.distAAvg}%</span>
                         </div>
-                        <div style="font-size:11px; color:var(--text-muted);">
+                        <div style="font-size:10.5px; color:var(--text-muted);">
                             국어 ${item.raw.subjects?.korean?.avg || 75}점 | 영어 ${item.raw.subjects?.english?.avg || 75}점 | 수학 ${item.raw.subjects?.math?.avg || 75}점
                         </div>
                     `;
@@ -9859,31 +9745,31 @@ window.addEventListener('DOMContentLoaded', () => {
                     const c = item.cStats;
                     const netSign = t.net > 0 ? `+${t.net}` : `${t.net}`;
                     metricDetailsHTML = `
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                            <span style="font-size:12.5px; font-weight:700; color:var(--deep-blue);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+                            <span style="font-size:11.5px; font-weight:700; color:var(--deep-blue);">
                                 순전입: <strong>${netSign}명</strong> (전입 ${t.transfer_in} / 전출 ${t.transfer_out})
                             </span>
-                            <span style="font-size:11px; color:var(--primary-blue); font-weight:bold;">🚶 도보 통학: ${c.walk}%</span>
+                            <span style="font-size:10.5px; color:var(--primary-blue); font-weight:bold;">🚶 도보 통학: ${c.walk}%</span>
                         </div>
-                        <div style="font-size:11px; color:var(--text-muted);">
-                            대중교통 이용 비율: ${c.bus}% | 자가용: ${c.car}%
+                        <div style="font-size:10.5px; color:var(--text-muted);">
+                            대중교통: ${c.bus}% | 자가용: ${c.car}%
                         </div>
                     `;
                 }
 
                 return `
-                    <div class="topic-rank-card" style="background:#ffffff; border:1px solid var(--border-color); border-radius:12px; padding:14px; box-shadow:0 2px 8px rgba(0,0,0,0.04); transition:transform 0.2s, box-shadow 0.2s;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
-                            <div style="display:flex; align-items:center; gap:8px;">
+                    <div class="topic-rank-card" style="background:#ffffff; border:1px solid var(--border-color); border-radius:10px; padding:8px 10px; box-shadow:0 1px 4px rgba(0,0,0,0.03); transition:transform 0.2s;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; border-bottom:1px solid #f1f5f9; padding-bottom:4px;">
+                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
                                 ${medalBadge}
-                                <span style="font-size:15px; font-weight:800; color:var(--deep-blue);">${item.name}</span>
-                                <span style="font-size:11px; color:var(--text-muted); background:#f1f5f9; padding:2px 6px; border-radius:4px;">${item.type}</span>
+                                <span style="font-size:13.5px; font-weight:800; color:var(--deep-blue); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.name}</span>
+                                <span style="font-size:10px; color:var(--text-muted); background:#f1f5f9; padding:1px 5px; border-radius:4px; flex-shrink:0;">${item.type}</span>
                             </div>
-                            <button onclick="window.viewSchoolOnMapFromStats('${item.id}')" style="background:var(--primary-blue); color:white; border:none; border-radius:6px; padding:6px 10px; font-size:11px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:4px; transition:background 0.2s;">
-                                📍 지도에서 보기
+                            <button onclick="window.viewSchoolOnMapFromStats('${item.id}')" style="background:var(--primary-blue); color:white; border:none; border-radius:5px; padding:3px 7px; font-size:10.5px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:3px; flex-shrink:0;">
+                                📍 지도보기
                             </button>
                         </div>
-                        <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">
+                        <div style="font-size:10.5px; color:var(--text-muted); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                             주소: ${item.address || '주소 정보 없음'}
                         </div>
                         ${metricDetailsHTML}

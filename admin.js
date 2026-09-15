@@ -33,6 +33,7 @@ const storedSchoolsCount = document.getElementById('storedSchoolsCount');
 const btnSearchSchools = document.getElementById('btnSearchSchools');
 const storedSchoolsListContainer = document.getElementById('storedSchoolsListContainer');
 const storedRegionFilter = document.getElementById('storedRegionFilter');
+const storedSigunguFilter = document.getElementById('storedSigunguFilter');
 const storedTypeFilter = document.getElementById('storedTypeFilter');
 const storedSearchInput = document.getElementById('storedSearchInput');
 
@@ -99,10 +100,30 @@ function updateSigunguDropdown() {
     updateSigungu.innerHTML = sigungus.map(s => `<option value="${s}">${s}</option>`).join('');
 }
 
+function updateStoredSigunguDropdown() {
+    if (!storedRegionFilter || !storedSigunguFilter) return;
+    const sido = storedRegionFilter.value;
+    if (sido === 'all') {
+        storedSigunguFilter.innerHTML = '<option value="all">시/군/구 전체</option>';
+        storedSigunguFilter.value = 'all';
+        return;
+    }
+    const sigungus = sigunguMap[sido] || ['전체'];
+    storedSigunguFilter.innerHTML = sigungus.map(s => {
+        const val = s === '전체' ? 'all' : s;
+        const text = s === '전체' ? '시/군/구 전체' : s;
+        return `<option value="${val}">${text}</option>`;
+    }).join('');
+    storedSigunguFilter.value = 'all';
+}
+
 // Init View State
 if (updateSido) {
     updateSido.addEventListener('change', updateSigunguDropdown);
     updateSigunguDropdown();
+}
+if (storedRegionFilter) {
+    updateStoredSigunguDropdown();
 }
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -130,6 +151,7 @@ function renderStoredSchoolsList() {
     if (!storedSchoolsListContainer || !storedSchoolsCount) return;
 
     const selectedRegion = storedRegionFilter ? storedRegionFilter.value : 'all';
+    const selectedSigungu = storedSigunguFilter ? storedSigunguFilter.value : 'all';
     const selectedType = storedTypeFilter ? storedTypeFilter.value : 'all';
     const searchQuery = storedSearchInput ? storedSearchInput.value.trim().toLowerCase() : '';
 
@@ -138,6 +160,11 @@ function renderStoredSchoolsList() {
     // Filter by Region
     if (selectedRegion !== 'all') {
         filtered = filtered.filter(s => s.region === selectedRegion);
+    }
+
+    // Filter by Sigungu
+    if (selectedSigungu !== 'all') {
+        filtered = filtered.filter(s => s.address && s.address.includes(selectedSigungu));
     }
 
     // Filter by School Type
@@ -353,6 +380,13 @@ if (btnSearchSchools) {
 }
 if (storedRegionFilter) {
     storedRegionFilter.addEventListener('change', () => {
+        updateStoredSigunguDropdown();
+        currentStoredSchoolsLimit = 100;
+        renderStoredSchoolsList();
+    });
+}
+if (storedSigunguFilter) {
+    storedSigunguFilter.addEventListener('change', () => {
         currentStoredSchoolsLimit = 100;
         renderStoredSchoolsList();
     });
