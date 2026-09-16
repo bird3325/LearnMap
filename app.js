@@ -1754,6 +1754,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                 if (typeof window.updatePointSelectorButtons === 'function') {
                                     window.updatePointSelectorButtons();
                                 }
+                                if (window.innerWidth <= 1024) {
+                                    const container = document.querySelector('.app-container');
+                                    if (container) container.classList.remove('sidebar-open');
+                                    if (typeof window.showMobileCommuteResultGuide === 'function') {
+                                        window.showMobileCommuteResultGuide();
+                                    }
+                                }
                                 return;
                             } else if (window.mapClickMode === 'setEnd') {
                                 window.customCommuteEnd = mouseEvent.latLng;
@@ -1763,6 +1770,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                                 if (typeof window.updatePointSelectorButtons === 'function') {
                                     window.updatePointSelectorButtons();
+                                }
+                                if (window.innerWidth <= 1024) {
+                                    const container = document.querySelector('.app-container');
+                                    if (container) container.classList.remove('sidebar-open');
+                                    if (typeof window.showMobileCommuteResultGuide === 'function') {
+                                        window.showMobileCommuteResultGuide();
+                                    }
                                 }
                                 return;
                             }
@@ -7574,6 +7588,49 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.resetSafeCommute = resetSafeCommute;
 
+    window.showMobileMapSelectGuide = function(msg) {
+        let guide = document.getElementById('mobileMapSelectGuide');
+        if (!guide) {
+            guide = document.createElement('div');
+            guide.id = 'mobileMapSelectGuide';
+            guide.style.cssText = 'position: fixed; top: 75px; left: 50%; transform: translateX(-50%); z-index: 12000; background: rgba(30, 58, 138, 0.95); color: white; padding: 10px 18px; border-radius: 20px; font-size: 13px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.25); display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap; backdrop-filter: blur(4px); transition: all 0.3s;';
+            document.body.appendChild(guide);
+            guide.addEventListener('click', () => {
+                window.mapClickMode = 'none';
+                if (typeof window.updatePointSelectorButtons === 'function') window.updatePointSelectorButtons();
+                const container = document.querySelector('.app-container');
+                if (container) container.classList.add('sidebar-open');
+                window.hideMobileMapSelectGuide();
+            });
+        }
+        guide.innerHTML = `<span>${msg}</span><span style="font-size: 11px; opacity: 0.8; margin-left: 6px;">(취소 ✕)</span>`;
+        guide.style.display = 'flex';
+    };
+
+    window.hideMobileMapSelectGuide = function() {
+        const guide = document.getElementById('mobileMapSelectGuide');
+        if (guide) guide.style.display = 'none';
+    };
+
+    window.showMobileCommuteResultGuide = function() {
+        let guide = document.getElementById('mobileMapSelectGuide');
+        if (!guide) {
+            guide = document.createElement('div');
+            guide.id = 'mobileMapSelectGuide';
+            guide.style.cssText = 'position: fixed; top: 75px; left: 50%; transform: translateX(-50%); z-index: 12000; background: rgba(30, 58, 138, 0.95); color: white; padding: 10px 18px; border-radius: 20px; font-size: 13px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.25); display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap; backdrop-filter: blur(4px); transition: all 0.3s;';
+            document.body.appendChild(guide);
+        }
+        guide.innerHTML = `<span>🛡️ 통학로 경로 생성 완료!</span><span style="background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 12px; font-size: 11px; margin-left: 4px;">상세 분석보기 📋</span>`;
+        guide.style.display = 'flex';
+
+        const clickHandler = function() {
+            const container = document.querySelector('.app-container');
+            if (container) container.classList.add('sidebar-open');
+            window.hideMobileMapSelectGuide();
+        };
+        guide.onclick = clickHandler;
+    };
+
     window.updatePointSelectorButtons = function() {
         const startBtns = document.querySelectorAll('.btn-set-start');
 
@@ -7651,6 +7708,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.classList.contains('btn-set-start')) {
             window.mapClickMode = window.mapClickMode === 'setStart' ? 'none' : 'setStart';
             window.updatePointSelectorButtons();
+
+            if (window.innerWidth <= 1024) {
+                const container = document.querySelector('.app-container');
+                if (window.mapClickMode === 'setStart') {
+                    if (container) container.classList.remove('sidebar-open');
+                    if (typeof window.showMobileMapSelectGuide === 'function') {
+                        window.showMobileMapSelectGuide('📍 지도에서 출발지로 지정할 위치를 터치해주세요');
+                    }
+                } else {
+                    if (container) container.classList.add('sidebar-open');
+                    if (typeof window.hideMobileMapSelectGuide === 'function') {
+                        window.hideMobileMapSelectGuide();
+                    }
+                }
+            }
         } else if (e.target.classList.contains('btn-reset-commute')) {
             window.customCommuteStart = null;
             window.customCommuteEnd = null;
@@ -7659,6 +7731,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.updateMapLayers(orchestrator.state.selectedSchool);
             }
             window.updatePointSelectorButtons();
+            if (window.innerWidth <= 1024 && typeof window.hideMobileMapSelectGuide === 'function') {
+                window.hideMobileMapSelectGuide();
+            }
         } else if (e.target.id === 'tabAcademyReviews') {
             const tabRev = document.getElementById('tabAcademyReviews');
             const tabCalc = document.getElementById('tabAcademyCalculator');
