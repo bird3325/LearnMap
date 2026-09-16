@@ -7703,36 +7703,55 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 출발지 및 초기화 버튼 동작 리스너 등록
-    document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('btn-set-start')) {
-            window.mapClickMode = window.mapClickMode === 'setStart' ? 'none' : 'setStart';
+    window.toggleSetStartPoint = function() {
+        window.mapClickMode = window.mapClickMode === 'setStart' ? 'none' : 'setStart';
+        if (typeof window.updatePointSelectorButtons === 'function') {
             window.updatePointSelectorButtons();
+        }
 
-            if (window.innerWidth <= 1024) {
-                const container = document.querySelector('.app-container');
-                if (window.mapClickMode === 'setStart') {
-                    if (container) container.classList.remove('sidebar-open');
-                    if (typeof window.showMobileMapSelectGuide === 'function') {
-                        window.showMobileMapSelectGuide('📍 지도에서 출발지로 지정할 위치를 터치해주세요');
-                    }
-                } else {
-                    if (container) container.classList.add('sidebar-open');
-                    if (typeof window.hideMobileMapSelectGuide === 'function') {
-                        window.hideMobileMapSelectGuide();
-                    }
+        if (window.innerWidth <= 1024) {
+            const container = document.querySelector('.app-container');
+            if (window.mapClickMode === 'setStart') {
+                if (container) container.classList.remove('sidebar-open');
+                if (typeof window.showMobileMapSelectGuide === 'function') {
+                    window.showMobileMapSelectGuide('📍 지도에서 출발지로 지정할 위치를 터치해주세요');
+                }
+            } else {
+                if (container) container.classList.add('sidebar-open');
+                if (typeof window.hideMobileMapSelectGuide === 'function') {
+                    window.hideMobileMapSelectGuide();
                 }
             }
-        } else if (e.target.classList.contains('btn-reset-commute')) {
-            window.customCommuteStart = null;
-            window.customCommuteEnd = null;
-            window.mapClickMode = 'none';
-            if (orchestrator.state.selectedSchool) {
-                window.updateMapLayers(orchestrator.state.selectedSchool);
-            }
+        }
+    };
+
+    window.resetCommutePoints = function() {
+        window.customCommuteStart = null;
+        window.customCommuteEnd = null;
+        window.mapClickMode = 'none';
+        if (orchestrator.state.selectedSchool) {
+            window.updateMapLayers(orchestrator.state.selectedSchool);
+        }
+        if (typeof window.updatePointSelectorButtons === 'function') {
             window.updatePointSelectorButtons();
-            if (window.innerWidth <= 1024 && typeof window.hideMobileMapSelectGuide === 'function') {
-                window.hideMobileMapSelectGuide();
+        }
+        if (window.innerWidth <= 1024 && typeof window.hideMobileMapSelectGuide === 'function') {
+            window.hideMobileMapSelectGuide();
+        }
+    };
+
+    // 출발지 및 초기화 버튼 동작 리스너 등록 (closest를 통한 모바일 터치 처리 개선)
+    document.addEventListener('click', (e) => {
+        const startBtn = e.target.closest ? e.target.closest('.btn-set-start') : null;
+        const resetBtn = e.target.closest ? e.target.closest('.btn-reset-commute') : null;
+
+        if (startBtn) {
+            if (typeof window.toggleSetStartPoint === 'function') {
+                window.toggleSetStartPoint();
+            }
+        } else if (resetBtn) {
+            if (typeof window.resetCommutePoints === 'function') {
+                window.resetCommutePoints();
             }
         } else if (e.target.id === 'tabAcademyReviews') {
             const tabRev = document.getElementById('tabAcademyReviews');

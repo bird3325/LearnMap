@@ -1471,10 +1471,10 @@
                             <div id="commutePathSettings" style="display: none; flex-direction: column; gap: 6px; background: white; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 11px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; font-weight: bold; color: var(--deep-blue);">
                                     <span>📍 안심통학로 설정</span>
-                                    <button class="btn-reset-commute" style="background: none; border: none; color: var(--primary-blue); font-size: 10px; cursor: pointer; padding: 0;">기본값 초기화</button>
+                                    <button class="btn-reset-commute" onclick="if(typeof window.resetCommutePoints==='function') window.resetCommutePoints();" style="background: none; border: none; color: var(--primary-blue); font-size: 10px; cursor: pointer; padding: 0;">기본값 초기화</button>
                                 </div>
                                 <div style="display: flex; gap: 6px;">
-                                    <button class="btn-set-start" style="flex: 1; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: white; cursor: pointer; font-weight: bold; font-size: 11px;">🏠 출발지 지정</button>
+                                    <button class="btn-set-start" onclick="if(typeof window.toggleSetStartPoint==='function') window.toggleSetStartPoint();" style="flex: 1; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: white; cursor: pointer; font-weight: bold; font-size: 11px;">🏠 출발지 지정</button>
                                 </div>
                                 <div style="color: var(--text-muted); font-size: 10px; margin-top: 2px;">
                                     * 버튼 선택 후 지도를 클릭하면 출발지가 지정됩니다.
