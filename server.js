@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
 app.use(express.json({ limit: '50mb' })); // Allow large payloads for bulk school data
 app.use(express.static(path.join(__dirname))); // Serve static front-end files
@@ -533,11 +533,14 @@ app.get('/api/academies/fees', async (req, res) => {
         if (neisKey) url += `&KEY=${neisKey}`;
 
         const response = await fetch(url);
+        if (!response.ok) {
+            return res.json({ acaInsTiInfo: null });
+        }
         const data = await response.json();
         res.json(data);
     } catch (err) {
-        console.error('Academy Fees API Error:', err);
-        res.status(500).json({ error: '학원비 API 호출에 실패했습니다.' });
+        console.warn('Academy Fees API Warning:', err);
+        res.json({ acaInsTiInfo: null });
     }
 });
 
@@ -548,15 +551,17 @@ app.get('/api/realestate', async (req, res) => {
 
     const config = await readConfig();
     const serviceKey = config.data_go_kr_key;
-    if (!serviceKey) return res.status(500).json({ error: '공공데이터포털 API 키가 설정되지 않았습니다.' });
+    if (!serviceKey) {
+        return res.type('application/xml').send('<response><header><resultCode>00</resultCode><resultMsg>NO_KEY</resultMsg></header><body><items></items></body></response>');
+    }
 
     try {
         const url = `https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=${encodeURIComponent(serviceKey)}&pageNo=1&numOfRows=1000&LAWD_CD=${lawd_cd}&DEAL_YMD=${deal_ymd}`;
         const responseText = await httpsGet(url);
         res.type('application/xml').send(responseText);
     } catch (err) {
-        console.error('Real Estate API Error:', err);
-        res.status(500).json({ error: '국토교통부 실거래가 API 호출에 실패했습니다.' });
+        console.warn('Real Estate API Warning:', err);
+        res.type('application/xml').send('<response><header><resultCode>00</resultCode><resultMsg>ERROR</resultMsg></header><body><items></items></body></response>');
     }
 });
 

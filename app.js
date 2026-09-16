@@ -2353,58 +2353,151 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function highlightSelectedPin(schoolId) {
-        // 유저 요청에 따라 학교 선택 시 마커가 강조되는 효과(크기 확대 및 스타일 변경)를 전면 제거합니다.
+        const targetId = schoolId ? String(schoolId) : null;
+
+        // 1. 모든 마커 및 라벨 기본 상태 초기화
         mapMarkers.forEach(item => {
-            if (item.marker) {
+            if (item.marker && typeof item.marker.setZIndex === 'function') {
                 item.marker.setZIndex(999);
             }
             if (item.content) {
+                item.content.style.zIndex = '999';
                 const pin = item.content.querySelector('.school-pin');
                 const label = item.content.querySelector('.pin-label');
                 if (pin) {
-                    pin.style.transform = 'rotate(-45deg)';
+                    pin.style.transform = 'rotate(-45deg) scale(1)';
                     pin.style.boxShadow = '';
                     pin.style.border = '';
+                    pin.style.outline = '';
+                    pin.style.filter = '';
+                    pin.classList.remove('selected-pin');
                 }
                 if (label) {
                     label.style.background = '';
+                    label.style.color = '';
                     label.style.fontWeight = '';
                     label.style.border = '';
                     label.style.padding = '';
                     label.style.fontSize = '';
+                    label.style.boxShadow = '';
+                    label.style.transform = 'translate(-50%, -100%) scale(1)';
+                    label.style.zIndex = '999';
+                    label.classList.remove('selected-label');
                 }
             }
         });
 
-        const pins = document.querySelectorAll('.school-pin');
-        const labels = document.querySelectorAll('.pin-label');
-
-        pins.forEach(pin => {
-            pin.style.transform = 'rotate(-45deg)';
+        document.querySelectorAll('.school-pin').forEach(pin => {
+            pin.style.transform = 'rotate(-45deg) scale(1)';
             pin.style.boxShadow = '';
             pin.style.border = '';
+            pin.style.outline = '';
+            pin.style.filter = '';
+            pin.classList.remove('selected-pin');
             const overlay = pin.closest('.school-overlay');
             if (overlay) {
                 overlay.style.zIndex = '999';
             }
         });
 
-        labels.forEach(label => {
+        document.querySelectorAll('.pin-label').forEach(label => {
             label.style.background = '';
+            label.style.color = '';
             label.style.fontWeight = '';
             label.style.border = '';
             label.style.padding = '';
             label.style.fontSize = '';
+            label.style.boxShadow = '';
+            label.style.transform = 'translate(-50%, -100%) scale(1)';
+            label.style.zIndex = '999';
+            label.classList.remove('selected-label');
+        });
+
+        if (!targetId) return;
+
+        // 2. 절제되고 깔끔한 세련된 마커 강조 (1.18x 스케일 + 정갈한 링 & 레이어 상위 배치)
+        mapMarkers.forEach(item => {
+            if (String(item.id) === targetId) {
+                if (item.marker && typeof item.marker.setZIndex === 'function') {
+                    item.marker.setZIndex(9999);
+                }
+                if (item.content) {
+                    item.content.style.zIndex = '9999';
+                    const pin = item.content.querySelector('.school-pin');
+                    const label = item.content.querySelector('.pin-label');
+                    if (pin) {
+                        pin.style.transform = 'rotate(-45deg) scale(1.18)';
+                        pin.style.boxShadow = '0 0 0 2px #ffffff, 0 3px 8px rgba(0, 0, 0, 0.3)';
+                        pin.style.border = '1.5px solid #ffffff';
+                        pin.classList.add('selected-pin');
+                    }
+                    if (label) {
+                        label.style.background = '#1e293b';
+                        label.style.color = '#ffffff';
+                        label.style.fontWeight = '700';
+                        label.style.padding = '3px 8px';
+                        label.style.borderRadius = '10px';
+                        label.style.border = '1px solid #ffffff';
+                        label.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.2)';
+                        label.style.transform = 'translate(-50%, -100%) scale(1.08)';
+                        label.style.zIndex = '9999';
+                        label.classList.add('selected-label');
+                    }
+                }
+            }
+        });
+
+        const selPins = document.querySelectorAll(`.school-pin[data-school-id="${targetId}"]`);
+        selPins.forEach(pin => {
+            pin.style.transform = 'rotate(-45deg) scale(1.18)';
+            pin.style.boxShadow = '0 0 0 2px #ffffff, 0 3px 8px rgba(0, 0, 0, 0.3)';
+            pin.style.border = '1.5px solid #ffffff';
+            pin.classList.add('selected-pin');
+            const overlay = pin.closest('.school-overlay');
+            if (overlay) {
+                overlay.style.zIndex = '9999';
+            }
+        });
+
+        const selLabels = document.querySelectorAll(`.pin-label[data-school-id="${targetId}"]`);
+        selLabels.forEach(label => {
+            label.style.background = '#1e293b';
+            label.style.color = '#ffffff';
+            label.style.fontWeight = '700';
+            label.style.padding = '3px 8px';
+            label.style.borderRadius = '10px';
+            label.style.border = '1px solid #ffffff';
+            label.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.2)';
+            label.style.transform = 'translate(-50%, -100%) scale(1.08)';
+            label.style.zIndex = '9999';
+            label.classList.add('selected-label');
         });
     }
 
     // Global selector callback
     window.selectSchoolById = (schoolId) => {
-        let school = currentLoadedSchools.find(s => String(s.school_id) === String(schoolId));
-        if (!school) {
-            school = schoolsDatabase.find(s => String(s.school_id) === String(schoolId));
+        let school = currentLoadedSchools.find(s => String(s.school_id || s.id) === String(schoolId));
+        if (!school && typeof schoolsDatabase !== 'undefined') {
+            school = schoolsDatabase.find(s => String(s.school_id || s.id) === String(schoolId));
         }
         if (school) {
+            // 선택된 학교의 학교급(초/중/고) 필터 자동 동기화
+            const schoolTypeFilterEl = document.getElementById('schoolTypeFilter');
+            if (schoolTypeFilterEl) {
+                const rawType = school.school_type || school.type || '';
+                let mappedType = '';
+                if (rawType.includes('초') || rawType === 'elementary') mappedType = 'elementary';
+                else if (rawType.includes('중') || rawType === 'middle') mappedType = 'middle';
+                else if (rawType.includes('고') || rawType === 'high') mappedType = 'high';
+
+                if (mappedType && schoolTypeFilterEl.value !== mappedType) {
+                    schoolTypeFilterEl.value = mappedType;
+                    if (typeof orchestrator !== 'undefined' && orchestrator.state && orchestrator.state.filters) {
+                        orchestrator.state.filters.schoolType = mappedType;
+                    }
+                }
+            }
+
             const summary = orchestrator.selectSchool(school);
             showSchoolDetails(summary, school);
             
@@ -9835,16 +9928,69 @@ window.addEventListener('DOMContentLoaded', () => {
             }
 
             // 카카오 지도 또는 학교 핀 선택 연동
-            const targetSchool = allSchoolsCache.find(s => String(s.school_id) === String(schoolId));
+            let targetSchool = (allSchoolsCache && Array.isArray(allSchoolsCache))
+                ? allSchoolsCache.find(s => String(s.school_id || s.id) === String(schoolId))
+                : null;
+            if (!targetSchool && typeof schoolsDatabase !== 'undefined' && Array.isArray(schoolsDatabase)) {
+                targetSchool = schoolsDatabase.find(s => String(s.school_id || s.id) === String(schoolId));
+            }
+
             if (targetSchool) {
-                if (window.kakaoMapInstance && targetSchool.lat && targetSchool.lng) {
-                    const moveLatLon = new kakao.maps.LatLng(targetSchool.lat, targetSchool.lng);
-                    window.kakaoMapInstance.panTo(moveLatLon);
+                // 선택된 학교의 학교급(초/중/고) 및 지역 필터 지도 컨트롤러 동기화
+                const schoolTypeFilterEl = document.getElementById('schoolTypeFilter');
+                if (schoolTypeFilterEl) {
+                    const rawType = targetSchool.school_type || targetSchool.type || '';
+                    let mappedType = '';
+                    if (rawType.includes('초') || rawType === 'elementary') mappedType = 'elementary';
+                    else if (rawType.includes('중') || rawType === 'middle') mappedType = 'middle';
+                    else if (rawType.includes('고') || rawType === 'high') mappedType = 'high';
+
+                    if (mappedType) {
+                        schoolTypeFilterEl.value = mappedType;
+                        if (orchestrator && orchestrator.state && orchestrator.state.filters) {
+                            orchestrator.state.filters.schoolType = mappedType;
+                        }
+                    }
                 }
-                if (orchestrator && typeof orchestrator.selectSchool === 'function') {
+
+                const regionFilterEl = document.getElementById('regionFilter');
+                if (targetSchool.region && regionFilterEl && regionFilterEl.value !== 'all' && regionFilterEl.value !== targetSchool.region) {
+                    const exists = Array.from(regionFilterEl.options).some(opt => opt.value === targetSchool.region);
+                    if (exists) {
+                        regionFilterEl.value = targetSchool.region;
+                    }
+                }
+
+                const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
+                if (mapObj && targetSchool.lat && targetSchool.lng && typeof kakao !== 'undefined' && kakao.maps) {
+                    const moveLatLon = new kakao.maps.LatLng(targetSchool.lat, targetSchool.lng);
+                    if (typeof mapObj.getLevel === 'function' && mapObj.getLevel() >= 7) {
+                        mapObj.setLevel(window.innerWidth <= 1024 ? 6 : 5);
+                    }
+                    if (typeof mapObj.panTo === 'function') {
+                        mapObj.panTo(moveLatLon);
+                    } else if (typeof mapObj.setCenter === 'function') {
+                        mapObj.setCenter(moveLatLon);
+                    }
+                }
+
+                if (typeof window.onMapAction === 'function') {
+                    window.onMapAction();
+                }
+
+                if (typeof window.selectSchoolById === 'function') {
+                    window.selectSchoolById(schoolId);
+                } else if (orchestrator && typeof orchestrator.selectSchool === 'function') {
                     const summary = orchestrator.selectSchool(targetSchool);
-                    if (typeof window.renderSchoolDetails === 'function') {
-                        window.renderSchoolDetails(summary);
+                    if (typeof showSchoolDetails === 'function') {
+                        showSchoolDetails(summary, targetSchool);
+                    }
+                    const sidebar = document.querySelector('.sidebar-section');
+                    if (sidebar && sidebar.style.display === 'none') {
+                        if (typeof toggleSidebar === 'function') toggleSidebar();
+                    }
+                    if (typeof highlightSelectedPin === 'function') {
+                        highlightSelectedPin(targetSchool.school_id || schoolId);
                     }
                 }
             }
