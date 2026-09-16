@@ -229,7 +229,7 @@ body {
     position: absolute;
     top: 0;
     right: 0;
-    width: 400px;
+    width: var(--sidebar-width, 500px);
     height: 100%;
     background-color: var(--bg-card);
     border-left: 1px solid var(--border-color);
@@ -517,7 +517,7 @@ body {
 .academy-sidebar-section {
     position: absolute;
     top: 0;
-    right: 400px;
+    right: var(--sidebar-width, 400px);
     width: 340px;
     height: 100%;
     background-color: var(--bg-card);
@@ -527,21 +527,72 @@ body {
     box-sizing: border-box;
     padding: 20px;
     box-shadow: -10px 0 30px rgba(0,0,0,0.05);
-    z-index: 10090;
+    z-index: 10070;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .app-container:not(.sidebar-open) .academy-sidebar-section {
-    transform: translateX(calc(100% + 400px));
+    transform: translateX(calc(100% + var(--sidebar-width, 400px)));
 }
 
 .app-container.sidebar-open:not(.academy-open) .academy-sidebar-section {
-    transform: translateX(calc(100% + 400px));
+    transform: translateX(calc(100% + var(--sidebar-width, 400px)));
 }
 
 .app-container.sidebar-open.academy-open .academy-sidebar-section {
     transform: translateX(0);
 }
+
+/* Sidebar Resizer Handle (Appended to app-container) */
+.sidebar-resizer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: calc(var(--sidebar-width, 400px) - 5px);
+    width: 10px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 10100;
+    user-select: none;
+    touch-action: none;
+    display: none;
+}
+
+.app-container.sidebar-open .sidebar-resizer {
+    display: block;
+}
+
+.app-container:not(.sidebar-open) .sidebar-resizer {
+    display: none !important;
+}
+
+.sidebar-resizer::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 3px;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 40px;
+    background-color: var(--border-color);
+    border-radius: 4px;
+    transition: background-color 0.2s, width 0.2s, left 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.sidebar-resizer:hover::after,
+.sidebar-resizer.is-dragging::after {
+    background-color: var(--primary-blue);
+    width: 6px;
+    left: 2px;
+}
+
+@media (max-width: 1024px) {
+    .sidebar-resizer {
+        display: none !important;
+    }
+}
+
 
 /* Responsive queries */
 @media (max-width: 1024px) {
@@ -555,7 +606,8 @@ body {
         bottom: 0;
         left: 0;
         right: 0;
-        width: 100%;
+        width: 100% !important;
+        min-width: 0 !important;
         max-width: 100% !important;
         height: 60vh;
         z-index: 10080;
@@ -1637,9 +1689,14 @@ body {
     right: 24px !important;
 }
 
-/* 사이드바가 열려있을 때: 사이드바(400px) 바로 왼쪽 */
-.app-container.sidebar-open .pc-floating-filters {
-    right: 424px !important;
+/* 사이드바가 열려있을 때: 사이드바 바로 왼쪽 */
+.app-container.sidebar-open:not(.academy-open) .pc-floating-filters {
+    right: calc(var(--sidebar-width, 400px) + 24px) !important;
+}
+
+/* 학원 사이드바까지 열려있을 때: 학원 사이드바 바로 왼쪽 */
+.app-container.sidebar-open.academy-open .pc-floating-filters {
+    right: calc(var(--sidebar-width, 400px) + 364px) !important;
 }
 
 .pc-filter-btn {
@@ -1788,9 +1845,14 @@ body {
     top: 20px !important;
 }
 
-/* 사이드바가 열려있을 때: 사이드바(400px) 바로 왼쪽 정렬 */
-.app-container.sidebar-open #mobileFilterToast {
-    right: 424px !important;
+/* 사이드바가 열려있을 때: 사이드바 바로 왼쪽 정렬 */
+.app-container.sidebar-open:not(.academy-open) #mobileFilterToast {
+    right: calc(var(--sidebar-width, 400px) + 24px) !important;
+    top: 20px !important;
+}
+
+.app-container.sidebar-open.academy-open #mobileFilterToast {
+    right: calc(var(--sidebar-width, 400px) + 364px) !important;
     top: 20px !important;
 }
 
@@ -1850,6 +1912,9 @@ body {
 }
 
 @media (min-width: 1025px) {
+    .sidebar-section {
+        min-width: 500px;
+    }
     /* PC(웹) 뷰에서 마이페이지 레이아웃 복원 및 스크롤 붕괴 방지 */
     .settings-inner-wrapper {
         height: auto !important;
@@ -1866,10 +1931,10 @@ body {
     .mobile-settings-content {
         display: none !important;
     }
-    /* PC/웹: 사이드바가 열려 있을 때 비교보드가 우측 사이드 아이콘 위에 배치되도록 (사이드바 경계인 400px까지 확장) */
+    /* PC/웹: 사이드바가 열려 있을 때 비교보드가 우측 사이드 아이콘 위에 배치되도록 (사이드바 경계까지 확장) */
     .app-container.sidebar-open #compareOverlay {
-        right: 400px !important;
-        width: calc(100% - 420px) !important;
+        right: var(--sidebar-width, 400px) !important;
+        width: calc(100% - var(--sidebar-width, 400px) - 40px) !important;
         z-index: 12000 !important;
     }
     /* PC/웹: 사이드바가 닫혀 있을 때 비교보드가 전체 화면 크기로 확장 */
@@ -1917,9 +1982,23 @@ body {
     right: 20px !important;
 }
 
-/* 사이드바가 열려있을 때: 사이드바(400px) 왼쪽 마진 정합선인 424px */
-.app-container.sidebar-open .compare-floating-btn {
-    right: 424px !important;
+/* 사이드바가 열려있을 때: 사이드바 왼쪽 마진 정합선 */
+.app-container.sidebar-open:not(.academy-open) .compare-floating-btn {
+    right: calc(var(--sidebar-width, 400px) + 24px) !important;
+}
+
+.app-container.sidebar-open.academy-open .compare-floating-btn {
+    right: calc(var(--sidebar-width, 400px) + 364px) !important;
+}
+
+/* 드래그 리사이징 중 실시간 이동 반응성을 위해 트랜지션 일시 해제 */
+body.is-resizing-sidebar *,
+body.is-resizing-sidebar .pc-floating-filters,
+body.is-resizing-sidebar #mobileFilterToast,
+body.is-resizing-sidebar .compare-floating-btn,
+body.is-resizing-sidebar .sidebar-section,
+body.is-resizing-sidebar .academy-sidebar-section {
+    transition: none !important;
 }
 
 /* 모바일 마이페이지 가로 비교카드 목록의 스크롤바 트랙/핸들 제거 및 터치 드래그 강도 보정 */

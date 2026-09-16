@@ -2812,6 +2812,80 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    window.switchSchoolCardTab = function(tabName) {
+        const tabs = ['Academic', 'Environment', 'RealEstate', 'Community'];
+        tabs.forEach(t => {
+            const btn = document.getElementById('btnSchoolTab' + t);
+            const panel = document.getElementById('schoolTab' + t);
+            if (t === tabName) {
+                if (btn) {
+                    btn.classList.add('active');
+                    btn.style.background = 'var(--primary-blue)';
+                    btn.style.color = '#ffffff';
+                    btn.style.borderColor = 'var(--primary-blue)';
+                }
+                if (panel) {
+                    panel.style.display = 'flex';
+                }
+            } else {
+                if (btn) {
+                    btn.classList.remove('active');
+                    btn.style.background = '#ffffff';
+                    btn.style.color = 'var(--text-muted)';
+                    btn.style.borderColor = 'var(--border-color)';
+                }
+                if (panel) {
+                    panel.style.display = 'none';
+                }
+            }
+        });
+        if (tabName === 'RealEstate' && typeof window.calculateAcademyBenefits === 'function') {
+            setTimeout(window.calculateAcademyBenefits, 100);
+        }
+    };
+
+    window.calculateAcademyBenefits = function() {
+        const engEl = document.getElementById('academyFeeEng');
+        const mathEl = document.getElementById('academyFeeMath');
+        const engText = engEl ? engEl.innerText : '';
+        const mathText = mathEl ? mathEl.innerText : '';
+        
+        let engFee = parseInt(engText.replace(/[^0-9]/g, ''), 10);
+        let mathFee = parseInt(mathText.replace(/[^0-9]/g, ''), 10);
+
+        if (isNaN(engFee) || engFee <= 0) engFee = 380000;
+        if (isNaN(mathFee) || mathFee <= 0) mathFee = 400000;
+
+        const subjectSelect = document.getElementById('benefitSubjectSelect');
+        const siblingSelect = document.getElementById('benefitSiblingSelect');
+        const cardSelect = document.getElementById('benefitCardSelect');
+
+        const subjectVal = parseInt(subjectSelect ? subjectSelect.value : '2', 10);
+        const siblingDiscountRate = parseFloat(siblingSelect ? siblingSelect.value : '0.1');
+        const cardDiscountVal = parseInt(cardSelect ? cardSelect.value : '30000', 10);
+
+        let baseFee = 0;
+        if (subjectVal === 1) baseFee = engFee;
+        else if (subjectVal === 2) baseFee = engFee + mathFee;
+        else if (subjectVal === 3) baseFee = Math.round((engFee + mathFee) * 1.35);
+
+        let multiSubjectRate = subjectVal === 2 ? 0.05 : (subjectVal === 3 ? 0.10 : 0);
+
+        let percentDiscount = Math.round(baseFee * (siblingDiscountRate + multiSubjectRate));
+        let totalDiscount = percentDiscount + cardDiscountVal;
+        let finalFee = Math.max(0, baseFee - totalDiscount);
+
+        const formatNum = (num) => num.toLocaleString('ko-KR') + '원';
+
+        const stdEl = document.getElementById('benefitStandardFee');
+        const discEl = document.getElementById('benefitDiscountVal');
+        const finalEl = document.getElementById('benefitFinalFee');
+
+        if (stdEl) stdEl.innerText = `약 ${formatNum(baseFee)}`;
+        if (discEl) discEl.innerText = `-${formatNum(totalDiscount)} (연 약 ${formatNum(totalDiscount * 12)}↓)`;
+        if (finalEl) finalEl.innerText = `약 ${formatNum(finalFee)} / 월`;
+    };
+
     function showSchoolDetails(summary, fullSchool) {
         if (typeof window.clearAcademyMarker === 'function') window.clearAcademyMarker();
         
@@ -2841,6 +2915,7 @@ document.addEventListener('DOMContentLoaded', () => {
         childFormCard.style.display = 'none';
         diagnosisResultCard.style.display = 'none';
         schoolCard.style.display = 'block';
+        if (typeof window.switchSchoolCardTab === 'function') window.switchSchoolCardTab('Academic');
 
         if (schoolCardName) schoolCardName.innerText = fullSchool.school_name;
         if (schoolCardType) schoolCardType.innerText = fullSchool.school_type;
@@ -3215,17 +3290,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         const engFee = engCount > 0 ? Math.round(engSum / engCount) : 0;
                         const mathFee = mathCount > 0 ? Math.round(mathSum / mathCount) : 0;
                         
-                        if (acEng) acEng.innerText = engFee > 0 ? engFee.toLocaleString() + '원' : '데이터 없음';
-                        if (acMath) acMath.innerText = mathFee > 0 ? mathFee.toLocaleString() + '원' : '데이터 없음';
+                        if (acEng) acEng.innerText = engFee > 0 ? engFee.toLocaleString() + '원' : '380,000원 (추정)';
+                        if (acMath) acMath.innerText = mathFee > 0 ? mathFee.toLocaleString() + '원' : '400,000원 (추정)';
+                        if (typeof window.calculateAcademyBenefits === 'function') window.calculateAcademyBenefits();
                     } else {
-                        if (acEng) acEng.innerText = '데이터 없음';
-                        if (acMath) acMath.innerText = '데이터 없음';
+                        if (acEng) acEng.innerText = '380,000원 (추정)';
+                        if (acMath) acMath.innerText = '400,000원 (추정)';
+                        if (typeof window.calculateAcademyBenefits === 'function') window.calculateAcademyBenefits();
                     }
                 })
                 .catch(err => {
                     console.error(err);
-                    if (acEng) acEng.innerText = '조회 실패';
-                    if (acMath) acMath.innerText = '조회 실패';
+                    if (acEng) acEng.innerText = '380,000원 (추정)';
+                    if (acMath) acMath.innerText = '400,000원 (추정)';
+                    if (typeof window.calculateAcademyBenefits === 'function') window.calculateAcademyBenefits();
                 });
         }
         // ------------------------------------------------
@@ -10357,8 +10435,148 @@ window.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // 메인 사이드바 크기 조절 (Resizer) 기능 구현
+        function initSidebarResizer() {
+            const sidebar = document.querySelector('.sidebar-section');
+            const academySidebar = document.getElementById('academySidebar');
+            if (!sidebar) return;
+
+            const appContainer = document.querySelector('.app-container') || document.body;
+            let resizer = document.querySelector('.sidebar-resizer');
+            if (!resizer) {
+                resizer = document.createElement('div');
+                resizer.className = 'sidebar-resizer';
+                resizer.title = '드래그하여 사이드바 너비 조절';
+                appContainer.appendChild(resizer);
+            }
+
+            function applyWidth(width) {
+                if (window.innerWidth <= 1024) {
+                    // 모바일(1024px 이하)에서는 PC용 인라인 너비 제약을 제거하여 CSS 화면 맞춤(100%)을 적용합니다.
+                    sidebar.style.width = '';
+                    sidebar.style.minWidth = '';
+                    sidebar.style.maxWidth = '';
+                    if (academySidebar) academySidebar.style.right = '';
+                    return;
+                }
+
+                const minW = 500;
+                const maxW = Math.min(800, window.innerWidth - 120);
+                const targetWidth = Math.max(minW, Math.min(maxW, width));
+
+                document.documentElement.style.setProperty('--sidebar-width', `${targetWidth}px`);
+                sidebar.style.width = `${targetWidth}px`;
+                sidebar.style.minWidth = `500px`;
+                sidebar.style.maxWidth = `${maxW}px`;
+                if (academySidebar) {
+                    academySidebar.style.right = `${targetWidth}px`;
+                }
+                if (window.kakaoMapInstance) {
+                    window.kakaoMapInstance.relayout();
+                }
+            }
+
+            window.addEventListener('resize', () => {
+                if (window.innerWidth <= 1024) {
+                    sidebar.style.width = '';
+                    sidebar.style.minWidth = '';
+                    sidebar.style.maxWidth = '';
+                    if (academySidebar) academySidebar.style.right = '';
+                } else {
+                    const savedW = parseInt(localStorage.getItem('learnmap_sidebar_width'), 10) || 500;
+                    applyWidth(savedW);
+                }
+            });
+
+            // 저장된 사이드바 너비 복원 (기본 및 최소 500px)
+            const savedWidth = localStorage.getItem('learnmap_sidebar_width');
+            if (savedWidth && window.innerWidth > 1024) {
+                const widthVal = parseInt(savedWidth, 10);
+                if (!isNaN(widthVal) && widthVal >= 500 && widthVal <= Math.min(800, window.innerWidth - 120)) {
+                    applyWidth(widthVal);
+                } else {
+                    applyWidth(500);
+                }
+            } else if (window.innerWidth > 1024) {
+                applyWidth(500);
+            }
+
+            let isDragging = false;
+            let startX = 0;
+            let startWidth = 500;
+
+            function onStart(pageX) {
+                if (window.innerWidth <= 1024) return;
+                isDragging = true;
+                startX = pageX;
+                const currentW = parseInt(sidebar.style.width, 10) || Math.round(sidebar.getBoundingClientRect().width);
+                startWidth = Math.max(500, currentW);
+                resizer.classList.add('is-dragging');
+                document.body.classList.add('is-resizing-sidebar');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+            }
+
+            function onMove(pageX) {
+                if (!isDragging) return;
+                const deltaX = startX - pageX; // 좌측으로 드래그 시 너비 증가, 우측 드래그 시 너비 감소
+                const newWidth = startWidth + deltaX;
+                applyWidth(newWidth);
+            }
+
+            function onEnd() {
+                if (isDragging) {
+                    isDragging = false;
+                    resizer.classList.remove('is-dragging');
+                    document.body.classList.remove('is-resizing-sidebar');
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    
+                    const finalWidth = parseInt(sidebar.style.width, 10) || 500;
+                    localStorage.setItem('learnmap_sidebar_width', finalWidth);
+                    
+                    if (window.kakaoMapInstance) {
+                        window.kakaoMapInstance.relayout();
+                    }
+                }
+            }
+
+            resizer.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return;
+                e.preventDefault();
+                onStart(e.clientX);
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    e.preventDefault();
+                    onMove(e.clientX);
+                }
+            });
+
+            window.addEventListener('mouseup', onEnd);
+
+            resizer.addEventListener('touchstart', (e) => {
+                if (e.touches && e.touches.length === 1) {
+                    onStart(e.touches[0].clientX);
+                }
+            }, { passive: true });
+
+            window.addEventListener('touchmove', (e) => {
+                if (isDragging && e.touches && e.touches.length === 1) {
+                    onMove(e.touches[0].clientX);
+                }
+            }, { passive: true });
+
+            window.addEventListener('touchend', onEnd);
+            window.addEventListener('touchcancel', onEnd);
+        }
+
+        initSidebarResizer();
+
         // 초기 데이터 세팅
         loadDistrictData();
     })();
 });
+
 
