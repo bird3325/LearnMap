@@ -1748,18 +1748,36 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (window.mapClickMode === 'setStart') {
                                 window.customCommuteStart = mouseEvent.latLng;
                                 window.mapClickMode = 'none';
+
+                                const chkCommute = document.getElementById('chkCommutePath');
+                                const chkCommuteAca = document.getElementById('chkCommutePathAcademy');
+                                const panelSettings = document.getElementById('commutePathSettings');
+                                if (chkCommute) chkCommute.checked = true;
+                                if (chkCommuteAca) chkCommuteAca.checked = true;
+                                if (panelSettings) panelSettings.style.display = 'flex';
+
                                 if (orchestrator.state.selectedSchool) {
                                     window.updateMapLayers(orchestrator.state.selectedSchool);
                                 }
                                 if (typeof window.updatePointSelectorButtons === 'function') {
                                     window.updatePointSelectorButtons();
                                 }
+                                if (typeof window.hideMobileMapSelectGuide === 'function') {
+                                    window.hideMobileMapSelectGuide();
+                                }
+
+                                const container = document.querySelector('.app-container');
                                 if (window.innerWidth <= 1024) {
-                                    const container = document.querySelector('.app-container');
                                     if (container) container.classList.remove('sidebar-open');
-                                    if (typeof window.showMobileCommuteResultGuide === 'function') {
-                                        window.showMobileCommuteResultGuide();
-                                    }
+                                } else {
+                                    if (container) container.classList.add('sidebar-open');
+                                }
+
+                                const guideEl = document.getElementById('commutePathSafetyGuide');
+                                if (guideEl) guideEl.style.display = 'flex';
+
+                                if (typeof window.showMobileCommuteResultGuide === 'function') {
+                                    window.showMobileCommuteResultGuide();
                                 }
                                 return;
                             } else if (window.mapClickMode === 'setEnd') {
@@ -7605,11 +7623,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         guide.innerHTML = `<span>${msg}</span><span style="font-size: 11px; opacity: 0.8; margin-left: 6px;">(취소 ✕)</span>`;
         guide.style.display = 'flex';
+
+        const mapCanvas = document.getElementById('mapCanvas');
+        if (mapCanvas) mapCanvas.style.cursor = 'crosshair';
     };
 
     window.hideMobileMapSelectGuide = function() {
         const guide = document.getElementById('mobileMapSelectGuide');
         if (guide) guide.style.display = 'none';
+        const mapCanvas = document.getElementById('mapCanvas');
+        if (mapCanvas) mapCanvas.style.cursor = '';
     };
 
     window.showMobileCommuteResultGuide = function() {
@@ -7703,24 +7726,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    let lastCommuteToggleTime = 0;
     window.toggleSetStartPoint = function() {
+        const now = Date.now();
+        if (now - lastCommuteToggleTime < 250) return; // Prevent double invocation from inline onclick + event listener
+        lastCommuteToggleTime = now;
+
         window.mapClickMode = window.mapClickMode === 'setStart' ? 'none' : 'setStart';
+
+        const chkCommute = document.getElementById('chkCommutePath');
+        const chkCommuteAca = document.getElementById('chkCommutePathAcademy');
+        const panelSettings = document.getElementById('commutePathSettings');
+
+        if (window.mapClickMode === 'setStart') {
+            if (chkCommute) chkCommute.checked = true;
+            if (chkCommuteAca) chkCommuteAca.checked = true;
+            if (panelSettings) panelSettings.style.display = 'flex';
+        }
+
         if (typeof window.updatePointSelectorButtons === 'function') {
             window.updatePointSelectorButtons();
         }
 
-        if (window.innerWidth <= 1024) {
-            const container = document.querySelector('.app-container');
-            if (window.mapClickMode === 'setStart') {
-                if (container) container.classList.remove('sidebar-open');
-                if (typeof window.showMobileMapSelectGuide === 'function') {
-                    window.showMobileMapSelectGuide('📍 지도에서 출발지로 지정할 위치를 터치해주세요');
-                }
-            } else {
-                if (container) container.classList.add('sidebar-open');
-                if (typeof window.hideMobileMapSelectGuide === 'function') {
-                    window.hideMobileMapSelectGuide();
-                }
+        const container = document.querySelector('.app-container');
+        if (window.mapClickMode === 'setStart') {
+            if (window.innerWidth <= 1024 && container) {
+                container.classList.remove('sidebar-open');
+            }
+            if (typeof window.showMobileMapSelectGuide === 'function') {
+                window.showMobileMapSelectGuide('📍 지도에서 출발지로 지정할 위치를 클릭(터치)해주세요');
+            }
+        } else {
+            if (container) container.classList.add('sidebar-open');
+            if (typeof window.hideMobileMapSelectGuide === 'function') {
+                window.hideMobileMapSelectGuide();
             }
         }
     };
@@ -7740,20 +7779,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // 출발지 및 초기화 버튼 동작 리스너 등록 (closest를 통한 모바일 터치 처리 개선)
+    // 글로벌 클릭 이벤트 (특수 영역 클릭 처리)
     document.addEventListener('click', (e) => {
-        const startBtn = e.target.closest ? e.target.closest('.btn-set-start') : null;
-        const resetBtn = e.target.closest ? e.target.closest('.btn-reset-commute') : null;
-
-        if (startBtn) {
-            if (typeof window.toggleSetStartPoint === 'function') {
-                window.toggleSetStartPoint();
-            }
-        } else if (resetBtn) {
-            if (typeof window.resetCommutePoints === 'function') {
-                window.resetCommutePoints();
-            }
-        } else if (e.target.id === 'tabAcademyReviews') {
+        if (e.target.id === 'tabAcademyReviews') {
             const tabRev = document.getElementById('tabAcademyReviews');
             const tabCalc = document.getElementById('tabAcademyCalculator');
             const secRev = document.getElementById('sectionAcademyReviews');
