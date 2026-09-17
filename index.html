@@ -1797,7 +1797,7 @@
                 <button onclick="toggleBudgetPanel()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='var(--deep-blue)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
             </div>
             
-            <div id="budgetDetailPanel" style="background: white; border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; font-size: 12px;">
+            <div id="budgetDetailPanel" class="hide-scrollbar" style="background: white; border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; font-size: 12px; max-height: 70vh; overflow-y: auto; padding-right: 4px;">
                 <!-- 등급 + 1인당 환산 -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <div>
@@ -2034,27 +2034,37 @@
                 <div>
                     <div style="font-weight: 700; color: var(--deep-blue); margin-bottom: 8px; font-size: 13px;">📋 연간 학교폭력 신고 현황</div>
                     <div style="display: flex; gap: 8px;">
-                        <div style="flex:1; background:#fff8e1; border-radius:8px; padding:12px; text-align:center;">
-                            <div style="font-size:11px; color:#f57f17; margin-bottom:4px;">연간 신고건수</div>
+                        <div style="flex:1; background:#fff8e1; border-radius:8px; padding:12px; text-align:center; cursor:pointer;" onclick="setViolenceSubMetric('total')">
+                            <div style="font-size:11px; color:#f57f17; margin-bottom:4px;">연간신고</div>
                             <div style="font-size:24px; font-weight:700; color:#e65100;" id="statViolenceTotal">-</div>
                             <div style="font-size:11px; color:#f57f17;">건</div>
                         </div>
-                        <div style="flex:1; background:#f3e5f5; border-radius:8px; padding:12px; text-align:center;">
+                        <div style="flex:1; background:#f3e5f5; border-radius:8px; padding:12px; text-align:center; cursor:pointer;" onclick="setViolenceSubMetric('per100')">
                             <div style="font-size:11px; color:#6a1b9a; margin-bottom:4px;">100명당 신고</div>
                             <div style="font-size:24px; font-weight:700; color:#4a148c;" id="statViolencePer100">-</div>
                             <div style="font-size:11px; color:#6a1b9a;">건</div>
                         </div>
-                        <div style="flex:1; background:#e8f5e9; border-radius:8px; padding:12px; text-align:center;">
-                            <div style="font-size:11px; color:#2e7d32; margin-bottom:4px;">처리 완료율</div>
+                        <div style="flex:1; background:#e8f5e9; border-radius:8px; padding:12px; text-align:center; cursor:pointer;" onclick="setViolenceSubMetric('resolved')">
+                            <div style="font-size:11px; color:#2e7d32; margin-bottom:4px;">처리완료</div>
                             <div style="font-size:24px; font-weight:700; color:#1b5e20;" id="statViolenceResolved">-</div>
                             <div style="font-size:11px; color:#2e7d32;">%</div>
                         </div>
                     </div>
                 </div>
 
+                <!-- 세부 비교 항목 선택 칩 (연간신고 / 100명당 / 처리완료) -->
+                <div style="margin-top: 10px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+                    <span style="font-size: 11px; font-weight: 600; color: var(--deep-blue);" id="violenceSubMetricHeader">100명당 신고건수 비교 기준</span>
+                    <div style="display: flex; gap: 4px; flex-wrap: wrap;" id="violenceSubMetricChips">
+                        <button class="violence-submetric-chip" data-submetric="total" onclick="setViolenceSubMetric('total')" style="border: none; background: #f0f4f8; color: var(--text-muted); padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: normal; cursor: pointer; transition: all 0.2s ease;">연간신고</button>
+                        <button class="violence-submetric-chip" data-submetric="per100" onclick="setViolenceSubMetric('per100')" style="border: none; background: #ab47bc; color: white; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; cursor: pointer; transition: all 0.2s ease;">100명당</button>
+                        <button class="violence-submetric-chip" data-submetric="resolved" onclick="setViolenceSubMetric('resolved')" style="border: none; background: #f0f4f8; color: var(--text-muted); padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: normal; cursor: pointer; transition: all 0.2s ease;">처리완료</button>
+                    </div>
+                </div>
+
                 <!-- 비교 기준 선택 (구 / 시 / 전국) -->
-                <div style="margin-top: 10px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
-                    <span style="font-size: 11px; color: var(--text-muted);">비교 기준 설정</span>
+                <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+                    <span style="font-size: 10px; color: var(--text-muted);">지역 비교 범위 설정</span>
                     <div style="display: flex; gap: 4px; background: #f0f4f8; padding: 2px; border-radius: 6px;" id="violenceCompareTabs">
                         <button class="violence-tab-btn" data-compare="region" onclick="updateViolenceCompare('region')" style="border: none; background: white; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: var(--deep-blue); box-shadow: 0 1px 3px rgba(0,0,0,0.1);">관할 구</button>
                         <button class="violence-tab-btn" data-compare="city" onclick="updateViolenceCompare('city')" style="border: none; background: transparent; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: var(--text-muted);">서울특별시</button>

@@ -6314,10 +6314,39 @@ window.toggleViolenceStatsModal = function() {
     }
 };
 
+// --- 학교폭력 세부 비교 항목 변경 (연간 신고건수 / 100명당 / 처리 완료율) ---
+window.setViolenceSubMetric = function(subKey) {
+    const vd = window.currentSchoolViolenceDetail;
+    if (!vd || !vd.subMetrics || !vd.subMetrics[subKey]) return;
+
+    vd.selectedSubMetric = subKey;
+
+    // 칩 버튼 스타일 활성화 처리
+    const chips = document.querySelectorAll('.violence-submetric-chip');
+    chips.forEach(btn => {
+        if (btn.getAttribute('data-submetric') === subKey) {
+            btn.style.background = '#ab47bc';
+            btn.style.color = 'white';
+            btn.style.fontWeight = 'bold';
+        } else {
+            btn.style.background = '#f0f4f8';
+            btn.style.color = 'var(--text-muted)';
+            btn.style.fontWeight = 'normal';
+        }
+    });
+
+    const sub = vd.subMetrics[subKey];
+    const headerEl = document.getElementById('violenceSubMetricHeader');
+    if (headerEl) headerEl.innerText = `${sub.metricName} 비교 기준`;
+
+    window.updateViolenceCompare(vd.currentCompareType || 'region');
+};
+
 // --- 학교폭력 비교 기준 업데이트 ---
 window.updateViolenceCompare = function(type) {
     const vd = window.currentSchoolViolenceDetail;
     if (!vd) return;
+    vd.currentCompareType = type;
 
     // 탭 스타일 활성화 처리
     const tabs = document.querySelectorAll('.violence-tab-btn');
@@ -6333,20 +6362,25 @@ window.updateViolenceCompare = function(type) {
         }
     });
 
-    let compareAvg = vd.districtAvg;
-    let labelText = `${vd.districtName} 평균 ${vd.districtAvg}건/100명`;
+    const subKey = vd.selectedSubMetric || 'per100';
+    const sub = vd.subMetrics ? vd.subMetrics[subKey] : null;
+
+    let compareAvg = sub ? sub.districtAvg : 0.8;
+    let unit = sub ? sub.unit : '건';
+    let labelText = `${vd.districtName} 평균 ${compareAvg}${unit}`;
 
     if (type === 'city') {
-        compareAvg = vd.cityAvg || 0.9;
-        labelText = `${vd.cityName || '서울특별시'} 평균 ${compareAvg}건/100명`;
+        compareAvg = sub ? sub.cityAvg : 0.9;
+        labelText = `${vd.cityName || '서울특별시'} 평균 ${compareAvg}${unit}`;
     } else if (type === 'national') {
-        compareAvg = vd.nationalAvg || 1.1;
-        labelText = `전국 평균 ${compareAvg}건/100명`;
+        compareAvg = sub ? sub.nationalAvg : 1.1;
+        labelText = `전국 평균 ${compareAvg}${unit}`;
     }
 
-    const schoolVal = vd.per100;
+    const schoolVal = sub ? sub.schoolVal : 0;
+
     const elSchoolVal = document.getElementById('violenceBarSchoolVal');
-    if (elSchoolVal) elSchoolVal.innerText = `${schoolVal}건 (100명당)`;
+    if (elSchoolVal) elSchoolVal.innerText = `${schoolVal}${unit}`;
 
     const elRegionLabel = document.getElementById('violenceBarRegionLabel');
     if (elRegionLabel) elRegionLabel.innerText = labelText;
@@ -6356,11 +6390,17 @@ window.updateViolenceCompare = function(type) {
     if (elMarkText) elMarkText.innerText = `▲ ${targetName} 평균`;
 
     const elMark = document.getElementById('violenceBarRegionMark');
-    if (elMark) elMark.title = `${targetName} 평균 ${compareAvg}건/100명`;
+    if (elMark) elMark.title = `${targetName} 평균 ${compareAvg}${unit}`;
 
-    const maxVal = Math.max(schoolVal, compareAvg, 2.0) * 1.2;
-    const leftPct = Math.min((compareAvg / maxVal) * 100, 100);
-    const schoolPct = Math.min((schoolVal / maxVal) * 100, 100);
+    let maxVal;
+    if (subKey === 'resolved') {
+        maxVal = 100;
+    } else {
+        maxVal = Math.max(schoolVal, compareAvg, subKey === 'per100' ? 2.0 : 5) * 1.2;
+    }
+
+    const leftPct = Math.min(Math.max((compareAvg / maxVal) * 100, 0), 100);
+    const schoolPct = Math.min(Math.max((schoolVal / maxVal) * 100, 0), 100);
 
     const elBarSchool = document.getElementById('violenceBarSchool');
     if (elBarSchool) elBarSchool.style.width = `${schoolPct}%`;
@@ -6378,11 +6418,22 @@ window.renderViolenceStats = function(school) {
     const addressParts = (school.address || '').split(' ');
     const cityName = school.cityName || addressParts[0] || school.region || '서울특별시';
     const districtName = school.district || addressParts[1] || '관할 구';
-    const per100 = vs.per_100 ?? (count > 0 ? Math.round((vs.total_cases / count) * 100 * 10) / 10 : 0);
 
-    let districtAvg = 0.8;
-    let cityAvg = 0.9;
-    let nationalAvg = 1.1;
+    const per100 = vs.per_100 ?? (count > 0 ? Math.round((vs.total_cases / count) * 100 * 10) / 10 : 0);
+    const totalCases = vs.total_cases ?? 0;
+    const resolvedRate = vs.resolved_rate ?? 100;
+
+    let distAvg100 = 0.8;
+    let cityAvg100 = 0.9;
+    let nationalAvg100 = 1.1;
+
+    let distAvgTotal = 3.2;
+    let cityAvgTotal = 3.8;
+    let nationalAvgTotal = 4.2;
+
+    let distAvgResolved = 95;
+    let cityAvgResolved = 94;
+    let nationalAvgResolved = 93;
 
     if (window.orchestrator && window.orchestrator.state && window.orchestrator.state.schools) {
         const distSchools = window.orchestrator.state.schools.filter(s => {
@@ -6391,23 +6442,61 @@ window.renderViolenceStats = function(school) {
         });
         if (distSchools.length > 0) {
             const sum100 = distSchools.reduce((acc, s) => acc + (s.violence_stats.per_100 || 0), 0);
-            districtAvg = Math.round((sum100 / distSchools.length) * 10) / 10;
+            distAvg100 = Math.round((sum100 / distSchools.length) * 10) / 10;
+
+            const sumTotal = distSchools.reduce((acc, s) => acc + (s.violence_stats.total_cases || 0), 0);
+            distAvgTotal = Math.round((sumTotal / distSchools.length) * 10) / 10;
+
+            const sumResolved = distSchools.reduce((acc, s) => acc + (s.violence_stats.resolved_rate || 90), 0);
+            distAvgResolved = Math.round(sumResolved / distSchools.length);
         }
         const allSchools = window.orchestrator.state.schools.filter(s => s.violence_stats);
         if (allSchools.length > 0) {
             const sum100All = allSchools.reduce((acc, s) => acc + (s.violence_stats.per_100 || 0), 0);
-            cityAvg = Math.round((sum100All / allSchools.length) * 10) / 10;
+            cityAvg100 = Math.round((sum100All / allSchools.length) * 10) / 10;
+
+            const sumTotalAll = allSchools.reduce((acc, s) => acc + (s.violence_stats.total_cases || 0), 0);
+            cityAvgTotal = Math.round((sumTotalAll / allSchools.length) * 10) / 10;
+
+            const sumResolvedAll = allSchools.reduce((acc, s) => acc + (s.violence_stats.resolved_rate || 90), 0);
+            cityAvgResolved = Math.round(sumResolvedAll / allSchools.length);
         }
     }
 
+    const prevSubMetric = window.currentSchoolViolenceDetail?.selectedSubMetric || 'per100';
+    const prevCompareType = window.currentSchoolViolenceDetail?.currentCompareType || 'region';
+
     window.currentSchoolViolenceDetail = {
-        per100: per100,
-        totalCases: vs.total_cases ?? 0,
         districtName: districtName,
         cityName: cityName,
-        districtAvg: districtAvg,
-        cityAvg: cityAvg,
-        nationalAvg: nationalAvg
+        selectedSubMetric: prevSubMetric,
+        currentCompareType: prevCompareType,
+        subMetrics: {
+            total: {
+                metricName: '연간신고',
+                unit: '건',
+                schoolVal: totalCases,
+                districtAvg: distAvgTotal,
+                cityAvg: cityAvgTotal,
+                nationalAvg: nationalAvgTotal
+            },
+            per100: {
+                metricName: '100명당 신고건수',
+                unit: '건 (100명당)',
+                schoolVal: per100,
+                districtAvg: distAvg100,
+                cityAvg: cityAvg100,
+                nationalAvg: nationalAvg100
+            },
+            resolved: {
+                metricName: '처리완료',
+                unit: '%',
+                schoolVal: resolvedRate,
+                districtAvg: distAvgResolved,
+                cityAvg: cityAvgResolved,
+                nationalAvg: nationalAvgResolved
+            }
+        }
     };
 
     // 인라인 요약
@@ -6434,9 +6523,11 @@ window.renderViolenceStats = function(school) {
         cityTabBtn.innerText = cityName;
     }
 
-    // 비교 바 초기화 (지역 기준)
-    if (typeof window.updateViolenceCompare === 'function') {
-        window.updateViolenceCompare('region');
+    // 비교 항목 설정 및 업데이트
+    if (typeof window.setViolenceSubMetric === 'function') {
+        window.setViolenceSubMetric(prevSubMetric);
+    } else if (typeof window.updateViolenceCompare === 'function') {
+        window.updateViolenceCompare(prevCompareType);
     }
 
     // 유형별 비율
