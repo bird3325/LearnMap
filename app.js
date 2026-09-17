@@ -288,11 +288,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 다중 자녀 상태 (1명 이상 지원)
-    let childProfiles = [
-        { id: 'child_1', name: '자녀 1', grade: 'm2', korean: 85, english: 78, math: 72 }
-    ];
-    let selectedChildId = 'child_1';
+    // 다중 자녀 상태 (등록된 자녀가 없을 경우 '자녀 없음' 기본 설정)
+    let childProfiles = [];
+    let selectedChildId = null;
     let defaultChildId = localStorage.getItem('learnmap_default_child_id');
 
     // Supabase DB 자녀 프로필 데이터 동기화
@@ -318,25 +316,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     math: parseInt(item.math) || 0
                 }));
                 const hasDefault = childProfiles.some(c => c.id === defaultChildId);
-                selectedChildId = hasDefault ? defaultChildId : childProfiles[0].id;
+                selectedChildId = hasDefault ? defaultChildId : (defaultChildId ? childProfiles[0].id : null);
             } else {
-                // 데이터가 없을 경우 초기 기본 자녀 1명 insert
-                const defaultChild = { name: '자녀 1', grade: 'm2', korean: 85, english: 78, math: 72 };
-                const { data: insertedData, error: insertErr } = await supabase
-                    .from('child_profiles')
-                    .insert([defaultChild])
-                    .select();
-                if (!insertErr && insertedData && insertedData.length > 0) {
-                    childProfiles = insertedData.map(item => ({
-                        id: item.id,
-                        name: item.name,
-                        grade: item.grade,
-                        korean: item.korean,
-                        english: item.english,
-                        math: item.math
-                    }));
-                    selectedChildId = childProfiles[0].id;
-                }
+                childProfiles = [];
+                selectedChildId = null;
             }
             refreshChildSelectUI();
         } catch (err) {
@@ -349,14 +332,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const saved = localStorage.getItem('learnmap_child_profiles');
         if (saved) {
             try {
-                childProfiles = JSON.parse(saved);
-                if (childProfiles.length > 0) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    childProfiles = parsed;
                     const hasDefault = childProfiles.some(c => c.id === defaultChildId);
-                    selectedChildId = hasDefault ? defaultChildId : childProfiles[0].id;
+                    selectedChildId = hasDefault ? defaultChildId : (defaultChildId ? childProfiles[0].id : null);
+                } else {
+                    childProfiles = [];
+                    selectedChildId = null;
                 }
             } catch (e) {
                 console.error(e);
+                childProfiles = [];
+                selectedChildId = null;
             }
+        } else {
+            childProfiles = [];
+            selectedChildId = null;
         }
         refreshChildSelectUI();
     }
@@ -464,9 +456,22 @@ document.addEventListener('DOMContentLoaded', () => {
     function refreshChildSelectUI() {
         if (settingsChildSelect) settingsChildSelect.innerHTML = '';
         if (settingsChildSelectPc) settingsChildSelectPc.innerHTML = '';
-        
-        // 분석창 자녀 셀렉트도 동시에 갱신
         if (analysisChildSelect) analysisChildSelect.innerHTML = '';
+
+        const appendNoneOption = (selectEl) => {
+            if (!selectEl) return;
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.innerText = '자녀 없음';
+            if (!selectedChildId || !childProfiles.some(c => c.id === selectedChildId)) {
+                opt.selected = true;
+            }
+            selectEl.appendChild(opt);
+        };
+
+        appendNoneOption(settingsChildSelect);
+        appendNoneOption(settingsChildSelectPc);
+        appendNoneOption(analysisChildSelect);
 
         childProfiles.forEach(child => {
             const isDefault = child.id === defaultChildId;
@@ -513,16 +518,36 @@ document.addEventListener('DOMContentLoaded', () => {
         const profileScoresEl = document.getElementById('mypageProfileScores');
 
         if (!child) {
-            if (profileNameEl) profileNameEl.innerText = '자녀 정보를 등록해 주세요';
-            if (profileScoresEl) profileScoresEl.innerText = '성적 기반 추천 미연동';
+            if (profileNameEl) profileNameEl.innerText = '자녀 없음';
+            if (profileScoresEl) profileScoresEl.innerText = '자녀 설정 미등록';
 
-            // 자녀설정이 없으면 중학교(middle)를 기본으로 설정
-            const schoolTypeFilter = document.getElementById('schoolTypeFilter');
-            if (schoolTypeFilter) {
-                schoolTypeFilter.value = 'middle';
-                const event = new Event('change');
-                schoolTypeFilter.dispatchEvent(event);
-            }
+            // 모바일 및 PC 폼 초기화
+            if (settingsChildName) settingsChildName.value = '';
+            if (settingsChildNamePc) settingsChildNamePc.value = '';
+            if (settingsChildGrade) settingsChildGrade.value = 'm2';
+            if (settingsChildGradePc) settingsChildGradePc.value = 'm2';
+            if (settingsChildKor) settingsChildKor.value = 80;
+            if (settingsChildKorPc) settingsChildKorPc.value = 80;
+            if (settingsChildEng) settingsChildEng.value = 80;
+            if (settingsChildEngPc) settingsChildEngPc.value = 80;
+            if (settingsChildMath) settingsChildMath.value = 80;
+            if (settingsChildMathPc) settingsChildMathPc.value = 80;
+
+            const lblKor = document.getElementById('valSettingsChildKor');
+            const lblEng = document.getElementById('valSettingsChildEng');
+            const lblMath = document.getElementById('valSettingsChildMath');
+            if (lblKor) lblKor.innerText = '-점';
+            if (lblEng) lblEng.innerText = '-점';
+            if (lblMath) lblMath.innerText = '-점';
+
+            const lblKorPc = document.getElementById('valSettingsChildKor-pc');
+            const lblEngPc = document.getElementById('valSettingsChildEng-pc');
+            const lblMathPc = document.getElementById('valSettingsChildMath-pc');
+            if (lblKorPc) lblKorPc.innerText = '-점';
+            if (lblEngPc) lblEngPc.innerText = '-점';
+            if (lblMathPc) lblMathPc.innerText = '-점';
+
+            syncActiveChildWithOrchestrator(null);
             return;
         }
 
@@ -670,17 +695,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnDeleteSelectedChild = document.getElementById('btnDeleteSelectedChild');
     const btnDeleteSelectedChildPc = document.getElementById('btnDeleteSelectedChild-pc');
     const onDeleteChild = async () => {
-        if (childProfiles.length <= 1) {
-            alert('최소 1명의 자녀 정보는 필요합니다.');
+        if (!selectedChildId || selectedChildId === '') {
+            alert('삭제할 자녀가 선택되지 않았습니다.');
             return;
         }
         if (await confirm('선택된 자녀 정보를 삭제하시겠습니까?')) {
             const targetId = selectedChildId;
             childProfiles = childProfiles.filter(c => c.id !== targetId);
-            selectedChildId = childProfiles[0].id;
-            if (defaultChildId === targetId) {
-                defaultChildId = selectedChildId;
-                localStorage.setItem('learnmap_default_child_id', defaultChildId);
+            
+            if (childProfiles.length > 0) {
+                selectedChildId = childProfiles[0].id;
+                if (defaultChildId === targetId) {
+                    defaultChildId = selectedChildId;
+                    localStorage.setItem('learnmap_default_child_id', defaultChildId);
+                }
+            } else {
+                selectedChildId = null;
+                defaultChildId = null;
+                localStorage.removeItem('learnmap_default_child_id');
             }
             
             await deleteChildProfileFromSupabase(targetId);
@@ -2733,6 +2765,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     
+    // --- 자녀 설정 모달 열기 및 이동 도우미 함수 ---
+    window.openChildSettingsModal = function() {
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) {
+            settingsModal.style.display = 'block';
+            settingsModal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    };
+
     // --- 자녀 적합도 및 문의카드 이동 도우미 함수 ---
     function getActiveChildProfile() {
         const grade = document.getElementById('childGradeFilter') ? document.getElementById('childGradeFilter').value : 'middle';
@@ -2984,16 +3025,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 else if (diff < -1.5) trendSummary = "📉 최근 3년간 학력 지표가 다소 하락 추세를 보이고 있어 기초 보강이 권장됩니다.";
             }
             // Calculate suitability
-            const profile = getActiveChildProfile();
-            const suitability = calculateSchoolSuitability(fullSchool, profile);
-            
+            const activeChild = childProfiles.find(c => c.id === selectedChildId);
             let suitabilityHTML = '';
-            if (suitability.score > 0) {
+
+            if (activeChild) {
+                const profile = getActiveChildProfile();
+                const suitability = calculateSchoolSuitability(fullSchool, profile);
+                if (suitability.score > 0) {
+                    suitabilityHTML = `
+                        <div style="margin-top: 10px; padding: 10.5px; background: ${suitability.score >= 70 ? '#e8f5e9' : '#fff3e0'}; border-radius: 8px; border-left: 4px solid ${suitability.score >= 70 ? 'var(--success-green)' : 'var(--warning-yellow)'};">
+                            <strong style="color: var(--deep-blue); font-weight: 800; font-size: 12.5px;">🎯 우리 아이 맞춤 적합도: <span style="color: ${suitability.score >= 70 ? 'var(--success-green)' : '#ef6c00'}; font-weight: bold;">${suitability.score}점 (${suitability.level})</span></strong>
+                            <div style="font-size: 11px; margin-top: 5px; color: var(--text-main); line-height: 1.4;">${suitability.desc}</div>
+                            ${suitability.warning ? `<div style="font-size: 11px; margin-top: 5px; color: #ef6c00; font-weight: bold;">${suitability.warning}</div>` : ''}
+                        </div>
+                    `;
+                }
+            } else {
                 suitabilityHTML = `
-                    <div style="margin-top: 10px; padding: 10.5px; background: ${suitability.score >= 70 ? '#e8f5e9' : '#fff3e0'}; border-radius: 8px; border-left: 4px solid ${suitability.score >= 70 ? 'var(--success-green)' : 'var(--warning-yellow)'};">
-                        <strong style="color: var(--deep-blue); font-weight: 800; font-size: 12.5px;">🎯 우리 아이 맞춤 적합도: <span style="color: ${suitability.score >= 70 ? 'var(--success-green)' : '#ef6c00'}; font-weight: bold;">${suitability.score}점 (${suitability.level})</span></strong>
-                        <div style="font-size: 11px; margin-top: 5px; color: var(--text-main); line-height: 1.4;">${suitability.desc}</div>
-                        ${suitability.warning ? `<div style="font-size: 11px; margin-top: 5px; color: #ef6c00; font-weight: bold;">${suitability.warning}</div>` : ''}
+                    <div style="margin-top: 10px; padding: 12px; background: #f0f4f8; border-radius: 8px; border-left: 4px solid var(--primary-blue, #2563eb); display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <strong style="color: var(--deep-blue); font-weight: 800; font-size: 12.5px;">🎯 우리 아이 맞춤 적합도</strong>
+                            <span style="font-size: 10px; font-weight: 700; color: #f57c00; background: #fff3e0; padding: 2px 6px; border-radius: 4px;">자녀 미설정</span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-muted); line-height: 1.4;">
+                            ℹ️ 자녀 정보 및 성적을 입력하시면 해당 학교와 우리 아이의 맞춤 적합도 점수와 정밀 분석 결과를 확인하실 수 있습니다.
+                        </div>
+                        <div style="display: flex; justify-content: flex-end;">
+                            <button onclick="openChildSettingsModal()" style="background: var(--primary-blue, #2563eb); color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 11px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: background 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                <span>⚙️ 자녀 성적 설정으로 이동 ➔</span>
+                            </button>
+                        </div>
                     </div>
                 `;
             }
