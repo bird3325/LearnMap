@@ -1478,6 +1478,7 @@ body {
     .mobile-close-btn, 
     #btnCloseSettings,
     #btnCloseParentsFilter,
+    #btnDeselectSchool,
     #academySidebar button[onclick*="toggleAcademySidebar"],
     #communityPanel button[onclick*="clearAcademyMarker"],
     #simulationModal button[onclick*="simulationModal"],
@@ -1503,9 +1504,17 @@ body {
         z-index: 10 !important;
         transition: background 0.2s !important;
     }
+
+    #btnDeselectSchool {
+        top: 12px !important;
+        transform: none !important;
+        right: 16px !important;
+    }
+
     .mobile-close-btn:hover, 
     #btnCloseSettings:hover,
     #btnCloseParentsFilter:hover,
+    #btnDeselectSchool:hover,
     #academySidebar button[onclick*="toggleAcademySidebar"]:hover,
     #communityPanel button[onclick*="clearAcademyMarker"]:hover,
     #simulationModal button[onclick*="simulationModal"]:hover,
