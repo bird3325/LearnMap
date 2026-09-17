@@ -3411,7 +3411,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.currentSchoolName = fullSchool.school_name;
         
         // 진학률 상세 미리 렌더링
-        renderGraduateDetail(summary.graduate_career, fullSchool.school_type, fullSchool.school_name, fullSchool.student_count);
+        renderGraduateDetail(summary.graduate_career, fullSchool.school_type, fullSchool.school_name, fullSchool.student_count, fullSchool);
         
         if (fullSchool.school_type && fullSchool.school_type.includes('고등학교')) {
             document.getElementById('schoolGraduateTrendLabel').innerText = '대학 진학률';
@@ -4061,6 +4061,61 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- 경쟁치열도 비교 기준 업데이트 ---
+    window.updateCompetitionCompare = function(type) {
+        const cd = window.currentSchoolCompetitionDetail;
+        if (!cd) return;
+
+        // 탭 스타일 활성화 처리
+        const tabs = document.querySelectorAll('.competition-tab-btn');
+        tabs.forEach(btn => {
+            if (btn.getAttribute('data-compare') === type) {
+                btn.style.background = 'white';
+                btn.style.color = 'var(--deep-blue)';
+                btn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+            } else {
+                btn.style.background = 'transparent';
+                btn.style.color = 'var(--text-muted)';
+                btn.style.boxShadow = 'none';
+            }
+        });
+
+        let compareAvg = cd.districtAvgComp;
+        let labelText = `${cd.districtName} 평균 ${cd.districtAvgComp}점`;
+
+        if (type === 'city') {
+            compareAvg = cd.cityAvgComp || 65;
+            labelText = `${cd.cityName || '서울특별시'} 평균 ${compareAvg}점`;
+        } else if (type === 'national') {
+            compareAvg = cd.nationalAvgComp || 58;
+            labelText = `전국 평균 ${compareAvg}점`;
+        }
+
+        const schoolVal = cd.compIndex;
+        const elSchoolVal = document.getElementById('competitionBarSchoolVal');
+        if (elSchoolVal) elSchoolVal.innerText = `${schoolVal}점 (${cd.compLabel})`;
+
+        const elRegionLabel = document.getElementById('competitionBarRegionLabel');
+        if (elRegionLabel) elRegionLabel.innerText = labelText;
+
+        const targetName = type === 'region' ? cd.districtName : (type === 'city' ? (cd.cityName || '서울특별시') : '전국');
+        const elMarkText = document.getElementById('competitionBarRegionMarkText');
+        if (elMarkText) elMarkText.innerText = `▲ ${targetName} 평균`;
+
+        const elMark = document.getElementById('competitionBarRegionMark');
+        if (elMark) elMark.title = `${targetName} 평균 ${compareAvg}점`;
+
+        const maxVal = Math.max(schoolVal, compareAvg, 100);
+        const leftPct = Math.min((compareAvg / maxVal) * 100, 100);
+        const schoolPct = Math.min((schoolVal / maxVal) * 100, 100);
+
+        const elBarSchool = document.getElementById('competitionBarSchool');
+        if (elBarSchool) elBarSchool.style.width = `${schoolPct}%`;
+
+        if (elMark) elMark.style.left = `calc(${leftPct}% - 1px)`;
+        if (elMarkText) elMarkText.style.left = `${leftPct}%`;
+    };
+
     function renderCompetitionDetail(summary, school) {
         const contentEl = document.getElementById('competitionModalContent');
         const titleEl = document.getElementById('competitionModalTitle');
@@ -4070,6 +4125,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (titleEl) {
             titleEl.innerText = `🔥 ${school.school_name} - 내신 경쟁 상세 분석`;
         }
+
+        const addressParts = (school.address || '').split(' ');
+        const cityName = school.cityName || addressParts[0] || school.region || '서울특별시';
+        const districtName = school.district || addressParts[1] || '관할 구';
 
         const distKor = school.subjects.korean.dist;
         const distEng = school.subjects.english.dist;
@@ -4082,6 +4141,58 @@ document.addEventListener('DOMContentLoaded', () => {
         const seed = school.school_id ? school.school_id.charCodeAt(school.school_id.length - 1) : 5;
         const compIndex2025 = Math.max(10, Math.min(100, compIndex2026 - 3 + (seed % 7)));
         const compIndex2024 = Math.max(10, Math.min(100, compIndex2025 - 4 + ((seed + 2) % 9)));
+
+        let districtAvgComp = 62;
+        let cityAvgComp = 65;
+        let nationalAvgComp = 58;
+
+        if (window.orchestrator && window.orchestrator.state && window.orchestrator.state.schools) {
+            const distSchools = window.orchestrator.state.schools.filter(s => {
+                const d = s.district || (s.address ? s.address.split(' ')[1] : '');
+                return d === districtName && s.subjects;
+            });
+            if (distSchools.length > 0) {
+                const sumComp = distSchools.reduce((acc, s) => {
+                    const dK = s.subjects.korean.dist[0];
+                    const dE = s.subjects.english.dist[0];
+                    const dM = s.subjects.math.dist[0];
+                    const dKd = s.subjects.korean.dist[3];
+                    const dEd = s.subjects.english.dist[3];
+                    const dMd = s.subjects.math.dist[3];
+                    const aA = (dK + dE + dM) / 3;
+                    const aD = (dKd + dEd + dMd) / 3;
+                    const idx = Math.max(10, Math.min(100, Math.round(aA * 1.6 - aD * 0.7 + 30)));
+                    return acc + idx;
+                }, 0);
+                districtAvgComp = Math.round(sumComp / distSchools.length);
+            }
+            const allSchools = window.orchestrator.state.schools.filter(s => s.subjects);
+            if (allSchools.length > 0) {
+                const sumCompAll = allSchools.reduce((acc, s) => {
+                    const dK = s.subjects.korean.dist[0];
+                    const dE = s.subjects.english.dist[0];
+                    const dM = s.subjects.math.dist[0];
+                    const dKd = s.subjects.korean.dist[3];
+                    const dEd = s.subjects.english.dist[3];
+                    const dMd = s.subjects.math.dist[3];
+                    const aA = (dK + dE + dM) / 3;
+                    const aD = (dKd + dEd + dMd) / 3;
+                    const idx = Math.max(10, Math.min(100, Math.round(aA * 1.6 - aD * 0.7 + 30)));
+                    return acc + idx;
+                }, 0);
+                cityAvgComp = Math.round(sumCompAll / allSchools.length);
+            }
+        }
+
+        window.currentSchoolCompetitionDetail = {
+            compIndex: compIndex2026,
+            compLabel: comp.label,
+            districtName: districtName,
+            cityName: cityName,
+            districtAvgComp: districtAvgComp,
+            cityAvgComp: cityAvgComp,
+            nationalAvgComp: nationalAvgComp
+        };
         
         const getPressureLabel = (val) => {
             if (val >= 80) return '극심';
@@ -4164,13 +4275,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
         contentEl.innerHTML = `
             <!-- 경쟁 치열도 판정 카드 -->
-            <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px; margin-bottom: 16px;">
+            <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px; margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
                     <span style="font-size: 11px; color: var(--text-muted);">종합 경쟁 치열도 판정</span>
                     <span style="font-size: 11px; font-weight: 700; color: #e53935; background: #ffebee; padding: 2px 6px; border-radius: 4px;">${comp.label}</span>
                 </div>
                 <div style="font-size: 11px; font-weight: 500; color: var(--deep-blue); line-height: 1.5; letter-spacing: -0.2px;">
                     ${comp.desc}
+                </div>
+            </div>
+
+            <!-- 비교 기준 선택 (구 / 시 / 전국) -->
+            <div style="margin-top: 4px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 11px; color: var(--text-muted);">비교 기준 설정</span>
+                <div style="display: flex; gap: 4px; background: #f0f4f8; padding: 2px; border-radius: 6px;" id="competitionCompareTabs">
+                    <button class="competition-tab-btn" data-compare="region" onclick="updateCompetitionCompare('region')" style="border: none; background: white; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: var(--deep-blue); box-shadow: 0 1px 3px rgba(0,0,0,0.1);">관할 구</button>
+                    <button class="competition-tab-btn" data-compare="city" onclick="updateCompetitionCompare('city')" style="border: none; background: transparent; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: var(--text-muted);">${cityName}</button>
+                    <button class="competition-tab-btn" data-compare="national" onclick="updateCompetitionCompare('national')" style="border: none; background: transparent; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: var(--text-muted);">전국</button>
+                </div>
+            </div>
+            <!-- 지역 평균 대비 비교 바 -->
+            <div style="margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">
+                    <span>이 학교 <strong id="competitionBarSchoolVal">${compIndex2026}점 (${comp.label})</strong></span>
+                    <span id="competitionBarRegionLabel">지역 평균</span>
+                </div>
+                <div style="position: relative; background: #f0f4f8; border-radius: 6px; height: 10px; overflow: visible; margin-bottom: 24px;">
+                    <div id="competitionBarSchool" style="position: absolute; left: 0; top: 0; height: 100%; background: #e53935; border-radius: 6px; transition: width 0.6s ease;"></div>
+                    <div id="competitionBarRegionMark" style="position: absolute; top: -3px; width: 2px; height: 16px; background: #f57c00; border-radius: 2px;" title="지역 평균"></div>
+                    <div id="competitionBarRegionMarkText" style="position: absolute; top: 16px; font-size: 10px; color: #f57c00; white-space: nowrap; transform: translateX(-50%); font-weight: bold; transition: left 0.6s ease;">▲ 지역 평균</div>
                 </div>
             </div>
 
@@ -4256,9 +4389,102 @@ document.addEventListener('DOMContentLoaded', () => {
             <!-- 전략 제안 -->
             ${strategyHTML}
         `;
+
+        if (typeof window.updateCompetitionCompare === 'function') {
+            window.updateCompetitionCompare('region');
+        }
     }
 
-    function renderGraduateDetail(career, schoolType, schoolName, studentCount) {
+    // --- 졸업생/중학교/고교 진학률 비교 항목 변경 ---
+    window.setGraduateSubMetric = function(subKey) {
+        const gd = window.currentSchoolGraduateDetail;
+        if (!gd || !gd.subMetrics || !gd.subMetrics[subKey]) return;
+
+        gd.selectedSubMetric = subKey;
+        const sub = gd.subMetrics[subKey];
+        gd.schoolRate = sub.schoolRate;
+        gd.metricName = sub.metricName;
+        gd.districtAvgRate = sub.districtAvgRate;
+        gd.cityAvgRate = sub.cityAvgRate;
+        gd.nationalAvgRate = sub.nationalAvgRate;
+
+        // 칩 버튼 활성화 스타일 업데이트
+        const chips = document.querySelectorAll('.graduate-submetric-chip');
+        chips.forEach(btn => {
+            if (btn.getAttribute('data-submetric') === subKey) {
+                btn.style.background = 'var(--primary-blue, #1976d2)';
+                btn.style.color = 'white';
+                btn.style.fontWeight = 'bold';
+            } else {
+                btn.style.background = '#f0f4f8';
+                btn.style.color = 'var(--text-muted)';
+                btn.style.fontWeight = 'normal';
+            }
+        });
+
+        const labelHeader = document.getElementById('graduateSubMetricHeader');
+        if (labelHeader) labelHeader.innerText = `${sub.metricName} 비교 기준`;
+
+        window.updateGraduateCompare(gd.currentCompareType || 'region');
+    };
+
+    // --- 졸업생/중학교/고교 진학률 비교 기준 업데이트 ---
+    window.updateGraduateCompare = function(type) {
+        const gd = window.currentSchoolGraduateDetail;
+        if (!gd) return;
+        gd.currentCompareType = type;
+
+        // 탭 스타일 활성화 처리
+        const tabs = document.querySelectorAll('.graduate-tab-btn');
+        tabs.forEach(btn => {
+            if (btn.getAttribute('data-compare') === type) {
+                btn.style.background = 'white';
+                btn.style.color = 'var(--deep-blue)';
+                btn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+            } else {
+                btn.style.background = 'transparent';
+                btn.style.color = 'var(--text-muted)';
+                btn.style.boxShadow = 'none';
+            }
+        });
+
+        let compareAvg = gd.districtAvgRate;
+        let labelText = `${gd.districtName} 평균 ${gd.districtAvgRate}%`;
+
+        if (type === 'city') {
+            compareAvg = gd.cityAvgRate;
+            labelText = `${gd.cityName || '서울특별시'} 평균 ${compareAvg}%`;
+        } else if (type === 'national') {
+            compareAvg = gd.nationalAvgRate;
+            labelText = `전국 평균 ${compareAvg}%`;
+        }
+
+        const schoolVal = gd.schoolRate;
+        const elSchoolVal = document.getElementById('graduateBarSchoolVal');
+        if (elSchoolVal) elSchoolVal.innerText = `${schoolVal}% (${gd.metricName})`;
+
+        const elRegionLabel = document.getElementById('graduateBarRegionLabel');
+        if (elRegionLabel) elRegionLabel.innerText = labelText;
+
+        const targetName = type === 'region' ? gd.districtName : (type === 'city' ? (gd.cityName || '서울특별시') : '전국');
+        const elMarkText = document.getElementById('graduateBarRegionMarkText');
+        if (elMarkText) elMarkText.innerText = `▲ ${targetName} 평균`;
+
+        const elMark = document.getElementById('graduateBarRegionMark');
+        if (elMark) elMark.title = `${targetName} 평균 ${compareAvg}%`;
+
+        const maxVal = Math.max(schoolVal, compareAvg, 10) * 1.25;
+        const leftPct = Math.min((compareAvg / maxVal) * 100, 100);
+        const schoolPct = Math.min((schoolVal / maxVal) * 100, 100);
+
+        const elBarSchool = document.getElementById('graduateBarSchool');
+        if (elBarSchool) elBarSchool.style.width = `${schoolPct}%`;
+
+        if (elMark) elMark.style.left = `calc(${leftPct}% - 1px)`;
+        if (elMarkText) elMarkText.style.left = `${leftPct}%`;
+    };
+
+    function renderGraduateDetail(career, schoolType, schoolName, studentCount, school) {
         const contentEl = document.getElementById('graduateModalContent');
         const titleEl = document.getElementById('graduateModalTitle');
         if (!contentEl) return;
@@ -4268,18 +4494,147 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const addressParts = ((school && school.address) || '').split(' ');
+        const cityName = (school && school.cityName) || addressParts[0] || (school && school.region) || '서울특별시';
+        const districtName = (school && school.district) || addressParts[1] || '관할 구';
+
         // 학교 유형에 맞는 헤더 라벨
         let label = '졸업생 진학률 상세';
-        if (schoolType && schoolType.includes('고등학교')) {
+        const isHigh = schoolType && schoolType.includes('고등학교');
+        const isElem = schoolType && schoolType.includes('초등학교');
+
+        if (isHigh) {
             label = `🎓 ${schoolName} - 대학교 진학률 상세`;
-        } else if (schoolType && schoolType.includes('초등학교')) {
+        } else if (isElem) {
             label = `🎓 ${schoolName} - 중학교 진학률`;
         } else {
             label = `🎓 ${schoolName} - 특목/자사 진학률 상세`;
         }
         if (titleEl) titleEl.innerText = label;
 
-        let html = '';
+        // 서브 항목 정의 및 각 항목별 지역/시도/전국 평균 산출
+        let subMetricsConfig = [];
+        if (isElem) {
+            subMetricsConfig = [
+                { key: 'in_district', label: '관내 중학교', getVal: (gc) => gc.general || 0 },
+                { key: 'out_district', label: '관외 중학교', getVal: (gc) => gc.specialized || 0 },
+                { key: 'other', label: '기타', getVal: (gc) => Math.round(((gc.special || 0) + (gc.autonomous || 0)) * 10) / 10 }
+            ];
+        } else if (isHigh) {
+            subMetricsConfig = [
+                { key: 'general', label: '4년제 대학', getVal: (gc) => gc.general || 0 },
+                { key: 'specialized', label: '전문대학', getVal: (gc) => gc.specialized || 0 },
+                { key: 'special', label: '취업률', getVal: (gc) => gc.special || 0 },
+                { key: 'autonomous', label: '기타 (재수 등)', getVal: (gc) => gc.autonomous || 0 }
+            ];
+        } else {
+            subMetricsConfig = [
+                { key: 'special_auto', label: '특목/자사고', getVal: (gc) => Math.round(((gc.special || 0) + (gc.autonomous || 0)) * 10) / 10 },
+                { key: 'general', label: '일반고', getVal: (gc) => gc.general || 0 },
+                { key: 'specialized', label: '특성화고', getVal: (gc) => gc.specialized || 0 }
+            ];
+        }
+
+        const subMetricsData = {};
+
+        let targetSchools = [];
+        if (window.orchestrator && window.orchestrator.state && window.orchestrator.state.schools) {
+            targetSchools = window.orchestrator.state.schools.filter(s => {
+                if (!s.summary || !s.summary.graduate_career) return false;
+                if (isHigh) return s.school_type && s.school_type.includes('고등학교');
+                if (isElem) return s.school_type && s.school_type.includes('초등학교');
+                return !s.school_type || (!s.school_type.includes('고등학교') && !s.school_type.includes('초등학교'));
+            });
+        }
+
+        subMetricsConfig.forEach(item => {
+            const schoolVal = item.getVal(career);
+            let distAvg = isHigh ? (item.key === 'general' ? 65.4 : 18.2) : (isElem ? (item.key === 'in_district' ? 88.2 : 9.5) : (item.key === 'special_auto' ? 12.5 : 75.0));
+            let cityAvg = isHigh ? (item.key === 'general' ? 62.8 : 17.5) : (isElem ? (item.key === 'in_district' ? 85.5 : 11.0) : (item.key === 'special_auto' ? 10.8 : 72.0));
+            let natAvg = isHigh ? (item.key === 'general' ? 60.5 : 16.0) : (isElem ? (item.key === 'in_district' ? 83.0 : 12.5) : (item.key === 'special_auto' ? 9.2 : 70.0));
+
+            if (targetSchools.length > 0) {
+                const distSchools = targetSchools.filter(s => {
+                    const d = s.district || (s.address ? s.address.split(' ')[1] : '');
+                    return d === districtName;
+                });
+                if (distSchools.length > 0) {
+                    const sum = distSchools.reduce((acc, s) => acc + item.getVal(s.summary.graduate_career), 0);
+                    distAvg = Math.round((sum / distSchools.length) * 10) / 10;
+                }
+
+                const citySchools = targetSchools.filter(s => {
+                    const c = s.cityName || (s.address ? s.address.split(' ')[0] : '') || s.region;
+                    return c === cityName;
+                });
+                if (citySchools.length > 0) {
+                    const sum = citySchools.reduce((acc, s) => acc + item.getVal(s.summary.graduate_career), 0);
+                    cityAvg = Math.round((sum / citySchools.length) * 10) / 10;
+                }
+
+                const sumNat = targetSchools.reduce((acc, s) => acc + item.getVal(s.summary.graduate_career), 0);
+                natAvg = Math.round((sumNat / targetSchools.length) * 10) / 10;
+            }
+
+            subMetricsData[item.key] = {
+                label: item.label,
+                metricName: `${item.label} 진학률`,
+                schoolRate: schoolVal,
+                districtAvgRate: distAvg,
+                cityAvgRate: cityAvg,
+                nationalAvgRate: natAvg
+            };
+        });
+
+        const defaultSubKey = subMetricsConfig[0].key;
+        const currentSub = subMetricsData[defaultSubKey];
+
+        window.currentSchoolGraduateDetail = {
+            districtName,
+            cityName,
+            subMetrics: subMetricsData,
+            selectedSubMetric: defaultSubKey,
+            currentCompareType: 'region',
+            schoolRate: currentSub.schoolRate,
+            metricName: currentSub.metricName,
+            districtAvgRate: currentSub.districtAvgRate,
+            cityAvgRate: currentSub.cityAvgRate,
+            nationalAvgRate: currentSub.nationalAvgRate
+        };
+
+        let html = `
+            <!-- 세부 비교 항목 선택 칩 (관내 / 관외 / 기타 등) -->
+            <div style="margin-top: 4px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+                <span style="font-size: 11px; font-weight: 600; color: var(--deep-blue);" id="graduateSubMetricHeader">${currentSub.metricName} 비교 기준</span>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap;" id="graduateSubMetricChips">
+                    ${subMetricsConfig.map((item, idx) => `
+                        <button class="graduate-submetric-chip" data-submetric="${item.key}" onclick="setGraduateSubMetric('${item.key}')" style="border: none; background: ${idx === 0 ? 'var(--primary-blue, #1976d2)' : '#f0f4f8'}; color: ${idx === 0 ? 'white' : 'var(--text-muted)'}; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: ${idx === 0 ? 'bold' : 'normal'}; cursor: pointer; transition: all 0.2s ease;">${item.label}</button>
+                    `).join('')}
+                </div>
+            </div>
+
+            <!-- 비교 지역 선택 (관할 구 / 시·도 / 전국) -->
+            <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 10px; color: var(--text-muted);">지역 비교 범위 설정</span>
+                <div style="display: flex; gap: 4px; background: #f0f4f8; padding: 2px; border-radius: 6px;" id="graduateCompareTabs">
+                    <button class="graduate-tab-btn" data-compare="region" onclick="updateGraduateCompare('region')" style="border: none; background: white; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: var(--deep-blue); box-shadow: 0 1px 3px rgba(0,0,0,0.1);">${districtName}</button>
+                    <button class="graduate-tab-btn" data-compare="city" onclick="updateGraduateCompare('city')" style="border: none; background: transparent; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: var(--text-muted);">${cityName}</button>
+                    <button class="graduate-tab-btn" data-compare="national" onclick="updateGraduateCompare('national')" style="border: none; background: transparent; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: var(--text-muted);">전국</button>
+                </div>
+            </div>
+            <!-- 지역 평균 대비 비교 바 -->
+            <div style="margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">
+                    <span>이 학교 <strong id="graduateBarSchoolVal">${currentSub.schoolRate}% (${currentSub.metricName})</strong></span>
+                    <span id="graduateBarRegionLabel">지역 평균</span>
+                </div>
+                <div style="position: relative; background: #f0f4f8; border-radius: 6px; height: 10px; overflow: visible; margin-bottom: 24px;">
+                    <div id="graduateBarSchool" style="position: absolute; left: 0; top: 0; height: 100%; background: var(--primary-blue, #1976d2); border-radius: 6px; transition: width 0.6s ease;"></div>
+                    <div id="graduateBarRegionMark" style="position: absolute; top: -3px; width: 2px; height: 16px; background: #f57c00; border-radius: 2px;" title="지역 평균"></div>
+                    <div id="graduateBarRegionMarkText" style="position: absolute; top: 16px; font-size: 10px; color: #f57c00; white-space: nowrap; transform: translateX(-50%); font-weight: bold; transition: left 0.6s ease;">▲ 지역 평균</div>
+                </div>
+            </div>
+        `;
         
         const colors = {
             general: '#1976d2',
@@ -4289,13 +4644,13 @@ document.addEventListener('DOMContentLoaded', () => {
             other: '#607d8b'
         };
 
-        if (schoolType && schoolType.includes('고등학교')) {
+        if (isHigh) {
             const general = career.general || 0;
             const specialized = career.specialized || 0;
             const special = career.special || 0;
             const autonomous = career.autonomous || 0;
             
-            html = `
+            html += `
                 <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
                     <div>
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
@@ -4345,14 +4700,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     </p>
                 </div>
             `;
-        } else if (schoolType && schoolType.includes('초등학교')) {
+        } else if (isElem) {
             const general = career.general || 0;
             const specialized = career.specialized || 0;
             const special = career.special || 0;
             const autonomous = career.autonomous || 0;
             const other = Math.round(special + autonomous);
 
-            html = `
+            html += `
                 <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
                     <div>
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
@@ -4376,7 +4731,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     <div>
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                            <span style="font-weight:600; color:var(--deep-blue);">기타 (대안학교/해외유학/미진학 등)</span>
+                            <span style="font-weight:600; color:var(--deep-blue);">기타</span>
                             <span style="font-weight:700; color:${colors.other};">${other}%</span>
                         </div>
                         <div style="width:100%; background:#f0f4f8; border-radius:6px; height:12px; overflow:hidden;">
@@ -4398,7 +4753,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const autonomous = career.autonomous || 0;
             const specialized = career.specialized || 0;
             
-            html = `
+            html += `
                 <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
                     <div>
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
@@ -4451,6 +4806,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         contentEl.innerHTML = html;
+
+        if (typeof window.updateGraduateCompare === 'function') {
+            window.updateGraduateCompare('region');
+        }
     }
 
     function renderBudgetDetail(bd) {
@@ -5878,10 +6237,101 @@ window.toggleViolenceStatsModal = function() {
     }
 };
 
+// --- 학교폭력 비교 기준 업데이트 ---
+window.updateViolenceCompare = function(type) {
+    const vd = window.currentSchoolViolenceDetail;
+    if (!vd) return;
+
+    // 탭 스타일 활성화 처리
+    const tabs = document.querySelectorAll('.violence-tab-btn');
+    tabs.forEach(btn => {
+        if (btn.getAttribute('data-compare') === type) {
+            btn.style.background = 'white';
+            btn.style.color = 'var(--deep-blue)';
+            btn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+        } else {
+            btn.style.background = 'transparent';
+            btn.style.color = 'var(--text-muted)';
+            btn.style.boxShadow = 'none';
+        }
+    });
+
+    let compareAvg = vd.districtAvg;
+    let labelText = `${vd.districtName} 평균 ${vd.districtAvg}건/100명`;
+
+    if (type === 'city') {
+        compareAvg = vd.cityAvg || 0.9;
+        labelText = `${vd.cityName || '서울특별시'} 평균 ${compareAvg}건/100명`;
+    } else if (type === 'national') {
+        compareAvg = vd.nationalAvg || 1.1;
+        labelText = `전국 평균 ${compareAvg}건/100명`;
+    }
+
+    const schoolVal = vd.per100;
+    const elSchoolVal = document.getElementById('violenceBarSchoolVal');
+    if (elSchoolVal) elSchoolVal.innerText = `${schoolVal}건 (100명당)`;
+
+    const elRegionLabel = document.getElementById('violenceBarRegionLabel');
+    if (elRegionLabel) elRegionLabel.innerText = labelText;
+
+    const targetName = type === 'region' ? vd.districtName : (type === 'city' ? (vd.cityName || '서울특별시') : '전국');
+    const elMarkText = document.getElementById('violenceBarRegionMarkText');
+    if (elMarkText) elMarkText.innerText = `▲ ${targetName} 평균`;
+
+    const elMark = document.getElementById('violenceBarRegionMark');
+    if (elMark) elMark.title = `${targetName} 평균 ${compareAvg}건/100명`;
+
+    const maxVal = Math.max(schoolVal, compareAvg, 2.0) * 1.2;
+    const leftPct = Math.min((compareAvg / maxVal) * 100, 100);
+    const schoolPct = Math.min((schoolVal / maxVal) * 100, 100);
+
+    const elBarSchool = document.getElementById('violenceBarSchool');
+    if (elBarSchool) elBarSchool.style.width = `${schoolPct}%`;
+
+    if (elMark) elMark.style.left = `calc(${leftPct}% - 1px)`;
+    if (elMarkText) elMarkText.style.left = `${leftPct}%`;
+};
+
 // --- 학교폭력 데이터 렌더링 ---
 window.renderViolenceStats = function(school) {
     const vs = school.violence_stats;
     if (!vs) return;
+
+    const count = school.student_count || 300;
+    const addressParts = (school.address || '').split(' ');
+    const cityName = school.cityName || addressParts[0] || school.region || '서울특별시';
+    const districtName = school.district || addressParts[1] || '관할 구';
+    const per100 = vs.per_100 ?? (count > 0 ? Math.round((vs.total_cases / count) * 100 * 10) / 10 : 0);
+
+    let districtAvg = 0.8;
+    let cityAvg = 0.9;
+    let nationalAvg = 1.1;
+
+    if (window.orchestrator && window.orchestrator.state && window.orchestrator.state.schools) {
+        const distSchools = window.orchestrator.state.schools.filter(s => {
+            const d = s.district || (s.address ? s.address.split(' ')[1] : '');
+            return d === districtName && s.violence_stats;
+        });
+        if (distSchools.length > 0) {
+            const sum100 = distSchools.reduce((acc, s) => acc + (s.violence_stats.per_100 || 0), 0);
+            districtAvg = Math.round((sum100 / distSchools.length) * 10) / 10;
+        }
+        const allSchools = window.orchestrator.state.schools.filter(s => s.violence_stats);
+        if (allSchools.length > 0) {
+            const sum100All = allSchools.reduce((acc, s) => acc + (s.violence_stats.per_100 || 0), 0);
+            cityAvg = Math.round((sum100All / allSchools.length) * 10) / 10;
+        }
+    }
+
+    window.currentSchoolViolenceDetail = {
+        per100: per100,
+        totalCases: vs.total_cases ?? 0,
+        districtName: districtName,
+        cityName: cityName,
+        districtAvg: districtAvg,
+        cityAvg: cityAvg,
+        nationalAvg: nationalAvg
+    };
 
     // 인라인 요약
     const summaryEl = document.getElementById('statViolenceSummary');
@@ -5900,6 +6350,17 @@ window.renderViolenceStats = function(school) {
     set('statViolenceTotal',    vs.total_cases ?? '-');
     set('statViolencePer100',   vs.per_100 ?? '-');
     set('statViolenceResolved', vs.resolved_rate ?? '-');
+
+    // 시/도 탭 버튼 명칭 동적 업데이트
+    const cityTabBtn = document.querySelector('.violence-tab-btn[data-compare="city"]');
+    if (cityTabBtn) {
+        cityTabBtn.innerText = cityName;
+    }
+
+    // 비교 바 초기화 (지역 기준)
+    if (typeof window.updateViolenceCompare === 'function') {
+        window.updateViolenceCompare('region');
+    }
 
     // 유형별 비율
     const t = vs.types || {};
@@ -5940,17 +6401,206 @@ window.toggleStudentStatsModal = function() {
 // 하위 호환성 유지 (구 toggleStudentStatsPanel 호출 대응)
 window.toggleStudentStatsPanel = window.toggleStudentStatsModal;
 
+// --- 전학생 현황 세부 비교 항목 변경 (전입 / 전출 / 순증감) ---
+window.setStudentSubMetric = function(subKey) {
+    const sd = window.currentSchoolStudentDetail;
+    if (!sd || !sd.subMetrics || !sd.subMetrics[subKey]) return;
+
+    sd.selectedSubMetric = subKey;
+
+    // 칩 버튼 스타일 활성화 처리
+    const chips = document.querySelectorAll('.student-submetric-chip');
+    chips.forEach(btn => {
+        if (btn.getAttribute('data-submetric') === subKey) {
+            btn.style.background = 'var(--primary-blue, #2196f3)';
+            btn.style.color = 'white';
+            btn.style.fontWeight = 'bold';
+        } else {
+            btn.style.background = '#f0f4f8';
+            btn.style.color = 'var(--text-muted)';
+            btn.style.fontWeight = 'normal';
+        }
+    });
+
+    const sub = sd.subMetrics[subKey];
+    const headerEl = document.getElementById('studentSubMetricHeader');
+    if (headerEl) headerEl.innerText = `${sub.metricName} 비교 기준`;
+
+    window.updateStudentCompare(sd.currentCompareType || 'region');
+};
+
+// --- 전학생 현황 비교 기준 업데이트 ---
+window.updateStudentCompare = function(type) {
+    const sd = window.currentSchoolStudentDetail;
+    if (!sd) return;
+    sd.currentCompareType = type;
+
+    // 탭 스타일 활성화 처리
+    const tabs = document.querySelectorAll('.student-tab-btn');
+    tabs.forEach(btn => {
+        if (btn.getAttribute('data-compare') === type) {
+            btn.style.background = 'white';
+            btn.style.color = 'var(--deep-blue)';
+            btn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+        } else {
+            btn.style.background = 'transparent';
+            btn.style.color = 'var(--text-muted)';
+            btn.style.boxShadow = 'none';
+        }
+    });
+
+    const subKey = sd.selectedSubMetric || 'transfer_in';
+    const sub = sd.subMetrics ? sd.subMetrics[subKey] : null;
+
+    let compareAvg = sub ? sub.districtAvg : sd.districtAvgIn;
+    let labelText = `${sd.districtName} 평균 ${compareAvg}명`;
+
+    if (type === 'city') {
+        compareAvg = sub ? sub.cityAvg : (sd.cityAvgIn || 18);
+        labelText = `${sd.cityName || '서울특별시'} 평균 ${compareAvg}명`;
+    } else if (type === 'national') {
+        compareAvg = sub ? sub.nationalAvg : (sd.nationalAvgIn || 20);
+        labelText = `전국 평균 ${compareAvg}명`;
+    }
+
+    const schoolVal = sub ? sub.schoolVal : sd.transferIn;
+    const metricLabel = sub ? sub.metricName : '전입생';
+    
+    const elSchoolVal = document.getElementById('studentBarSchoolVal');
+    if (elSchoolVal) {
+        if (subKey === 'net') {
+            const netStr = (schoolVal >= 0 ? '+' : '') + schoolVal;
+            elSchoolVal.innerText = `${netStr}명 (${metricLabel})`;
+        } else {
+            elSchoolVal.innerText = `${schoolVal}명 (${metricLabel})`;
+        }
+    }
+
+    const elRegionLabel = document.getElementById('studentBarRegionLabel');
+    if (elRegionLabel) elRegionLabel.innerText = labelText;
+
+    const targetName = type === 'region' ? sd.districtName : (type === 'city' ? (sd.cityName || '서울특별시') : '전국');
+    const elMarkText = document.getElementById('studentBarRegionMarkText');
+    if (elMarkText) elMarkText.innerText = `▲ ${targetName} 평균`;
+
+    const elMark = document.getElementById('studentBarRegionMark');
+    if (elMark) elMark.title = `${targetName} 평균 ${compareAvg}명`;
+
+    const absSchool = Math.abs(schoolVal);
+    const absAvg = Math.abs(compareAvg);
+    const maxVal = Math.max(absSchool, absAvg, 10) * 1.25;
+    const leftPct = Math.min((absAvg / maxVal) * 100, 100);
+    const schoolPct = Math.min((absSchool / maxVal) * 100, 100);
+
+    const elBarSchool = document.getElementById('studentBarSchool');
+    if (elBarSchool) elBarSchool.style.width = `${schoolPct}%`;
+
+    if (elMark) elMark.style.left = `calc(${leftPct}% - 1px)`;
+    if (elMarkText) elMarkText.style.left = `${leftPct}%`;
+};
+
 // --- 전학생·통학 데이터 렌더링 ---
 window.renderStudentStats = function(school) {
     const ts = school.transfer_stats;
     const rs = school.residence_stats;
     const cs = school.commute_stats;
 
+    const addressParts = (school.address || '').split(' ');
+    const cityName = school.cityName || addressParts[0] || school.region || '서울특별시';
+    const districtName = school.district || addressParts[1] || '관할 구';
+
+    const transferIn = ts ? (ts.transfer_in ?? 0) : 0;
+    const transferOut = ts ? (ts.transfer_out ?? 0) : 0;
+    const net = ts ? (ts.net ?? 0) : 0;
+
+    let districtAvgIn = 15;
+    let cityAvgIn = 18;
+    let nationalAvgIn = 20;
+
+    let districtAvgOut = 13;
+    let cityAvgOut = 17;
+    let nationalAvgOut = 20;
+
+    let districtAvgNet = 2;
+    let cityAvgNet = 1;
+    let nationalAvgNet = 0;
+
+    if (window.orchestrator && window.orchestrator.state && window.orchestrator.state.schools) {
+        const distSchools = window.orchestrator.state.schools.filter(s => {
+            const d = s.district || (s.address ? s.address.split(' ')[1] : '');
+            return d === districtName && s.transfer_stats;
+        });
+        if (distSchools.length > 0) {
+            const sumIn = distSchools.reduce((acc, s) => acc + (s.transfer_stats.transfer_in || 0), 0);
+            const sumOut = distSchools.reduce((acc, s) => acc + (s.transfer_stats.transfer_out || 0), 0);
+            const sumNet = distSchools.reduce((acc, s) => acc + (s.transfer_stats.net || 0), 0);
+            districtAvgIn = Math.round(sumIn / distSchools.length);
+            districtAvgOut = Math.round(sumOut / distSchools.length);
+            districtAvgNet = Math.round(sumNet / distSchools.length);
+        }
+        const allSchools = window.orchestrator.state.schools.filter(s => s.transfer_stats);
+        if (allSchools.length > 0) {
+            const sumInAll = allSchools.reduce((acc, s) => acc + (s.transfer_stats.transfer_in || 0), 0);
+            const sumOutAll = allSchools.reduce((acc, s) => acc + (s.transfer_stats.transfer_out || 0), 0);
+            const sumNetAll = allSchools.reduce((acc, s) => acc + (s.transfer_stats.net || 0), 0);
+            cityAvgIn = Math.round(sumInAll / allSchools.length);
+            cityAvgOut = Math.round(sumOutAll / allSchools.length);
+            cityAvgNet = Math.round(sumNetAll / allSchools.length);
+        }
+    }
+
+    const defaultSubKey = (window.currentSchoolStudentDetail && window.currentSchoolStudentDetail.selectedSubMetric) || 'transfer_in';
+
+    window.currentSchoolStudentDetail = {
+        districtName: districtName,
+        cityName: cityName,
+        selectedSubMetric: defaultSubKey,
+        currentCompareType: 'region',
+        subMetrics: {
+            transfer_in: {
+                metricName: '전입생수',
+                unit: '명',
+                schoolVal: transferIn,
+                districtAvg: districtAvgIn,
+                cityAvg: cityAvgIn,
+                nationalAvg: nationalAvgIn
+            },
+            transfer_out: {
+                metricName: '전출생수',
+                unit: '명',
+                schoolVal: transferOut,
+                districtAvg: districtAvgOut,
+                cityAvg: cityAvgOut,
+                nationalAvg: nationalAvgOut
+            },
+            net: {
+                metricName: '순전입 (순증감)',
+                unit: '명',
+                schoolVal: net,
+                districtAvg: districtAvgNet,
+                cityAvg: cityAvgNet,
+                nationalAvg: nationalAvgNet
+            }
+        }
+    };
+
+    // 시/도 탭 버튼 명칭 동적 업데이트
+    const cityTabBtn = document.querySelector('.student-tab-btn[data-compare="city"]');
+    if (cityTabBtn) {
+        cityTabBtn.innerText = cityName;
+    }
+
+    if (typeof window.setStudentSubMetric === 'function') {
+        window.setStudentSubMetric(defaultSubKey);
+    } else if (typeof window.updateStudentCompare === 'function') {
+        window.updateStudentCompare('region');
+    }
+
     // 인라인 요약값 (전학생·통학 현황: 전입 N / 전출 N)
     const summaryEl = document.getElementById('statTransferSummary');
     if (summaryEl && ts) {
-        const net = ts.net ?? 0;
-        const netStr = (net > 0 ? '+' : '') + net;
+        const netVal = ts.net ?? 0;
+        const netStr = (netVal > 0 ? '+' : '') + netVal;
         summaryEl.innerHTML = `전입 ${ts.transfer_in ?? '-'}명 / 전출 ${ts.transfer_out ?? '-'}명 (순 ${netStr}명)`;
     }
 
@@ -5962,9 +6612,9 @@ window.renderStudentStats = function(school) {
         if (inEl)  inEl.innerText  = ts.transfer_in  ?? '-';
         if (outEl) outEl.innerText = ts.transfer_out ?? '-';
         if (netEl) {
-            const net = ts.net ?? 0;
-            netEl.innerText = (net > 0 ? '+' : '') + net;
-            netEl.style.color = net > 0 ? '#2e7d32' : net < 0 ? '#bf360c' : '#0d47a1';
+            const netVal = ts.net ?? 0;
+            netEl.innerText = (netVal > 0 ? '+' : '') + netVal;
+            netEl.style.color = netVal > 0 ? '#2e7d32' : netVal < 0 ? '#bf360c' : '#0d47a1';
         }
     }
 

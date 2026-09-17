@@ -1,0 +1,71 @@
+2980:             let trendSummary = "최근 3년간 학업성취도가 안정적으로 유지되는 분위기입니다.";
+2981:             if (fullSchool.trendData) {
+2982:                 const diff = fullSchool.trendData[2] - fullSchool.trendData[0];
+2983:                 if (diff > 1.5) trendSummary = "📈 최근 3년간 학력 지표가 뚜렷한 상승세를 기록하고 있습니다.";
+2984:                 else if (diff < -1.5) trendSummary = "📉 최근 3년간 학력 지표가 다소 하락 추세를 보이고 있어 기초 보강이 권장됩니다.";
+2985:             }
+2986:             // Calculate suitability
+2987:             const profile = getActiveChildProfile();
+2988:             const suitability = calculateSchoolSuitability(fullSchool, profile);
+2989:             
+2990:             let suitabilityHTML = '';
+2991:             if (suitability.score > 0) {
+2992:                 suitabilityHTML = `
+2993:                     <div style="margin-top: 10px; padding: 10.5px; background: ${suitability.score >= 70 ? '#e8f5e9' : '#fff3e0'}; border-radius: 8px; border-left: 4px solid ${suitability.score >= 70 ? 'var(--success-green)' : 'var(--warning-yellow)'};">
+2994:                         <strong style="color: var(--deep-blue); font-weight: 800; font-size: 12.5px;">🎯 우리 아이 맞춤 적합도: <span style="color: ${suitability.score >= 70 ? 'var(--success-green)' : '#ef6c00'}; font-weight: bold;">${suitability.score}점 (${suitability.level})</span></strong>
+2995:                         <div style="font-size: 11px; margin-top: 5px; color: var(--text-main); line-height: 1.4;">${suitability.desc}</div>
+2996:                         ${suitability.warning ? `<div style="font-size: 11px; margin-top: 5px; color: #ef6c00; font-weight: bold;">${suitability.warning}</div>` : ''}
+2997:                     </div>
+2998:                 `;
+2999:             }
+3000: 
+3001:             const regionName = fullSchool.region || (fullSchool.address ? fullSchool.address.split(' ')[0] : '해당 지역');
+3002:             schoolInsight.innerHTML = `<div style="font-weight: 800; color: var(--primary-blue); margin-bottom: 6px;">📍 ${regionName} 전체 중 상위 ${percentRank}% 수준</div>
+3003:                                        <div>${summary.insight}</div>
+3004:                                        <div style="margin-top: 4px; font-weight: 500;">${trendSummary}</div>
+3005:                                        ${suitabilityHTML}`;
+3006:         }
+3007: 
+3008:         // --- 종합 교육환경 점수 계산 및 표시 ---
+3009:         if (!fullSchool.envScore) {
+3010:             const scoreScore = (fullSchool.subjects.korean.avg + fullSchool.subjects.english.avg + fullSchool.subjects.math.avg) / 3;
+3011:             const teacherScore = Math.max(0, 100 - (fullSchool.class_avg_size * 2.8));
+3012:             const safetyScore = Math.max(0, 100 - (fullSchool.violence_stats ? fullSchool.violence_stats.total_cases * 12 : 0));
+3013:             const budgetScore = Math.min(100, (fullSchool.extracurricular_budget || 0) * 0.5);
+3014:             
+3015:             const pScore = parseFloat(document.getElementById('envScoreRange').value) / 100;
+3016:             const pTeacher = parseFloat(document.getElementById('envTeacherRange').value) / 100;
+3017:             const pViolence = parseFloat(document.getElementById('envViolenceRange').value) / 100;
+3018:             const pBudget = parseFloat(document.getElementById('envBudgetRange').value) / 100;
+3019:             
+3020:             fullSchool.envScore = Math.round(scoreScore * pScore + teacherScore * pTeacher + safetyScore * pViolence + budgetScore * pBudget);
+3021:         }
+3022:         const totalEnvLabel = document.getElementById('totalEnvScoreLabel');
+3023:         if (totalEnvLabel) totalEnvLabel.innerText = `${fullSchool.envScore}점`;
+3024: 
+3025:         // --- 3개년 학업성취도 추세 스파크라인 SVG 렌더링 ---
+3026:         if (!fullSchool.trendData) {
+3027:             const codeHash = parseInt(fullSchool.school_id) || 77;
+3028:             const avgScore = (fullSchool.subjects.korean.avg + fullSchool.subjects.english.avg + fullSchool.subjects.math.avg) / 3;
+3029:             const y1 = Math.round((avgScore - ((codeHash % 5) - 2)) * 10) / 10;
+3030:             const y2 = Math.round((y1 - (((codeHash + 3) % 5) - 2)) * 10) / 10;
+3031:             fullSchool.trendData = [y2, y1, Math.round(avgScore * 10) / 10];
+3032:         }
+3033:         
+3034:         const sparkSvg = document.getElementById('trendSparkline');
+3035:         if (sparkSvg) {
+3036:             sparkSvg.innerHTML = '';
+3037:             const width = 160;
+3038:             const height = 55;
+3039:             const pts = fullSchool.trendData;
+3040:             
+3041:             const minVal = 50;
+3042:             const maxVal = 100;
+3043:             
+3044:             const getX = (idx) => 25 + idx * 55;
+3045:             const getY = (val) => height - 16 - ((val - minVal) / (maxVal - minVal)) * (height - 30);
+3046:             
+3047:             const p1 = `${getX(0)},${getY(pts[0])}`;
+3048:             const p2 = `${getX(1)},${getY(pts[1])}`;
+3049:             const p3 = `${getX(2)},${getY(pts[2])}`;
+3050:             

@@ -1,0 +1,475 @@
+=== APP.JS LINES 1080-1400 ===
+1080:                 // 히트맵 시 지도 핀들 임시 제거
+1081:                 mapMarkers.forEach(item => {
+1082:                     if (item.marker) item.marker.setMap(null);
+1083:                     else item.setMap(null);
+1084:                 });
+1085:                 mapMarkers = [];
+1086:                 if (clusterer) clusterer.clear();
+1087:                 const pinsContainer = document.getElementById('pinsContainer');
+1088:                 if (pinsContainer) pinsContainer.innerHTML = '';
+1089:             } else {
+1090:                 clearDistrictRatings();
+1091:                 onMapAction();
+1092:             }
+1093:         });
+1094:     }
+1095: 
+1096:     function exportSchoolToCSV(school) {
+1097:         const headers = ['지표명', '상세 값'];
+1098:         const rows = [
+1099:             ['학교명', school.school_name],
+1100:             ['학교급', school.school_type],
+1101:             ['지역', school.region],
+1102:             ['주소', school.address],
+1103:             ['학생수', `${school.student_count}명`],
+1104:             ['학급당 학생수', `${school.class_avg_size}명`],
+1105:             ['국어 평균점수', `${school.subjects.korean.avg}점`],
+1106:             ['영어 평균점수', `${school.subjects.english.avg}점`],
+1107:             ['수학 평균점수', `${school.subjects.math.avg}점`],
+1108:             ['종합 가중평균', `${school.weightedAvg ?? '-'}점`],
+1109:             ['창체 활동비', `${school.extracurricular_budget ?? 0}만원`],
+1110:             ['학교폭력 건수(연)', `${school.violence_stats ? school.violence_stats.total_cases : 0}건`],
+1111:             ['종합 교육환경 스코어', `${school.envScore ?? '-'}점`],
+1112:         ];
+1113: 
+1114:         let csvContent = "\uFEFF"; // UTF-8 BOM
+1115:         csvContent += headers.join(',') + '\n';
+1116:         rows.forEach(row => {
+1117:             csvContent += row.map(val => `"${val}"`).join(',') + '\n';
+1118:         });
+1119: 
+1120:         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+1121:         const url = URL.createObjectURL(blob);
+1122:         const link = document.createElement('a');
+1123:         link.setAttribute('href', url);
+1124:         link.setAttribute('download', `학업진단보고서_${school.school_name}.csv`);
+1125:         link.style.visibility = 'hidden';
+1126:         document.body.appendChild(link);
+1127:         link.click();
+1128:         document.body.removeChild(link);
+1129:     }
+1130: 
+1131:     // Event Listeners
+1132:     searchBtn.addEventListener('click', performSearch);
+1133:     searchInput.addEventListener('keypress', (e) => {
+1134:         if (e.key === 'Enter') performSearch();
+1135:     });
+1136:     regionFilter.addEventListener('change', () => {
+1137:         if (typeof resetSafeCommute === 'function') resetSafeCommute();
+1138:         onRegionFilterChange();
+1139:         // 지도가 이동한 후 영역 내 학교를 표시하기 위해 약간의 지연 후 호출
+1140:         setTimeout(onMapAction, 150);
+1141:     });
+1142:     schoolTypeFilter.addEventListener('change', () => {
+1143:         if (typeof resetSafeCommute === 'function') resetSafeCommute();
+1144:         onMapAction();
+1145:     });
+1146: 
+1147:     btnCompareChild.addEventListener('click', () => {
+1148:         // 자녀 선택 UI 목록 갱신
+1149:         refreshChildSelectUI();
+1150: 
+1151:         // 이미 저장된 성적 데이터가 있는지 확인
+1152:         const scores = orchestrator.state.childProfile.scores;
+1153:         
+1154:         // 성적이 아예 입력된 적이 없거나 모두 0인 경우 방어 처리
+1155:         const hasSavedScores = scores && (scores.korean > 0 || scores.english > 0 || scores.math > 0);
+1156:         
+1157:         if (!hasSavedScores) {
+1158:             alert('⚙️ 상단 [통합 설정] 버튼을 눌러 자녀의 최근 시험 성적 정보를 먼저 저장해 주세요.');
+1159:             const settingsModal = document.getElementById('settingsModal');
+1160:             if (settingsModal) {
+1161:                 settingsModal.style.display = 'flex';
+1162:             }
+1163:             return;
+1164:         }
+1165: 
+1166:         // 저장된 성적으로 즉시 분석 수행
+1167:         const result = orchestrator.childPerformanceDiagnosis(scores);
+1168:         
+1169:         // Reset compare region dropdown to selected school's region
+1170:         const defaultRegion = orchestrator.state.selectedSchool ? orchestrator.state.selectedSchool.region : '서울특별시';
+1171:         const elCompareRegion = document.getElementById('selCompareRegion');
+1172:         if (elCompareRegion) {
+1173:             elCompareRegion.value = defaultRegion;
+1174:         }
+1175: 
+1176:         if (typeof renderDiagnosisResults === 'function') {
+1177:             renderDiagnosisResults(result);
+1178:         }
+1179: 
+1180:         // 사이드바의 입력 폼을 생략하고 바로 결과 카드를 노출
+1181:         schoolCard.style.display = 'none';
+1182:         childFormCard.style.display = 'none';
+1183:         diagnosisResultCard.style.display = 'block';
+1184:     });
+1185: 
+1186:     btnBackToSchool.addEventListener('click', () => {
+1187:         childFormCard.style.display = 'none';
+1188:         schoolCard.style.display = 'block';
+1189:     });
+1190: 
+1191:     btnBackToForm.addEventListener('click', () => {
+1192:         const btnOpenSettings = document.getElementById('btnOpenSettings');
+1193:         if (btnOpenSettings) {
+1194:             btnOpenSettings.click();
+1195:         } else {
+1196:             const settingsModal = document.getElementById('settingsModal');
+1197:             if (settingsModal) {
+1198:                 settingsModal.style.display = 'block';
+1199:             }
+1200:         }
+1201:     });
+1202: 
+1203:     if (btnCloseAnalysis) {
+1204:         btnCloseAnalysis.addEventListener('click', () => {
+1205:             diagnosisResultCard.style.display = 'none';
+1206:             schoolCard.style.display = 'block';
+1207:         });
+1208:     }
+1209: 
+1210:     btnRunDiagnosis.addEventListener('click', () => {
+1211:         orchestrator.state.childProfile.name = document.getElementById('childName').value;
+1212:         orchestrator.state.childProfile.grade = document.getElementById('childGrade').value;
+1213: 
+1214:         const scores = {
+1215:             korean: parseInt(document.getElementById('childKor').value) || 0,
+1216:             english: parseInt(document.getElementById('childEng').value) || 0,
+1217:             math: parseInt(document.getElementById('childMath').value) || 0
+1218:         };
+1219: 
+1220:         const result = orchestrator.childPerformanceDiagnosis(scores);
+1221:         
+1222:         // Reset compare region dropdown to selected school's region
+1223:         const defaultRegion = orchestrator.state.selectedSchool ? orchestrator.state.selectedSchool.region : '서울특별시';
+1224:         document.getElementById('selCompareRegion').value = defaultRegion;
+1225: 
+1226:         renderDiagnosisResults(result);
+1227:         childFormCard.style.display = 'none';
+1228:         diagnosisResultCard.style.display = 'block';
+1229: 
+1230:         // 성적 정보가 갱신되면 비교보드에 들어가 있는 학교들의 적합도도 실시간 갱신 처리
+1231:         if (orchestrator.state.comparisonList.length > 0) {
+1232:             const comparisonTable = orchestrator.compareAgent.generateComparisonMatrix(orchestrator.state.comparisonList, orchestrator.state.childProfile.scores);
+1233:             renderComparisonBoard(comparisonTable);
+1234:         }
+1235:     });
+1236: 
+1237:     let isCompareBoardAdding = false;
+1238:     const handleCompareBoardAdd = async (e) => {
+1239:         if (e) {
+1240:             e.stopPropagation();
+1241:         }
+1242:         if (isCompareBoardAdding) return;
+1243:         isCompareBoardAdding = true;
+1244:         
+1245:         try {
+1246:             if (!orchestrator.state.selectedSchool) {
+1247:                 isCompareBoardAdding = false;
+1248:                 return;
+1249:             }
+1250:             
+1251:             const exists = orchestrator.state.comparisonList.some(s => {
+1252:                 const sId = s.school_id || s.id;
+1253:                 const selId = orchestrator.state.selectedSchool.school_id || orchestrator.state.selectedSchool.id;
+1254:                 if (!sId || !selId) return false;
+1255:                 return String(sId) === String(selId);
+1256:             });
+1257:             
+1258:             if (window.innerWidth <= 1024) {
+1259:                 // 모바일 환경: 모달창을 띄우지 않고 마이페이지의 '비교중인 학교' 탭으로 즉시 전환
+1260:                 if (exists) {
+1261:                     alert('이미 비교 보드에 추가된 학교입니다.');
+1262:                 } else {
+1263:                     const res = orchestrator.addToComparison(orchestrator.state.selectedSchool);
+1264:                     if (res.success) {
+1265:                         updateCompareFloatingButton();
+1266:                         // 대기시간 없이 즉시 메모리 목록 기준으로 모바일 마이페이지 갱신
+1267:                         if (typeof window.updateMypageComparisonUI === 'function') {
+1268:                             window.updateMypageComparisonUI(orchestrator.state.comparisonList);
+1269:                         }
+1270:                         
+1271:                         if (await confirm('비교보드에 추가되었습니다. 이동하시겠습니까?')) {
+1272:                             // 마이페이지 탭 활성화
+1273:                             const mypageTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*="mypage"]');
+1274:                             if (typeof window.onMobileNavClick === 'function') {
+1275:                                 window.onMobileNavClick('mypage', mypageTabBtn);
+1276:                             }
+1277:                             
+1278:                             // 비교 아코디언 강제 오픈
+1279:                             const compArrow = document.getElementById('mypageAccordionArrow-comparison');
+1280:                             const compContent = document.getElementById('mypageAccordionContent-comparison');
+1281:                             if (compArrow && compContent) {
+1282:                                 compArrow.innerText = '▲';
+1283:                                 compContent.style.display = 'block';
+1284:                             }
+1285:                             
+1286:                             // 아코디언 개방 직후 메모리 리스트 기준으로 지연 렌더링 한 번 더 확인 조율
+1287:                             if (typeof window.updateMypageComparisonUI === 'function') {
+1288:                                 setTimeout(() => window.updateMypageComparisonUI(orchestrator.state.comparisonList), 150);
+1289:                             }
+1290:                         }
+1291:                     } else {
+1292:                         alert(res.message);
+1293:                     }
+1294:                 }
+1295:             } else {
+1296:                 // PC 환경: 기존 모달창 노출 유지
+1297:                 if (exists) {
+1298:                     const comparisonTable = orchestrator.compareAgent.generateComparisonMatrix(orchestrator.state.comparisonList, orchestrator.state.childProfile.scores);
+1299:                     renderComparisonBoard(comparisonTable);
+1300:                     compareOverlay.style.display = 'flex';
+1301:                     updateCompareFloatingButton();
+1302:                 } else {
+1303:                     const res = orchestrator.addToComparison(orchestrator.state.selectedSchool);
+1304:                     if (res.success) {
+1305:                         renderComparisonBoard(res.data);
+1306:                         compareOverlay.style.display = 'flex';
+1307:                         updateCompareFloatingButton();
+1308:                     } else {
+1309:                         alert(res.message);
+1310:                     }
+1311:                 }
+1312:             }
+1313:         } catch (err) {
+1314:             console.error("Error in handleCompareBoardAdd:", err);
+1315:             alert("비교보드 추가 중 오류가 발생했습니다: " + err.message);
+1316:         } finally {
+1317:             // 중복 클릭 해제용 딜레이 부여
+1318:             setTimeout(() => {
+1319:                 isCompareBoardAdding = false;
+1320:             }, 300);
+1321:         }
+1322:     };
+1323: 
+1324:     if (btnCompareBoard) {
+1325:         btnCompareBoard.addEventListener('click', handleCompareBoardAdd);
+1326:         btnCompareBoard.addEventListener('touchstart', handleCompareBoardAdd, { passive: true });
+1327:     }
+1328: 
+1329:     btnCloseCompare.addEventListener('click', () => {
+1330:         compareOverlay.style.display = 'none';
+1331:         updateCompareFloatingButton();
+1332:     });
+1333: 
+1334:     function updateCompareFloatingButton() {
+1335:         const count = (orchestrator && orchestrator.state && orchestrator.state.comparisonList) 
+1336:             ? orchestrator.state.comparisonList.length 
+1337:             : 0;
+1338:         const isOverlayVisible = compareOverlay && compareOverlay.style.display !== 'none';
+1339:         
+1340:         if (btnOpenCompareFloating) {
+1341:             if (window.innerWidth <= 1024) {
+1342:                 btnOpenCompareFloating.style.display = 'none';
+1343:             } else {
+1344:                 if (count > 0 && !isOverlayVisible) {
+1345:                     btnOpenCompareFloating.style.display = 'flex';
+1346:                     if (compareCountBadge) {
+1347:                         compareCountBadge.innerText = count;
+1348:                     }
+1349:                 } else {
+1350:                     btnOpenCompareFloating.style.display = 'none';
+1351:                 }
+1352:             }
+1353:         }
+1354: 
+1355:             if (typeof window.updateMypageComparisonUI === 'function') {
+1356:                 window.updateMypageComparisonUI();
+1357:             }
+1358:     }
+1359:     window.updateCompareFloatingButton = updateCompareFloatingButton;
+1360: 
+1361:     if (btnOpenCompareFloating) {
+1362:         btnOpenCompareFloating.addEventListener('click', () => {
+1363:             const comparisonTable = orchestrator.compareAgent.generateComparisonMatrix(orchestrator.state.comparisonList, orchestrator.state.childProfile.scores);
+1364:             renderComparisonBoard(comparisonTable);
+1365:             if (compareOverlay) {
+1366:                 compareOverlay.style.display = 'flex';
+1367:             }
+1368:             updateCompareFloatingButton();
+1369:         });
+1370:     }
+1371: 
+1372:     if (btnClearCompare) {
+1373:         btnClearCompare.addEventListener('click', async () => {
+1374:             if (await confirm('비교 보드에 담긴 모든 학교를 삭제하시겠습니까?')) {
+1375:                 orchestrator.state.comparisonList = [];
+1376:                 try {
+1377:                     localStorage.setItem('learnmap_comparison_list', JSON.stringify([]));
+1378:                 } catch (err) {
+1379:                     console.error('Failed to sync comparisonList to localStorage', err);
+1380:                 }
+1381:                 if (compareOverlay) {
+1382:                     compareOverlay.style.display = 'none';
+1383:                 }
+1384:                 updateCompareFloatingButton();
+1385:             }
+1386:         });
+1387:     }
+1388: 
+1389:     if (btnShowReviews) {
+1390:         btnShowReviews.addEventListener('click', () => {
+1391:             if (!orchestrator.state.selectedSchool) return;
+1392:             document.getElementById('schoolReviewListModal').style.display = 'flex';
+1393:             fetchSchoolReviews(orchestrator.state.selectedSchool.school_id);
+1394:         });
+1395:     }
+1396: 
+1397:     // --- School Review Rating & Escape Logic ---
+1398:     function escapeHtml(text) {
+1399:         if (!text) return '';
+1400:         return text
+
+=== APP.JS LINES 4600-4750 ===
+4600:             ctx.stroke();
+4601:             
+4602:             // Draw points
+4603:             scores.forEach((score, i) => {
+4604:                 const angle = (i * 2 * Math.PI / numAxes) - Math.PI / 2;
+4605:                 const r = (Math.max(50, Math.min(100, score)) - 50) / 50 * radius;
+4606:                 const x = center.x + r * Math.cos(angle);
+4607:                 const y = center.y + r * Math.sin(angle);
+4608:                 ctx.fillStyle = strokeColors[sIdx % strokeColors.length];
+4609:                 ctx.beginPath();
+4610:                 ctx.arc(x, y, 3.5, 0, 2 * Math.PI);
+4611:                 ctx.fill();
+4612:             });
+4613:         });
+4614:         
+4615:         // Draw Legend in canvas top-left
+4616:         ctx.font = '9px sans-serif';
+4617:         ctx.textAlign = 'left';
+4618:         matrix.forEach((school, sIdx) => {
+4619:             const yOffset = 10 + sIdx * 12;
+4620:             ctx.fillStyle = strokeColors[sIdx % strokeColors.length];
+4621:             ctx.fillRect(8, yOffset, 8, 8);
+4622:             ctx.fillStyle = '#334155';
+4623:             ctx.fillText(school.school_name, 20, yOffset + 7);
+4624:         });
+4625:     }
+4626: 
+4627:     function populateComparisonTable(matrix) {
+4628:         const table = document.getElementById('compareDetailTable');
+4629:         if (!table) return;
+4630:         
+4631:         let html = `
+4632:             <thead>
+4633:                 <tr style="background: var(--bg-primary); border-bottom: 2px solid var(--border-color); font-weight: bold; color: var(--deep-blue);">
+4634:                     <th style="padding: 10px; text-align: left;">비교 항목</th>
+4635:         `;
+4636:         
+4637:         matrix.forEach(school => {
+4638:             html += `<th style="padding: 10px; font-weight: 800;">${school.school_name}</th>`;
+4639:         });
+4640:         html += `</tr></thead><tbody>`;
+4641:         
+4642:         const rows = [
+4643:             { label: '🧑‍🎓 학생 수', key: 'student_count' },
+4644:             { label: '🏫 학급 평균 규모', key: 'class_avg_size' },
+4645:             { label: '📖 국어 평균점', key: 'korean_avg', suffix: '점' },
+4646:             { label: '🇬🇧 영어 평균점', key: 'english_avg', suffix: '점' },
+4647:             { label: '📐 수학 평균점', key: 'math_avg', suffix: '점' },
+4648:             { label: '⚖️ 가중 평균점', key: 'weightedAvg', suffix: '점' },
+4649:             { label: '🎯 강점 교과', key: 'strong_subject' },
+4650:             { label: '🏠 평균 매매가', key: 'housing_sale' },
+4651:             { label: '🔑 평균 전세가', key: 'housing_jeonse' },
+4652:             { label: '📚 주변 학원 수', key: 'academy_count_est', suffix: '개' },
+4653:             { label: '💳 평균 영어 학원비', key: 'fee_eng' },
+4654:             { label: '💳 평균 수학 학원비', key: 'fee_math' },
+4655:             { label: '💰 창체 활동비', key: 'extracurricular_budget', suffix: '만원' },
+4656:             { label: '🛡️ 학교폭력 발생 건수', key: 'violence_stats', callback: (val) => val ? `${val.total_cases}건` : '0건' },
+4657:             { label: '🏫 종합 교육환경 점수', key: 'envScore', suffix: '점' },
+4658:             { label: '✨ 자녀 매칭 적합도', key: 'suitability', callback: (val, school) => {
+4659:                 const diffLabel = school.suitabilityDiff >= 0 ? `+${Math.round(school.suitabilityDiff*10)/10}` : `${Math.round(school.suitabilityDiff*10)/10}`;
+4660:                 const color = val === '상' ? 'var(--success-green)' : (val === '중' ? 'var(--warning-yellow)' : 'var(--danger-red)');
+4661:                 return `<span title="${school.suitabilityDesc}" style="cursor:help; border-bottom:1px dotted var(--text-muted);"><strong style="color:${color}">${val}</strong> (${diffLabel}점)</span>`;
+4662:             }}
+4663:         ];
+4664:         
+4665:         rows.forEach(row => {
+4666:             html += `<tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 8px; font-weight: 600; text-align: left; background: #fafafa;">${row.label}</td>`;
+4667:             matrix.forEach(school => {
+4668:                 let val = school[row.key];
+4669:                 if (row.callback) {
+4670:                     val = row.callback(val, school);
+4671:                 } else if (val !== undefined && val !== null) {
+4672:                     val = val + (row.suffix || '');
+4673:                 } else {
+4674:                     val = '-';
+4675:                 }
+4676:                 html += `<td style="padding: 8px;">${val}</td>`;
+4677:             });
+4678:             html += `</tr>`;
+4679:         });
+4680:         
+4681:         html += `</tbody>`;
+4682:         table.innerHTML = html;
+4683:     }
+4684: 
+4685:     function renderComparisonBoard(matrix) {
+4686:         // Toggle view button setup
+4687:         const btnToggleCompareView = document.getElementById('btnToggleCompareView');
+4688:         if (btnToggleCompareView && !btnToggleCompareView.dataset.hasListener) {
+4689:             btnToggleCompareView.dataset.hasListener = "true";
+4690:             btnToggleCompareView.addEventListener('click', () => {
+4691:                 isCompareDetailed = !isCompareDetailed;
+4692:                 if (isCompareDetailed) {
+4693:                     btnToggleCompareView.innerText = "🎴 카드형 비교 보기";
+4694:                     document.getElementById('compareGrid').style.display = 'none';
+4695:                     document.getElementById('compareDetailedView').style.display = 'flex';
+4696:                 } else {
+4697:                     btnToggleCompareView.innerText = "📊 상세 표 & 레이더 차트 비교";
+4698:                     document.getElementById('compareGrid').style.display = 'grid';
+4699:                     document.getElementById('compareDetailedView').style.display = 'none';
+4700:                 }
+4701:                 if (orchestrator.state.comparisonList.length > 0) {
+4702:                     renderComparisonBoard(orchestrator.compareAgent.generateComparisonMatrix(orchestrator.state.comparisonList, orchestrator.state.childProfile.scores));
+4703:                 }
+4704:             });
+4705:         }
+4706: 
+4707:         compareGrid.innerHTML = '';
+4708:         
+4709:         // 동적 그리드 열 크기 조절 (최대 5개)
+4710:         compareGrid.style.gridTemplateColumns = `repeat(${matrix.length}, 1fr)`;
+4711:         
+4712:         if (isCompareDetailed) {
+4713:             drawRadarChart('compareRadarCanvas', matrix);
+4714:             populateComparisonTable(matrix);
+4715:         }
+4716: 
+4717:         matrix.forEach(item => {
+4718:             const col = document.createElement('div');
+4719:             col.className = 'compare-col';
+4720:             col.style.position = 'relative';
+4721:             
+4722:             // 3개년 성적 스파크라인 SVG 렌더링
+4723:             let sparklineHtml = '';
+4724:             if (item.trendData && item.trendData.length >= 3) {
+4725:                 const pts = item.trendData;
+4726:                 const width = 120;
+4727:                 const height = 30;
+4728:                 const minVal = 50;
+4729:                 const maxVal = 100;
+4730:                 
+4731:                 const getX = (idx) => 10 + idx * 50;
+4732:                 const getY = (val) => height - 6 - ((val - minVal) / (maxVal - minVal)) * (height - 12);
+4733:                 
+4734:                 const p1 = `${getX(0)},${getY(pts[0])}`;
+4735:                 const p2 = `${getX(1)},${getY(pts[1])}`;
+4736:                 const p3 = `${getX(2)},${getY(pts[2])}`;
+4737:                 
+4738:                 sparklineHtml = `
+4739:                     <div style="margin: 8px 0; background: #f8f9fa; border-radius: 4px; border: 1px solid var(--border-color); padding: 4px; display: flex; align-items: center; justify-content: space-between;">
+4740:                         <svg width="${width}" height="${height}">
+4741:                             <path d="M ${p1} L ${p2} L ${p3}" fill="none" stroke="var(--primary-blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+4742:                             <circle cx="${getX(0)}" cy="${getY(pts[0])}" r="3" fill="var(--deep-blue)" stroke="white" stroke-width="1"></circle>
+4743:                             <circle cx="${getX(1)}" cy="${getY(pts[1])}" r="3" fill="var(--deep-blue)" stroke="white" stroke-width="1"></circle>
+4744:                             <circle cx="${getX(2)}" cy="${getY(pts[2])}" r="3" fill="var(--deep-blue)" stroke="white" stroke-width="1"></circle>
+4745:                         </svg>
+4746:                         <div style="font-size: 9px; color: var(--text-muted); text-align: right; line-height: 1.2;">
+4747:                             3년 전: ${pts[0]}점<br>
+4748:                             최근: <strong>${pts[2]}점</strong>
+4749:                         </div>
+4750:                     </div>

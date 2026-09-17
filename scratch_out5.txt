@@ -1,0 +1,72 @@
+=== APP.JS LINES 5630-5700 ===
+5630:         modal.style.display = 'flex';
+5631:         const panel = document.getElementById('budgetDetailPanel');
+5632:         if (panel) panel.style.display = 'block';
+5633:     } else {
+5634:         modal.style.display = 'none';
+5635:     }
+5636: };
+5637: 
+5638: // --- 창체 활동비 비교 기준 업데이트 ---
+5639: window.updateBudgetCompare = function(type) {
+5640:     const bd = window.currentSchoolBudgetDetail;
+5641:     if (!bd) return;
+5642: 
+5643:     // 탭 스타일 활성화 처리
+5644:     const tabs = document.querySelectorAll('.budget-tab-btn');
+5645:     tabs.forEach(btn => {
+5646:         if (btn.getAttribute('data-compare') === type) {
+5647:             btn.style.background = 'white';
+5648:             btn.style.color = 'var(--deep-blue)';
+5649:             btn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+5650:         } else {
+5651:             btn.style.background = 'transparent';
+5652:             btn.style.color = 'var(--text-muted)';
+5653:             btn.style.boxShadow = 'none';
+5654:         }
+5655:     });
+5656: 
+5657:     let compareAvg = bd.regionAvg;
+5658:     let label = `${bd.regionName} 평균 ${bd.regionAvg}만원`;
+5659: 
+5660:     if (type === 'city') {
+5661:         compareAvg = bd.cityAvg || 138;
+5662:         label = `${bd.cityName || '서울특별시'} 평균 ${compareAvg}만원`;
+5663:     } else if (type === 'national') {
+5664:         compareAvg = bd.nationalAvg || 122;
+5665:         label = `전국 평균 ${compareAvg}만원`;
+5666:     }
+5667: 
+5668:     document.getElementById('budgetBarRegionLabel').innerText = label;
+5669:     document.getElementById('budgetBarRegionMarkText').innerText = `▲ ${type === 'region' ? bd.regionName : (type === 'city' ? (bd.cityName || '서울특별시') : '전국')} 평균`;
+5670:     document.getElementById('budgetBarRegionMark').title = `${type === 'region' ? bd.regionName : (type === 'city' ? (bd.cityName || '서울특별시') : '전국')} 평균`;
+5671: 
+5672:     const maxVal = Math.max(bd.budget, compareAvg) * 1.2;
+5673:     const leftPct = Math.min((compareAvg / maxVal) * 100, 100);
+5674:     document.getElementById('budgetBarSchool').style.width = `${Math.min((bd.budget / maxVal) * 100, 100)}%`;
+5675:     document.getElementById('budgetBarRegionMark').style.left = `calc(${leftPct}% - 1px)`;
+5676:     document.getElementById('budgetBarRegionMarkText').style.left = `${leftPct}%`;
+5677: };
+5678: 
+5679: // --- Community Filter & Fetch Logic ---
+5680: window.currentAcademyForCommunity = '';
+5681: window.currentCommunityFilter = 'all';
+5682: 
+5683: window.fetchCommunityReviews = async (acadName, type = 'all', subjectLabel = '', typeLabel = '') => {
+5684:     const panel = document.getElementById('communityPanel');
+5685:     const title = document.getElementById('communityAcademyName');
+5686:     const reviewContainer = document.getElementById('communityReviewsList');
+5687:     
+5688:     title.innerText = acadName;
+5689: 
+5690:     // 상세 과목 뱃지 업데이트
+5691:     const subjectEl = document.getElementById('communityAcademySubject');
+5692:     if (subjectEl) {
+5693:         if (subjectLabel) {
+5694:             subjectEl.innerText = subjectLabel;
+5695:             subjectEl.style.display = 'inline-block';
+5696:         } else {
+5697:             subjectEl.style.display = 'none';
+5698:         }
+5699:     }
+5700: 

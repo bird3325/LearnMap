@@ -1622,12 +1622,32 @@ body {
 }
 
 /* 스크롤바 감추기 (터치 드래그 기능은 보존) */
-.hide-scrollbar {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+.hide-scrollbar,
+#studentStatsModal > div > div,
+#violenceStatsModal > div > div,
+#budgetModal #budgetDetailPanel,
+#compareScrollBody,
+#schoolReviewListContainer,
+#storyListContainer,
+#graduateModalContent,
+#competitionModalContent,
+#simulationResultPanel {
+    -ms-overflow-style: none !important; /* IE and Edge */
+    scrollbar-width: none !important; /* Firefox */
 }
-.hide-scrollbar::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
+.hide-scrollbar::-webkit-scrollbar,
+#studentStatsModal > div > div::-webkit-scrollbar,
+#violenceStatsModal > div > div::-webkit-scrollbar,
+#budgetModal #budgetDetailPanel::-webkit-scrollbar,
+#compareScrollBody::-webkit-scrollbar,
+#schoolReviewListContainer::-webkit-scrollbar,
+#storyListContainer::-webkit-scrollbar,
+#graduateModalContent::-webkit-scrollbar,
+#competitionModalContent::-webkit-scrollbar,
+#simulationResultPanel::-webkit-scrollbar {
+    display: none !important; /* Chrome, Safari, Opera */
+    width: 0 !important;
+    height: 0 !important;
 }
 
 /* 드래그 가능 메뉴 스크롤 화살표 버튼 시스템 */

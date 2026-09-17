@@ -1,0 +1,322 @@
+=== INDEX.HTML LINES 1780-2100 ===
+1780:                 </div>
+1781:                 </div><!-- /community-scroll-content -->
+1782:             </div>
+1783:         </section>
+1784:     </div>
+1785: 
+1786: 
+1787: 
+1788: 
+1789: 
+1790:     <!-- 창체 활동비 상세 모달 -->
+1791:     <div id="budgetModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) toggleBudgetPanel()">
+1792:         <div style="background: var(--bg-card); border-radius: 16px; padding: 24px; width: 90%; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color); position: relative;">
+1793:             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+1794:                 <h3 style="font-size: 16px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
+1795:                     <span>💰 창체 활동비 상세</span>
+1796:                 </h3>
+1797:                 <button onclick="toggleBudgetPanel()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='var(--deep-blue)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
+1798:             </div>
+1799:             
+1800:             <div id="budgetDetailPanel" style="background: white; border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; font-size: 12px;">
+1801:                 <!-- 등급 + 1인당 환산 -->
+1802:                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+1803:                     <div>
+1804:                         <span style="color: var(--text-muted);">활동비 등급</span><br>
+1805:                         <span id="budgetGradeLabel" style="font-size: 14px; font-weight: 700; padding: 2px 10px; border-radius: 20px; display: inline-block; margin-top: 3px;">중</span>
+1806:                     </div>
+1807:                     <div style="text-align: right;">
+1808:                         <span style="color: var(--text-muted);">학생 1인당 월 환산</span><br>
+1809:                         <strong id="budgetPerStudent" style="font-size: 14px; color: var(--deep-blue);">-원</strong>
+1810:                     </div>
+1811:                 </div>
+1812:                 <!-- 비교 기준 선택 (구 / 시 / 전국) -->
+1813:                 <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+1814:                     <span style="font-size: 11px; color: var(--text-muted);">비교 기준 설정</span>
+1815:                     <div style="display: flex; gap: 4px; background: #f0f4f8; padding: 2px; border-radius: 6px;" id="budgetCompareTabs">
+1816:                         <button class="budget-tab-btn" data-compare="region" onclick="updateBudgetCompare('region')" style="border: none; background: white; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: var(--deep-blue); box-shadow: 0 1px 3px rgba(0,0,0,0.1);">관할 구</button>
+1817:                         <button class="budget-tab-btn" data-compare="city" onclick="updateBudgetCompare('city')" style="border: none; background: transparent; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: var(--text-muted);">서울특별시</button>
+1818:                         <button class="budget-tab-btn" data-compare="national" onclick="updateBudgetCompare('national')" style="border: none; background: transparent; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: var(--text-muted);">전국</button>
+1819:                     </div>
+1820:                 </div>
+1821:                 <!-- 지역 평균 대비 비교 바 -->
+1822:                 <div style="margin-bottom: 10px;">
+1823:                     <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">
+1824:                         <span>이 학교 <strong id="budgetBarSchoolVal">-만원</strong></span>
+1825:                         <span id="budgetBarRegionLabel">지역 평균</span>
+1826:                     </div>
+1827:                     <div style="position: relative; background: #f0f4f8; border-radius: 6px; height: 10px; overflow: visible; margin-bottom: 24px;">
+1828:                         <div id="budgetBarSchool" style="position: absolute; left: 0; top: 0; height: 100%; background: var(--primary-blue); border-radius: 6px; transition: width 0.6s ease;"></div>
+1829:                         <div id="budgetBarRegionMark" style="position: absolute; top: -3px; width: 2px; height: 16px; background: #f57c00; border-radius: 2px;" title="지역 평균"></div>
+1830:                         <div id="budgetBarRegionMarkText" style="position: absolute; top: 16px; font-size: 10px; color: #f57c00; white-space: nowrap; transform: translateX(-50%); font-weight: bold; transition: left 0.6s ease;">▲ 지역 평균</div>
+1831:                     </div>
+1832:                 </div>
+1833:                 <!-- 3개년 추이 미니 차트 -->
+1834:                 <div style="margin-bottom: 10px;">
+1835:                     <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">📈 최근 3개년 추이</div>
+1836:                     <div style="display: flex; align-items: flex-end; gap: 6px; height: 60px; margin-top: 10px;" id="budgetTrendChart"></div>
+1837:                 </div>
+1838:                 <!-- 항목별 세부 내역 -->
+1839:                 <div style="margin-bottom: 10px;">
+1840:                     <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">📋 항목별 세부 내역</div>
+1841:                     <div id="budgetBreakdown" style="display: flex; flex-direction: column; gap: 4px;"></div>
+1842:                 </div>
+1843:                 <!-- 창체 활동비 설명 영역 -->
+1844:                 <div style="margin-top: 12px; margin-bottom: 12px; padding: 10px 12px; background: var(--bg-primary); border-radius: 8px; font-size: 11px; color: var(--text-muted); line-height: 1.5; border-left: 3px solid var(--primary-blue);">
+1845:                     <strong style="color: var(--deep-blue); font-size: 11px;">💡 창의적 체험활동비(창체 활동비)란?</strong>
+1846:                     <p style="margin: 4px 0 0 0; font-size: 11px; letter-spacing: -0.2px;">
+1847:                         교과 수업 외에 <strong>자율활동, 동아리활동, 봉사활동, 진로활동</strong>을 지원하기 위해 학생에게 연간 투자되는 활동 예산입니다. 창체 활동비 수준이 높을수록 풍부한 진로 체험 학습, 외부 강사 초빙 강연, 다채로운 동아리 부서 활성화 등 질 높은 비교과 교육 인프라 혜택을 폭넓게 누릴 수 있습니다.
+1848:                     </p>
+1849:                 </div>
+1850:                 <!-- 학교알리미 링크 -->
+1851:                 <a id="schoolAlrimiLink" href="#" target="_blank" style="display: block; text-align: center; font-size: 11px; color: var(--primary-blue); text-decoration: none; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 4px;">🏫 학교알리미에서 원본 확인 →</a>
+1852:             </div>
+1853:         </div>
+1854:     </div>
+1855: 
+1856:     <!-- 관심 학교 설정 및 메모 모달 -->
+1857:     <div id="favMemoModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) toggleFavMemoModal()">
+1858:         <div style="background: var(--bg-card); border-radius: 16px; padding: 24px; width: 90%; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color); position: relative;">
+1859:             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+1860:                 <h3 style="font-size: 16px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
+1861:                     <span>⭐ 관심 학교 설정 및 메모</span>
+1862:                 </h3>
+1863:                 <button onclick="toggleFavMemoModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='var(--deep-blue)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
+1864:             </div>
+1865:             
+1866:             <div style="display: flex; flex-direction: column; gap: 12px; font-size: 12px;">
+1867:                 <div style="font-size: 14px; font-weight: bold; color: var(--text-main);" id="favMemoModalSchoolName">○○중학교</div>
+1868:                 
+1869:                 <div style="display: flex; flex-direction: column; gap: 4px;">
+1870:                     <label style="font-weight: 700; color: var(--text-main);">관심 순위 지정</label>
+1871:                     <select id="favPrioritySelect" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 12px; cursor: pointer; outline: none; background: white;">
+1872:                         <option value="3">⭐ 관심 등록</option>
+1873:                         <option value="1">🥇 1순위 학교</option>
+1874:                         <option value="2">🥈 2순위 학교</option>
+1875:                     </select>
+1876:                 </div>
+1877:                 
+1878:                 <div style="display: flex; flex-direction: column; gap: 4px;">
+1879:                     <label style="font-weight: 700; color: var(--text-main);">개인 메모</label>
+1880:                     <textarea id="favMemoText" placeholder="학부모 개인 메모를 작성해 주세요 (예: 통학로 안전, 면학 분위기 좋음 등)" style="width: 100%; min-height: 80px; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 12px; font-family: inherit; resize: vertical; box-sizing: border-box; outline: none; background: white;"></textarea>
+1881:                 </div>
+1882:                 
+1883:                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+1884:                     <span id="favMemoDate" style="font-size: 10px; color: var(--text-muted);">작성일: -</span>
+1885:                     <div style="display: flex; gap: 8px; flex-shrink: 0;">
+1886:                         <button id="btnRemoveFavoriteFromModal" class="btn-secondary" style="padding: 8px 14px; font-size: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; border: 1px solid var(--danger-red); background: white; color: var(--danger-red); transition: all 0.2s; white-space: nowrap;">관심 해제</button>
+1887:                         <button id="btnSaveFavMemo" class="btn-primary" style="padding: 8px 14px; font-size: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; border: none; background: var(--primary-blue); color: white; transition: background 0.2s; white-space: nowrap;">저장하기</button>
+1888:                     </div>
+1889:                 </div>
+1890:             </div>
+1891:         </div>
+1892:     </div>
+1893: 
+1894:     <!-- 졸업생 진학률 상세 모달 -->
+1895:     <div id="graduateModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) toggleGraduateModal()">
+1896:         <div style="background: var(--bg-card); border-radius: 16px; padding: 24px; width: 90%; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color); position: relative;">
+1897:             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+1898:                 <h3 style="font-size: 16px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
+1899:                     <span id="graduateModalTitle">🎓 졸업생 진학률 상세</span>
+1900:                 </h3>
+1901:                 <button onclick="toggleGraduateModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='var(--deep-blue)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
+1902:             </div>
+1903:             
+1904:             <div id="graduateModalContent" style="font-size: 12px;">
+1905:                 <!-- 콘텐츠가 app.js에 의해 동적으로 주입됩니다. -->
+1906:             </div>
+1907:         </div>
+1908:     </div>
+1909: 
+1910:     <!-- 전학생·통학 현황 상세 모달 -->
+1911:     <div id="studentStatsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) toggleStudentStatsModal()">
+1912:         <div style="background: var(--bg-card); border-radius: 16px; padding: 24px; width: 90%; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color); position: relative;">
+1913:             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+1914:                 <h3 style="font-size: 16px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
+1915:                     <span>🚌 전학생·통학 현황 상세</span>
+1916:                 </h3>
+1917:                 <button onclick="toggleStudentStatsModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='var(--deep-blue)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
+1918:             </div>
+1919:             <div style="font-size: 12px; max-height: 70vh; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 16px;">
+1920:                 <!-- 전학생 현황 -->
+1921:                 <div>
+1922:                     <div style="font-weight: 700; color: var(--deep-blue); margin-bottom: 8px; font-size: 13px;">📋 전학생 현황 (연간 집계)</div>
+1923:                     <div style="display: flex; gap: 8px;">
+1924:                         <div style="flex:1; background:#e8f5e9; border-radius:8px; padding:12px; text-align:center;">
+1925:                             <div style="font-size:11px; color:#388e3c; margin-bottom:4px;">전입생</div>
+1926:                             <div style="font-size:24px; font-weight:700; color:#2e7d32;" id="statTransferIn">-</div>
+1927:                             <div style="font-size:11px; color:#388e3c;">명</div>
+1928:                         </div>
+1929:                         <div style="flex:1; background:#fff3e0; border-radius:8px; padding:12px; text-align:center;">
+1930:                             <div style="font-size:11px; color:#e65100; margin-bottom:4px;">전출생</div>
+1931:                             <div style="font-size:24px; font-weight:700; color:#bf360c;" id="statTransferOut">-</div>
+1932:                             <div style="font-size:11px; color:#e65100;">명</div>
+1933:                         </div>
+1934:                         <div style="flex:1; background:#e3f2fd; border-radius:8px; padding:12px; text-align:center;">
+1935:                             <div style="font-size:11px; color:#1565c0; margin-bottom:4px;">순증감</div>
+1936:                             <div style="font-size:24px; font-weight:700; color:#0d47a1;" id="statTransferNet">-</div>
+1937:                             <div style="font-size:11px; color:#1565c0;">명</div>
+1938:                         </div>
+1939:                     </div>
+1940:                 </div>
+1941:                 <!-- 거주지 비율 -->
+1942:                 <div>
+1943:                     <div style="font-weight: 700; color: var(--deep-blue); margin-bottom: 8px; font-size: 13px;">🏠 거주지 비율 (통학구역 기준)</div>
+1944:                     <div style="height:16px; border-radius:8px; overflow:hidden; margin-bottom:6px;">
+1945:                         <div id="residenceBar" style="height:100%; background: linear-gradient(to right, #1565c0 0%, #1565c0 70%, #e0e0e0 70%, #e0e0e0 100%);"></div>
+1946:                     </div>
+1947:                     <div style="display:flex; justify-content:space-between; font-size:12px;">
+1948:                         <span style="color:#1565c0;">🏡 관내 거주 <strong id="statResidenceIn">-</strong>%</span>
+1949:                         <span style="color:#757575;">관외 거주 <strong id="statResidenceOut">-</strong>%</span>
+1950:                     </div>
+1951:                     <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">관내: 학교 통학구역 내 거주 학생 비율</div>
+1952:                 </div>
+1953:                 <!-- 통학 수단 비율 -->
+1954:                 <div>
+1955:                     <div style="font-weight: 700; color: var(--deep-blue); margin-bottom: 8px; font-size: 13px;">🚶 통학 수단 비율</div>
+1956:                     <div style="display:flex; height:16px; border-radius:8px; overflow:hidden; margin-bottom:8px;">
+1957:                         <div id="commuteBarWalk" style="background:#4caf50; transition:width 0.4s;"></div>
+1958:                         <div id="commuteBarBus"  style="background:#2196f3; transition:width 0.4s;"></div>
+1959:                         <div id="commuteBarCar"  style="background:#ff9800; transition:width 0.4s;"></div>
+1960:                         <div id="commuteBarEtc"  style="background:#9e9e9e; transition:width 0.4s;"></div>
+1961:                     </div>
+1962:                     <div style="display:flex; flex-direction:column; gap:6px; font-size:12px;">
+1963:                         <div style="display:flex; justify-content:space-between; align-items:center;">
+1964:                             <span><span style="color:#4caf50;">●</span> 도보</span>
+1965:                             <div style="flex:1; height:6px; background:#f0f0f0; border-radius:3px; margin:0 8px; overflow:hidden;"><div id="commuteBarWalk2" style="height:100%; background:#4caf50; transition:width 0.4s;"></div></div>
+1966:                             <strong id="statCommuteWalk">-</strong>%
+1967:                         </div>
+1968:                         <div style="display:flex; justify-content:space-between; align-items:center;">
+1969:                             <span><span style="color:#2196f3;">●</span> 대중교통</span>
+1970:                             <div style="flex:1; height:6px; background:#f0f0f0; border-radius:3px; margin:0 8px; overflow:hidden;"><div id="commuteBarBus2" style="height:100%; background:#2196f3; transition:width 0.4s;"></div></div>
+1971:                             <strong id="statCommuteBus">-</strong>%
+1972:                         </div>
+1973:                         <div style="display:flex; justify-content:space-between; align-items:center;">
+1974:                             <span><span style="color:#ff9800;">●</span> 자가용</span>
+1975:                             <div style="flex:1; height:6px; background:#f0f0f0; border-radius:3px; margin:0 8px; overflow:hidden;"><div id="commuteBarCar2" style="height:100%; background:#ff9800; transition:width 0.4s;"></div></div>
+1976:                             <strong id="statCommuteCar">-</strong>%
+1977:                         </div>
+1978:                         <div style="display:flex; justify-content:space-between; align-items:center;">
+1979:                             <span><span style="color:#9e9e9e;">●</span> 기타</span>
+1980:                             <div style="flex:1; height:6px; background:#f0f0f0; border-radius:3px; margin:0 8px; overflow:hidden;"><div id="commuteBarEtc2" style="height:100%; background:#9e9e9e; transition:width 0.4s;"></div></div>
+1981:                             <strong id="statCommuteEtc">-</strong>%
+1982:                         </div>
+1983:                     </div>
+1984:                 </div>
+1985:                 <div style="font-size:10px; color:var(--text-muted); padding-top:8px; border-top:1px solid var(--border-color);">※ 출처: 학교알리미 수준 집계 데이터 (개인 식별 불가)</div>
+1986:             </div>
+1987:         </div>
+1988:     </div>
+1989:     </div>
+1990: 
+1991:     <!-- 학교폭력 현황 상세 모달 -->
+1992:     <div id="violenceStatsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) toggleViolenceStatsModal()">
+1993:         <div style="background: var(--bg-card); border-radius: 16px; padding: 24px; width: 90%; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color); position: relative;">
+1994:             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+1995:                 <h3 style="font-size: 16px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
+1996:                     <span>🛡️ 학교폭력 현황 상세</span>
+1997:                 </h3>
+1998:                 <button onclick="toggleViolenceStatsModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='var(--deep-blue)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
+1999:             </div>
+2000:             <div style="font-size: 12px; max-height: 70vh; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 16px;">
+2001:                 <!-- 총 신고건수 -->
+2002:                 <div>
+2003:                     <div style="font-weight: 700; color: var(--deep-blue); margin-bottom: 8px; font-size: 13px;">📋 연간 학교폭력 신고 현황</div>
+2004:                     <div style="display: flex; gap: 8px;">
+2005:                         <div style="flex:1; background:#fff8e1; border-radius:8px; padding:12px; text-align:center;">
+2006:                             <div style="font-size:11px; color:#f57f17; margin-bottom:4px;">연간 신고건수</div>
+2007:                             <div style="font-size:24px; font-weight:700; color:#e65100;" id="statViolenceTotal">-</div>
+2008:                             <div style="font-size:11px; color:#f57f17;">건</div>
+2009:                         </div>
+2010:                         <div style="flex:1; background:#f3e5f5; border-radius:8px; padding:12px; text-align:center;">
+2011:                             <div style="font-size:11px; color:#6a1b9a; margin-bottom:4px;">100명당 신고</div>
+2012:                             <div style="font-size:24px; font-weight:700; color:#4a148c;" id="statViolencePer100">-</div>
+2013:                             <div style="font-size:11px; color:#6a1b9a;">건</div>
+2014:                         </div>
+2015:                         <div style="flex:1; background:#e8f5e9; border-radius:8px; padding:12px; text-align:center;">
+2016:                             <div style="font-size:11px; color:#2e7d32; margin-bottom:4px;">처리 완료율</div>
+2017:                             <div style="font-size:24px; font-weight:700; color:#1b5e20;" id="statViolenceResolved">-</div>
+2018:                             <div style="font-size:11px; color:#2e7d32;">%</div>
+2019:                         </div>
+2020:                     </div>
+2021:                 </div>
+2022:                 <!-- 유형별 비율 -->
+2023:                 <div>
+2024:                     <div style="font-weight: 700; color: var(--deep-blue); margin-bottom: 8px; font-size: 13px;">📊 폭력 유형별 비율</div>
+2025:                     <div style="display:flex; height:16px; border-radius:8px; overflow:hidden; margin-bottom:10px;">
+2026:                         <div id="violenceBarVerbal"   style="background:#ef5350; transition:width 0.4s;"></div>
+2027:                         <div id="violenceBarCyber"    style="background:#ab47bc; transition:width 0.4s;"></div>
+2028:                         <div id="violenceBarExclude"  style="background:#ffa726; transition:width 0.4s;"></div>
+2029:                         <div id="violenceBarPhysical" style="background:#78909c; transition:width 0.4s;"></div>
+2030:                     </div>
+2031:                     <div style="display:flex; flex-direction:column; gap:6px; font-size:12px;">
+2032:                         <div style="display:flex; justify-content:space-between; align-items:center;">
+2033:                             <span><span style="color:#ef5350;">●</span> 언어폭력</span>
+2034:                             <div style="flex:1; height:6px; background:#f0f0f0; border-radius:3px; margin:0 8px; overflow:hidden;"><div id="violenceBarVerbal2" style="height:100%; background:#ef5350; transition:width 0.4s;"></div></div>
+2035:                             <strong id="statViolenceVerbal">-</strong>%
+2036:                         </div>
+2037:                         <div style="display:flex; justify-content:space-between; align-items:center;">
+2038:                             <span><span style="color:#ab47bc;">●</span> 사이버폭력</span>
+2039:                             <div style="flex:1; height:6px; background:#f0f0f0; border-radius:3px; margin:0 8px; overflow:hidden;"><div id="violenceBarCyber2" style="height:100%; background:#ab47bc; transition:width 0.4s;"></div></div>
+2040:                             <strong id="statViolenceCyber">-</strong>%
+2041:                         </div>
+2042:                         <div style="display:flex; justify-content:space-between; align-items:center;">
+2043:                             <span><span style="color:#ffa726;">●</span> 집단따돌림</span>
+2044:                             <div style="flex:1; height:6px; background:#f0f0f0; border-radius:3px; margin:0 8px; overflow:hidden;"><div id="violenceBarExclude2" style="height:100%; background:#ffa726; transition:width 0.4s;"></div></div>
+2045:                             <strong id="statViolenceExclude">-</strong>%
+2046:                         </div>
+2047:                         <div style="display:flex; justify-content:space-between; align-items:center;">
+2048:                             <span><span style="color:#78909c;">●</span> 신체폭력</span>
+2049:                             <div style="flex:1; height:6px; background:#f0f0f0; border-radius:3px; margin:0 8px; overflow:hidden;"><div id="violenceBarPhysical2" style="height:100%; background:#78909c; transition:width 0.4s;"></div></div>
+2050:                             <strong id="statViolencePhysical">-</strong>%
+2051:                         </div>
+2052:                     </div>
+2053:                 </div>
+2054:                 <div style="font-size:10px; color:var(--text-muted); padding-top:8px; border-top:1px solid var(--border-color);">※ 출처: 학교알리미 수준 집계 데이터 · 건수 0건은 미신고 또는 집계 제외를 의미할 수 있음</div>
+2055:             </div>
+2056:         </div>
+2057:     </div>
+2058: 
+2059:     <!-- 내신 경쟁 상세 분석 모달 -->
+2060:     <div id="competitionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) toggleCompetitionModal()">
+2061:         <div style="background: var(--bg-card); border-radius: 16px; padding: 24px; width: 90%; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color); position: relative;">
+2062:             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+2063:                 <h3 style="font-size: 16px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
+2064:                     <span id="competitionModalTitle">🔥 내신 경쟁 상세 분석</span>
+2065:                 </h3>
+2066:                 <button onclick="toggleCompetitionModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='var(--deep-blue)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
+2067:             </div>
+2068:             
+2069:             <div id="competitionModalContent" class="hide-scrollbar" style="font-size: 12px; max-height: 70vh; overflow-y: auto; padding-right: 4px;">
+2070:                 <!-- 콘텐츠가 app.js에 의해 동적으로 주입됩니다. -->
+2071:             </div>
+2072:         </div>
+2073:     </div>
+2074: 
+2075:     <!-- Add Review Modal -->
+2076:     <div id="reviewModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99999; justify-content: center; align-items: center;">
+2077:         <div style="background: white; border-radius: 12px; width: 400px; max-width: 90%; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+2078:             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+2079:                 <h3 style="margin: 0; color: var(--deep-blue); font-size: 16px;">학원 후기 남기기</h3>
+2080:                 <button onclick="document.getElementById('reviewModal').style.display='none'" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted);">&times;</button>
+2081:             </div>
+2082:             
+2083:             <div style="margin-bottom: 16px;">
+2084:                 <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">학원명</label>
+2085:                 <div id="reviewModalAcademyName" style="font-weight: bold; font-size: 14px; color: var(--text-main);">학원명</div>
+2086:             </div>
+2087:             
+2088:             <div style="margin-bottom: 16px;">
+2089:                 <div id="academyStarContainer" style="font-size: 32px; color: #e4e4e7; cursor: pointer; display: flex; gap: 4px; padding: 4px 0; user-select: none;">
+2090:                     <span data-val="1" style="transition: all 0.2s ease; display: inline-flex; align-items: center;"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" style="width: 1em; height: 1em; pointer-events: none;"><path d="M12 3l2.9 6.2 6.8 1-4.9 4.8 1.2 6.8-6-3.2-6 3.2 1.2-6.8-4.9-4.8 6.8-1z"/></svg></span>
+2091:                     <span data-val="2" style="transition: all 0.2s ease; display: inline-flex; align-items: center;"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" style="width: 1em; height: 1em; pointer-events: none;"><path d="M12 3l2.9 6.2 6.8 1-4.9 4.8 1.2 6.8-6-3.2-6 3.2 1.2-6.8-4.9-4.8 6.8-1z"/></svg></span>
+2092:                     <span data-val="3" style="transition: all 0.2s ease; display: inline-flex; align-items: center;"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" style="width: 1em; height: 1em; pointer-events: none;"><path d="M12 3l2.9 6.2 6.8 1-4.9 4.8 1.2 6.8-6-3.2-6 3.2 1.2-6.8-4.9-4.8 6.8-1z"/></svg></span>
+2093:                     <span data-val="4" style="transition: all 0.2s ease; display: inline-flex; align-items: center;"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" style="width: 1em; height: 1em; pointer-events: none;"><path d="M12 3l2.9 6.2 6.8 1-4.9 4.8 1.2 6.8-6-3.2-6 3.2 1.2-6.8-4.9-4.8 6.8-1z"/></svg></span>
+2094:                     <span data-val="5" style="transition: all 0.2s ease; display: inline-flex; align-items: center;"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" style="width: 1em; height: 1em; pointer-events: none;"><path d="M12 3l2.9 6.2 6.8 1-4.9 4.8 1.2 6.8-6-3.2-6 3.2 1.2-6.8-4.9-4.8 6.8-1z"/></svg></span>
+2095:                 </div>
+2096:                 <input type="hidden" id="reviewRating" value="5">
+2097:                 <script>
+2098:                     (function() {
+2099:                         const container = document.getElementById('academyStarContainer');
+2100:                         const stars = container.querySelectorAll('span');

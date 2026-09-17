@@ -1,0 +1,82 @@
+=== APP.JS LINES 5870-5950 ===
+5870: // --- 학교폭력 현황 모달 토글 ---
+5871: window.toggleViolenceStatsModal = function() {
+5872:     const modal = document.getElementById('violenceStatsModal');
+5873:     if (!modal) return;
+5874:     if (modal.style.display === 'none' || modal.style.display === '') {
+5875:         modal.style.display = 'flex';
+5876:     } else {
+5877:         modal.style.display = 'none';
+5878:     }
+5879: };
+5880: 
+5881: // --- 학교폭력 데이터 렌더링 ---
+5882: window.renderViolenceStats = function(school) {
+5883:     const vs = school.violence_stats;
+5884:     if (!vs) return;
+5885: 
+5886:     // 인라인 요약
+5887:     const summaryEl = document.getElementById('statViolenceSummary');
+5888:     if (summaryEl) {
+5889:         if (vs.total_cases === 0) {
+5890:             summaryEl.innerHTML = `신고 없음 (처리율 ${vs.resolved_rate ?? '-'}%)`;
+5891:             summaryEl.style.color = '#2e7d32';
+5892:         } else {
+5893:             summaryEl.innerHTML = `연 ${vs.total_cases}건 · 100명당 ${vs.per_100 ?? '-'}건`;
+5894:             summaryEl.style.color = vs.total_cases > 3 ? '#c62828' : '#e65100';
+5895:         }
+5896:     }
+5897: 
+5898:     // 모달 내 수치
+5899:     const set = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+5900:     set('statViolenceTotal',    vs.total_cases ?? '-');
+5901:     set('statViolencePer100',   vs.per_100 ?? '-');
+5902:     set('statViolenceResolved', vs.resolved_rate ?? '-');
+5903: 
+5904:     // 유형별 비율
+5905:     const t = vs.types || {};
+5906:     const verbal   = t.verbal   ?? 0;
+5907:     const cyber    = t.cyber    ?? 0;
+5908:     const exclude  = t.exclude  ?? 0;
+5909:     const physical = t.physical ?? 0;
+5910: 
+5911:     set('statViolenceVerbal',   verbal);
+5912:     set('statViolenceCyber',    cyber);
+5913:     set('statViolenceExclude',  exclude);
+5914:     set('statViolencePhysical', physical);
+5915: 
+5916:     // 스택 바
+5917:     const setW = (id, val) => { const el = document.getElementById(id); if (el) el.style.width = val + '%'; };
+5918:     setW('violenceBarVerbal',   verbal);
+5919:     setW('violenceBarCyber',    cyber);
+5920:     setW('violenceBarExclude',  exclude);
+5921:     setW('violenceBarPhysical', physical);
+5922:     // 개별 바
+5923:     setW('violenceBarVerbal2',   verbal);
+5924:     setW('violenceBarCyber2',    cyber);
+5925:     setW('violenceBarExclude2',  exclude);
+5926:     setW('violenceBarPhysical2', physical);
+5927: };
+5928: 
+5929: // --- 전학생·통학 현황 모달 토글 ---
+5930: window.toggleStudentStatsModal = function() {
+5931:     const modal = document.getElementById('studentStatsModal');
+5932:     if (!modal) return;
+5933:     if (modal.style.display === 'none' || modal.style.display === '') {
+5934:         modal.style.display = 'flex';
+5935:     } else {
+5936:         modal.style.display = 'none';
+5937:     }
+5938: };
+5939: 
+5940: // 하위 호환성 유지 (구 toggleStudentStatsPanel 호출 대응)
+5941: window.toggleStudentStatsPanel = window.toggleStudentStatsModal;
+5942: 
+5943: // --- 전학생·통학 데이터 렌더링 ---
+5944: window.renderStudentStats = function(school) {
+5945:     const ts = school.transfer_stats;
+5946:     const rs = school.residence_stats;
+5947:     const cs = school.commute_stats;
+5948: 
+5949:     // 인라인 요약값 (전학생·통학 현황: 전입 N / 전출 N)
+5950:     const summaryEl = document.getElementById('statTransferSummary');

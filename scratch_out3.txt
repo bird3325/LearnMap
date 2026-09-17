@@ -1,0 +1,245 @@
+=== APP.JS LINES 3320-3450 ===
+3320:                         });
+3321:                         
+3322:                         const engFee = engCount > 0 ? Math.round(engSum / engCount) : 0;
+3323:                         const mathFee = mathCount > 0 ? Math.round(mathSum / mathCount) : 0;
+3324:                         
+3325:                         if (acEng) acEng.innerText = engFee > 0 ? engFee.toLocaleString() + '원' : '380,000원 (추정)';
+3326:                         if (acMath) acMath.innerText = mathFee > 0 ? mathFee.toLocaleString() + '원' : '400,000원 (추정)';
+3327:                         if (typeof window.calculateAcademyBenefits === 'function') window.calculateAcademyBenefits();
+3328:                     } else {
+3329:                         if (acEng) acEng.innerText = '380,000원 (추정)';
+3330:                         if (acMath) acMath.innerText = '400,000원 (추정)';
+3331:                         if (typeof window.calculateAcademyBenefits === 'function') window.calculateAcademyBenefits();
+3332:                     }
+3333:                 })
+3334:                 .catch(err => {
+3335:                     console.error(err);
+3336:                     if (acEng) acEng.innerText = '380,000원 (추정)';
+3337:                     if (acMath) acMath.innerText = '400,000원 (추정)';
+3338:                     if (typeof window.calculateAcademyBenefits === 'function') window.calculateAcademyBenefits();
+3339:                 });
+3340:         }
+3341:         // ------------------------------------------------
+3342:         // 창체 패널 초기화 (닫힘 상태로)
+3343:         const budgetModal = document.getElementById('budgetModal');
+3344:         if (budgetModal) budgetModal.style.display = 'none';
+3345:         
+3346:         // 진학률 모달 초기화 (닫힘 상태로)
+3347:         const graduateModal = document.getElementById('graduateModal');
+3348:         if (graduateModal) graduateModal.style.display = 'none';
+3349:         
+3350:         // 경쟁 치열도 모달 초기화 (닫힘 상태로)
+3351:         const competitionModal = document.getElementById('competitionModal');
+3352:         if (competitionModal) competitionModal.style.display = 'none';
+3353:         
+3354:         document.getElementById('budgetDetailPanel').style.display = 'none';
+3355:         // 창체 상세 데이터 렌더링
+3356:         renderBudgetDetail(summary.budget_detail);
+3357: 
+3358:         // 전학생·통학 현황 모달 초기화 및 데이터 렌더링
+3359:         const studentStatsModal = document.getElementById('studentStatsModal');
+3360:         if (studentStatsModal) studentStatsModal.style.display = 'none';
+3361:         if (typeof window.renderStudentStats === 'function') {
+3362:             window.renderStudentStats(fullSchool);
+3363:         }
+3364: 
+3365:         // 학교폭력 현황 모달 초기화 및 데이터 렌더링
+3366:         const violenceStatsModal = document.getElementById('violenceStatsModal');
+3367:         if (violenceStatsModal) violenceStatsModal.style.display = 'none';
+3368:         if (typeof window.renderViolenceStats === 'function') {
+3369:             window.renderViolenceStats(fullSchool);
+3370:         }
+3371:         
+3372:         // 경쟁 치열도 상세 미리 렌더링
+3373:         renderCompetitionDetail(summary, fullSchool);
+3374: 
+3375:         // 학업 성향 태그 배지 생성
+3376:         const tagsContainer = document.getElementById('schoolCompetitionTags');
+3377:         if (tagsContainer) {
+3378:             tagsContainer.innerHTML = '';
+3379:             const compLabel = summary.competition_level.label;
+3380:             const tags = [];
+3381:             
+3382:             if (compLabel.includes('최상') || compLabel.includes('상')) {
+3383:                 // 특정 태그(🔥 내신 경쟁 극심, 🎒 명문 학군) 제거됨
+3384:             } else if (compLabel.includes('중상')) {
+3385:                 tags.push({ text: '👍 학업 열기 양호', bg: '#e3f2fd', color: '#1565c0' });
+3386:                 tags.push({ text: '📝 성실한 면학', bg: '#f3e5f5', color: '#6a1b9a' });
+3387:             } else if (compLabel.includes('중')) {
+3388:                 tags.push({ text: '⚖️ 균형 잡힌 학업', bg: '#eceff1', color: '#37474f' });
+3389:                 tags.push({ text: '🍀 원만한 내신', bg: '#fff8e1', color: '#f57f17' });
+3390:             } else {
+3391:                 tags.push({ text: '💡 개별 보강 추천', bg: '#fff3e0', color: '#e65100' });
+3392:             }
+3393: 
+3394:             // 📚 학원가 중심지 제거됨
+3395: 
+3396:             if (fullSchool.school_type && fullSchool.school_type.includes('고등학교')) {
+3397:                 tags.push({ text: '🎓 대입 대비', bg: '#fbe9e7', color: '#d84315' });
+3398:             } // ✏️ 고입 준비 제거됨
+3399: 
+3400:             tags.forEach(tag => {
+3401:                 const span = document.createElement('span');
+3402:                 span.style.cssText = `font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: ${tag.bg}; color: ${tag.color}; border: 1px solid ${tag.color}33;`;
+3403:                 span.innerText = tag.text;
+3404:                 tagsContainer.appendChild(span);
+3405:             });
+3406:         }
+3407:         
+3408:         // 진학률 모달 연동을 위한 데이터 글로벌 저장
+3409:         window.currentSchoolGraduateCareer = summary.graduate_career;
+3410:         window.currentSchoolType = fullSchool.school_type;
+3411:         window.currentSchoolName = fullSchool.school_name;
+3412:         
+3413:         // 진학률 상세 미리 렌더링
+3414:         renderGraduateDetail(summary.graduate_career, fullSchool.school_type, fullSchool.school_name, fullSchool.student_count);
+3415:         
+3416:         if (fullSchool.school_type && fullSchool.school_type.includes('고등학교')) {
+3417:             document.getElementById('schoolGraduateTrendLabel').innerText = '대학 진학률';
+3418:             document.getElementById('schoolGraduateTrend').innerText = `4년제 ${summary.graduate_career.general}% / 전문대 ${summary.graduate_career.specialized}%`;
+3419:         } else if (fullSchool.school_type && fullSchool.school_type.includes('초등학교')) {
+3420:             document.getElementById('schoolGraduateTrendLabel').innerText = '중학교 진학률';
+3421:             document.getElementById('schoolGraduateTrend').innerText = `관내 ${summary.graduate_career.general}% / 관외 ${summary.graduate_career.specialized}%`;
+3422:         } else {
+3423:             document.getElementById('schoolGraduateTrendLabel').innerText = '특목/자사 진학률';
+3424:             document.getElementById('schoolGraduateTrend').innerText = `특목 ${summary.graduate_career.special}% / 자사 ${summary.graduate_career.autonomous}%`;
+3425:         }
+3426: 
+3427:         // Render Academies List in the Sidebar using Kakao Places API
+3428:         const academyListContainer = document.getElementById('sideAcademyList');
+3429:         academyListContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">실제 주변 학원 데이터를 불러오는 중입니다...</div>';
+3430:         document.getElementById('schoolAcademies').innerText = '검색 중...';
+3431: 
+3432:         // 전체 학원 목록 백엔드 API로 가져오기 (가나다 정렬 + 클라이언트 페이지네이션)
+3433:         // sideAcademyList의 실제 높이를 측정하여 항목당 높이(약 36px)로 나누어 정확한 노출 개수 계산
+3434:         const listEl = document.getElementById('sideAcademyList');
+3435:         let availableHeight = listEl.clientHeight;
+3436:         if (availableHeight === 0) availableHeight = window.innerHeight - 280; // fallback
+3437:         
+3438:         const ITEM_HEIGHT = 36; // padding 6px*2 + 텍스트 1줄 + border 1px + gap 0 등 대략 36px
+3439:         const PAGE_SIZE = Math.max(Math.floor(availableHeight / ITEM_HEIGHT), 5);
+3440:         
+3441:         // 클라이언트 Kakao JS SDK 기반 주변 학원 검색 헬퍼 (카테고리 AC5 + 키워드 검색 통합)
+3442:         function fetchAcademiesClientSide(lat, lng) {
+3443:             return new Promise((resolve) => {
+3444:                 if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services || !window.kakao.maps.services.Places) {
+3445:                     resolve({ total_count: 0, items: [] });
+3446:                     return;
+3447:                 }
+3448:                 const ps = new kakao.maps.services.Places();
+3449:                 const loc = new kakao.maps.LatLng(lat, lng);
+3450:                 const uniqueMap = new Map();
+
+=== APP.JS LINES 4440-4550 ===
+4440:                         </div>
+4441:                     </div>
+4442:                 </div>
+4443: 
+4444:                 <div style="margin-top: 12px; padding: 10px 12px; background: var(--bg-primary); border-radius: 8px; font-size: 11px; color: var(--text-muted); line-height: 1.5; border-left: 3px solid var(--primary-blue);">
+4445:                     <strong style="color: var(--deep-blue); font-size: 11px;">💡 중학교 졸업생 진로 가이드</strong>
+4446:                     <p style="margin: 4px 0 0 0; font-size: 11px; letter-spacing: -0.2px;">
+4447:                         특수목적고(과학고/외고/국제고/체고/예고 등) 및 자율형 사립고 진학률은 해당 학교의 전반적인 학업 면학 분위기와 고교 입시 준비 인프라(학원가 밀집도, 내신 난이도 등)를 판단하는 중요한 정량적 지표입니다.
+4448:                     </p>
+4449:                 </div>
+4450:             `;
+4451:         }
+4452: 
+4453:         contentEl.innerHTML = html;
+4454:     }
+4455: 
+4456:     function renderBudgetDetail(bd) {
+4457:         if (!bd) return;
+4458:         window.currentSchoolBudgetDetail = bd;
+4459:         
+4460:         // 시/도 탭 라벨 동적 업데이트
+4461:         const cityTabBtn = document.querySelector('.budget-tab-btn[data-compare="city"]');
+4462:         if (cityTabBtn) {
+4463:             cityTabBtn.innerText = bd.cityName || '서울특별시';
+4464:         }
+4465: 
+4466:         const gradeEl = document.getElementById('budgetGradeLabel');
+4467:         gradeEl.innerText = bd.grade.label;
+4468:         gradeEl.style.background = bd.grade.bg;
+4469:         gradeEl.style.color = bd.grade.color;
+4470:         document.getElementById('budgetPerStudent').innerText = `월 ${bd.perStudentMonth.toLocaleString()}원`;
+4471:         document.getElementById('budgetBarSchoolVal').innerText = `${bd.budget}만원`;
+4472:         window.updateBudgetCompare('region');
+4473:         const trendChart = document.getElementById('budgetTrendChart');
+4474:         trendChart.innerHTML = '';
+4475:         const years = [2022, 2023, 2024];
+4476:         const maxTrend = Math.max(...bd.trend);
+4477:         bd.trend.forEach((val, i) => {
+4478:             const barH = Math.max(10, Math.round((val / maxTrend) * 40));
+4479:             const isLast = i === bd.trend.length - 1;
+4480:             const col = document.createElement('div');
+4481:             col.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;';
+4482:             col.innerHTML = `
+4483:                 <span style="font-size:9px;color:${isLast ? 'var(--primary-blue)' : 'var(--text-muted)'};font-weight:${isLast ? '700' : '400'}">${val}만</span>
+4484:                 <div style="width:100%;max-width:28px;height:${barH}px;background:${isLast ? 'var(--primary-blue)' : '#c5cae9'};border-radius:3px 3px 0 0;"></div>
+4485:                 <span style="font-size:9px;color:var(--text-muted);">${years[i]}</span>
+4486:             `;
+4487:             trendChart.appendChild(col);
+4488:         });
+4489:         const breakdownEl = document.getElementById('budgetBreakdown');
+4490:         breakdownEl.innerHTML = '';
+4491:         const colors = ['#1976d2','#388e3c','#f57c00','#7b1fa2'];
+4492:         let ci = 0;
+4493:         for (const [key, val] of Object.entries(bd.breakdown)) {
+4494:             const pct = Math.round((val / bd.budget) * 100);
+4495:             const row = document.createElement('div');
+4496:             row.style.cssText = 'display:flex;align-items:center;gap:6px;';
+4497:             row.innerHTML = `
+4498:                 <span style="width:56px;font-size:11px;color:var(--text-muted);flex-shrink:0;">${key}</span>
+4499:                 <div style="flex:1;background:#f0f4f8;border-radius:4px;height:8px;overflow:hidden;">
+4500:                     <div style="width:${pct}%;height:100%;background:${colors[ci%colors.length]};border-radius:4px;transition:width 0.5s ease;"></div>
+4501:                 </div>
+4502:                 <span style="font-size:11px;font-weight:600;color:${colors[ci%colors.length]};width:44px;text-align:right;">${val}만원</span>
+4503:             `;
+4504:             breakdownEl.appendChild(row);
+4505:             ci++;
+4506:         }
+4507:         document.getElementById('schoolAlrimiLink').href = bd.schoolAlrimiUrl;
+4508:     }
+4509: 
+4510:     function drawRadarChart(canvasId, matrix) {
+4511:         const canvas = document.getElementById(canvasId);
+4512:         if (!canvas) return;
+4513:         const ctx = canvas.getContext('2d');
+4514:         ctx.clearRect(0, 0, canvas.width, canvas.height);
+4515:         
+4516:         const center = { x: canvas.width / 2, y: canvas.height / 2 };
+4517:         const radius = Math.min(canvas.width, canvas.height) * 0.35;
+4518:         
+4519:         // 3 axes: Korean, English, Math
+4520:         const axes = ['국어', '영어', '수학'];
+4521:         const numAxes = axes.length;
+4522:         
+4523:         // Draw grid concentric triangles (50, 60, 70, 80, 90, 100)
+4524:         const steps = [50, 60, 70, 80, 90, 100];
+4525:         ctx.strokeStyle = '#e2e8f0';
+4526:         ctx.lineWidth = 1;
+4527:         steps.forEach(step => {
+4528:             ctx.beginPath();
+4529:             for (let i = 0; i < numAxes; i++) {
+4530:                 const angle = (i * 2 * Math.PI / numAxes) - Math.PI / 2;
+4531:                 const r = ((step - 50) / 50) * radius;
+4532:                 const x = center.x + r * Math.cos(angle);
+4533:                 const y = center.y + r * Math.sin(angle);
+4534:                 if (i === 0) ctx.moveTo(x, y);
+4535:                 else ctx.lineTo(x, y);
+4536:             }
+4537:             ctx.closePath();
+4538:             ctx.stroke();
+4539:             
+4540:             // Draw scale values
+4541:             ctx.fillStyle = '#94a3b8';
+4542:             ctx.font = '9px sans-serif';
+4543:             ctx.fillText(step, center.x + 4, center.y - ((step - 50) / 50) * radius);
+4544:         });
+4545:         
+4546:         // Draw axes lines and labels
+4547:         ctx.fillStyle = '#475569';
+4548:         ctx.strokeStyle = '#cbd5e1';
+4549:         ctx.font = 'bold 11px sans-serif';
+4550:         for (let i = 0; i < numAxes; i++) {

@@ -628,7 +628,7 @@
                 </div>
                 
                 <!-- 스크롤 가능한 본문 영역 -->
-                <div id="compareScrollBody" style="flex: 1; overflow-y: auto; padding-right: 4px;">
+                <div id="compareScrollBody" class="hide-scrollbar" style="flex: 1; overflow-y: auto; padding-right: 4px; -ms-overflow-style: none; scrollbar-width: none;">
                     <!-- View 1: Original Card Grid -->
                     <div class="compare-grid" id="compareGrid" style="grid-template-columns: repeat(5, 1fr);">
                         <!-- Dynamic comparison items go here -->
@@ -1916,7 +1916,7 @@
                 </h3>
                 <button onclick="toggleStudentStatsModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='var(--deep-blue)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
             </div>
-            <div style="font-size: 12px; max-height: 70vh; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 16px;">
+            <div class="hide-scrollbar" style="font-size: 12px; max-height: 70vh; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 16px; -ms-overflow-style: none; scrollbar-width: none;">
                 <!-- 전학생 현황 -->
                 <div>
                     <div style="font-weight: 700; color: var(--deep-blue); margin-bottom: 8px; font-size: 13px;">📋 전학생 현황 (연간 집계)</div>
@@ -1936,6 +1936,38 @@
                             <div style="font-size:24px; font-weight:700; color:#0d47a1;" id="statTransferNet">-</div>
                             <div style="font-size:11px; color:#1565c0;">명</div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- 세부 비교 항목 선택 칩 (전입생 / 전출생 / 순증감) -->
+                <div style="margin-top: 10px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+                    <span style="font-size: 11px; font-weight: 600; color: var(--deep-blue);" id="studentSubMetricHeader">전입생수 비교 기준</span>
+                    <div style="display: flex; gap: 4px; flex-wrap: wrap;" id="studentSubMetricChips">
+                        <button class="student-submetric-chip" data-submetric="transfer_in" onclick="setStudentSubMetric('transfer_in')" style="border: none; background: var(--primary-blue, #2196f3); color: white; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; cursor: pointer; transition: all 0.2s ease;">전입생</button>
+                        <button class="student-submetric-chip" data-submetric="transfer_out" onclick="setStudentSubMetric('transfer_out')" style="border: none; background: #f0f4f8; color: var(--text-muted); padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: normal; cursor: pointer; transition: all 0.2s ease;">전출생</button>
+                        <button class="student-submetric-chip" data-submetric="net" onclick="setStudentSubMetric('net')" style="border: none; background: #f0f4f8; color: var(--text-muted); padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: normal; cursor: pointer; transition: all 0.2s ease;">순증감</button>
+                    </div>
+                </div>
+
+                <!-- 비교 지역 선택 (관할 구 / 시·도 / 전국) -->
+                <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+                    <span style="font-size: 10px; color: var(--text-muted);">지역 비교 범위 설정</span>
+                    <div style="display: flex; gap: 4px; background: #f0f4f8; padding: 2px; border-radius: 6px;" id="studentCompareTabs">
+                        <button class="student-tab-btn" data-compare="region" onclick="updateStudentCompare('region')" style="border: none; background: white; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: var(--deep-blue); box-shadow: 0 1px 3px rgba(0,0,0,0.1);">관할 구</button>
+                        <button class="student-tab-btn" data-compare="city" onclick="updateStudentCompare('city')" style="border: none; background: transparent; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: var(--text-muted);">서울특별시</button>
+                        <button class="student-tab-btn" data-compare="national" onclick="updateStudentCompare('national')" style="border: none; background: transparent; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: var(--text-muted);">전국</button>
+                    </div>
+                </div>
+                <!-- 지역 평균 대비 비교 바 -->
+                <div style="margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">
+                        <span>이 학교 <strong id="studentBarSchoolVal">-명</strong></span>
+                        <span id="studentBarRegionLabel">지역 평균</span>
+                    </div>
+                    <div style="position: relative; background: #f0f4f8; border-radius: 6px; height: 10px; overflow: visible; margin-bottom: 24px;">
+                        <div id="studentBarSchool" style="position: absolute; left: 0; top: 0; height: 100%; background: #2196f3; border-radius: 6px; transition: width 0.6s ease;"></div>
+                        <div id="studentBarRegionMark" style="position: absolute; top: -3px; width: 2px; height: 16px; background: #f57c00; border-radius: 2px;" title="지역 평균"></div>
+                        <div id="studentBarRegionMarkText" style="position: absolute; top: 16px; font-size: 10px; color: #f57c00; white-space: nowrap; transform: translateX(-50%); font-weight: bold; transition: left 0.6s ease;">▲ 지역 평균</div>
                     </div>
                 </div>
                 <!-- 거주지 비율 -->
@@ -1997,7 +2029,7 @@
                 </h3>
                 <button onclick="toggleViolenceStatsModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='var(--deep-blue)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
             </div>
-            <div style="font-size: 12px; max-height: 70vh; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 16px;">
+            <div class="hide-scrollbar" style="font-size: 12px; max-height: 70vh; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 16px; -ms-overflow-style: none; scrollbar-width: none;">
                 <!-- 총 신고건수 -->
                 <div>
                     <div style="font-weight: 700; color: var(--deep-blue); margin-bottom: 8px; font-size: 13px;">📋 연간 학교폭력 신고 현황</div>
@@ -2017,6 +2049,28 @@
                             <div style="font-size:24px; font-weight:700; color:#1b5e20;" id="statViolenceResolved">-</div>
                             <div style="font-size:11px; color:#2e7d32;">%</div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- 비교 기준 선택 (구 / 시 / 전국) -->
+                <div style="margin-top: 10px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+                    <span style="font-size: 11px; color: var(--text-muted);">비교 기준 설정</span>
+                    <div style="display: flex; gap: 4px; background: #f0f4f8; padding: 2px; border-radius: 6px;" id="violenceCompareTabs">
+                        <button class="violence-tab-btn" data-compare="region" onclick="updateViolenceCompare('region')" style="border: none; background: white; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: var(--deep-blue); box-shadow: 0 1px 3px rgba(0,0,0,0.1);">관할 구</button>
+                        <button class="violence-tab-btn" data-compare="city" onclick="updateViolenceCompare('city')" style="border: none; background: transparent; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: var(--text-muted);">서울특별시</button>
+                        <button class="violence-tab-btn" data-compare="national" onclick="updateViolenceCompare('national')" style="border: none; background: transparent; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: var(--text-muted);">전국</button>
+                    </div>
+                </div>
+                <!-- 지역 평균 대비 비교 바 -->
+                <div style="margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">
+                        <span>이 학교 <strong id="violenceBarSchoolVal">-건 (100명당)</strong></span>
+                        <span id="violenceBarRegionLabel">지역 평균</span>
+                    </div>
+                    <div style="position: relative; background: #f0f4f8; border-radius: 6px; height: 10px; overflow: visible; margin-bottom: 24px;">
+                        <div id="violenceBarSchool" style="position: absolute; left: 0; top: 0; height: 100%; background: #ab47bc; border-radius: 6px; transition: width 0.6s ease;"></div>
+                        <div id="violenceBarRegionMark" style="position: absolute; top: -3px; width: 2px; height: 16px; background: #f57c00; border-radius: 2px;" title="지역 평균"></div>
+                        <div id="violenceBarRegionMarkText" style="position: absolute; top: 16px; font-size: 10px; color: #f57c00; white-space: nowrap; transform: translateX(-50%); font-weight: bold; transition: left 0.6s ease;">▲ 지역 평균</div>
                     </div>
                 </div>
                 <!-- 유형별 비율 -->

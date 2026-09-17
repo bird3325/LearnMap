@@ -1,0 +1,232 @@
+=== INDEX.HTML LINES 440-670 ===
+440:                                 <div style="display: flex; justify-content: space-between; align-items: center;">
+441:                                     <span>교사 비율: <strong id="valEnvTeacher">30%</strong></span>
+442:                                     <input type="range" id="envTeacherRange" min="0" max="100" value="30" style="width: 120px; cursor: pointer;">
+443:                                 </div>
+444:                                 <div style="display: flex; justify-content: space-between; align-items: center;">
+445:                                     <span>학폭 안전: <strong id="valEnvViolence">20%</strong></span>
+446:                                     <input type="range" id="envViolenceRange" min="0" max="100" value="20" style="width: 120px; cursor: pointer;">
+447:                                 </div>
+448:                                 <div style="display: flex; justify-content: space-between; align-items: center;">
+449:                                     <span>창체 예산: <strong id="valEnvBudget">10%</strong></span>
+450:                                     <input type="range" id="envBudgetRange" min="0" max="100" value="10" style="width: 120px; cursor: pointer;">
+451:                                 </div>
+452:                             </div>
+453:                         </div>
+454: 
+455:                         <!-- 세부 학업 지표 필터 -->
+456:                         <div style="border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+457:                             <strong style="color: var(--deep-blue); display: block; margin-bottom: 6px;">🔍 세부 학업 지표 필터</strong>
+458:                             <div style="display: flex; flex-direction: column; gap: 4px;">
+459:                                 <div style="display: flex; justify-content: space-between; align-items: center;">
+460:                                     <span>최저 국영수 평균점: <strong id="valMinAvgScore">50점</strong></span>
+461:                                     <input type="range" id="filterMinAvgScore" min="50" max="100" value="50" style="width: 120px; cursor: pointer;">
+462:                                 </div>
+463:                                 <div style="display: flex; justify-content: space-between; align-items: center;">
+464:                                     <span>국·영·수 개별 최저점: <strong id="valMinSubjectScore">50점</strong></span>
+465:                                     <input type="range" id="filterMinSubjectScore" min="50" max="100" value="50" style="width: 120px; cursor: pointer;">
+466:                                 </div>
+467:                                 <div style="display: flex; justify-content: space-between; align-items: center;">
+468:                                     <span>우수(A) 비율 최소: <strong id="valMinTopRatio">0%</strong></span>
+469:                                     <input type="range" id="filterMinTopRatio" min="0" max="100" value="0" style="width: 120px; cursor: pointer;">
+470:                                 </div>
+471:                                 <div style="display: flex; justify-content: space-between; align-items: center;">
+472:                                     <span>미달(D) 비율 최대: <strong id="valMaxBottomRatio">100%</strong></span>
+473:                                     <input type="range" id="filterMaxBottomRatio" min="0" max="100" value="100" style="width: 120px; cursor: pointer;">
+474:                                 </div>
+475:                             </div>
+476:                         </div>
+477: 
+478:                         <!-- 학교 특성 필터 -->
+479:                         <div style="border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+480:                             <strong style="color: var(--deep-blue); display: block; margin-bottom: 6px;">🏫 학교 특성 필터</strong>
+481:                             <div style="display: flex; flex-direction: column; gap: 4px;">
+482:                                 <div style="display: flex; justify-content: space-between; align-items: center;">
+483:                                     <span>학급 규모:</span>
+484:                                     <select id="filterClassSizePreset" style="padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 11px; outline: none; background: white; cursor: pointer; width: 120px;">
+485:                                         <option value="all">전체</option>
+486:                                         <option value="small">소규모 (20명 미만)</option>
+487:                                         <option value="medium">중간 (20~25명)</option>
+488:                                         <option value="large">대규모 (25명 초과)</option>
+489:                                     </select>
+490:                                 </div>
+491:                                 <div style="display: flex; justify-content: space-between; align-items: center;">
+492:                                     <span>교원 1인당 학생 수 최대: <strong id="valMaxStudentPerTeacher">30명</strong></span>
+493:                                     <input type="range" id="filterMaxStudentPerTeacher" min="5" max="30" value="30" style="width: 120px; cursor: pointer;">
+494:                                 </div>
+495:                                 <div style="display: flex; justify-content: space-between; align-items: center;">
+496:                                     <span>학생 수 추이:</span>
+497:                                     <select id="filterStudentTrend" style="padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 11px; outline: none; background: white; cursor: pointer; width: 120px;">
+498:                                         <option value="all">전체</option>
+499:                                         <option value="up">증가 추세</option>
+500:                                         <option value="down">감소 추세</option>
+501:                                     </select>
+502:                                 </div>
+503:                                 <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+504:                                     <span>특수학급 운영 학교만 보기</span>
+505:                                     <label class="switch">
+506:                                         <input type="checkbox" id="filterSpecialClass">
+507:                                         <span class="slider"></span>
+508:                                     </label>
+509:                                 </div>
+510:                             </div>
+511:                         </div>
+512: 
+513:                         <!-- 생활 및 진로 관련 지표 필터 -->
+514:                         <div style="border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+515:                             <strong style="color: var(--deep-blue); display: block; margin-bottom: 6px;">🛡️ 생활 · 진로 지표 필터</strong>
+516:                             <div style="display: flex; flex-direction: column; gap: 4px;">
+517:                                 <div style="display: flex; justify-content: space-between; align-items: center;">
+518:                                     <span>진학률 최소: <strong id="valMinGraduateRate">0%</strong></span>
+519:                                     <input type="range" id="filterMinGraduateRate" min="0" max="100" value="0" style="width: 120px; cursor: pointer;">
+520:                                 </div>
+521:                                 <div style="display: flex; justify-content: space-between; align-items: center;">
+522:                                     <span>특목/자사고 진학 최소: <strong id="valMinSpecialAdmission">0%</strong></span>
+523:                                     <input type="range" id="filterMinSpecialAdmission" min="0" max="10" value="0" step="0.5" style="width: 120px; cursor: pointer;">
+524:                                 </div>
+525:                                 <div style="display: flex; justify-content: space-between; align-items: center;">
+526:                                     <span>학교폭력 최대 연간: <strong id="valMaxViolence">20건</strong></span>
+527:                                     <input type="range" id="filterMaxViolence" min="0" max="20" value="20" style="width: 120px; cursor: pointer;">
+528:                                 </div>
+529:                             </div>
+530:                         </div>
+531: 
+532:                         <!-- 프로필 추천 및 통학 반경 -->
+533:                         <div style="display: flex; flex-direction: column; gap: 6px;">
+534:                             <div style="display: flex; justify-content: space-between; align-items: center;">
+535:                                 <strong>👤 추천 프로필</strong>
+536:                                 <select id="profileRecommendFilter" style="padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 11px; outline: none; background: white; cursor: pointer;">
+537:                                     <option value="none">설정 없음</option>
+538:                                     <option value="academic">순수 학업 성적형</option>
+539:                                     <option value="balanced">성적+여건 균형성장형</option>
+540:                                     <option value="safety">안전/안심 복지형</option>
+541:                                 </select>
+542:                             </div>
+543:                             <div style="display: flex; justify-content: space-between; align-items: center;">
+544:                                 <strong>🚌 통학 분석 기준</strong>
+545:                                 <select id="commuteRadiusFilter" style="padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 11px; outline: none; background: white; cursor: pointer;">
+546:                                     <option value="off">분석 끄기</option>
+547:                                     <option value="500">도보 10분 (500m)</option>
+548:                                     <option value="1000">도보 20분 (1km)</option>
+549:                                     <option value="1500">대중교통 (1.5km)</option>
+550:                                 </select>
+551:                             </div>
+552:                             <div class="pc-only-filter" style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+553:                                 <span>3년 연속 성적 우상향만 보기</span>
+554:                                 <label class="switch">
+555:                                     <input type="checkbox" id="trendUpwardCheckbox">
+556:                                     <span class="slider"></span>
+557:                                 </label>
+558:                             </div>
+559:                             <div class="pc-only-filter" style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+560:                                 <span>안심 가이드 지도 표시 (CCTV/지킴이집/파출소)</span>
+561:                                 <label class="switch">
+562:                                     <input type="checkbox" id="safetyGuideCheckbox">
+563:                                     <span class="slider"></span>
+564:                                 </label>
+565:                             </div>
+566:                             <div class="pc-only-filter" style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+567:                                 <span>우범 지역 영역 표시 (범죄주의구간)</span>
+568:                                 <label class="switch">
+569:                                     <input type="checkbox" id="crimeZoneToggleCheckbox">
+570:                                     <span class="slider"></span>
+571:                                 </label>
+572:                             </div>
+573:                             <div class="pc-only-filter" style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+574:                                 <span>치안사고 통계 표시 (WMS)</span>
+575:                                 <label class="switch">
+576:                                     <input type="checkbox" id="accidentStatisticsCheckbox">
+577:                                     <span class="slider"></span>
+578:                                 </label>
+579:                             </div>
+580:                             <div class="pc-only-filter" style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+581:                                 <span>교통사고 다발구역 표시 (WMS)</span>
+582:                                 <label class="switch">
+583:                                     <input type="checkbox" id="trafficAccidentCheckbox">
+584:                                     <span class="slider"></span>
+585:                                 </label>
+586:                             </div>
+587:                             
+588:                             <!-- B2B 확장 및 학군 부동산 연계 패널 -->
+589:                             <div style="border-top: 1px dashed var(--border-color); padding-top: 10px; margin-top: 6px; display: flex; flex-direction: column; gap: 8px;">
+590:                                 <div class="pc-only-filter" style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+591:                                     <strong>동 단위 학군 레이팅 히트맵</strong>
+592:                                     <label class="switch">
+593:                                         <input type="checkbox" id="dongRatingCheckbox">
+594:                                         <span class="slider"></span>
+595:                                     </label>
+596:                                 </div>
+597:                                 <button class="btn-secondary" id="btnOpenSimulation" style="padding: 6px 12px; font-size: 11.5px; font-weight: bold; width: 100%; border: 1px solid var(--primary-blue); color: var(--primary-blue); background: white; border-radius: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='var(--light-blue)'" onmouseout="this.style.background='white'">
+598:                                     🏡 학군 이사 시뮬레이터 실행
+599:                                 </button>
+600:                                 <button class="btn-secondary" id="btnResetFilters" style="padding: 6px 12px; font-size: 11.5px; font-weight: bold; width: 100%; border: 1px solid var(--border-color); color: var(--text-muted); background: white; border-radius: 6px; cursor: pointer; transition: all 0.2s; margin-top: 4px;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+601:                                     🔄 필터 설정 초기화
+602:                                 </button>
+603:                                 <button class="btn-primary" id="btnApplyFilters" style="display: none; padding: 10px 12px; font-size: 13px; font-weight: bold; width: 100%; border: none; color: white; background: var(--primary-blue); border-radius: 6px; cursor: pointer; transition: all 0.2s; margin-top: 8px;">
+604:                                     🔍 필터 적용
+605:                                 </button>
+606:                             </div>
+607:                         </div>
+608: 
+609:                     </div>
+610:                 </div>
+611:             </div>
+612: 
+613:             <!-- School Location pins container -->
+614:             <div id="pinsContainer"></div>
+615: 
+616: 
+617: 
+618:             <!-- Bottom/Floating School Comparison Board Overlay -->
+619:             <div class="compare-overlay" id="compareOverlay" style="display: none; width: calc(100% - 40px); left: 20px; right: 20px; bottom: 20px; max-height: 75vh; flex-direction: column; overflow: hidden; z-index: 12000;">
+620:                 <!-- 고정 헤더 영역 -->
+621:                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 12px; flex-shrink: 0;">
+622:                     <h3 style="font-size: 16px; color: var(--deep-blue);" id="compareTitleLabel">학교 비교 보드 (최대 5개)</h3>
+623:                     <div style="margin-left: auto; display: flex; gap: 8px; align-items: center; margin-right: 16px;">
+624:                         <button id="btnClearCompare" style="background: none; border: 1px solid var(--danger-red); color: var(--danger-red); border-radius: 6px; padding: 4px 10px; font-size: 11.5px; font-weight: bold; cursor: pointer; transition: all 0.2s;">🔄 초기화</button>
+625:                         <button id="btnToggleCompareView" style="background: none; border: 1px solid var(--primary-blue); color: var(--primary-blue); border-radius: 6px; padding: 4px 10px; font-size: 11.5px; font-weight: bold; cursor: pointer; transition: all 0.2s;">📊 상세 표 & 레이더 차트 비교</button>
+626:                     </div>
+627:                     <button style="border: none; background: transparent; color: var(--primary-blue); font-weight: bold; cursor: pointer; font-size: 20px;" id="btnCloseCompare">×</button>
+628:                 </div>
+629:                 
+630:                 <!-- 스크롤 가능한 본문 영역 -->
+631:                 <div id="compareScrollBody" style="flex: 1; overflow-y: auto; padding-right: 4px;">
+632:                     <!-- View 1: Original Card Grid -->
+633:                     <div class="compare-grid" id="compareGrid" style="grid-template-columns: repeat(5, 1fr);">
+634:                         <!-- Dynamic comparison items go here -->
+635:                     </div>
+636: 
+637:                 <!-- View 2: Detailed Table & Radar Chart (Initially hidden) -->
+638:                 <div id="compareDetailedView" style="display: none; flex-direction: column; gap: 16px;">
+639:                     <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+640:                         <!-- Radar Chart Container -->
+641:                         <div style="flex: 1; min-width: 280px; background: white; border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+642:                             <h4 style="font-size: 13px; font-weight: 700; color: var(--deep-blue); margin-bottom: 10px; width: 100%; text-align: left;">🕸️ 과목별 학업성취도 레이더 차트</h4>
+643:                             <canvas id="compareRadarCanvas" width="260" height="240" style="max-width: 100%;"></canvas>
+644:                         </div>
+645:                         <!-- Table Container -->
+646:                         <div style="flex: 2; min-width: 400px; background: white; border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; overflow-x: auto;">
+647:                             <h4 style="font-size: 13px; font-weight: 700; color: var(--deep-blue); margin-bottom: 10px;">📋 학업성취도 및 여건 비교표</h4>
+648:                             <table style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; line-height: 1.5;" id="compareDetailTable">
+649:                                 <!-- Table header and body will be dynamically populated -->
+650:                             </table>
+651:                         </div>
+652:                     </div>
+653:                 </div>
+654:                 <!-- 적합도 판정 기준 안내 추가 -->
+655:                 <div style="font-size: 11px; color: var(--text-muted); margin-top: 16px; line-height: 1.5; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+656:                     ℹ️ <strong>우리 아이 적합도 기준 안내:</strong> 자녀 평균 성적(국/영/수)과 학교 평균 성적(국/영/수)의 편차를 기준으로 계산됩니다.
+657:                     <div style="margin-top: 4px; display: flex; gap: 16px; flex-wrap: wrap;">
+658:                         <span>🟢 <strong>상 (편차 +5점 초과)</strong>: 자녀 성적이 학교 평균보다 현저히 높아 학업 소화가 매우 수월한 수준</span>
+659:                         <span>🟡 <strong>중 (편차 ±5점 이내)</strong>: 자녀 성적이 학교 평균과 유사하여 학업 수준에 잘 부합하는 보통 수준</span>
+660:                         <span>🔴 <strong>하 (편차 -5점 미만)</strong>: 자녀 성적이 학교 평균보다 낮아 입학 후 집중 보강 학습이 권장되는 수준</span>
+661:                     </div>
+662:                     <div style="margin-top: 4px; color: var(--primary-blue); font-weight: bold;">* 각 학교 카드의 적합도 영역이나 상세 비교표의 등급에 마우스를 올리시면 구체적인 점수 편차와 세부 분석 메시지를 볼 수 있습니다.</div>
+663:                     
+664:                     <!-- 실시간 산출 근거 노출 영역 -->
+665:                     <div id="compareSuitabilityBasis" style="margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px; display: none; flex-direction: column; gap: 4px;">
+666:                         <strong style="color: var(--deep-blue); display: block; margin-bottom: 2px;">📊 비교 학교별 우리 아이 적합도 실시간 산출 근거:</strong>
+667:                         <div id="compareSuitabilityBasisList" style="color: var(--text-main); line-height: 1.6; display: flex; flex-direction: column; gap: 4px;">
+668:                             <!-- 동적 산출 근거 리스트 삽입 -->
+669:                         </div>
+670:                     </div>
