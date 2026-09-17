@@ -1187,10 +1187,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const hasSavedScores = scores && (scores.korean > 0 || scores.english > 0 || scores.math > 0);
         
         if (!hasSavedScores) {
-            alert('⚙️ 상단 [통합 설정] 버튼을 눌러 자녀의 최근 시험 성적 정보를 먼저 저장해 주세요.');
-            const settingsModal = document.getElementById('settingsModal');
-            if (settingsModal) {
-                settingsModal.style.display = 'flex';
+            alert('⚙️ 자녀의 최근 시험 성적 정보를 먼저 저장해 주세요.');
+            if (typeof window.openChildSettingsModal === 'function') {
+                window.openChildSettingsModal();
+            } else {
+                const settingsModal = document.getElementById('settingsModal');
+                if (settingsModal) {
+                    settingsModal.style.display = 'block';
+                }
             }
             return;
         }
@@ -2767,10 +2771,22 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- 자녀 설정 모달 열기 및 이동 도우미 함수 ---
     window.openChildSettingsModal = function() {
-        const settingsModal = document.getElementById('settingsModal');
-        if (settingsModal) {
-            settingsModal.style.display = 'block';
-            settingsModal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (window.innerWidth <= 1024 && typeof window.onMobileNavClick === 'function') {
+            const mypageTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*="mypage"]');
+            window.onMobileNavClick('mypage', mypageTabBtn);
+            if (typeof window.switchMypageTab === 'function') {
+                window.switchMypageTab('child');
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            const settingsModal = document.getElementById('settingsModal');
+            if (settingsModal) {
+                settingsModal.style.display = 'block';
+                if (typeof window.switchMypageTab === 'function') {
+                    window.switchMypageTab('child');
+                }
+                settingsModal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
     };
 
