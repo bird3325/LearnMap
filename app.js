@@ -3140,7 +3140,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fullSchool.envScore = Math.round(scoreScore * pScore + teacherScore * pTeacher + safetyScore * pViolence + budgetScore * pBudget);
         }
         const totalEnvLabel = document.getElementById('totalEnvScoreLabel');
-        if (totalEnvLabel) totalEnvLabel.innerText = `${fullSchool.envScore}점`;
+        if (totalEnvLabel) totalEnvLabel.innerText = fullSchool.envScore;
 
         // --- 3개년 학업성취도 추세 스파크라인 SVG 렌더링 ---
         if (!fullSchool.trendData) {
