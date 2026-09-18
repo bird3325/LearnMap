@@ -1331,92 +1331,178 @@
                 </div>
 
                 <!-- School Card (Dynamically updated/shown) -->
-                <div class="card" id="schoolCard" style="display: none; position: relative; padding: 16px;">
-                    <!-- Sticky Header Wrapper for Mobile -->
-                    <div class="school-card-sticky-header" style="position: relative; margin-bottom: 12px;">
-                        <button id="btnDeselectSchool" style="position: absolute; top: 4px; right: 16px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); font-weight: bold; line-height: 1;" title="선택 초기화">&times;</button>
-                        <div class="card-title" style="padding-right: 32px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                            <div style="display: inline-flex; align-items: center; gap: 8px; min-width: 0;">
-                                <span id="schoolCardName" style="font-size: 19px; font-weight: 800; color: var(--deep-blue); word-break: keep-all; white-space: nowrap;">○○중학교</span>
+                <div class="card" id="schoolCard" style="display: none; position: relative; padding: 16px; background: #ffffff; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+                    <!-- Sticky Top Header Group: Action Bar + Top Meta Grid (설립구분 카드) -->
+                    <div class="school-card-sticky-top-group" style="position: sticky; top: 0; z-index: 100; background: #ffffff; margin: -16px -16px 12px -16px; padding: 14px 16px 8px 16px; border-bottom: none;">
+                        <!-- Top Navigation & Action Header Bar -->
+                        <div class="school-top-action-bar" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <button onclick="if(document.getElementById('btnDeselectSchool')) document.getElementById('btnDeselectSchool').click();" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #475569; padding: 0; line-height: 1; display: flex; align-items: center;" title="뒤로가기">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                                </button>
+                                <span id="schoolCardName" style="font-size: 19px; font-weight: 800; color: #0f172a; letter-spacing: -0.3px;">○○중학교</span>
                                 <button id="btnSaveFavorite" onclick="if(typeof window.toggleFavoriteSchool === 'function') window.toggleFavoriteSchool();" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 0; display: inline-flex; align-items: center; color: #ffb800; line-height: 1;" title="관심 학교 저장">⭐</button>
                             </div>
-                        </div>
-                        <div class="school-meta-grid" style="display: grid; grid-template-columns: 0.8fr 0.8fr 0.8fr 1.6fr; gap: 4px; margin-bottom: 12px; font-size: 11px;">
-                            <div class="meta-item" style="text-align: center; padding: 6px 2px; white-space: nowrap;">설립: <strong id="schoolCardFoundingDetail">공립</strong></div>
-                            <div class="meta-item" style="text-align: center; padding: 6px 2px; white-space: nowrap;">학생: <strong id="schoolCardStudents">0명</strong></div>
-                            <div class="meta-item" style="text-align: center; padding: 6px 2px; white-space: nowrap;">학급당: <strong id="schoolCardClassSize">0명</strong></div>
-                            <div class="meta-item" style="text-align: center; padding: 6px 2px; white-space: nowrap;">공시일: <strong id="schoolCardUpdate">2025.09</strong></div>
-                        </div>
-                        <!-- 종합 교육환경 점수 핵심 강조 카드 -->
-                        <div style="background: linear-gradient(135deg, #e8f4ff, #d0e8ff); padding: 10px 14px; border-radius: 10px; border: 1px solid #b8daff; display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong style="font-size: 13px; color: var(--deep-blue); font-weight: 700;">🏫 종합 교육환경 점수</strong>
-                                <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 2px;" id="totalEnvScoreDesc">성적·교사비율·안전·예산 가중치 종합</div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <button onclick="if(navigator.share){navigator.share({title:document.getElementById('schoolCardName').innerText,url:location.href})}else{alert('학교 정보 링크가 복사되었습니다.')}" style="background: #f1f5f9; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: background 0.2s;" title="공유하기">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                                </button>
+                                <button id="btnDeselectSchool" style="background: #f1f5f9; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; color: #64748b; line-height: 1; transition: background 0.2s;" title="선택 초기화">&times;</button>
                             </div>
-                            <strong id="totalEnvScoreLabel" style="font-size: 18px; color: var(--primary-blue); font-weight: 800; background: white; padding: 4px 10px; border-radius: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">0점</strong>
+                        </div>
+
+                        <!-- Top Meta Grid (4 Columns Card: 설립구분, 전체학생, 학급당, 공시일자) -->
+                        <div class="school-meta-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 10px 6px; margin: 0; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+                            <div style="display: flex; flex-direction: column; gap: 3px;">
+                                <span style="font-size: 10.5px; color: #94a3b8; font-weight: 500;">설립구분</span>
+                                <strong id="schoolCardFoundingDetail" style="font-size: 13px; font-weight: 800; color: #1e293b;">공립</strong>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 3px; border-left: 1px solid #f1f5f9;">
+                                <span style="font-size: 10.5px; color: #94a3b8; font-weight: 500;">전체학생</span>
+                                <strong style="font-size: 13px; font-weight: 800; color: #2563eb;"><span id="schoolCardStudents">632</span> 명</strong>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 3px; border-left: 1px solid #f1f5f9;">
+                                <span style="font-size: 10.5px; color: #94a3b8; font-weight: 500;">학급당</span>
+                                <strong style="font-size: 13px; font-weight: 800; color: #1e293b;"><span id="schoolCardClassSize">24.3</span> 명</strong>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 3px; border-left: 1px solid #f1f5f9;">
+                                <span style="font-size: 10.5px; color: #94a3b8; font-weight: 500;">공시일자</span>
+                                <strong id="schoolCardUpdate" style="font-size: 12px; font-weight: 800; color: #1e293b;">25.09.15</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hero Banner Card: 종합 교육환경 점수 (Vibrant Blue Gradient) -->
+                    <div id="edutechHeroCard" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); border-radius: 18px; padding: 18px; color: white; margin-bottom: 14px; box-shadow: 0 8px 24px rgba(37, 99, 235, 0.22); position: relative; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, padding 0.4s ease, margin 0.4s ease;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+                            <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(4px); color: white; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;">
+                                <span>🏫</span> <span>에듀테크 종합 진단</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <div style="background: white; border-radius: 14px; padding: 8px 14px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.12); min-width: 65px;">
+                                    <div style="font-size: 24px; font-weight: 900; color: #2563eb; line-height: 1.1;">
+                                        <span id="totalEnvScoreLabel">55</span><span style="font-size: 14px; font-weight: 800;">점</span>
+                                    </div>
+                                    <div style="font-size: 10px; color: #94a3b8; font-weight: 600; margin-top: 2px;">100점 만점</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h3 style="font-size: 18px; font-weight: 800; margin: 6px 0 4px 0; color: white; letter-spacing: -0.3px;">종합 교육환경 점수</h3>
+                        <div style="font-size: 11px; color: rgba(255, 255, 255, 0.85); margin-bottom: 16px;" id="totalEnvScoreDesc">성적 · 교사비율 · 안전환경 · 재정 가중 종합</div>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                            <div style="background: rgba(15, 23, 42, 0.22); border: 1px solid rgba(255, 255, 255, 0.15); backdrop-filter: blur(4px); border-radius: 12px; padding: 8px 4px; text-align: center;">
+                                <div style="font-size: 10px; color: rgba(255, 255, 255, 0.75); margin-bottom: 2px;">학업성취</div>
+                                <div id="envHeroSub1" style="font-size: 12px; font-weight: 800; color: white;">상위 43%</div>
+                            </div>
+                            <div style="background: rgba(15, 23, 42, 0.22); border: 1px solid rgba(255, 255, 255, 0.15); backdrop-filter: blur(4px); border-radius: 12px; padding: 8px 4px; text-align: center;">
+                                <div style="font-size: 10px; color: rgba(255, 255, 255, 0.75); margin-bottom: 2px;">교원 1인당</div>
+                                <div id="envHeroSub2" style="font-size: 12px; font-weight: 800; color: white;">13.8명</div>
+                            </div>
+                            <div style="background: rgba(15, 23, 42, 0.22); border: 1px solid rgba(255, 255, 255, 0.15); backdrop-filter: blur(4px); border-radius: 12px; padding: 8px 4px; text-align: center;">
+                                <div style="font-size: 10px; color: rgba(255, 255, 255, 0.75); margin-bottom: 2px;">종합등급</div>
+                                <div id="envHeroSub3" style="font-size: 12px; font-weight: 800; color: white;">양호 (B+)</div>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Category Tab Switcher Navigation (4 Tabs) -->
-                    <div class="school-card-tab-bar" style="display: flex; gap: 4px; background: #f1f5f9; padding: 4px; border-radius: 10px; margin-bottom: 14px; overflow: hidden;">
-                        <button id="btnSchoolTabAcademic" onclick="switchSchoolCardTab('Academic')" class="school-tab-btn active" style="flex: 1; min-width: 0; padding: 7px 2px; font-size: 11px; font-weight: 700; border-radius: 7px; border: 1px solid var(--primary-blue); background: var(--primary-blue); color: white; cursor: pointer; transition: all 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📊 학업 성취</button>
-                        <button id="btnSchoolTabEnvironment" onclick="switchSchoolCardTab('Environment')" class="school-tab-btn" style="flex: 1; min-width: 0; padding: 7px 2px; font-size: 11px; font-weight: 700; border-radius: 7px; border: 1px solid var(--border-color); background: #ffffff; color: var(--text-muted); cursor: pointer; transition: all 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">🏫 교육 여건</button>
-                        <button id="btnSchoolTabRealEstate" onclick="switchSchoolCardTab('RealEstate')" class="school-tab-btn" style="flex: 1; min-width: 0; padding: 7px 2px; font-size: 11px; font-weight: 700; border-radius: 7px; border: 1px solid var(--border-color); background: #ffffff; color: var(--text-muted); cursor: pointer; transition: all 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">🏠 주거·학원</button>
-                        <button id="btnSchoolTabCommunity" onclick="switchSchoolCardTab('Community')" class="school-tab-btn" style="flex: 1; min-width: 0; padding: 7px 2px; font-size: 11px; font-weight: 700; border-radius: 7px; border: 1px solid var(--border-color); background: #ffffff; color: var(--text-muted); cursor: pointer; transition: all 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">💬 학부모 소통</button>
+                    <div class="school-card-tab-bar" style="position: sticky; top: 126px; z-index: 90; background: #ffffff; padding: 6px 0; margin-top: 12px; margin-bottom: 14px; border-bottom: none;">
+                        <div style="display: flex; gap: 6px; background: #f8fafc; padding: 4px; border-radius: 12px; border: 1px solid #e2e8f0; overflow-x: auto;">
+                            <button id="btnSchoolTabAcademic" onclick="switchSchoolCardTab('Academic')" class="school-tab-btn active" style="flex: 1; min-width: 0; padding: 8px 10px; font-size: 11.5px; font-weight: 700; border-radius: 9px; border: none; background: #2563eb; color: white; cursor: pointer; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 4px;">📊 학업성취</button>
+                            <button id="btnSchoolTabEnvironment" onclick="switchSchoolCardTab('Environment')" class="school-tab-btn" style="flex: 1; min-width: 0; padding: 8px 10px; font-size: 11.5px; font-weight: 600; border-radius: 9px; border: none; background: transparent; color: #64748b; cursor: pointer; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 4px;">🏫 교육 여건</button>
+                            <button id="btnSchoolTabRealEstate" onclick="switchSchoolCardTab('RealEstate')" class="school-tab-btn" style="flex: 1; min-width: 0; padding: 8px 10px; font-size: 11.5px; font-weight: 600; border-radius: 9px; border: none; background: transparent; color: #64748b; cursor: pointer; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 4px;">🏠 주거 · 학원</button>
+                            <button id="btnSchoolTabCommunity" onclick="switchSchoolCardTab('Community')" class="school-tab-btn" style="flex: 1; min-width: 0; padding: 8px 10px; font-size: 11.5px; font-weight: 600; border-radius: 9px; border: none; background: transparent; color: #64748b; cursor: pointer; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 4px;">💬 학부모 소통</button>
+                        </div>
                     </div>
 
                     <!-- ==================== TAB 1: 📊 학업 성취 ==================== -->
                     <div id="schoolTabAcademic" class="school-tab-panel" style="display: flex; flex-direction: column; gap: 12px;">
-                        <!-- 3개년 학업성취도 추세 스파크라인 -->
-                        <div style="background: var(--bg-primary); padding: 12px; border-radius: 10px; border: 1px solid var(--border-color); font-size: 12px;">
-                            <strong style="color: var(--deep-blue);">📈 최근 3개년 성취도 추이 (국·영·수 평균)</strong>
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
-                                <svg id="trendSparkline" width="160" height="55" style="background: #ffffff; border-radius: 6px; border: 1px solid var(--border-color);"></svg>
-                                <div style="text-align: right; font-size: 11px; color: var(--text-muted); line-height: 1.6;">
-                                    3년 전: <span id="sparklineStartVal">-점</span><br>
-                                    최근: <strong id="sparklineEndVal" style="color: var(--primary-blue); font-size: 13px;">-점</strong>
+                        <!-- 3개년 학업성취도 추세 카드 -->
+                        <div style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 16px; margin-bottom: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <h4 style="font-size: 14px; font-weight: 800; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 6px;">
+                                    <span>📈</span> <span>최근 3개년 성취도 추이</span>
+                                </h4>
+                                <span style="font-size: 11px; background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 10px; font-weight: 600;">국·영·수 평균</span>
+                            </div>
+                            <div style="background: #f8fafc; border-radius: 14px; padding: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                <svg id="trendSparkline" width="160" height="65" style="background: transparent;"></svg>
+                                <div style="border-left: 1px solid #e2e8f0; padding-left: 12px; text-align: left; min-width: 105px;">
+                                    <div style="font-size: 10.5px; color: #94a3b8;" id="sparklineDiffLabel">3년 전 <span id="sparklineStartVal">81점</span> 대비</div>
+                                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
+                                        최근 평균 <span id="sparklineEndVal" style="font-size: 22px; font-weight: 900; color: #2563eb;">79</span><span style="font-size: 13px; font-weight: 800; color: #2563eb;">점</span>
+                                    </div>
+                                    <div id="sparklineTrendBadge" style="display: inline-block; background: #e2e8f0; color: #475569; padding: 3px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; margin-top: 4px;">전년과 동일 (보합세)</div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- 교과별 학업성취도 분포 차트 -->
-                        <div class="chart-container" style="background: white; border: 1px solid var(--border-color); border-radius: 10px; padding: 12px;">
-                            <h4 style="font-size: 13.5px; margin-bottom: 10px; color: var(--deep-blue); font-weight: 700;">📚 교과별 학업성취도 분포</h4>
-                            <!-- Korean -->
-                            <div class="chart-row">
-                                <div class="chart-label">
-                                    <span>국어 (평균 <span id="schoolKorAvg">0</span>점)</span>
-                                    <span style="font-size: 11px; color: var(--text-muted);">전년 대비 <span id="schoolKorChange">→</span></span>
-                                </div>
-                                <div class="chart-bar-wrapper" id="schoolKorBar"></div>
+                        <div class="chart-container" style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 16px; margin-bottom: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <h4 style="font-size: 14px; font-weight: 800; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 6px;">
+                                    <span>📚</span> <span>교과별 학업성취도 분포</span>
+                                </h4>
+                                <span style="font-size: 11px; color: #94a3b8;">2024 학업성취도 기준</span>
                             </div>
-                            <!-- English -->
-                            <div class="chart-row">
-                                <div class="chart-label">
-                                    <span>영어 (평균 <span id="schoolEngAvg">0</span>점)</span>
-                                    <span style="font-size: 11px; color: var(--text-muted);">전년 대비 <span id="schoolEngChange">→</span></span>
-                                </div>
-                                <div class="chart-bar-wrapper" id="schoolEngBar"></div>
+                            
+                            <!-- Legend Chips Row -->
+                            <div style="display: flex; justify-content: flex-end; gap: 10px; font-size: 11px; color: #64748b; margin-bottom: 12px;">
+                                <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; background: #3b82f6; border-radius: 2px; display: inline-block;"></span> A등급</span>
+                                <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; background: #10b981; border-radius: 2px; display: inline-block;"></span> B등급</span>
+                                <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; background: #f59e0b; border-radius: 2px; display: inline-block;"></span> C등급</span>
+                                <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; background: #ef4444; border-radius: 2px; display: inline-block;"></span> D·E등급</span>
                             </div>
-                            <!-- Math -->
-                            <div class="chart-row">
-                                <div class="chart-label">
-                                    <span>수학 (평균 <span id="schoolMathAvg">0</span>점)</span>
-                                    <span style="font-size: 11px; color: var(--text-muted);">전년 대비 <span id="schoolMathChange">→</span></span>
+
+                            <!-- Subject Rows Container -->
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <!-- Korean -->
+                                <div style="background: #f8fafc; border-radius: 12px; padding: 10px 12px; border: 1px solid #f1f5f9;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                        <span style="font-size: 12.5px; font-weight: 700; color: #1e293b;">국어 <span style="font-weight: normal; color: #64748b;">(평균 <span id="schoolKorAvg">0</span>점)</span></span>
+                                        <span id="schoolKorBadge" style="background: #ecfdf5; color: #059669; padding: 2px 8px; border-radius: 10px; font-size: 10.5px; font-weight: bold;">전년 대비 <span id="schoolKorChange">↑ 상승</span></span>
+                                    </div>
+                                    <div class="chart-bar-wrapper" id="schoolKorBar" style="height: 22px; border-radius: 6px; overflow: hidden; display: flex;"></div>
                                 </div>
-                                <div class="chart-bar-wrapper" id="schoolMathBar"></div>
+                                
+                                <!-- English -->
+                                <div style="background: #f8fafc; border-radius: 12px; padding: 10px 12px; border: 1px solid #f1f5f9;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                        <span style="font-size: 12.5px; font-weight: 700; color: #1e293b;">영어 <span style="font-weight: normal; color: #64748b;">(평균 <span id="schoolEngAvg">0</span>점)</span></span>
+                                        <span id="schoolEngBadge" style="background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 10px; font-size: 10.5px; font-weight: bold;">전년 대비 <span id="schoolEngChange">➔ 유지</span></span>
+                                    </div>
+                                    <div class="chart-bar-wrapper" id="schoolEngBar" style="height: 22px; border-radius: 6px; overflow: hidden; display: flex;"></div>
+                                </div>
+
+                                <!-- Math -->
+                                <div style="background: #f8fafc; border-radius: 12px; padding: 10px 12px; border: 1px solid #f1f5f9;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                        <span style="font-size: 12.5px; font-weight: 700; color: #1e293b;">수학 <span style="font-weight: normal; color: #64748b;">(평균 <span id="schoolMathAvg">0</span>점)</span></span>
+                                        <span id="schoolMathBadge" style="background: #fef2f2; color: #dc2626; padding: 2px 8px; border-radius: 10px; font-size: 10.5px; font-weight: bold;">전년 대비 <span id="schoolMathChange">↓ 하락</span></span>
+                                    </div>
+                                    <div class="chart-bar-wrapper" id="schoolMathBar" style="height: 22px; border-radius: 6px; overflow: hidden; display: flex;"></div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- 교과 평가 분석 요약 -->
-                        <div style="background: var(--bg-primary); padding: 12px; border-radius: 10px; border: 1px solid var(--border-color); font-size: 12px; line-height: 1.5;">
-                            <strong style="color: var(--deep-blue);">📝 교과 평가 분석 요약</strong><br>
-                            <span id="schoolInsight" style="color: var(--text-main); display: inline-block; margin-top: 4px;">이 학교의 공시 데이터를 분석하고 있습니다.</span>
+                        <!-- 교과평가 분석 요약 카드 -->
+                        <div style="background: #f4f8ff; border: 1px solid #e0ebff; border-radius: 16px; padding: 16px; margin-bottom: 4px;">
+                            <h4 style="font-size: 14px; font-weight: 800; color: #1e293b; margin: 0 0 10px 0; display: flex; align-items: center; gap: 6px;">
+                                <span>📝</span> <span>교과평가 분석 요약</span>
+                            </h4>
+                            <div style="background: white; border-radius: 12px; padding: 14px; border: 1px solid #e2e8f0; font-size: 12px; line-height: 1.5; color: #334155;">
+                                <div id="schoolInsightHeader" style="display: flex; align-items: center; gap: 4px; margin-bottom: 6px;">
+                                    <span>📍</span> <strong id="schoolRankPercentHighlight" style="color: #2563eb; font-weight: 800; font-size: 12.5px;">서울특별시 전체 중 상위 43.1% 수준</strong>
+                                </div>
+                                <div id="schoolInsight">이 학교의 공시 데이터를 분석하고 있습니다.</div>
+                            </div>
                         </div>
 
                         <!-- 학습 리스크 진단 카드 -->
-                        <div style="background: #fff8e1; padding: 12px; border-radius: 10px; font-size: 12px; border-left: 4px solid #ffa000; border: 1px solid #ffe082; border-left-width: 4px;">
-                            <strong style="color: #b78103;">⚠️ 학습 리스크 진단</strong><br>
+                        <div style="background: #fff8e1; padding: 14px; border-radius: 14px; font-size: 12px; border: 1px solid #ffe082; border-left: 4px solid #ffa000;">
+                            <strong style="color: #b78103; font-size: 13px;">⚠️ 학습 리스크 진단</strong><br>
                             <div id="schoolRiskInsight" style="margin-top: 6px; font-size: 11.5px; line-height: 1.5; color: #5d4037;">
                                 이 학교의 교과 편차 및 학업 양극화 가능성을 분석 중입니다.
                             </div>
@@ -1426,64 +1512,77 @@
                     <!-- ==================== TAB 2: 🏫 교육 여건 ==================== -->
                     <div id="schoolTabEnvironment" class="school-tab-panel" style="display: none; flex-direction: column; gap: 12px;">
                         <!-- 학부모 인프라 & 분위기 분석 클릭 그리드 -->
-                        <div style="background: white; border: 1px solid var(--border-color); padding: 12px; border-radius: 10px; font-size: 12px;">
-                            <strong style="color: var(--deep-blue); font-size: 13.5px; font-weight: 700; display: block; margin-bottom: 8px;">🔥 학부모 인프라 & 분위기 지표</strong>
-                            <div style="display: flex; flex-direction: column; gap: 6px;">
-                                <div style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; background: var(--bg-primary); border-radius: 6px; transition: opacity 0.2s;" onclick="toggleCompetitionModal()" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
-                                    <span style="display: flex; align-items: center; gap: 6px;">🔥 경쟁 치열도: <strong id="schoolCompetition">상</strong></span>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-blue);"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        <div style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 16px; margin-bottom: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <h4 style="font-size: 14px; font-weight: 800; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 6px;">
+                                    <span>🔥</span> <span>학부모 인프라 & 분위기 지표</span>
+                                </h4>
+                                <span style="font-size: 11px; background: #eff6ff; color: #2563eb; padding: 3px 8px; border-radius: 10px; font-weight: 700;">실시간 클릭 분석</span>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <div style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; transition: all 0.2s;" onclick="toggleCompetitionModal()" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+                                    <span style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #1e293b; font-weight: 600;">🔥 경쟁 치열도: <strong id="schoolCompetition" style="color: #2563eb; font-weight: 800;">상</strong></span>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #64748b;"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                 </div>
                                 <div id="schoolCompetitionTags" style="display: flex; flex-wrap: wrap; gap: 4px; display: none;"></div>
                                 
-                                <div style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; background: var(--bg-primary); border-radius: 6px; transition: opacity 0.2s;" onclick="toggleAcademySidebar()" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
-                                    <span style="display: flex; align-items: center; gap: 6px;">📚 주변 학원가: <strong id="schoolAcademies">0개</strong></span>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-blue);"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                <div style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; transition: all 0.2s;" onclick="toggleAcademySidebar()" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+                                    <span style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #1e293b; font-weight: 600;">📚 주변 학원가: <strong id="schoolAcademies" style="color: #0f172a; font-weight: 800;">0개</strong></span>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #64748b;"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                 </div>
-                                <div style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; background: var(--bg-primary); border-radius: 6px; transition: opacity 0.2s;" onclick="toggleBudgetPanel()" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
-                                    <span style="display: flex; align-items: center; gap: 6px;">💰 창체 활동비: <strong id="schoolBudget">0만원</strong> (년/인)</span>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-blue);"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                <div style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; transition: all 0.2s;" onclick="toggleBudgetPanel()" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+                                    <span style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #1e293b; font-weight: 600;">💰 창체 활동비: <strong id="schoolBudget" style="color: #0f172a; font-weight: 800;">0만원</strong> <span style="font-size: 11px; color: #64748b; font-weight: normal;">(년/인)</span></span>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #64748b;"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                 </div>
-                                <div style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; background: var(--bg-primary); border-radius: 6px; transition: opacity 0.2s;" onclick="toggleGraduateModal()" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
-                                    <span style="display: flex; align-items: center; gap: 6px;">🎓 <span id="schoolGraduateTrendLabel">특목/자사 진학률</span>: <strong id="schoolGraduateTrend">0%</strong></span>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-blue);"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                <div style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; transition: all 0.2s;" onclick="toggleGraduateModal()" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+                                    <span style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #1e293b; font-weight: 600;">🎓 <span id="schoolGraduateTrendLabel">특목/자사 진학률</span>: <strong id="schoolGraduateTrend" style="color: #2563eb; font-weight: 800;">0%</strong></span>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #64748b;"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                 </div>
-                                <div style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; background: var(--bg-primary); border-radius: 6px; transition: opacity 0.2s;" onclick="toggleStudentStatsModal()" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
-                                    <span style="display: flex; align-items: center; gap: 6px;">🚌 전학생·통학 현황: <strong id="statTransferSummary">-</strong></span>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-blue);"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                <div style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; transition: all 0.2s;" onclick="toggleStudentStatsModal()" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+                                    <span style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #1e293b; font-weight: 600;">🚌 전학생·통학 현황: <strong id="statTransferSummary" style="color: #0f172a; font-weight: 800;">-</strong></span>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #64748b;"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                 </div>
-                                <div style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; background: var(--bg-primary); border-radius: 6px; transition: opacity 0.2s;" onclick="toggleViolenceStatsModal()" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
-                                    <span style="display: flex; align-items: center; gap: 6px;">🛡️ 학교폭력 현황: <strong id="statViolenceSummary">-</strong></span>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-blue);"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                <div style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; transition: all 0.2s;" onclick="toggleViolenceStatsModal()" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+                                    <span style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #1e293b; font-weight: 600;">🛡️ 학교폭력 현황: <strong id="statViolenceSummary" style="color: #0f172a; font-weight: 800;">-</strong></span>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #64748b;"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                 </div>
                             </div>
-                            <div style="margin-top: 8px; font-size: 11px; color: var(--text-muted); line-height: 1.4;" id="schoolCompetitionDesc">경쟁 치열도 상세 조언</div>
+                            <div style="margin-top: 10px; padding: 10px 12px; background: #f1f5f9; border-radius: 10px; font-size: 11.5px; color: #475569; line-height: 1.45;" id="schoolCompetitionDesc">경쟁 치열도 상세 조언</div>
                         </div>
 
                         <!-- 🚶 안심 통학로 토글 & 설정 -->
-                        <div style="background: var(--bg-primary); padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
-                            <label style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: bold; color: var(--deep-blue); background: white; border: 1px solid var(--border-color); border-radius: 6px; padding: 6px; cursor: pointer; user-select: none;">
-                                <input type="checkbox" id="chkCommutePath" style="cursor: pointer;"> 🚶 안심 통학로 도보 분석
+                        <div style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 16px; margin-bottom: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h4 style="font-size: 14px; font-weight: 800; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 6px;">
+                                    <span>🚶</span> <span>안심 통학로 도보 분석</span>
+                                </h4>
+                                <span style="font-size: 11px; background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 10px; font-weight: 700;">안전 경로 추천</span>
+                            </div>
+
+                            <label style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px; cursor: pointer; user-select: none; transition: all 0.2s;">
+                                <input type="checkbox" id="chkCommutePath" style="cursor: pointer; width: 16px; height: 16px;"> 🚶 안심 통학로 도보 분석 활성화
                             </label>
                             <label style="display: none;">
                                 <input type="checkbox" id="chkShuttlePath">
                             </label>
                             
-                            <div id="commutePathSettings" style="display: none; flex-direction: column; gap: 6px; background: white; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 11px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: bold; color: var(--deep-blue);">
+                            <div id="commutePathSettings" style="display: none; flex-direction: column; gap: 8px; background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0; font-size: 11.5px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 800; color: #0f172a;">
                                     <span>📍 안심통학로 설정</span>
-                                    <button class="btn-reset-commute" onclick="if(typeof window.resetCommutePoints==='function') window.resetCommutePoints();" style="background: none; border: none; color: var(--primary-blue); font-size: 10px; cursor: pointer; padding: 0;">기본값 초기화</button>
+                                    <button class="btn-reset-commute" onclick="if(typeof window.resetCommutePoints==='function') window.resetCommutePoints();" style="background: none; border: none; color: #2563eb; font-size: 11px; font-weight: 700; cursor: pointer; padding: 0;">기본값 초기화</button>
                                 </div>
                                 <div style="display: flex; gap: 6px;">
-                                    <button class="btn-set-start" onclick="if(typeof window.toggleSetStartPoint==='function') window.toggleSetStartPoint();" style="flex: 1; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: white; cursor: pointer; font-weight: bold; font-size: 11px;">🏠 출발지 지정</button>
+                                    <button class="btn-set-start" onclick="if(typeof window.toggleSetStartPoint==='function') window.toggleSetStartPoint();" style="flex: 1; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #1e293b; cursor: pointer; font-weight: 700; font-size: 11.5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">🏠 출발지 지정</button>
                                 </div>
-                                <div style="color: var(--text-muted); font-size: 10px; margin-top: 2px;">
+                                <div style="color: #64748b; font-size: 10.5px; margin-top: 2px;">
                                     * 버튼 선택 후 지도를 클릭하면 출발지가 지정됩니다.
                                 </div>
                             </div>
                             
-                            <div id="commutePathSafetyGuide" style="display: none; flex-direction: column; gap: 6px; background: #e8f5e9; padding: 12px; border-radius: 6px; border: 1px solid #c8e6c9; font-size: 11px; line-height: 1.5; color: #2e7d32;">
-                                <strong style="color: #1b5e20; font-size: 12px; border-bottom: 1px dashed #a5d6a7; padding-bottom: 4px;">🛡️ 안심 통학로 안전 분석 결과</strong>
-                                <div style="display: flex; flex-direction: column; gap: 4px; font-weight: 500;">
+                            <div id="commutePathSafetyGuide" style="display: none; flex-direction: column; gap: 8px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: 14px; border-radius: 14px; border: 1px solid #bbf7d0; font-size: 11.5px; line-height: 1.5; color: #166534;">
+                                <strong style="color: #14532d; font-size: 12.5px; font-weight: 800; border-bottom: 1px dashed #86efac; padding-bottom: 6px;">🛡️ 안심 통학로 안전 분석 결과</strong>
+                                <div style="display: flex; flex-direction: column; gap: 5px; font-weight: 600;">
                                     <div class="commute-safety-item"><span class="commute-item-num">1.</span> 🚶 보행 전용 안심 도보 경로 적용</div>
                                     <div class="commute-safety-item"><span class="commute-item-num">2.</span> 🟡 스쿨존 300m 어린이보호구역 확인</div>
                                     <div id="commuteSafetyGuardiansItem" class="commute-safety-item"><span class="commute-item-num">3.</span> 🛡️ <span id="commuteSafetyGuardiansText">800m 내 지킴이집 <strong id="commuteSafeHouseCount">0</strong>곳, 파출소 <strong id="commutePoliceCount">0</strong>곳</span></div>
@@ -1495,39 +1594,151 @@
 
                     <!-- ==================== TAB 3: 🏠 주거 & 학원 ==================== -->
                     <div id="schoolTabRealEstate" class="school-tab-panel" style="display: none; flex-direction: column; gap: 12px;">
-                        <!-- 주변 부동산 실거래가 -->
-                        <div style="background: white; border: 1px solid var(--border-color); padding: 12px; border-radius: 10px; font-size: 12px;">
-                            <strong style="color: var(--deep-blue); font-size: 13.5px; font-weight: 700; display: block; margin-bottom: 8px;">🏠 주변 부동산 (전용 84㎡ 기준)</strong>
-                            <div style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; background: var(--bg-primary); padding: 8px 10px; border-radius: 6px;">
-                                <span style="display: flex; justify-content: space-between;"><span>평균 매매가:</span> <strong id="realEstateSale">분석 중...</strong></span>
-                                <span style="display: flex; justify-content: space-between;"><span>평균 전세가:</span> <strong id="realEstateJeonse">분석 중...</strong></span>
-                                <span style="display: flex; justify-content: space-between;"><span>가성비 지수:</span> <strong id="realEstateIndex" style="color: var(--primary-blue);">분석 중...</strong></span>
+                        <!-- 1. 주변 부동산 실거래가 -->
+                        <div style="background: white; border-radius: 20px; border: 1px solid #e2e8f0; padding: 20px; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.03);">
+                            <!-- 헤더 영역 -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <h4 style="font-size: 15px; font-weight: 800; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 16px;">🏠</span> <span>주변 부동산</span> <span style="font-size: 13px; font-weight: 500; color: #64748b;">(전용 84㎡ 기준)</span>
+                                </h4>
+                                <span style="font-size: 11px; background: #eff6ff; color: #3b82f6; padding: 4px 12px; border-radius: 20px; font-weight: 700; border: 1px solid #dbeafe;">실거래가 기준</span>
                             </div>
-                            <!-- 3개년 매매가 그래프 -->
-                            <div style="margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 8px;">
-                                <span style="font-size: 11px; font-weight: bold; color: var(--text-muted); display: block; margin-bottom: 6px;">📈 3개년 매매가 변동 추이</span>
-                                <svg id="estateTrendGraph" width="100%" height="80" style="background: #f8f9fa; border-radius: 6px; border: 1px solid var(--border-color);"></svg>
-                            </div>
-                        </div>
-
-                        <!-- 주변 학원가 평균 수강료 -->
-                        <div style="background: white; border: 1px solid var(--border-color); padding: 12px; border-radius: 10px; font-size: 12px;">
-                            <strong style="color: var(--deep-blue); font-size: 13.5px; font-weight: 700; display: block; margin-bottom: 8px;">📚 평균 학원비 (주 3회 단과 기준 추정치)</strong>
-                            <div style="display: flex; flex-direction: column; gap: 6px; background: var(--bg-primary); padding: 8px 10px; border-radius: 6px;">
-                                <span style="display: flex; justify-content: space-between;"><span>영어 전문학원:</span> <strong id="academyFeeEng">분석 중...</strong></span>
-                                <span style="display: flex; justify-content: space-between;"><span>수학 전문학원:</span> <strong id="academyFeeMath">분석 중...</strong></span>
-                            </div>
-                        </div>
-
-                        <!-- 💡 학부모 맞춤 학원비 혜택 계산기 -->
-                        <div style="background: white; border: 1px solid var(--border-color); padding: 12px; border-radius: 10px; font-size: 12px;">
-                            <strong style="color: var(--deep-blue); font-size: 13.5px; font-weight: 700; display: block; margin-bottom: 8px;">💡 학부모 맞춤 혜택 계산기</strong>
                             
-                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <!-- 깔끔한 화이트스페이스 키-값 리스트 -->
+                            <div style="display: flex; flex-direction: column; gap: 12px; padding: 4px 0;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13.5px;">
+                                    <span style="color: #475569; font-weight: 500;">평균 매매가:</span>
+                                    <strong id="realEstateSale" style="font-size: 15px; font-weight: 800; color: #0f172a;">26억 7,988만원</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13.5px;">
+                                    <span style="color: #475569; font-weight: 500;">평균 전세가:</span>
+                                    <strong id="realEstateJeonse" style="font-size: 15px; font-weight: 800; color: #0f172a;">16억 793만원 <span style="font-size: 12px; color: #94a3b8; font-weight: normal;">(추정)</span></strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13.5px;">
+                                    <span style="color: #475569; font-weight: 500;">가성비 지수:</span>
+                                    <span id="realEstateIndex" style="background: #eff6ff; color: #2563eb; padding: 3px 12px; border-radius: 12px; border: 1px solid #dbeafe; font-size: 12.5px; font-weight: 700;">29점 (안정)</span>
+                                </div>
+                            </div>
+                            
+                            <!-- 3개년 매매가 변동 추이 헤더 및 그래프 -->
+                            <div style="margin-top: 16px; border-top: 1px solid #f1f5f9; padding-top: 14px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <span style="font-size: 13px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+                                        <span>📈</span> <span>3개년 매매가 변동 추이</span>
+                                    </span>
+                                    <span id="realEstateTrendDiff" style="color: #059669; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 2px;">▲ 1.2억 (+4.7%)</span>
+                                </div>
+                                
+                                <div style="background: #f8fafc; border-radius: 16px; border: 1px solid #e2e8f0; padding: 12px 10px 8px 10px;">
+                                    <svg id="estateTrendGraph" width="100%" height="115" style="display: block; overflow: visible;"></svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. 주요 학군 배정 아파트 단지 -->
+                        <div style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 16px; margin-bottom: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <h4 style="font-size: 14px; font-weight: 800; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 6px;">
+                                    <span>🏢</span> <span>주요 학군 배정 단지</span>
+                                </h4>
+                                <span style="font-size: 11px; background: #eff6ff; color: #2563eb; padding: 3px 8px; border-radius: 10px; font-weight: 700;" id="complexSchoolDistLabel">3개 주요 배정단지</span>
+                            </div>
+                            <div id="schoolComplexList" style="display: flex; flex-direction: column; gap: 8px;">
+                                <!-- 동적 할당 영역 -->
+                            </div>
+                        </div>
+
+                        <!-- 3. 학교 셔틀버스 운행 정보 -->
+                        <div style="background: white; border-radius: 20px; border: 1px solid #e2e8f0; padding: 18px 20px; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.03);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 8px;">
+                                <h4 style="font-size: 14.5px; font-weight: 800; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px; white-space: nowrap; flex-shrink: 0;">
+                                    <span style="font-size: 16px;">🚌</span> <span>학교 셔틀버스 정보</span>
+                                </h4>
+                                <span style="font-size: 11px; background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 20px; font-weight: 700; border: 1px solid #bbf7d0; white-space: nowrap; flex-shrink: 0;" id="shuttleStatusBadge">🚌 통학차량 운행 중</span>
+                            </div>
+                            
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; gap: 10px;">
+                                    <span style="color: #475569; font-weight: 500; white-space: nowrap; flex-shrink: 0;">통학버스 운행 여부</span>
+                                    <strong style="color: #166534; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px;" id="shuttleStatusText" title="운행 중 (학교 자체 통학차량)">운행 중 (학교 자체 통학차량)</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; border-top: 1px solid #f1f5f9; padding-top: 7px; gap: 10px;">
+                                    <span style="color: #475569; font-weight: 500; white-space: nowrap; flex-shrink: 0;">등하교 운행 시간대</span>
+                                    <strong style="color: #2563eb; font-weight: 700; white-space: nowrap; font-size: 11.5px;" id="shuttleTimeText">등교 07:40 ~ 08:30 / 하교 15:30 ~ 17:00</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; border-top: 1px solid #f1f5f9; padding-top: 7px; gap: 10px;">
+                                    <span style="color: #475569; font-weight: 500; white-space: nowrap; flex-shrink: 0;">안심 동승 서비스</span>
+                                    <strong style="color: #059669; font-weight: 700; white-space: nowrap; font-size: 12px;">지도교사/도우미 탑승 & 안전 케어</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; border-top: 1px solid #f1f5f9; padding-top: 7px; gap: 10px;">
+                                    <span style="color: #475569; font-weight: 500; white-space: nowrap; flex-shrink: 0;">이용 대상</span>
+                                    <strong style="color: #334155; font-weight: 700; white-space: nowrap; font-size: 12px;">재학생 전용 (무료/학교 지원)</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. 주변 학원가 평균 수강료 -->
+                        <div style="background: white; border-radius: 20px; border: 1px solid #e2e8f0; padding: 20px; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.03);">
+                            <!-- 헤더 영역 -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <h4 style="font-size: 15px; font-weight: 800; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 16px;">📚</span> <span>평균 학원비</span> <span style="font-size: 13px; font-weight: 500; color: #64748b;">(주 3회 단과 기준 추정치)</span>
+                                </h4>
+                            </div>
+                            
+                            <!-- 3개 과목별 학원비 카드 리스트 -->
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <!-- 영어 전문학원 -->
+                                <div style="background: #f8fafc; border-radius: 14px; border: 1px solid #f1f5f9; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 600; color: #334155;">
+                                        <span style="width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; display: inline-block;"></span>
+                                        <span>영어 전문학원</span>
+                                    </span>
+                                    <strong id="academyFeeEng" style="font-size: 15px; font-weight: 800; color: #0f172a;">351,163원</strong>
+                                </div>
+                                
+                                <!-- 수학 전문학원 -->
+                                <div style="background: #f8fafc; border-radius: 14px; border: 1px solid #f1f5f9; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 600; color: #334155;">
+                                        <span style="width: 8px; height: 8px; background: #6366f1; border-radius: 50%; display: inline-block;"></span>
+                                        <span>수학 전문학원</span>
+                                    </span>
+                                    <strong id="academyFeeMath" style="font-size: 15px; font-weight: 800; color: #0f172a;">409,034원</strong>
+                                </div>
+
+                                <!-- 국어·논술 전문학원 -->
+                                <div style="background: #f8fafc; border-radius: 14px; border: 1px solid #f1f5f9; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 600; color: #334155;">
+                                        <span style="width: 8px; height: 8px; background: #8b5cf6; border-radius: 50%; display: inline-block;"></span>
+                                        <span>국어·논술 전문학원</span>
+                                    </span>
+                                    <strong id="academyFeeKor" style="font-size: 15px; font-weight: 800; color: #0f172a;">285,000원</strong>
+                                </div>
+                            </div>
+
+                            <!-- 하단 지역 평균 대비 비교 뱃지 박스 -->
+                            <div style="background: #f0f9ff; border: 1px solid #e0f2fe; border-radius: 14px; padding: 12px 16px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                                <span style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: #0369a1;">
+                                    <span>📍</span> <span id="academyFeeCompareText">서초구 중등 평균 대비 약 94% 수준</span>
+                                </span>
+                                <span id="academyFeeLevelBadge" style="background: white; border: 1px solid #bae6fd; color: #0284c7; padding: 4px 12px; border-radius: 10px; font-size: 11.5px; font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">적정 구간</span>
+                            </div>
+                        </div>
+
+                        <!-- 5. 💡 학부모 맞춤 학원비 혜택 계산기 -->
+                        <div style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 16px; margin-bottom: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <h4 style="font-size: 14px; font-weight: 800; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 6px;">
+                                    <span>💡</span> <span>학부모 맞춤 혜택 계산기</span>
+                                </h4>
+                                <span style="font-size: 11px; background: #eff6ff; color: #2563eb; padding: 3px 8px; border-radius: 10px; font-weight: 700;">실시간 자동할인</span>
+                            </div>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
                                 <!-- 수강 과목 수 -->
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <label for="benefitSubjectSelect" style="color: var(--text-main); font-weight: 600;">수강 과목 수</label>
-                                    <select id="benefitSubjectSelect" onchange="if(typeof window.calculateAcademyBenefits === 'function') window.calculateAcademyBenefits()" style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 11.5px; background: white; cursor: pointer;">
+                                    <label for="benefitSubjectSelect" style="color: #334155; font-size: 12px; font-weight: 600;">수강 과목 수</label>
+                                    <select id="benefitSubjectSelect" onchange="if(typeof window.calculateAcademyBenefits === 'function') window.calculateAcademyBenefits()" style="padding: 6px 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 11.5px; background: white; cursor: pointer; outline: none;">
                                         <option value="1">단과 (1과목)</option>
                                         <option value="2" selected>2과목 (영어+수학)</option>
                                         <option value="3">종합반 (3과목 이상)</option>
@@ -1536,8 +1747,8 @@
 
                                 <!-- 형제/다자녀 할인 -->
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <label for="benefitSiblingSelect" style="color: var(--text-main); font-weight: 600;">다자녀 / 형제 할인</label>
-                                    <select id="benefitSiblingSelect" onchange="if(typeof window.calculateAcademyBenefits === 'function') window.calculateAcademyBenefits()" style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 11.5px; background: white; cursor: pointer;">
+                                    <label for="benefitSiblingSelect" style="color: #334155; font-size: 12px; font-weight: 600;">다자녀 / 형제 할인</label>
+                                    <select id="benefitSiblingSelect" onchange="if(typeof window.calculateAcademyBenefits === 'function') window.calculateAcademyBenefits()" style="padding: 6px 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 11.5px; background: white; cursor: pointer; outline: none;">
                                         <option value="0">해당 없음 (1자녀)</option>
                                         <option value="0.1" selected>2자녀 (10% 할인)</option>
                                         <option value="0.15">3자녀 이상 (15% 할인)</option>
@@ -1546,8 +1757,8 @@
 
                                 <!-- 제휴 카드 / 바우처 -->
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <label for="benefitCardSelect" style="color: var(--text-main); font-weight: 600;">제휴 카드 / 바우처</label>
-                                    <select id="benefitCardSelect" onchange="if(typeof window.calculateAcademyBenefits === 'function') window.calculateAcademyBenefits()" style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 11.5px; background: white; cursor: pointer;">
+                                    <label for="benefitCardSelect" style="color: #334155; font-size: 12px; font-weight: 600;">제휴 카드 / 바우처</label>
+                                    <select id="benefitCardSelect" onchange="if(typeof window.calculateAcademyBenefits === 'function') window.calculateAcademyBenefits()" style="padding: 6px 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 11.5px; background: white; cursor: pointer; outline: none;">
                                         <option value="0">적용 안함</option>
                                         <option value="15000">교육전용 카드 (월 1.5만원)</option>
                                         <option value="30000" selected>아이행복/지역바우처 (월 3만원)</option>
@@ -1556,18 +1767,18 @@
                             </div>
 
                             <!-- 계산 결과 박스 -->
-                            <div style="margin-top: 10px; background: linear-gradient(135deg, #f0f7ff, #e3f2fd); padding: 10px 12px; border-radius: 8px; border: 1px solid #bbdefb;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: var(--text-muted); margin-bottom: 3px;">
+                            <div style="margin-top: 14px; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 14px; border-radius: 14px; border: 1px solid #bfdbfe;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #64748b; margin-bottom: 4px;">
                                     <span>표준 수강료 (추정):</span>
                                     <span id="benefitStandardFee" style="text-decoration: line-through;">약 750,000원</span>
                                 </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #d32f2f; margin-bottom: 6px; font-weight: 600;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #dc2626; margin-bottom: 8px; font-weight: 700;">
                                     <span>예상 월 절감 혜택:</span>
                                     <span id="benefitDiscountVal">-105,000원</span>
                                 </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #90caf9; padding-top: 6px;">
-                                    <strong style="color: var(--deep-blue); font-size: 12.5px;">최종 예상 실부담금:</strong>
-                                    <strong id="benefitFinalFee" style="color: var(--primary-blue); font-size: 15px; font-weight: 800;">약 645,000원 / 월</strong>
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #93c5fd; padding-top: 8px;">
+                                    <strong style="color: #1e3a8a; font-size: 12.5px;">최종 예상 실부담금:</strong>
+                                    <strong id="benefitFinalFee" style="color: #2563eb; font-size: 16px; font-weight: 900;">약 645,000원 / 월</strong>
                                 </div>
                             </div>
                         </div>
@@ -1576,18 +1787,27 @@
                     <!-- ==================== TAB 4: 💬 학부모 소통 ==================== -->
                     <div id="schoolTabCommunity" class="school-tab-panel" style="display: none; flex-direction: column; gap: 12px;">
                         <!-- 우리 아이 성적 분석 & 비교 보드 액션 버튼 -->
-                        <div style="display: flex; flex-direction: column; gap: 8px; background: white; border: 1px solid var(--border-color); padding: 12px; border-radius: 10px;">
-                            <div style="display: flex; gap: 8px;">
-                                <button class="btn-primary" id="btnCompareChild" style="flex: 1; padding: 10px; font-size: 13px;">🎯 우리아이 성적 분석하기</button>
-                                <button class="btn-secondary" id="btnCompareBoard" style="flex: 1; padding: 10px; font-size: 13px; margin: 0;">⚖️ 비교 보드 추가</button>
+                        <div style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 16px; margin-bottom: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <h4 style="font-size: 14px; font-weight: 800; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 6px;">
+                                    <span>💬</span> <span>학부모 커뮤니티 & 분석 서비스</span>
+                                </h4>
+                                <span style="font-size: 11px; background: #eff6ff; color: #2563eb; padding: 3px 8px; border-radius: 10px; font-weight: 700;">맞춤 분석</span>
                             </div>
-                            <button class="btn-secondary" id="btnShowReviews" style="background: white; border: 1px solid var(--primary-blue); color: var(--primary-blue); width: 100%; padding: 10px; font-size: 13px; margin: 0;">💬 찐 학부모 리뷰 보기</button>
+
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn-primary" id="btnCompareChild" style="flex: 1; padding: 11px 12px; font-size: 12.5px; font-weight: 700; border-radius: 12px; border: none; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.25); transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 4px;">🎯 우리아이 성적 분석하기</button>
+                                    <button class="btn-secondary" id="btnCompareBoard" style="flex: 1; padding: 11px 12px; font-size: 12.5px; font-weight: 700; border-radius: 12px; border: 1px solid #cbd5e1; background: #f8fafc; color: #334155; cursor: pointer; margin: 0; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 4px;">⚖️ 비교 보드 추가</button>
+                                </div>
+                                <button class="btn-secondary" id="btnShowReviews" style="background: white; border: 1.5px solid #2563eb; color: #2563eb; width: 100%; padding: 11px 12px; font-size: 12.5px; font-weight: 700; border-radius: 12px; cursor: pointer; margin: 0; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 4px;">💬 찐 학부모 리뷰 보기</button>
+                            </div>
                         </div>
 
                         <!-- 데이터 출처 및 학교알리미 바로가기 -->
-                        <div style="margin-top: 4px; font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 8px;">
+                        <div style="background: #f8fafc; border-radius: 14px; border: 1px solid #e2e8f0; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #64748b;">
                             <span>출처: 학교알리미 (공시 2025)</span>
-                            <a id="btnAlimiLink" href="https://www.schoolinfo.go.kr" target="_blank" style="color: var(--primary-blue); text-decoration: none; font-weight: bold;">학교알리미 바로가기 ↗</a>
+                            <a id="btnAlimiLink" href="https://www.schoolinfo.go.kr" target="_blank" style="color: #2563eb; text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 4px;">학교알리미 바로가기 ↗</a>
                         </div>
                     </div>
                 </div>
@@ -2121,16 +2341,16 @@
     </div>
 
     <!-- 내신 경쟁 상세 분석 모달 -->
-    <div id="competitionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) toggleCompetitionModal()">
-        <div style="background: var(--bg-card); border-radius: 16px; padding: 24px; width: 90%; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--border-color); position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
-                <h3 style="font-size: 16px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
+    <div id="competitionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.45); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);" onclick="if(event.target === this) toggleCompetitionModal()">
+        <div style="background: white; border-radius: 20px; padding: 24px; width: 92%; max-width: 480px; box-shadow: 0 12px 36px rgba(0,0,0,0.16); border: 1px solid #e2e8f0; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 16px;">
+                <h3 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px;">
                     <span id="competitionModalTitle">🔥 내신 경쟁 상세 분석</span>
                 </h3>
-                <button onclick="toggleCompetitionModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='var(--deep-blue)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
+                <button onclick="toggleCompetitionModal()" style="background: #f1f5f9; border: none; border-radius: 50%; width: 32px; height: 32px; font-size: 18px; cursor: pointer; color: #64748b; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">&times;</button>
             </div>
             
-            <div id="competitionModalContent" class="hide-scrollbar" style="font-size: 12px; max-height: 70vh; overflow-y: auto; padding-right: 4px;">
+            <div id="competitionModalContent" class="hide-scrollbar" style="font-size: 12.5px; max-height: 72vh; overflow-y: auto; padding-right: 4px; line-height: 1.55; color: #334155;">
                 <!-- 콘텐츠가 app.js에 의해 동적으로 주입됩니다. -->
             </div>
         </div>
