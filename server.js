@@ -356,6 +356,7 @@ app.get('/api/academies/count', async (req, res) => {
 // 9. GET /api/academies/list - Fetch ALL academy pages and return sorted full list
 app.get('/api/academies/list', async (req, res) => {
     const { x, y } = req.query;
+    const radius = parseInt(req.query.radius, 10) || 1000;
     if (!x || !y) return res.status(400).json({ error: '좌표가 없습니다.' });
 
     const config = await readConfig();
@@ -366,8 +367,8 @@ app.get('/api/academies/list', async (req, res) => {
 
     try {
         // 1페이지 먼저 호출해서 total_count 파악 (학원 카테고리 + 교습소 키워드)
-        const ac5Url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=AC5&x=${x}&y=${y}&radius=1000&size=15&page=1`;
-        const gyoUrl = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent('교습소')}&x=${x}&y=${y}&radius=1000&size=15&page=1`;
+        const ac5Url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=AC5&x=${x}&y=${y}&radius=${radius}&size=15&page=1`;
+        const gyoUrl = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent('교습소')}&x=${x}&y=${y}&radius=${radius}&size=15&page=1`;
         
         const [ac5First, gyoFirst] = await Promise.all([
             httpsGet(ac5Url, headers).catch(() => ({ meta: { total_count: 0 }, documents: [] })),
@@ -386,11 +387,11 @@ app.get('/api/academies/list', async (req, res) => {
         
         // 학원 나머지 페이지
         for (let page = 2; page <= ac5Pages; page++) {
-            pageRequests.push(httpsGet(`https://dapi.kakao.com/v2/local/search/category.json?category_group_code=AC5&x=${x}&y=${y}&radius=1000&size=15&page=${page}`, headers).catch(() => ({ documents: [] })));
+            pageRequests.push(httpsGet(`https://dapi.kakao.com/v2/local/search/category.json?category_group_code=AC5&x=${x}&y=${y}&radius=${radius}&size=15&page=${page}`, headers).catch(() => ({ documents: [] })));
         }
         // 교습소 나머지 페이지
         for (let page = 2; page <= gyoPages; page++) {
-            pageRequests.push(httpsGet(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent('교습소')}&x=${x}&y=${y}&radius=1000&size=15&page=${page}`, headers).catch(() => ({ documents: [] })));
+            pageRequests.push(httpsGet(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent('교습소')}&x=${x}&y=${y}&radius=${radius}&size=15&page=${page}`, headers).catch(() => ({ documents: [] })));
         }
 
         if (pageRequests.length > 0) {
@@ -421,6 +422,7 @@ app.get('/api/academies/list', async (req, res) => {
 // 10. GET /api/academies/search - Keyword search around a location
 app.get('/api/academies/search', async (req, res) => {
     const { query, x, y } = req.query;
+    const radius = parseInt(req.query.radius, 10) || 1000;
     if (!query || !x || !y) return res.status(400).json({ error: '파라미터가 부족합니다.' });
 
     const config = await readConfig();
@@ -430,7 +432,7 @@ app.get('/api/academies/search', async (req, res) => {
     const headers = getKakaoHeaders(req, appkey);
 
     try {
-        const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&category_group_code=AC5&x=${x}&y=${y}&radius=1000&size=15&page=1`;
+        const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&category_group_code=AC5&x=${x}&y=${y}&radius=${radius}&size=15&page=1`;
         const firstData = await httpsGet(url, headers).catch(() => ({ meta: { total_count: 0 }, documents: [] }));
         const totalCount = firstData.meta ? firstData.meta.total_count : 0;
         const totalPages = Math.min(Math.ceil(totalCount / 15), 3); // 최대 3페이지 제한
@@ -440,7 +442,7 @@ app.get('/api/academies/search', async (req, res) => {
         if (totalPages > 1) {
             const pageRequests = [];
             for (let page = 2; page <= totalPages; page++) {
-                const pUrl = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&category_group_code=AC5&x=${x}&y=${y}&radius=1000&size=15&page=${page}`;
+                const pUrl = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&category_group_code=AC5&x=${x}&y=${y}&radius=${radius}&size=15&page=${page}`;
                 pageRequests.push(httpsGet(pUrl, headers).catch(() => ({ documents: [] })));
             }
             const results = await Promise.all(pageRequests);

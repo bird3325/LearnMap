@@ -544,6 +544,22 @@ body {
     transform: translateX(0);
 }
 
+/* Academy Scroll Wrapper & Filters - 스크롤바 숨김 처리 */
+#academyScrollWrapper::-webkit-scrollbar,
+#academySubjectChips::-webkit-scrollbar,
+#sideAcademyList::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+#academyScrollWrapper,
+#academySubjectChips,
+#sideAcademyList {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+}
+
 /* Sidebar Resizer Handle (Appended to app-container) */
 .sidebar-resizer {
     position: absolute;

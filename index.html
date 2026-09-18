@@ -713,47 +713,94 @@
 
         <!-- Academy Sidebar (Initially hidden) -->
         <section class="academy-sidebar-section" id="academySidebar" style="display: none;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-blue); padding-bottom: 12px; margin-bottom: 8px;">
-                <h2 style="font-size: 16px; color: var(--deep-blue); margin: 0;">주변 학원 리스트</h2>
-                <button onclick="toggleAcademySidebar()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted);">&times;</button>
+            <!-- Academy Sidebar Top Header -->
+            <div id="academySidebarHeader" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <h2 style="font-size: 19px; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px;">
+                        주변 학원 리스트
+                        <span id="academyTotalCountBadge" style="background: #e0f2fe; color: #0284c7; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; display: inline-flex; align-items: center; white-space: nowrap;">총 0개소</span>
+                    </h2>
+                </div>
+                <button onclick="toggleAcademySidebar()" style="background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; color: #475569; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; padding: 0;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'" aria-label="닫기">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
             
-            <div style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4; background: #f8f9fa; padding: 8px; border-radius: 6px;">
-                ℹ️ 학교를 중심으로 <strong>반경 1km 이내</strong>
-            </div>
-            
-            <!-- 학원 유형/정렬/검색 필터 -->
-            <div style="display: flex; gap: 6px; margin-bottom: 10px;">
-                <select id="academyTypeFilter" style="padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; outline: none; background: #fff; color: #334155; min-width: 80px;">
-                    <option value="all">유형 전체</option>
-                    <option value="학원">학원만</option>
-                    <option value="교습소">교습소만</option>
-                </select>
-                <select id="academySortFilter" style="padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; outline: none; background: #fff; color: #334155; min-width: 80px;">
-                    <option value="distance">거리순 📍</option>
-                    <option value="name">이름순 🔤</option>
-                    <option value="rating">평점/후기순 ⭐</option>
-                </select>
-                <input type="text" id="academyNameFilter" placeholder="학원명/과목 검색" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; outline: none; flex: 1; background: #fff; min-width: 0;">
-            </div>
+            <!-- 헤더 밑 스크롤 컨테이너: 헤더 아래 내용은 스크롤되고 전체 탭 메뉴는 상단에 멈춤 -->
+            <div id="academyScrollWrapper" style="flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; scrollbar-width: none; -ms-overflow-style: none;">
+                <!-- 반경 설정 안내 카드 -->
+                <div style="background: #f0f7ff; border: 1px solid #dbeafe; border-radius: 14px; padding: 13px 14px; margin-bottom: 12px; flex-shrink: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 7px;">
+                            <span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #2563eb; color: #ffffff; border-radius: 50%; font-size: 11px; font-weight: 800; font-family: sans-serif; flex-shrink: 0;">i</span>
+                            <span style="font-size: 13px; font-weight: 700; color: #1e293b; letter-spacing: -0.3px;">
+                                <strong id="academySchoolName" style="color: #2563eb; font-weight: 800;">학교</strong> 기준 반경 학원 목록
+                            </span>
+                        </div>
+                        <span style="font-size: 11px; font-weight: 600; color: #64748b; background: #ffffff; border: 1px solid #e2e8f0; padding: 3px 8px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">반경 설정</span>
+                    </div>
+                    <!-- 반경 버튼 4종 -->
+                    <div id="academyRadiusButtonGroup" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+                        <button type="button" class="academy-radius-btn" data-radius="500" style="padding: 8px 0; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; text-align: center; transition: all 0.15s ease;">500m</button>
+                        <button type="button" class="academy-radius-btn active" data-radius="1000" style="padding: 8px 0; border-radius: 8px; font-size: 12px; font-weight: 700; border: 1px solid #2563eb; background: #2563eb; color: #ffffff; cursor: pointer; text-align: center; box-shadow: 0 2px 6px rgba(37,99,235,0.25); transition: all 0.15s ease;">반경 1km</button>
+                        <button type="button" class="academy-radius-btn" data-radius="1500" style="padding: 8px 0; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; text-align: center; transition: all 0.15s ease;">1.5km</button>
+                        <button type="button" class="academy-radius-btn" data-radius="2000" style="padding: 8px 0; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; text-align: center; transition: all 0.15s ease;">2.0km</button>
+                    </div>
+                </div>
+                
+                <!-- 학원 유형 선택 및 검색 필터 -->
+                <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: center; flex-shrink: 0;">
+                    <div style="position: relative; flex-shrink: 0; min-width: 96px;">
+                        <select id="academyTypeFilter" style="width: 100%; box-sizing: border-box; appearance: none; -webkit-appearance: none; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 9px 28px 9px 12px; font-size: 13px; font-weight: 700; color: #1e293b; cursor: pointer; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+                            <option value="all">유형 전체</option>
+                            <option value="학원">학원만</option>
+                            <option value="교습소">교습소만</option>
+                        </select>
+                        <svg style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: #64748b; pointer-events: none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                    <div style="position: relative; flex: 1; display: flex; align-items: center;">
+                        <svg style="position: absolute; left: 12px; width: 15px; height: 15px; color: #94a3b8; pointer-events: none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" id="academyNameFilter" placeholder="학원명 또는 과목 검색" style="width: 100%; box-sizing: border-box; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 9px 30px 9px 34px; font-size: 12.5px; color: #1e293b; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.03); transition: border-color 0.15s ease;">
+                        <button id="btnAcademySearchClear" type="button" style="display: none; position: absolute; right: 9px; background: #cbd5e1; border: none; border-radius: 50%; width: 17px; height: 17px; font-size: 10px; color: #ffffff; cursor: pointer; align-items: center; justify-content: center; padding: 0;" aria-label="검색어 초기화">✕</button>
+                    </div>
+                </div>
 
-            <!-- 과목 퀵 필터 칩 -->
-            <div id="academySubjectChips" style="display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none;">
-                <button class="academy-chip active" data-subject="all" style="padding: 5px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--primary-blue); background: var(--primary-blue); color: #fff; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">전체</button>
-                <button class="academy-chip" data-subject="수학" style="padding: 5px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 500; border: 1px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">수학</button>
-                <button class="academy-chip" data-subject="영어" style="padding: 5px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 500; border: 1px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">영어</button>
-                <button class="academy-chip" data-subject="국어" style="padding: 5px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 500; border: 1px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">국어</button>
-                <button class="academy-chip" data-subject="과학" style="padding: 5px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 500; border: 1px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">과학/사회</button>
-                <button class="academy-chip" data-subject="예체능" style="padding: 5px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 500; border: 1px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">예체능</button>
+                <!-- 과목 퀵 필터 칩 & 정렬 드롭다운 (스크롤 시 상단에 고정되는 전체 탭 메뉴) -->
+                <div id="academyTabMenuBar" style="position: sticky; top: 0; z-index: 20; background: #ffffff; display: flex; justify-content: space-between; align-items: center; padding: 6px 0 10px 0; margin-bottom: 10px; gap: 8px; border-bottom: 1px solid #f1f5f9; flex-shrink: 0;">
+                    <div id="academySubjectChips" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; flex: 1; align-items: center;">
+                        <button class="academy-chip active" data-subject="all" style="padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid #1e293b; background: #1e293b; color: #ffffff; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">전체</button>
+                        <button class="academy-chip" data-subject="입시·재수" style="padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">입시·재수</button>
+                        <button class="academy-chip" data-subject="외국어/어학" style="padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">외국어/어학</button>
+                        <button class="academy-chip" data-subject="대학편입" style="padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">대학편입</button>
+                        <button class="academy-chip" data-subject="직업·전문" style="padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">직업·전문</button>
+                        <button class="academy-chip" data-subject="예체능" style="padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">예체능</button>
+                    </div>
+                    <div style="position: relative; display: inline-flex; align-items: center; flex-shrink: 0;">
+                        <select id="academySortFilter" style="appearance: none; -webkit-appearance: none; background: transparent; border: none; font-size: 12.5px; font-weight: 700; color: #2563eb; cursor: pointer; padding-right: 14px; outline: none; text-align: right;">
+                            <option value="distance">거리순</option>
+                            <option value="name">이름순</option>
+                            <option value="rating">평점순</option>
+                        </select>
+                        <svg style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 11px; height: 11px; color: #2563eb; pointer-events: none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+
+                <div id="sideAcademyList" style="display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
+                    <!-- Academies populated here -->
+                </div>
+
+                <div id="academyPaginationContainer" style="margin-top: auto; padding-top: 14px; padding-bottom: 10px;"></div>
             </div>
-
-            <div id="sideAcademyList" style="display: flex; flex-direction: column; gap: 10px; font-size: 13px; flex: 1; overflow-y: auto;">
-                <!-- Academies populated here -->
-            </div>
-
-
-            
-            <div id="academyPaginationContainer" style="margin-top: auto; padding-top: 12px;"></div>
         </section>
 
         <!-- PC용 우측 사이드바 옆 플로팅 퀵 필터 버튼 그룹 -->
