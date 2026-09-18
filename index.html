@@ -722,18 +722,32 @@
                 ℹ️ 학교를 중심으로 <strong>반경 1km 이내</strong>
             </div>
             
-            <!-- 학원 유형/검색 필터 -->
-            
-            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-                <select id="academyTypeFilter" style="padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 12px; outline: none; flex: 1; background: var(--bg-primary); box-sizing: border-box; min-width: 0;">
+            <!-- 학원 유형/정렬/검색 필터 -->
+            <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+                <select id="academyTypeFilter" style="padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; outline: none; background: #fff; color: #334155; min-width: 80px;">
                     <option value="all">유형 전체</option>
                     <option value="학원">학원만</option>
                     <option value="교습소">교습소만</option>
                 </select>
-                <input type="text" id="academyNameFilter" placeholder="학원명/과목 검색" style="padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 12px; outline: none; flex: 2; background: var(--bg-primary); box-sizing: border-box; min-width: 0;">
+                <select id="academySortFilter" style="padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; outline: none; background: #fff; color: #334155; min-width: 80px;">
+                    <option value="distance">거리순 📍</option>
+                    <option value="name">이름순 🔤</option>
+                    <option value="rating">평점/후기순 ⭐</option>
+                </select>
+                <input type="text" id="academyNameFilter" placeholder="학원명/과목 검색" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; outline: none; flex: 1; background: #fff; min-width: 0;">
             </div>
 
-            <div id="sideAcademyList" style="display: flex; flex-direction: column; gap: 0; font-size: 13px; flex: 1; overflow: hidden;">
+            <!-- 과목 퀵 필터 칩 -->
+            <div id="academySubjectChips" style="display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none;">
+                <button class="academy-chip active" data-subject="all" style="padding: 5px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--primary-blue); background: var(--primary-blue); color: #fff; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">전체</button>
+                <button class="academy-chip" data-subject="수학" style="padding: 5px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 500; border: 1px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">수학</button>
+                <button class="academy-chip" data-subject="영어" style="padding: 5px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 500; border: 1px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">영어</button>
+                <button class="academy-chip" data-subject="국어" style="padding: 5px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 500; border: 1px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">국어</button>
+                <button class="academy-chip" data-subject="과학" style="padding: 5px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 500; border: 1px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">과학/사회</button>
+                <button class="academy-chip" data-subject="예체능" style="padding: 5px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 500; border: 1px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">예체능</button>
+            </div>
+
+            <div id="sideAcademyList" style="display: flex; flex-direction: column; gap: 10px; font-size: 13px; flex: 1; overflow-y: auto;">
                 <!-- Academies populated here -->
             </div>
 
@@ -1935,69 +1949,112 @@
                     © It's LAB. All rights reserved.
                 </div>
             </div>
-            <!-- Floating Community Review Panel -->
-            <div id="communityPanel" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.95); z-index: 100; backdrop-filter: blur(5px); flex-direction: column; padding: 24px; overflow: hidden; transition: opacity 0.3s ease;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 16px; gap: 12px;">
-                    <div style="flex: 1; min-width: 0;">
-                        <h2 style="font-size: 19px; font-weight: 800; color: var(--deep-blue); margin: 0 0 6px 0; word-break: break-all; line-height: 1.3;">
+            <!-- Floating Community Review Panel (학원 상세 모달) -->
+            <div id="communityPanel" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #ffffff; z-index: 100; backdrop-filter: blur(5px); flex-direction: column; padding: 16px 18px; overflow: hidden; transition: opacity 0.3s ease;">
+                
+                <!-- 상단 내비게이션 바 -->
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 12px; height: 40px;">
+                    <button onclick="window.closeAcademyDetailModal()" style="background: none; border: none; font-size: 26px; cursor: pointer; color: #475569; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; line-height: 1;" title="뒤로가기">‹</button>
+                    <span id="academyDetailRegionTitle" style="font-size: 15px; font-weight: 700; color: #1e293b; text-align: center; flex: 1;">주변 학원 상세</span>
+                    <div style="display: flex; gap: 8px; align-items: center; justify-content: flex-end;">
+                        <button onclick="window.shareAcademyDetail()" style="background: none; border: none; cursor: pointer; color: #64748b; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; padding: 0; transition: background 0.15s ease;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'" title="공유하기">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                        </button>
+                        <button onclick="window.closeAcademyDetailModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #64748b; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; padding: 0; transition: background 0.15s ease;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'" title="닫기">&times;</button>
+                    </div>
+                </div>
+
+                <!-- 학원 상세 메인 타이틀 & 뱃지 영역 -->
+                <div style="margin-bottom: 14px;">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                        <h2 style="font-size: 20px; font-weight: 800; color: #0f172a; margin: 0; line-height: 1.3; word-break: break-all;">
                             <span id="communityAcademyName">학원명</span>
                         </h2>
-                        <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
-                            <span id="communityAcademyType" style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; display: none;"></span>
-                            <span id="communityAcademySubject" style="font-size: 11px; font-weight: 500; background: #f1f3f5; color: #495057; padding: 2px 8px; border-radius: 6px; display: none;"></span>
-                            <span style="font-size: 11px; color: var(--text-muted);">학부모 최신 후기</span>
-                        </div>
+                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #2563eb; color: #fff; border-radius: 50%; font-size: 11px; font-weight: bold; flex-shrink: 0;" title="교육청 인가 검증 완료">✓</span>
                     </div>
-                    <button onclick="if (typeof window.clearAcademyMarker === 'function') window.clearAcademyMarker(); document.getElementById('communityPanel').style.display='none'; document.getElementById('sidebarContent').style.display='block'; document.getElementById('btnToggleSidebarTop').style.display='flex'; const sb = document.querySelector('.sidebar-section'); if (sb) sb.classList.remove('active-community');" style="background: #f1f3f5; border: none; width: 32px; height: 32px; border-radius: 50%; font-size: 22px; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; justify-content: center; line-height: 1; flex-shrink: 0; transition: background 0.2s;" onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='#f1f3f5'">&times;</button>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                        <span id="communityAcademyType" style="font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 6px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;">학원</span>
+                        <span id="communityAcademySubject" style="font-size: 11.5px; font-weight: 500; padding: 3px 9px; border-radius: 6px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;">어학원</span>
+                        <span style="font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 6px; background: #fffbe6; color: #d97706; border: 1px solid #fef08a;">⭐ <span id="academyHeaderRating">4.7</span></span>
+                        <span style="font-size: 11.5px; font-weight: 500; padding: 3px 9px; border-radius: 6px; background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0;">학부모·수험생 후기 <strong id="academyHeaderReviewCount" style="color: #0f172a;">42</strong>개</span>
+                    </div>
                 </div>
 
                 <!-- 학원 상세 하단 스크롤 가능 콘텐츠 영역 -->
-                <div class="community-scroll-content hide-scrollbar" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding-bottom: 20px;">
+                <div class="community-scroll-content hide-scrollbar" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 20px;">
+                    
+                    <!-- 4선 퀵 액션 카드 버튼 그룹 -->
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 4px;">
+                        <button id="btnAcademyCall" onclick="window.makeAcademyCall()" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 4px; border-radius: 14px; background: #eff6ff; border: 1px solid #dbeafe; cursor: pointer; transition: all 0.15s ease;">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: #ffffff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 6px; box-shadow: 0 2px 5px rgba(37,99,235,0.12);">📞</div>
+                            <span style="font-size: 11.5px; font-weight: 600; color: #1e40af;">전화문의</span>
+                        </button>
+
+                        <button id="btnAcademyMap" onclick="window.focusAcademyOnMapFromDetail()" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 4px; border-radius: 14px; background: #f3e8ff; border: 1px solid #e9d5ff; cursor: pointer; transition: all 0.15s ease;">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: #ffffff; color: #9333ea; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 6px; box-shadow: 0 2px 5px rgba(147,51,234,0.12);">🗺️</div>
+                            <span style="font-size: 11.5px; font-weight: 600; color: #6b21a8;">길찾기·지도</span>
+                        </button>
+
+                        <button id="btnAcademyBookmark" onclick="window.toggleAcademyBookmark()" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 4px; border-radius: 14px; background: #fff7ed; border: 1px solid #ffedd5; cursor: pointer; transition: all 0.15s ease;">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: #ffffff; color: #ea580c; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 6px; box-shadow: 0 2px 5px rgba(234,88,12,0.12);">🔖</div>
+                            <span style="font-size: 11.5px; font-weight: 600; color: #9a3412;">저장 <span id="academyBookmarkCount" style="color: #ea580c; font-weight: 700;">128</span></span>
+                        </button>
+
+                        <button id="btnAcademyFeeQuick" onclick="window.switchTabToFeeCalculator()" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 4px; border-radius: 14px; background: #ecfdf5; border: 1px solid #d1fae5; cursor: pointer; transition: all 0.15s ease;">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: #ffffff; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 6px; box-shadow: 0 2px 5px rgba(5,150,105,0.12);">📗</div>
+                            <span style="font-size: 11.5px; font-weight: 600; color: #065f46;">수강료혜택</span>
+                        </button>
+                    </div>
+
                     <!-- 학원 기본 정보 (공공데이터) 컨테이너 -->
-                    <div id="academyBasicInfoContainer" style="margin-bottom: 16px;"></div>
+                    <div id="academyBasicInfoContainer" style="margin-bottom: 4px;"></div>
 
+                    <!-- 학원 상세 탭 메뉴 -->
+                    <div style="display: flex; background: #f1f5f9; padding: 4px; border-radius: 12px; gap: 4px; border: 1px solid #e2e8f0;">
+                        <button id="tabAcademyReviews" class="academy-tab-btn" style="flex: 1; padding: 9px 0; border: none; background: #ffffff; border-radius: 8px; font-weight: 700; color: #2563eb; cursor: pointer; font-size: 13px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.06); transition: all 0.2s;">💬 학원 후기 <span id="tabReviewCountBadge">42</span></button>
+                        <button id="tabAcademyCalculator" class="academy-tab-btn" style="flex: 1; padding: 9px 0; border: none; background: transparent; border-radius: 8px; font-weight: 600; color: #64748b; cursor: pointer; font-size: 13px; text-align: center; transition: all 0.2s;">💳 혜택 계산기 <span style="font-size: 10.5px; opacity: 0.8;">(원비안내)</span></button>
+                    </div>
 
-                <!-- 학원 상세 탭 메뉴 -->
-                <div style="display: flex; background: #f1f3f5; padding: 4px; border-radius: 10px; margin-bottom: 16px; gap: 4px;">
-                    <button id="tabAcademyReviews" class="academy-tab-btn" style="flex: 1; padding: 8px 0; border: none; background: #ffffff; border-radius: 8px; font-weight: bold; color: var(--primary-blue); cursor: pointer; font-size: 13px; font-family: var(--font-primary); text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.06); transition: all 0.2s;">💬 학원 후기</button>
-                    <button id="tabAcademyCalculator" class="academy-tab-btn" style="flex: 1; padding: 8px 0; border: none; background: transparent; border-radius: 8px; font-weight: bold; color: var(--text-muted); cursor: pointer; font-size: 13px; font-family: var(--font-primary); text-align: center; transition: all 0.2s;">💳 혜택 계산기</button>
-                </div>
-
-                <!-- 탭 콘텐츠 1: 학원 후기 -->
-                <div id="sectionAcademyReviews">
-                    <div class="draggable-scroll-wrapper" style="position: relative; margin-bottom: 16px; display: flex; align-items: center; width: 100%;">
-                        <button type="button" class="scroll-arrow scroll-arrow-left" id="academyFilterScrollLeft" aria-label="이전 필터" style="display: none;">◀</button>
-                        <div id="academyReviewFilterContainer" class="hide-scrollbar draggable-scroll-content" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; width: 100%; cursor: grab; scroll-behavior: smooth;">
-                            <div style="display: flex; gap: 6px; flex-shrink: 0;" id="communityFilterContainer">
-                                <button class="community-filter-btn" data-type="all" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--primary-blue); background: var(--primary-blue); color: white; cursor: pointer; font-size: 12px; white-space: nowrap; flex-shrink: 0;">전체</button>
-                                <button class="community-filter-btn" data-type="real" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); background: white; color: var(--text-muted); cursor: pointer; font-size: 12px; white-space: nowrap; flex-shrink: 0;">찐후기</button>
-                                <button class="community-filter-btn" data-type="blog" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); background: white; color: var(--text-muted); cursor: pointer; font-size: 12px; white-space: nowrap; flex-shrink: 0;">블로그</button>
-                                <button class="community-filter-btn" data-type="cafe" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); background: white; color: var(--text-muted); cursor: pointer; font-size: 12px; white-space: nowrap; flex-shrink: 0;">카페</button>
+                    <!-- 탭 콘텐츠 1: 학원 후기 -->
+                    <div id="sectionAcademyReviews">
+                        <div class="draggable-scroll-wrapper" style="position: relative; margin-bottom: 12px; display: flex; align-items: center; width: 100%;">
+                            <button type="button" class="scroll-arrow scroll-arrow-left" id="academyFilterScrollLeft" aria-label="이전 필터" style="display: none;">◀</button>
+                            <div id="academyReviewFilterContainer" class="hide-scrollbar draggable-scroll-content" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; width: 100%; cursor: grab; scroll-behavior: smooth;">
+                                <div style="display: flex; gap: 6px; flex-shrink: 0;" id="communityFilterContainer">
+                                    <button class="community-filter-btn" data-type="all" style="padding: 6px 12px; border-radius: 20px; border: 1px solid #2563eb; background: #2563eb; color: white; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap; flex-shrink: 0;">전체</button>
+                                    <button class="community-filter-btn" data-type="real" style="padding: 6px 12px; border-radius: 20px; border: 1px solid #cbd5e1; background: white; color: #475569; cursor: pointer; font-size: 12px; font-weight: 500; white-space: nowrap; flex-shrink: 0;">찐후기 18</button>
+                                    <button class="community-filter-btn" data-type="blog" style="padding: 6px 12px; border-radius: 20px; border: 1px solid #cbd5e1; background: white; color: #475569; cursor: pointer; font-size: 12px; font-weight: 500; white-space: nowrap; flex-shrink: 0;">블로그 15</button>
+                                    <button class="community-filter-btn" data-type="cafe" style="padding: 6px 12px; border-radius: 20px; border: 1px solid #cbd5e1; background: white; color: #475569; cursor: pointer; font-size: 12px; font-weight: 500; white-space: nowrap; flex-shrink: 0;">카페 9</button>
+                                </div>
+                                <button onclick="window.openReviewModal()" style="padding: 7px 13px; border-radius: 20px; border: none; background: #2563eb; color: white; font-weight: 700; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0; box-shadow: 0 2px 6px rgba(37,99,235,0.25);">
+                                    ✍️ 후기 남기기
+                                </button>
                             </div>
-                            <button onclick="window.openReviewModal()" style="padding: 6px 12px; border-radius: 20px; border: none; background: #e3f2fd; color: #1565c0; font-weight: bold; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
-                                ✍️ 후기 남기기
-                            </button>
+                            <button type="button" class="scroll-arrow scroll-arrow-right" id="academyFilterScrollRight" aria-label="다음 필터" style="display: none;">▶</button>
                         </div>
-                        <button type="button" class="scroll-arrow scroll-arrow-right" id="academyFilterScrollRight" aria-label="다음 필터" style="display: none;">▶</button>
-                    </div>
-                    <div id="communityReviewsList" style="display: flex; flex-direction: column; gap: 12px;">
-                        <!-- Reviews injected here -->
+
+                        <div id="communityReviewsList" style="display: flex; flex-direction: column; gap: 12px;">
+                            <!-- Reviews injected here -->
+                        </div>
+
+                        <button id="btnLoadMoreAcademyReviews" onclick="window.loadMoreAcademyReviews()" style="width: 100%; padding: 12px; margin-top: 14px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; color: #475569; font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; transition: background 0.15s ease;">
+                            학원 후기 더보기 (40개 남음) ↓
+                        </button>
                     </div>
 
-                </div>
-
-                <!-- 탭 콘텐츠 2: 혜택 계산기 -->
-                <div id="sectionAcademyCalculator" style="display: none;">
-                    <!-- 학원비 비교 및 할인 계산기 위젯 -->
-                    <div id="academyFeeCalculator" style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; font-size: 13px; flex-shrink: 0; border-left: 4px solid var(--success-green);">
-                        <strong style="color: var(--deep-blue); display: block; margin-bottom: 6px;">💳 학원비 혜택 계산기</strong>
-                        <div id="calculatorContent">
-                            <div style="text-align: center; color: var(--text-muted); font-size: 11px; padding: 10px 0;">
-                                학원을 선택하시면 수강료 비교 및 할인 계산기가 활성화됩니다.
+                    <!-- 탭 콘텐츠 2: 혜택 계산기 -->
+                    <div id="sectionAcademyCalculator" style="display: none;">
+                        <!-- 학원비 비교 및 할인 계산기 위젯 -->
+                        <div id="academyFeeCalculator" style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px; font-size: 13px; flex-shrink: 0; border-left: 4px solid var(--success-green);">
+                            <strong style="color: var(--deep-blue); display: block; margin-bottom: 6px;">💳 학원비 혜택 계산기</strong>
+                            <div id="calculatorContent">
+                                <div style="text-align: center; color: var(--text-muted); font-size: 11px; padding: 10px 0;">
+                                    학원을 선택하시면 수강료 비교 및 할인 계산기가 활성화됩니다.
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+
                 </div><!-- /community-scroll-content -->
             </div>
         </section>
