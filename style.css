@@ -1495,6 +1495,11 @@ body {
         border-top-right-radius: 0 !important;
     }
 
+    /* 학원 상세 헤더: 우측 패딩을 16px로 맞추어 학교 상세 닫기 버튼과 동일한 위치(16px) 유지 */
+    #communityPanel > div:first-child {
+        padding: 0 16px !important;
+    }
+
     /* 학교 상세의 경우 상단 패딩 마진 조절 */
     .sidebar-header {
         margin: 0 0 16px 0 !important;
