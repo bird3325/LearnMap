@@ -12446,15 +12446,42 @@ window.shareSchoolDetail = async function() {
     const estType = selected ? (selected.establishment_type || selected.establishment || '') : '';
     const schoolKind = selected ? (selected.school_kind || '') : '';
     const coeduType = selected ? (selected.coedu_type || '') : '';
-    const url = window.location.href;
+    const infoSummary = [schoolKind || estType, coeduType].filter(Boolean).join(' · ') || '공립 · 남녀공학';
 
-    const shuttleBadge = document.getElementById('shuttleStatusBadge');
-    const shuttleStatusText = document.getElementById('shuttleStatusText');
-    const shuttleStatus = shuttleBadge ? shuttleBadge.innerText.replace('🚌 ', '') : (shuttleStatusText ? shuttleStatusText.innerText : '통학차량 운행 중');
-    const shuttleTimeRaw = document.getElementById('shuttleTimeText')?.innerText || '';
-    const shuttleTime = shuttleTimeRaw ? shuttleTimeRaw.replace(/\n/g, ' / ') : '등교 07:40~08:30 / 하교 15:30~17:00';
+    // 1. 종합 교육환경 점수 추출
+    let envScoreVal = selected?.envScore || document.getElementById('totalEnvScoreLabel')?.innerText;
+    if (!envScoreVal && selected?.subjects) {
+        const sKor = selected.subjects.korean?.avg || 80;
+        const sEng = selected.subjects.english?.avg || 80;
+        const sMath = selected.subjects.math?.avg || 80;
+        envScoreVal = Math.round((sKor + sEng + sMath) / 3);
+    }
+    const envScoreText = `${envScoreVal || '85'}점`;
 
-    const infoSummary = [schoolKind || estType, coeduType].filter(Boolean).join(' · ') || '학교 학업 정보';
+    // 2. 학업성취도 정보 추출
+    let korAvg = selected?.subjects?.korean?.avg;
+    let engAvg = selected?.subjects?.english?.avg;
+    let mathAvg = selected?.subjects?.math?.avg;
+    
+    let achievementText = '';
+    if (korAvg !== undefined && engAvg !== undefined && mathAvg !== undefined) {
+        const overallAvg = Math.round((korAvg + engAvg + mathAvg) / 3 * 10) / 10;
+        achievementText = `국 ${korAvg} · 영 ${engAvg} · 수 ${mathAvg} (평균 ${overallAvg}점)`;
+    } else {
+        achievementText = '학업성취도 우수 학군';
+    }
+
+    // 3. 학업여지도 사이트 딥링크 URL
+    let shareUrl = window.location.href;
+    if (selected && (selected.school_id || selected.id) && !shareUrl.includes('school=')) {
+        try {
+            const urlObj = new URL(shareUrl);
+            urlObj.searchParams.set('school', selected.school_id || selected.id);
+            shareUrl = urlObj.toString();
+        } catch (e) {
+            shareUrl = window.location.href;
+        }
+    }
 
     const sdkLoaded = await loadKakaoShareSDK();
     
@@ -12463,28 +12490,29 @@ window.shareSchoolDetail = async function() {
             window.Kakao.Share.sendDefault({
                 objectType: 'feed',
                 content: {
-                    title: `🏫 [학교 카드] ${schoolName}`,
-                    description: `📍 ${address || '학교 위치 정보'}\n🚌 셔틀: ${shuttleStatus}\n⏱️ 운행시간: ${shuttleTime}`,
+                    title: `🏫 [학업여지도 학교 카드] ${schoolName}`,
+                    description: `📍 ${address || '학교 위치 정보'}\n🏆 종합 교육환경 점수: ${envScoreText}\n📚 학업성취도: ${achievementText}`,
                     imageUrl: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80',
                     link: {
-                        mobileWebUrl: url,
-                        webUrl: url,
+                        mobileWebUrl: shareUrl,
+                        webUrl: shareUrl,
                     },
                 },
                 itemContent: {
-                    profileText: '학업여지도 학교 카드 🗺️',
+                    profileText: '학업여지도 (Academic Map) 🗺️',
                     items: [
                         { item: '학교명', itemOp: schoolName },
-                        { item: '구분', itemOp: infoSummary },
-                        { item: '셔틀정보', itemOp: shuttleStatus },
+                        { item: '학교 구분', itemOp: infoSummary },
+                        { item: '교육환경 점수', itemOp: envScoreText },
+                        { item: '학업성취도', itemOp: achievementText },
                     ],
                 },
                 buttons: [
                     {
-                        title: '🗺️ 지도에서 학교 카드 보기',
+                        title: '🗺️ 학업여지도 사이트에서 보기',
                         link: {
-                            mobileWebUrl: url,
-                            webUrl: url,
+                            mobileWebUrl: shareUrl,
+                            webUrl: shareUrl,
                         },
                     },
                 ],
@@ -12496,12 +12524,12 @@ window.shareSchoolDetail = async function() {
         }
     }
 
-    const cardText = `[🏫 학업여지도 - ${schoolName} 학교 카드]\n📍 위치: ${address}\n🏫 구분: ${infoSummary}\n🚌 셔틀: ${shuttleStatus} (${shuttleTime})\n🔗 상세 지도보기: ${url}`;
+    const cardText = `[🏫 학업여지도 - ${schoolName} 학교 카드]\n📍 위치: ${address}\n🏫 구분: ${infoSummary}\n🏆 종합 교육환경 점수: ${envScoreText}\n📚 학업성취도: ${achievementText}\n🔗 학업여지도 사이트에서 보기: ${shareUrl}`;
     if (navigator.share) {
         navigator.share({
             title: `${schoolName} 학교 카드`,
             text: cardText,
-            url: url
+            url: shareUrl
         }).catch(err => {
             if (err.name !== 'AbortError' && navigator.clipboard) {
                 navigator.clipboard.writeText(cardText);
