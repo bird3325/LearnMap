@@ -12471,41 +12471,27 @@ window.shareSchoolDetail = async function() {
         achievementText = '학업성취도 우수 학군';
     }
 
-    // 3. 학업여지도 사이트 딥링크 URL
-    let shareUrl = window.location.href;
-    if (selected && (selected.school_id || selected.id) && !shareUrl.includes('school=')) {
-        try {
-            const urlObj = new URL(shareUrl);
-            urlObj.searchParams.set('school', selected.school_id || selected.id);
-            shareUrl = urlObj.toString();
-        } catch (e) {
-            shareUrl = window.location.href;
-        }
+    // 3. 학업여지도 사이트 딥링크 URL 구성 (클릭 시 이동 대상)
+    let shareUrl = window.location.origin + window.location.pathname;
+    const targetId = selected ? (selected.school_id || selected.id || selected.school_name) : (schoolName !== '학교' ? schoolName : '');
+    if (targetId) {
+        shareUrl += `?school=${encodeURIComponent(targetId)}`;
     }
+
+    // 이미지 없이 텍스트 중심의 카드 메시지 구성
+    const cardMessageText = `🏫 [학업여지도 학교 카드] ${schoolName}\n\n📍 위치: ${address || '학교 위치 정보'}\n🏫 구분: ${infoSummary}\n🏆 종합 교육환경 점수: ${envScoreText}\n📚 학업성취도: ${achievementText}`;
 
     const sdkLoaded = await loadKakaoShareSDK();
     
     if (sdkLoaded && window.Kakao && window.Kakao.isInitialized() && window.Kakao.Share) {
         try {
+            // objectType: 'text'를 사용해 이미지를 완벽히 제거하고 텍스트 카드로 전송
             window.Kakao.Share.sendDefault({
-                objectType: 'feed',
-                content: {
-                    title: `🏫 [학업여지도 학교 카드] ${schoolName}`,
-                    description: `📍 ${address || '학교 위치 정보'}\n🏆 종합 교육환경 점수: ${envScoreText}\n📚 학업성취도: ${achievementText}`,
-                    imageUrl: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80',
-                    link: {
-                        mobileWebUrl: shareUrl,
-                        webUrl: shareUrl,
-                    },
-                },
-                itemContent: {
-                    profileText: '학업여지도 (Academic Map) 🗺️',
-                    items: [
-                        { item: '학교명', itemOp: schoolName },
-                        { item: '학교 구분', itemOp: infoSummary },
-                        { item: '교육환경 점수', itemOp: envScoreText },
-                        { item: '학업성취도', itemOp: achievementText },
-                    ],
+                objectType: 'text',
+                text: cardMessageText,
+                link: {
+                    mobileWebUrl: shareUrl,
+                    webUrl: shareUrl,
                 },
                 buttons: [
                     {
@@ -12517,14 +12503,14 @@ window.shareSchoolDetail = async function() {
                     },
                 ],
             });
-            showToastNoticeMsg(`💬 ${schoolName} 카카오톡 학교 카드가 공유 창으로 연결되었습니다.`);
+            showToastNoticeMsg(`💬 ${schoolName} 카카오톡 학교 카드가 발송되었습니다.`);
             return;
         } catch (err) {
             console.warn('[Kakao Share] API 호출 실패, 웹 공유/클립보드로 전환:', err);
         }
     }
 
-    const cardText = `[🏫 학업여지도 - ${schoolName} 학교 카드]\n📍 위치: ${address}\n🏫 구분: ${infoSummary}\n🏆 종합 교육환경 점수: ${envScoreText}\n📚 학업성취도: ${achievementText}\n🔗 학업여지도 사이트에서 보기: ${shareUrl}`;
+    const cardText = `${cardMessageText}\n\n🔗 학업여지도 사이트에서 보기:\n${shareUrl}`;
     if (navigator.share) {
         navigator.share({
             title: `${schoolName} 학교 카드`,
@@ -12546,53 +12532,47 @@ window.shareSchoolDetail = async function() {
 
 window.shareAcademyDetail = async function() {
     const acadName = window.currentAcademyForCommunity || '학원';
-    const url = window.location.href;
+    let shareUrl = window.location.origin + window.location.pathname;
+    if (acadName) {
+        shareUrl += `?academy=${encodeURIComponent(acadName)}`;
+    }
+
+    const cardMessageText = `📚 [학업여지도 학원 카드] ${acadName}\n\n📍 학업여지도 추천 학원 상세 정보\n🎓 수강료 및 실제 학부모·수험생 후기 확인`;
 
     const sdkLoaded = await loadKakaoShareSDK();
 
     if (sdkLoaded && window.Kakao && window.Kakao.isInitialized() && window.Kakao.Share) {
         try {
             window.Kakao.Share.sendDefault({
-                objectType: 'feed',
-                content: {
-                    title: `📚 [학원 카드] ${acadName}`,
-                    description: `📍 학업여지도 추천 학원 상세 정보\n🎓 수강료 및 실제 학부모·수험생 후기 확인`,
-                    imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80',
-                    link: {
-                        mobileWebUrl: url,
-                        webUrl: url,
-                    },
-                },
-                itemContent: {
-                    profileText: '학업여지도 학원 카드 🗺️',
-                    items: [
-                        { item: '학원명', itemOp: acadName },
-                        { item: '정보', itemOp: '수강료 및 맞춤 정보' },
-                    ],
+                objectType: 'text',
+                text: cardMessageText,
+                link: {
+                    mobileWebUrl: shareUrl,
+                    webUrl: shareUrl,
                 },
                 buttons: [
                     {
-                        title: '🗺️ 학원 상세 정보 보기',
+                        title: '🗺️ 학업여지도 사이트에서 보기',
                         link: {
-                            mobileWebUrl: url,
-                            webUrl: url,
+                            mobileWebUrl: shareUrl,
+                            webUrl: shareUrl,
                         },
                     },
                 ],
             });
-            showToastNoticeMsg(`💬 ${acadName} 카카오톡 학원 카드가 공유 창으로 연결되었습니다.`);
+            showToastNoticeMsg(`💬 ${acadName} 카카오톡 학원 카드가 발송되었습니다.`);
             return;
         } catch (err) {
             console.warn('[Kakao Share] 학원 공유 실패, 클립보드 복사 전환:', err);
         }
     }
 
-    const cardText = `[📚 학업여지도 - ${acadName} 학원 정보]\n🔗 상세 지도보기: ${url}`;
+    const cardText = `${cardMessageText}\n\n🔗 학업여지도 사이트에서 보기:\n${shareUrl}`;
     if (navigator.share) {
         navigator.share({
             title: `${acadName} 학원 정보`,
             text: cardText,
-            url: url
+            url: shareUrl
         }).catch(err => {
             if (err.name !== 'AbortError' && navigator.clipboard) {
                 navigator.clipboard.writeText(cardText);
@@ -12606,6 +12586,31 @@ window.shareAcademyDetail = async function() {
         showToastNoticeMsg(`🔗 ${acadName} 학원 정보 링크가 복사되었습니다.`);
     }
 };
+
+// URL의 딥링크 파라미터(?school=... 또는 ?academy=...) 감지하여 사이트 오픈 시 해당 학교/학원 자동 렌더링
+function checkAndOpenDeepLinkFromURL() {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const schoolParam = urlParams.get('school') || urlParams.get('school_id');
+        if (schoolParam) {
+            const checkInterval = setInterval(() => {
+                if (typeof window.viewSchoolOnMapFromStats === 'function') {
+                    clearInterval(checkInterval);
+                    window.viewSchoolOnMapFromStats(schoolParam);
+                }
+            }, 300);
+            setTimeout(() => clearInterval(checkInterval), 5000);
+        }
+    } catch (e) {
+        console.warn('[DeepLink] URL 파라미터 파싱 실패:', e);
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', checkAndOpenDeepLinkFromURL);
+} else {
+    checkAndOpenDeepLinkFromURL();
+}
 
 window.makeAcademyCall = function() {
     const phoneEl = document.getElementById('academyDetailPhone');
