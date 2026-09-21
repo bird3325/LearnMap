@@ -3756,7 +3756,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (shuttleRoute && !shuttleRoute.innerText) shuttleRoute.innerText = routeName;
             if (shuttleTime) {
-                shuttleTime.innerText = isElem ? '등교 07:50 ~ 08:40 / 하교 14:30 ~ 16:30' : '등교 07:30 ~ 08:20 / 하교 16:30 ~ 21:00';
+                shuttleTime.innerHTML = isElem ? '<span>등교 07:50 ~ 08:40</span><br><span>하교 14:30 ~ 16:30</span>' : '<span>등교 07:30 ~ 08:20</span><br><span>하교 16:30 ~ 21:00</span>';
             }
         }
 
