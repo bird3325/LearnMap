@@ -1712,6 +1712,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appkey = "a1395655b7d4904b57ff20a90998c001";
             }
 
+            window.GLOBAL_KAKAO_APP_KEY = appkey;
             window.GLOBAL_SAFEMAP_KEY = safemapKey || "8N7ELUCO-8N7E-8N7E-8N7E-8N7ELUCOQY";
 
             logDiagnostic(`Kakao Maps SDK 스크립트 삽입 중... (AppKey: ${appkey.substring(0, 6)}***)`);
@@ -12383,48 +12384,198 @@ window.closeAcademyDetailModal = function() {
     if (sb) sb.classList.remove('active-community');
 };
 
-window.shareSchoolDetail = function() {
+function loadKakaoShareSDK() {
+    return new Promise((resolve) => {
+        if (window.Kakao && window.Kakao.Share) {
+            if (!window.Kakao.isInitialized() && window.GLOBAL_KAKAO_APP_KEY) {
+                try {
+                    window.Kakao.init(window.GLOBAL_KAKAO_APP_KEY);
+                } catch (e) {
+                    console.warn('[Kakao SDK] Init warning:', e);
+                }
+            }
+            resolve(true);
+            return;
+        }
+
+        if (document.getElementById('kakao-js-sdk-script')) {
+            let attempts = 0;
+            const timer = setInterval(() => {
+                attempts++;
+                if (window.Kakao && window.Kakao.Share) {
+                    clearInterval(timer);
+                    if (!window.Kakao.isInitialized() && window.GLOBAL_KAKAO_APP_KEY) {
+                        try { window.Kakao.init(window.GLOBAL_KAKAO_APP_KEY); } catch (e) {}
+                    }
+                    resolve(true);
+                } else if (attempts > 30) {
+                    clearInterval(timer);
+                    resolve(false);
+                }
+            }, 100);
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.id = 'kakao-js-sdk-script';
+        script.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js';
+        script.onload = () => {
+            if (window.Kakao) {
+                if (!window.Kakao.isInitialized() && window.GLOBAL_KAKAO_APP_KEY) {
+                    try {
+                        window.Kakao.init(window.GLOBAL_KAKAO_APP_KEY);
+                    } catch (e) {
+                        console.warn('[Kakao SDK] Init error:', e);
+                    }
+                }
+                resolve(true);
+            } else {
+                resolve(false);
+            }
+        };
+        script.onerror = () => resolve(false);
+        document.head.appendChild(script);
+    });
+}
+
+window.shareSchoolDetail = async function() {
+    const selected = (window.orchestrator && window.orchestrator.state) ? window.orchestrator.state.selectedSchool : null;
     const schoolNameEl = document.getElementById('schoolCardName');
-    const schoolName = schoolNameEl ? schoolNameEl.innerText : '학교';
+    const schoolName = selected ? (selected.school_name || selected.name || '학교') : (schoolNameEl ? schoolNameEl.innerText : '학교');
+    const address = selected ? (selected.address || '') : (document.getElementById('schoolCardAddress')?.innerText || '');
+    const estType = selected ? (selected.establishment_type || selected.establishment || '') : '';
+    const schoolKind = selected ? (selected.school_kind || '') : '';
+    const coeduType = selected ? (selected.coedu_type || '') : '';
     const url = window.location.href;
+
+    const shuttleBadge = document.getElementById('shuttleStatusBadge');
+    const shuttleStatusText = document.getElementById('shuttleStatusText');
+    const shuttleStatus = shuttleBadge ? shuttleBadge.innerText.replace('🚌 ', '') : (shuttleStatusText ? shuttleStatusText.innerText : '통학차량 운행 중');
+    const shuttleTimeRaw = document.getElementById('shuttleTimeText')?.innerText || '';
+    const shuttleTime = shuttleTimeRaw ? shuttleTimeRaw.replace(/\n/g, ' / ') : '등교 07:40~08:30 / 하교 15:30~17:00';
+
+    const infoSummary = [schoolKind || estType, coeduType].filter(Boolean).join(' · ') || '학교 학업 정보';
+
+    const sdkLoaded = await loadKakaoShareSDK();
+    
+    if (sdkLoaded && window.Kakao && window.Kakao.isInitialized() && window.Kakao.Share) {
+        try {
+            window.Kakao.Share.sendDefault({
+                objectType: 'feed',
+                content: {
+                    title: `🏫 [학교 카드] ${schoolName}`,
+                    description: `📍 ${address || '학교 위치 정보'}\n🚌 셔틀: ${shuttleStatus}\n⏱️ 운행시간: ${shuttleTime}`,
+                    imageUrl: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80',
+                    link: {
+                        mobileWebUrl: url,
+                        webUrl: url,
+                    },
+                },
+                itemContent: {
+                    profileText: '학업여지도 학교 카드 🗺️',
+                    items: [
+                        { item: '학교명', itemOp: schoolName },
+                        { item: '구분', itemOp: infoSummary },
+                        { item: '셔틀정보', itemOp: shuttleStatus },
+                    ],
+                },
+                buttons: [
+                    {
+                        title: '🗺️ 지도에서 학교 카드 보기',
+                        link: {
+                            mobileWebUrl: url,
+                            webUrl: url,
+                        },
+                    },
+                ],
+            });
+            showToastNoticeMsg(`💬 ${schoolName} 카카오톡 학교 카드가 공유 창으로 연결되었습니다.`);
+            return;
+        } catch (err) {
+            console.warn('[Kakao Share] API 호출 실패, 웹 공유/클립보드로 전환:', err);
+        }
+    }
+
+    const cardText = `[🏫 학업여지도 - ${schoolName} 학교 카드]\n📍 위치: ${address}\n🏫 구분: ${infoSummary}\n🚌 셔틀: ${shuttleStatus} (${shuttleTime})\n🔗 상세 지도보기: ${url}`;
     if (navigator.share) {
         navigator.share({
-            title: `${schoolName} - 학교 상세 정보`,
-            text: `${schoolName} 학업 성적 및 정보`,
+            title: `${schoolName} 학교 카드`,
+            text: cardText,
             url: url
         }).catch(err => {
             if (err.name !== 'AbortError' && navigator.clipboard) {
-                navigator.clipboard.writeText(`${schoolName} 상세 정보: ${url}`);
-                showToastNoticeMsg(`🔗 ${schoolName} 상세 정보 링크가 복사되었습니다.`);
+                navigator.clipboard.writeText(cardText);
+                showToastNoticeMsg(`🔗 ${schoolName} 학교 카드 정보가 복사되었습니다.`);
             }
         });
     } else {
         if (navigator.clipboard) {
-            navigator.clipboard.writeText(`${schoolName} 상세 정보: ${url}`);
+            navigator.clipboard.writeText(cardText);
         }
-        showToastNoticeMsg(`🔗 ${schoolName} 상세 정보 링크가 복사되었습니다.`);
+        showToastNoticeMsg(`🔗 ${schoolName} 학교 카드 정보가 복사되었습니다.`);
     }
 };
 
-window.shareAcademyDetail = function() {
+window.shareAcademyDetail = async function() {
     const acadName = window.currentAcademyForCommunity || '학원';
     const url = window.location.href;
+
+    const sdkLoaded = await loadKakaoShareSDK();
+
+    if (sdkLoaded && window.Kakao && window.Kakao.isInitialized() && window.Kakao.Share) {
+        try {
+            window.Kakao.Share.sendDefault({
+                objectType: 'feed',
+                content: {
+                    title: `📚 [학원 카드] ${acadName}`,
+                    description: `📍 학업여지도 추천 학원 상세 정보\n🎓 수강료 및 실제 학부모·수험생 후기 확인`,
+                    imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80',
+                    link: {
+                        mobileWebUrl: url,
+                        webUrl: url,
+                    },
+                },
+                itemContent: {
+                    profileText: '학업여지도 학원 카드 🗺️',
+                    items: [
+                        { item: '학원명', itemOp: acadName },
+                        { item: '정보', itemOp: '수강료 및 맞춤 정보' },
+                    ],
+                },
+                buttons: [
+                    {
+                        title: '🗺️ 학원 상세 정보 보기',
+                        link: {
+                            mobileWebUrl: url,
+                            webUrl: url,
+                        },
+                    },
+                ],
+            });
+            showToastNoticeMsg(`💬 ${acadName} 카카오톡 학원 카드가 공유 창으로 연결되었습니다.`);
+            return;
+        } catch (err) {
+            console.warn('[Kakao Share] 학원 공유 실패, 클립보드 복사 전환:', err);
+        }
+    }
+
+    const cardText = `[📚 학업여지도 - ${acadName} 학원 정보]\n🔗 상세 지도보기: ${url}`;
     if (navigator.share) {
         navigator.share({
-            title: `${acadName} - 학원 상세 정보`,
-            text: `${acadName} 수강료 및 정보`,
+            title: `${acadName} 학원 정보`,
+            text: cardText,
             url: url
         }).catch(err => {
             if (err.name !== 'AbortError' && navigator.clipboard) {
-                navigator.clipboard.writeText(`${acadName} 상세 정보: ${url}`);
-                showToastNoticeMsg(`🔗 ${acadName} 상세 정보 링크가 복사되었습니다.`);
+                navigator.clipboard.writeText(cardText);
+                showToastNoticeMsg(`🔗 ${acadName} 학원 정보 링크가 복사되었습니다.`);
             }
         });
     } else {
         if (navigator.clipboard) {
-            navigator.clipboard.writeText(`${acadName} 상세 정보: ${url}`);
+            navigator.clipboard.writeText(cardText);
         }
-        showToastNoticeMsg(`🔗 ${acadName} 상세 정보 링크가 복사되었습니다.`);
+        showToastNoticeMsg(`🔗 ${acadName} 학원 정보 링크가 복사되었습니다.`);
     }
 };
 
