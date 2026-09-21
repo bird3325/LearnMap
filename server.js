@@ -458,9 +458,50 @@ app.get('/api/academies/search', async (req, res) => {
     }
 });
 
+// 10.5. GET /api/academies/ratings - Fetch aggregated rating statistics from Supabase DB
+app.get('/api/academies/ratings', async (req, res) => {
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/academy_reviews?select=academyName,rating`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+
+        if (!response.ok) {
+            return res.json({});
+        }
+
+        const data = await response.json();
+        const ratingsMap = {};
+        if (Array.isArray(data)) {
+            data.forEach(item => {
+                const name = item.academyName || item.academy_name;
+                const r = parseFloat(item.rating) || 0;
+                if (name) {
+                    if (!ratingsMap[name]) {
+                        ratingsMap[name] = { totalRating: 0, count: 0, avgRating: 0 };
+                    }
+                    ratingsMap[name].totalRating += r;
+                    ratingsMap[name].count += 1;
+                }
+            });
+            Object.keys(ratingsMap).forEach(name => {
+                const obj = ratingsMap[name];
+                obj.avgRating = obj.count > 0 ? parseFloat((obj.totalRating / obj.count).toFixed(1)) : 0;
+            });
+        }
+        res.json(ratingsMap);
+    } catch (err) {
+        console.error('Academy Ratings Fetch Error:', err);
+        res.json({});
+    }
+});
+
 // --- Supabase DB 연동 찐후기 기능 ---
 
 app.use(express.json()); // JSON 바디 파싱
+
 
 app.post('/api/reviews', async (req, res) => {
     const { academyName, rating, content } = req.body;

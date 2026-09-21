@@ -1511,7 +1511,6 @@ body {
     .mobile-close-btn, 
     #btnCloseSettings,
     #btnCloseParentsFilter,
-    #btnDeselectSchool,
     #academySidebar button[onclick*="toggleAcademySidebar"],
     #communityPanel button[onclick*="clearAcademyMarker"],
     #simulationModal button[onclick*="simulationModal"],
@@ -1536,12 +1535,6 @@ body {
         padding: 0 !important;
         z-index: 10 !important;
         transition: background 0.2s !important;
-    }
-
-    #btnDeselectSchool {
-        top: 12px !important;
-        transform: none !important;
-        right: 16px !important;
     }
 
     .mobile-close-btn:hover, 
@@ -1872,6 +1865,16 @@ body {
     opacity: 1;
     visibility: visible;
     transform: translateY(-50%) translateX(0);
+}
+
+/* 주변 학원 상세(communityPanel)가 열려있을 때 상단 우측 도움말 가이드 및 설정 버튼 강제 숨김 */
+.sidebar-section.active-community ~ #btnShowTutorial,
+.sidebar-section.active-community ~ #btnOpenSettings,
+.app-container:has(#communityPanel[style*="display: flex"]) #btnShowTutorial,
+.app-container:has(#communityPanel[style*="display: flex"]) #btnOpenSettings,
+.app-container:has(#communityPanel[style*="display: block"]) #btnShowTutorial,
+.app-container:has(#communityPanel[style*="display: block"]) #btnOpenSettings {
+    display: none !important;
 }
 
 /* 모바일 뷰(1024px 이하)에서는 PC용 플로팅 필터를 강제 숨김 */
