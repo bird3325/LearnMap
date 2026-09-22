@@ -12477,8 +12477,9 @@ window.shareSchoolDetail = async function() {
         achievementText = '학업성취도 우수 학군';
     }
 
-    // 3. 학업여지도 사이트 딥링크 URL 구성 (클릭 시 이동 대상)
-    let shareUrl = window.location.origin + window.location.pathname;
+    // 3. 학업여지도 사이트 딥링크 URL 구성 (https://leamap.vercel.app/ 기준)
+    const baseUrl = 'https://leamap.vercel.app/';
+    let shareUrl = baseUrl;
     const targetId = selected ? (selected.school_id || selected.id || selected.school_name) : (schoolName !== '학교' ? schoolName : '');
     if (targetId) {
         shareUrl += `?school=${encodeURIComponent(targetId)}`;
@@ -12501,7 +12502,7 @@ window.shareSchoolDetail = async function() {
                 },
                 buttons: [
                     {
-                        title: '🗺️ 학업여지도 사이트에서 보기',
+                        title: '👉 바로가기',
                         link: {
                             mobileWebUrl: shareUrl,
                             webUrl: shareUrl,
@@ -12516,7 +12517,7 @@ window.shareSchoolDetail = async function() {
         }
     }
 
-    const cardText = `${cardMessageText}\n\n🔗 학업여지도 사이트에서 보기:\n${shareUrl}`;
+    const cardText = `${cardMessageText}\n\n🔗 학업여지도 바로가기:\n${shareUrl}`;
     if (navigator.share) {
         navigator.share({
             title: `${schoolName} 학교 카드`,
@@ -12538,8 +12539,9 @@ window.shareSchoolDetail = async function() {
 
 window.shareAcademyDetail = async function() {
     const acadName = window.currentAcademyForCommunity || '학원';
-    let shareUrl = window.location.origin + window.location.pathname;
-    if (acadName) {
+    const baseUrl = 'https://leamap.vercel.app/';
+    let shareUrl = baseUrl;
+    if (acadName && acadName !== '학원') {
         shareUrl += `?academy=${encodeURIComponent(acadName)}`;
     }
 
@@ -12558,7 +12560,7 @@ window.shareAcademyDetail = async function() {
                 },
                 buttons: [
                     {
-                        title: '🗺️ 학업여지도 사이트에서 보기',
+                        title: '👉 바로가기',
                         link: {
                             mobileWebUrl: shareUrl,
                             webUrl: shareUrl,
