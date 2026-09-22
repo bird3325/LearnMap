@@ -1650,6 +1650,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return new Promise(async (resolve) => {
             logDiagnostic('백엔드/데이터베이스로부터 Kakao Maps API 키 조회 중...');
             let appkey = '';
+            let shareAppkey = '';
             let safemapKey = '';
 
             // 1) /api/config/map-key 백엔드 API 시도
@@ -1660,6 +1661,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const data = await res.json();
                     if (data.kakao_app_key) {
                         appkey = data.kakao_app_key;
+                        shareAppkey = data.kakao_share_app_key;
                         safemapKey = data.safemap_key;
                     }
                 }
@@ -1682,6 +1684,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const supaData = await supaRes.json();
                         if (supaData && supaData.length > 0 && supaData[0].kakao_app_key) {
                             appkey = supaData[0].kakao_app_key;
+                            shareAppkey = supaData[0].kakao_share_app_key;
                             safemapKey = supaData[0].safemap_key;
                         }
                     }
@@ -1699,6 +1702,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const configData = await configRes.json();
                         if (configData.kakao_app_key) {
                             appkey = configData.kakao_app_key;
+                            shareAppkey = configData.kakao_share_app_key;
                             safemapKey = configData.safemap_key;
                         }
                     }
@@ -1713,6 +1717,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             window.GLOBAL_KAKAO_APP_KEY = appkey;
+            window.GLOBAL_KAKAO_SHARE_APP_KEY = shareAppkey || "3a00cd76a8e0492b9271a21aa2c37994";
             window.GLOBAL_SAFEMAP_KEY = safemapKey || "8N7ELUCO-8N7E-8N7E-8N7E-8N7ELUCOQY";
 
             logDiagnostic(`Kakao Maps SDK 스크립트 삽입 중... (AppKey: ${appkey.substring(0, 6)}***)`);
@@ -12386,10 +12391,11 @@ window.closeAcademyDetailModal = function() {
 
 function loadKakaoShareSDK() {
     return new Promise((resolve) => {
+        const shareAppKey = window.GLOBAL_KAKAO_SHARE_APP_KEY || '3a00cd76a8e0492b9271a21aa2c37994';
         if (window.Kakao && window.Kakao.Share) {
-            if (!window.Kakao.isInitialized() && window.GLOBAL_KAKAO_APP_KEY) {
+            if (!window.Kakao.isInitialized() && shareAppKey) {
                 try {
-                    window.Kakao.init(window.GLOBAL_KAKAO_APP_KEY);
+                    window.Kakao.init(shareAppKey);
                 } catch (e) {
                     console.warn('[Kakao SDK] Init warning:', e);
                 }
@@ -12404,8 +12410,8 @@ function loadKakaoShareSDK() {
                 attempts++;
                 if (window.Kakao && window.Kakao.Share) {
                     clearInterval(timer);
-                    if (!window.Kakao.isInitialized() && window.GLOBAL_KAKAO_APP_KEY) {
-                        try { window.Kakao.init(window.GLOBAL_KAKAO_APP_KEY); } catch (e) {}
+                    if (!window.Kakao.isInitialized() && shareAppKey) {
+                        try { window.Kakao.init(shareAppKey); } catch (e) {}
                     }
                     resolve(true);
                 } else if (attempts > 30) {
@@ -12421,9 +12427,9 @@ function loadKakaoShareSDK() {
         script.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js';
         script.onload = () => {
             if (window.Kakao) {
-                if (!window.Kakao.isInitialized() && window.GLOBAL_KAKAO_APP_KEY) {
+                if (!window.Kakao.isInitialized() && shareAppKey) {
                     try {
-                        window.Kakao.init(window.GLOBAL_KAKAO_APP_KEY);
+                        window.Kakao.init(shareAppKey);
                     } catch (e) {
                         console.warn('[Kakao SDK] Init error:', e);
                     }

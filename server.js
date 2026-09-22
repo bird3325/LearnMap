@@ -126,6 +126,7 @@ app.get('/api/config/map-key', async (req, res) => {
     const config = await readConfig();
     return res.json({ 
         kakao_app_key: config.kakao_app_key || '',
+        kakao_share_app_key: config.kakao_share_app_key || '3a00cd76a8e0492b9271a21aa2c37994',
         safemap_key: config.safemap_key || '8N7ELUCO-8N7E-8N7E-8N7E-8N7ELUCOQY'
     });
 });
