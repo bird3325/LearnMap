@@ -1881,6 +1881,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         const parsed = JSON.parse(text);
                         if (Array.isArray(parsed) && parsed.length > 0) {
                             schoolsDatabase = parsed;
+                            window.schoolsDatabase = parsed;
+                            window.allSchoolsCache = parsed;
                             logDiagnostic(`데이터베이스 로드 완료 (로컬 JSON). 총 학교 수: ${schoolsDatabase.length}개`);
                             return;
                         }
@@ -1900,6 +1902,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 if (Array.isArray(data) && data.length > 0) {
                     schoolsDatabase = data;
+                    window.schoolsDatabase = data;
+                    window.allSchoolsCache = data;
                     logDiagnostic(`데이터베이스 로드 완료 (서버 API). 총 학교 수: ${schoolsDatabase.length}개`);
                     return;
                 }
@@ -1923,6 +1927,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const supaSchools = await supaResp.json();
                 if (Array.isArray(supaSchools) && supaSchools.length > 0) {
                     schoolsDatabase = supaSchools;
+                    window.schoolsDatabase = supaSchools;
+                    window.allSchoolsCache = supaSchools;
                     logDiagnostic(`데이터베이스 로드 완료 (Supabase). 총 학교 수: ${schoolsDatabase.length}개`);
                     return;
                 }
@@ -1950,18 +1956,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 schoolsLoadPromise = loadSchoolsDatabase();
                 schoolsLoadPromise.then(() => {
                     logDiagnostic('지도 및 로컬 DB 연동 완료.');
+                    window.schoolsDatabase = schoolsDatabase;
+                    window.allSchoolsCache = schoolsDatabase;
                     onMapAction();
                     updateCompareFloatingButton();
                     hideLoadingOverlay();
+                    if (typeof window.checkAndOpenDeepLinkFromURL === 'function') {
+                        window.checkAndOpenDeepLinkFromURL();
+                    }
                 });
             });
         } else {
             logDiagnostic('오프라인 대체 모드로 시뮬레이션을 작동합니다.');
             schoolsLoadPromise = loadSchoolsDatabase();
             schoolsLoadPromise.then(() => {
+                window.schoolsDatabase = schoolsDatabase;
+                window.allSchoolsCache = schoolsDatabase;
                 renderPins(schoolsDatabase.slice(0, 10), false);
                 updateCompareFloatingButton();
                 hideLoadingOverlay();
+                if (typeof window.checkAndOpenDeepLinkFromURL === 'function') {
+                    window.checkAndOpenDeepLinkFromURL();
+                }
             });
         }
     });
@@ -2550,9 +2566,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Global selector callback
     window.selectSchoolById = (schoolId) => {
-        let school = currentLoadedSchools.find(s => String(s.school_id || s.id) === String(schoolId));
-        if (!school && typeof schoolsDatabase !== 'undefined') {
-            school = schoolsDatabase.find(s => String(s.school_id || s.id) === String(schoolId));
+        let school = currentLoadedSchools.find(s => String(s.school_id || s.id) === String(schoolId) || s.school_name === schoolId);
+        if (!school && typeof schoolsDatabase !== 'undefined' && Array.isArray(schoolsDatabase)) {
+            school = schoolsDatabase.find(s => String(s.school_id || s.id) === String(schoolId) || s.school_name === schoolId);
+        }
+        if (!school && typeof allSchoolsCache !== 'undefined' && Array.isArray(allSchoolsCache)) {
+            school = allSchoolsCache.find(s => String(s.school_id || s.id) === String(schoolId) || s.school_name === schoolId);
         }
         if (school) {
             // 선택된 학교의 학교급(초/중/고) 필터 자동 동기화
@@ -2630,6 +2649,23 @@ document.addEventListener('DOMContentLoaded', () => {
             yAnchor: 0,
             zIndex: 999,
             clickable: true
+        });
+
+        // 마우스 호버 시 겹쳐 있는 핀들 중 최상단(Z-Index 99999)으로 노출
+        overlayEl.addEventListener('mouseenter', () => {
+            if (marker && typeof marker.setZIndex === 'function') {
+                marker.setZIndex(99999);
+            }
+            overlayEl.style.zIndex = '99999';
+        });
+
+        overlayEl.addEventListener('mouseleave', () => {
+            const isSelected = (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool && String(orchestrator.state.selectedSchool.school_id || orchestrator.state.selectedSchool.id) === String(school.school_id));
+            const targetZIndex = isSelected ? 9999 : 999;
+            if (marker && typeof marker.setZIndex === 'function') {
+                marker.setZIndex(targetZIndex);
+            }
+            overlayEl.style.zIndex = String(targetZIndex);
         });
 
         marker.setMap(kakaoMap);
@@ -11794,10 +11830,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
             // 카카오 지도 또는 학교 핀 선택 연동
             let targetSchool = (allSchoolsCache && Array.isArray(allSchoolsCache))
-                ? allSchoolsCache.find(s => String(s.school_id || s.id) === String(schoolId))
+                ? allSchoolsCache.find(s => String(s.school_id || s.id) === String(schoolId) || s.school_name === schoolId)
                 : null;
             if (!targetSchool && typeof schoolsDatabase !== 'undefined' && Array.isArray(schoolsDatabase)) {
-                targetSchool = schoolsDatabase.find(s => String(s.school_id || s.id) === String(schoolId));
+                targetSchool = schoolsDatabase.find(s => String(s.school_id || s.id) === String(schoolId) || s.school_name === schoolId);
+            }
+            if (!targetSchool && typeof currentLoadedSchools !== 'undefined' && Array.isArray(currentLoadedSchools)) {
+                targetSchool = currentLoadedSchools.find(s => String(s.school_id || s.id) === String(schoolId) || s.school_name === schoolId);
             }
 
             if (targetSchool) {
@@ -12596,28 +12635,69 @@ window.shareAcademyDetail = async function() {
 };
 
 // URL의 딥링크 파라미터(?school=... 또는 ?academy=...) 감지하여 사이트 오픈 시 해당 학교/학원 자동 렌더링
-function checkAndOpenDeepLinkFromURL() {
+window.checkAndOpenDeepLinkFromURL = function checkAndOpenDeepLinkFromURL() {
     try {
         const urlParams = new URLSearchParams(window.location.search);
         const schoolParam = urlParams.get('school') || urlParams.get('school_id');
+        const academyParam = urlParams.get('academy') || urlParams.get('academy_id');
+
         if (schoolParam) {
+            let attempts = 0;
             const checkInterval = setInterval(() => {
-                if (typeof window.viewSchoolOnMapFromStats === 'function') {
+                attempts++;
+
+                const cacheList = (window.allSchoolsCache && Array.isArray(window.allSchoolsCache) && window.allSchoolsCache.length > 0)
+                    ? window.allSchoolsCache
+                    : ((window.schoolsDatabase && Array.isArray(window.schoolsDatabase) && window.schoolsDatabase.length > 0)
+                        ? window.schoolsDatabase
+                        : ((typeof schoolsDatabase !== 'undefined' && Array.isArray(schoolsDatabase) && schoolsDatabase.length > 0)
+                            ? schoolsDatabase
+                            : ((typeof currentLoadedSchools !== 'undefined' && Array.isArray(currentLoadedSchools) && currentLoadedSchools.length > 0)
+                                ? currentLoadedSchools
+                                : [])));
+
+                let targetSchool = cacheList.find(s => String(s.school_id || s.id) === String(schoolParam) || s.school_name === schoolParam);
+
+                if (targetSchool && typeof window.viewSchoolOnMapFromStats === 'function') {
+                    clearInterval(checkInterval);
+                    window.viewSchoolOnMapFromStats(targetSchool.school_id || targetSchool.id || schoolParam);
+                    return;
+                }
+
+                // 비동기 데이터 수신 전이라도 viewSchoolOnMapFromStats가 있고 3초 이상 지났으면 직접 호출
+                if (attempts > 15 && typeof window.viewSchoolOnMapFromStats === 'function') {
                     clearInterval(checkInterval);
                     window.viewSchoolOnMapFromStats(schoolParam);
+                    return;
                 }
-            }, 300);
-            setTimeout(() => clearInterval(checkInterval), 5000);
+
+                if (attempts > 50) {
+                    clearInterval(checkInterval);
+                }
+            }, 200);
+        } else if (academyParam) {
+            let attempts = 0;
+            const acadInterval = setInterval(() => {
+                attempts++;
+                if (typeof window.focusAcademyOnMapFromDetail === 'function' || typeof window.searchAndMoveMap === 'function') {
+                    clearInterval(acadInterval);
+                    window.currentAcademyForCommunity = academyParam;
+                    if (typeof window.openAcademyDetailModal === 'function') {
+                        window.openAcademyDetailModal(academyParam);
+                    }
+                }
+                if (attempts > 30) clearInterval(acadInterval);
+            }, 200);
         }
     } catch (e) {
         console.warn('[DeepLink] URL 파라미터 파싱 실패:', e);
     }
-}
+};
 
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', checkAndOpenDeepLinkFromURL);
+    document.addEventListener('DOMContentLoaded', window.checkAndOpenDeepLinkFromURL);
 } else {
-    checkAndOpenDeepLinkFromURL();
+    window.checkAndOpenDeepLinkFromURL();
 }
 
 window.makeAcademyCall = function() {
