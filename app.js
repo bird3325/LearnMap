@@ -12485,14 +12485,14 @@ window.shareSchoolDetail = async function() {
         shareUrl += `?school=${encodeURIComponent(targetId)}`;
     }
 
-    // 이미지 없이 텍스트 중심의 카드 메시지 구성
-    const cardMessageText = `🏫 [학업여지도 학교 카드] ${schoolName}\n\n📍 위치: ${address || '학교 위치 정보'}\n🏫 구분: ${infoSummary}\n🏆 종합 교육환경 점수: ${envScoreText}\n📚 학업성취도: ${achievementText}`;
+    // 요청된 규격에 맞춘 텍스트 카드 메시지 구성
+    const cardMessageText = `🗺️ [학업여지도]\n\n학교명: ${schoolName}\n위치: ${address || '위치 정보 없음'}\n구분: ${infoSummary}\n종합교육환경 점수: ${envScoreText}\n학업성취도: ${achievementText}`;
 
     const sdkLoaded = await loadKakaoShareSDK();
     
     if (sdkLoaded && window.Kakao && window.Kakao.isInitialized() && window.Kakao.Share) {
         try {
-            // objectType: 'text'를 사용해 이미지를 완벽히 제거하고 텍스트 카드로 전송
+            // objectType: 'text'를 사용해 카카오톡 메시지 카드 구성
             window.Kakao.Share.sendDefault({
                 objectType: 'text',
                 text: cardMessageText,
@@ -12502,7 +12502,7 @@ window.shareSchoolDetail = async function() {
                 },
                 buttons: [
                     {
-                        title: '👉 바로가기',
+                        title: '사이트 이동',
                         link: {
                             mobileWebUrl: shareUrl,
                             webUrl: shareUrl,
@@ -12517,10 +12517,10 @@ window.shareSchoolDetail = async function() {
         }
     }
 
-    const cardText = `${cardMessageText}\n\n🔗 학업여지도 바로가기:\n${shareUrl}`;
+    const cardText = `${cardMessageText}\n\n🔗 사이트 이동:\n${shareUrl}`;
     if (navigator.share) {
         navigator.share({
-            title: `${schoolName} 학교 카드`,
+            title: `[학업여지도] ${schoolName}`,
             text: cardText,
             url: shareUrl
         }).catch(err => {
@@ -12545,7 +12545,7 @@ window.shareAcademyDetail = async function() {
         shareUrl += `?academy=${encodeURIComponent(acadName)}`;
     }
 
-    const cardMessageText = `📚 [학업여지도 학원 카드] ${acadName}\n\n📍 학업여지도 추천 학원 상세 정보\n🎓 수강료 및 실제 학부모·수험생 후기 확인`;
+    const cardMessageText = `🗺️ [학업여지도]\n\n학원명: ${acadName}\n구분: 학원 및 교습소\n특징: 수강료 및 실제 학부모·수험생 후기 확인`;
 
     const sdkLoaded = await loadKakaoShareSDK();
 
@@ -12560,7 +12560,7 @@ window.shareAcademyDetail = async function() {
                 },
                 buttons: [
                     {
-                        title: '👉 바로가기',
+                        title: '사이트 이동',
                         link: {
                             mobileWebUrl: shareUrl,
                             webUrl: shareUrl,
