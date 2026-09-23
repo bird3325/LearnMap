@@ -1,5 +1,8 @@
 // Main entry point
 import { Orchestrator } from './src/agents/orchestrator.js';
+import { NEISAgent } from './src/agents/neis_agent.js';
+import { isLocalEnvironment } from './src/services/neis_service.js';
+import { authService } from './src/services/auth_service.js';
 import defaultDistrictData from './src/data/korea-administrative-district.json';
 let orchestrator;
 let currentLoadedSchools = [];
@@ -12811,7 +12814,667 @@ function showToastNoticeMsg(msg) {
     }
 }
 
+// 회원 가입 & 로그인 서비스 모듈 초기화
+function initAuthModule() {
+    const authModal = document.getElementById('authModal');
+
+    window.openAuthModal = function() {
+        if (authModal) authModal.style.display = 'flex';
+    };
+
+    window.closeAuthModal = function() {
+        if (authModal) authModal.style.display = 'none';
+    };
+
+    window.switchAuthTab = function(mode = 'login') {
+        const btnLogin = document.getElementById('btnAuthTabLogin');
+        const btnRegister = document.getElementById('btnAuthTabRegister');
+        const viewLogin = document.getElementById('authViewLogin');
+        const viewRegister = document.getElementById('authViewRegister');
+
+        if (mode === 'login') {
+            if (btnLogin) { btnLogin.style.background = '#2563eb'; btnLogin.style.color = 'white'; }
+            if (btnRegister) { btnRegister.style.background = 'transparent'; btnRegister.style.color = '#64748b'; }
+            if (viewLogin) viewLogin.style.display = 'block';
+            if (viewRegister) viewRegister.style.display = 'none';
+        } else {
+            if (btnRegister) { btnRegister.style.background = '#10b981'; btnRegister.style.color = 'white'; }
+            if (btnLogin) { btnLogin.style.background = 'transparent'; btnLogin.style.color = '#64748b'; }
+            if (viewLogin) viewLogin.style.display = 'none';
+            if (viewRegister) viewRegister.style.display = 'block';
+        }
+    };
+
+    window.switchSettingsAuthTab = function(mode = 'login') {
+        const btnLogin = document.getElementById('btnSettingsTabLogin');
+        const btnRegister = document.getElementById('btnSettingsTabRegister');
+        const viewLogin = document.getElementById('settingsLoginForm');
+        const viewRegister = document.getElementById('settingsRegisterForm');
+
+        if (mode === 'login') {
+            if (btnLogin) { btnLogin.style.background = '#2563eb'; btnLogin.style.color = 'white'; }
+            if (btnRegister) { btnRegister.style.background = 'transparent'; btnRegister.style.color = '#64748b'; }
+            if (viewLogin) viewLogin.style.display = 'block';
+            if (viewRegister) viewRegister.style.display = 'none';
+        } else {
+            if (btnRegister) { btnRegister.style.background = '#10b981'; btnRegister.style.color = 'white'; }
+            if (btnLogin) { btnLogin.style.background = 'transparent'; btnLogin.style.color = '#64748b'; }
+            if (viewLogin) viewLogin.style.display = 'none';
+            if (viewRegister) viewRegister.style.display = 'block';
+        }
+    };
+
+    window.updateAuthUI = function() {
+        const btnSettings = document.getElementById('btnOpenSettings');
+        const currentUser = authService.getCurrentUser();
+
+        // 설정 영역 내부 회원 인증 상태 제어
+        const userCard = document.getElementById('settingsAuthUserCard');
+        const formArea = document.getElementById('settingsAuthFormArea');
+        const userNameEl = document.getElementById('settingsAuthUserName');
+        const userEmailEl = document.getElementById('settingsAuthUserEmail');
+        const badgeEl = document.getElementById('settingsAuthBadge');
+        const btnKakao = document.getElementById('btnKakaoEasyLoginSettings');
+
+        const childPC = document.getElementById('settingsChildSection');
+        const childMobile = document.getElementById('settingsChildSectionMobile');
+
+        if (currentUser) {
+            if (userCard) userCard.style.display = 'block';
+            if (formArea) formArea.style.display = 'none';
+            if (btnKakao) btnKakao.style.display = 'none';
+            if (userNameEl) userNameEl.innerText = currentUser.name;
+            if (userEmailEl) userEmailEl.innerText = `${currentUser.email} (${currentUser.role === 'parent' ? '학부모 회원' : '학생 회원'})`;
+            if (badgeEl) {
+                badgeEl.innerText = '🟢 인증 100% 완료';
+                badgeEl.className = 'neis-badge neis-badge-success';
+            }
+            if (btnSettings) {
+                btnSettings.setAttribute('data-title', `${currentUser.name} (회원/설정)`);
+            }
+            if (childPC) childPC.style.display = 'block';
+            if (childMobile) childMobile.style.display = 'flex';
+        } else {
+            if (userCard) userCard.style.display = 'none';
+            if (formArea) formArea.style.display = 'block';
+            if (btnKakao) btnKakao.style.display = 'flex';
+            if (badgeEl) {
+                badgeEl.innerText = '나이스 마이데이터 융합 지원';
+                badgeEl.className = 'neis-badge neis-badge-info';
+            }
+            if (btnSettings) {
+                btnSettings.setAttribute('data-title', '회원가입 / 로그인 설정');
+            }
+            if (childPC) childPC.style.display = 'none';
+            if (childMobile) childMobile.style.display = 'none';
+        }
+    };
+
+    window.handleKakaoLogin = function() {
+        const res = authService.kakaoLogin();
+        alert(res.message);
+        if (res.success) {
+            window.updateAuthUI();
+            if (typeof window.renderNEISTabContent === 'function') {
+                window.renderNEISTabContent('sync');
+            }
+        }
+    };
+
+    window.handleSettingsLogin = function() {
+        const email = document.getElementById('settingsEmail')?.value;
+        const password = document.getElementById('settingsPassword')?.value;
+        const res = authService.login(email, password);
+        alert(res.message);
+        if (res.success) {
+            window.updateAuthUI();
+            if (typeof window.renderNEISTabContent === 'function') {
+                window.renderNEISTabContent('sync');
+            }
+        }
+    };
+
+    window.handleSettingsRegister = function() {
+        const name = document.getElementById('settingsRegName')?.value;
+        const email = document.getElementById('settingsRegEmail')?.value;
+        const password = document.getElementById('settingsRegPassword')?.value;
+        const res = authService.register({ name, email, password, role: 'parent' });
+        alert(res.message);
+        if (res.success) {
+            window.updateAuthUI();
+            if (typeof window.renderNEISTabContent === 'function') {
+                window.renderNEISTabContent('sync');
+            }
+        }
+    };
+
+    window.handleLogout = function() {
+        if (confirm('로그아웃 하시겠습니까?')) {
+            authService.logout();
+            alert('성공적으로 로그아웃되었습니다.');
+            window.updateAuthUI();
+            if (typeof window.renderNEISTabContent === 'function') {
+                window.renderNEISTabContent('sync');
+            }
+        }
+    };
+
+    window.handleLoginSubmit = function(e) {
+        if (e) e.preventDefault();
+        const email = document.getElementById('loginEmail')?.value;
+        const password = document.getElementById('loginPassword')?.value;
+        const res = authService.login(email, password);
+        alert(res.message);
+        if (res.success) {
+            window.closeAuthModal();
+            window.updateAuthUI();
+            if (typeof window.openNEISModal === 'function') {
+                window.openNEISModal();
+            }
+        }
+    };
+
+    window.handleRegisterSubmit = function(e) {
+        if (e) e.preventDefault();
+        const name = document.getElementById('regName')?.value;
+        const email = document.getElementById('regEmail')?.value;
+        const password = document.getElementById('regPassword')?.value;
+        const role = document.getElementById('regRole')?.value;
+        const res = authService.register({ name, email, password, role });
+        alert(res.message);
+        if (res.success) {
+            window.closeAuthModal();
+            window.updateAuthUI();
+            if (typeof window.openNEISModal === 'function') {
+                window.openNEISModal();
+            }
+        }
+    };
+
+    window.handleQuickTestLogin = function() {
+        const res = authService.login('test@learnmap.com', '1234');
+        alert(res.message);
+        if (res.success) {
+            window.closeAuthModal();
+            window.updateAuthUI();
+            if (typeof window.openNEISModal === 'function') {
+                window.openNEISModal();
+            }
+        }
+    };
+
+    if (authModal) {
+        authModal.addEventListener('click', (e) => {
+            if (e.target === authModal) window.closeAuthModal();
+        });
+    }
+
+    window.updateAuthUI();
+}
+
+// 나이스(NEIS) 학부모 서비스 로컬 연동 모듈 초기화
+function initNEISLocalModule() {
+    const btnOpen = document.getElementById('btnOpenNEISModal');
+    const modal = document.getElementById('neisModal');
+    const btnClose = document.getElementById('btnCloseNEISModal');
+    const btnAcademyAction = document.getElementById('btnNEISAcademyAction');
+
+    // 🔒 로컬 개발 환경(localhost, 127.0.0.1 등)에서만 가동 및 UI 노출
+    if (!isLocalEnvironment()) {
+        if (btnOpen) btnOpen.style.display = 'none';
+        if (modal) modal.style.display = 'none';
+        return;
+    }
+
+    // 로컬 환경일 경우 우측 상단 플로팅 버튼 노출
+    if (btnOpen) btnOpen.style.display = 'flex';
+
+    window.openNEISModal = function() {
+        // 🔒 미로그인 사용자 검증 및 로그인 페이지 유도
+        if (!authService.isLoggedIn()) {
+            alert('🔒 나이스(NEIS) 학부모 서비스 & LearnMap 융합 진단은 회원가입/로그인 후 이용할 수 있는 회원 전용 서비스입니다.\n\n로그인 창으로 이동합니다.');
+            if (typeof window.openAuthModal === 'function') {
+                window.openAuthModal();
+            }
+            return;
+        }
+
+        const m = document.getElementById('neisModal');
+        if (m) {
+            m.style.display = 'flex';
+            window.switchNEISTab('sync');
+        }
+    };
+
+    window.closeNEISModal = function() {
+        const m = document.getElementById('neisModal');
+        if (m) {
+            m.style.display = 'none';
+        }
+    };
+
+    window.switchNEISTab = function(tabName, btnEl) {
+        const tabBtns = document.querySelectorAll('.neis-tab-btn');
+        tabBtns.forEach(b => {
+            b.classList.remove('active');
+            b.style.background = 'transparent';
+            b.style.color = '#64748b';
+        });
+
+        let targetBtn = btnEl;
+        if (!targetBtn && typeof tabName === 'string') {
+            targetBtn = document.querySelector(`.neis-tab-btn[data-tab="${tabName}"]`);
+        }
+
+        if (targetBtn) {
+            targetBtn.classList.add('active');
+            targetBtn.style.background = 'var(--primary-blue, #2563eb)';
+            targetBtn.style.color = 'white';
+        }
+
+        if (typeof window.renderNEISTabContent === 'function') {
+            window.renderNEISTabContent(tabName);
+        }
+    };
+
+    if (btnOpen) {
+        btnOpen.addEventListener('click', window.openNEISModal);
+    }
+
+    if (btnClose) {
+        btnClose.addEventListener('click', window.closeNEISModal);
+    }
+
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) window.closeNEISModal();
+        });
+    }
+
+    if (btnAcademyAction) {
+        btnAcademyAction.addEventListener('click', () => {
+            if (modal) modal.style.display = 'none';
+            if (typeof window.toggleAcademySidebar === 'function') {
+                window.toggleAcademySidebar(true);
+            }
+        });
+    }
+}
+
+window.renderNEISTabContent = function(tabName = 'sync') {
+    const contents = document.querySelectorAll('.neis-tab-content');
+    contents.forEach(c => c.style.display = 'none');
+
+    let report = null;
+    try {
+        if (orchestrator && typeof orchestrator.getNEISReport === 'function') {
+            report = orchestrator.getNEISReport();
+        }
+    } catch (e) {
+        console.error('Failed to get NEIS report from orchestrator', e);
+    }
+
+    if (!report) {
+        try {
+            const agent = new NEISAgent();
+            report = agent.generateFusionReport(orchestrator ? orchestrator.state.selectedSchool : null);
+        } catch (e) {
+            console.error('Failed fallback NEIS report generation', e);
+        }
+    }
+
+    if (!report) return;
+
+    const studentInfo = report.student || {};
+    const allergiesList = (studentInfo.allergies || []).join(', ') || '없음';
+
+    if (tabName === 'sync') {
+        const el = document.getElementById('neisTabSync');
+        if (!el) return;
+        el.style.display = 'block';
+        
+        const gradesList = report.grades?.subjects || [];
+        const gradesInputRows = gradesList.map((g, idx) => `
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 6px;"><input type="text" id="editSubName_${idx}" value="${g.subject}" style="width: 100%; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; font-weight: 700;"></td>
+                <td style="padding: 6px;"><input type="number" id="editRaw_${idx}" value="${g.rawScore}" style="width: 100%; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; text-align: center;"></td>
+                <td style="padding: 6px;"><input type="number" id="editWritten_${idx}" value="${g.writtenScore ?? g.rawScore}" style="width: 100%; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; text-align: center;"></td>
+                <td style="padding: 6px;"><input type="number" id="editPerf_${idx}" value="${g.perfScore ?? g.rawScore}" style="width: 100%; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; text-align: center;"></td>
+                <td style="padding: 6px;"><input type="number" step="0.1" id="editAvg_${idx}" value="${g.avg}" style="width: 100%; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; text-align: center;"></td>
+                <td style="padding: 6px;"><input type="number" step="0.1" id="editStd_${idx}" value="${g.std}" style="width: 100%; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; text-align: center;"></td>
+            </tr>
+        `).join('');
+
+        el.innerHTML = `
+            <div class="neis-card" style="background: linear-gradient(135deg, #f0fdf4 0%, #eef2ff 100%); border-color: #bbf7d0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 28px;">🟢</span>
+                        <div>
+                            <h4 style="margin: 0; font-size: 15px; font-weight: 800; color: #166534;">나이스(NEIS) 학부모 마이데이터 연동 가이드</h4>
+                            <span style="font-size: 11px; color: #15803d;">실제 상용 서비스: 교육부 본인인증 자동 수신 | 로컬 환경: 직접 입력/수정 지원</span>
+                        </div>
+                    </div>
+                    <span class="neis-badge neis-badge-success">인증 완료</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; font-size: 12px; border-top: 1px dashed #bbf7d0; padding-top: 12px;">
+                    <div><strong>학생 성명:</strong> ${studentInfo.name || '김배움'}</div>
+                    <div><strong>소속 학교:</strong> ${studentInfo.schoolName || '강남중학교'} (${studentInfo.grade || 2}학년)</div>
+                    <div><strong>희망 지망 계열:</strong> ${studentInfo.targetMajor || '컴퓨터공학 / AI'}</div>
+                    <div><strong>등록 알레르기:</strong> ${allergiesList}</div>
+                </div>
+            </div>
+
+            <div class="neis-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4 style="margin: 0; font-size: 14px; font-weight: 800; color: #1e293b;">✏️ 실제 자녀 정보 & 성적 직접 입력 / 수정</h4>
+                    <button id="btnToggleNEISEdit" style="background: #e0e7ff; color: #3730a3; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">
+                        📝 입력/수정 창 열기
+                    </button>
+                </div>
+                <p style="font-size: 12px; color: #64748b; line-height: 1.5; margin-bottom: 10px;">
+                    💡 <strong>실제 서비스</strong> 연동 시에는 교육부 나이스 학부모 마이데이터 인증을 거쳐 정부 서버에서 자녀의 성적표와 생기부가 자동으로 불러와집니다.<br>
+                    <strong>현재 로컬 테스트 환경</strong>에서는 아래 폼에 실제 자녀의 성적 및 알레르기 정보를 입력하여 맞춤 진단을 바로 테스트하실 수 있습니다.
+                </p>
+
+                <div id="neisEditFormContainer" style="display: none; background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 10px;">
+                    <h5 style="margin: 0 0 10px 0; font-size: 13px; font-weight: 800; color: #1e293b;">1. 자녀 기본 정보 입력</h5>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px; font-size: 11px;">
+                        <div>
+                            <label style="display: block; font-weight: 700; margin-bottom: 4px;">학생 성명</label>
+                            <input type="text" id="editStudentName" value="${studentInfo.name || ''}" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; margin-bottom: 4px;">소속 학교명</label>
+                            <input type="text" id="editSchoolName" value="${studentInfo.schoolName || ''}" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; margin-bottom: 4px;">학년</label>
+                            <input type="number" id="editGrade" value="${studentInfo.grade || 2}" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; margin-bottom: 4px;">희망 지망 계열</label>
+                            <input type="text" id="editTargetMajor" value="${studentInfo.targetMajor || ''}" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <label style="display: block; font-weight: 700; margin-bottom: 4px;">등록 알레르기 식단 (쉼표로 구분)</label>
+                            <input type="text" id="editAllergies" value="${allergiesList}" placeholder="예: 대두, 우유, 땅콩, 계란" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        </div>
+                    </div>
+
+                    <h5 style="margin: 0 0 10px 0; font-size: 13px; font-weight: 800; color: #1e293b;">2. 과목별 실제 성적 및 평가 점수 입력</h5>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 14px;">
+                        <thead>
+                            <tr style="background: #e2e8f0; color: #334155; text-align: center;">
+                                <th style="padding: 6px; text-align: left;">과목명</th>
+                                <th style="padding: 6px;">원점수</th>
+                                <th style="padding: 6px;">지필점수</th>
+                                <th style="padding: 6px;">수행점수</th>
+                                <th style="padding: 6px;">학교평균</th>
+                                <th style="padding: 6px;">표준편차</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${gradesInputRows}
+                        </tbody>
+                    </table>
+
+                    <div style="display: flex; gap: 8px;">
+                        <button id="btnSaveNEISRealData" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; flex: 1;">
+                            💾 입력 정보 저장 및 실시간 융합 진단 반영
+                        </button>
+                        <button id="btnResetNEISSample" style="background: #94a3b8; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                            🔄 샘플 복원
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const btnToggle = document.getElementById('btnToggleNEISEdit');
+        const formContainer = document.getElementById('neisEditFormContainer');
+        if (btnToggle && formContainer) {
+            btnToggle.onclick = function() {
+                const isHidden = formContainer.style.display === 'none';
+                formContainer.style.display = isHidden ? 'block' : 'none';
+                btnToggle.innerText = isHidden ? '❌ 입력/수정 창 닫기' : '📝 입력/수정 창 열기';
+            };
+        }
+
+        const btnSave = document.getElementById('btnSaveNEISRealData');
+        if (btnSave) {
+            btnSave.onclick = function() {
+                try {
+                    const agent = new NEISAgent();
+                    const currentProf = agent.service.profile;
+
+                    const newName = document.getElementById('editStudentName')?.value || currentProf.studentInfo.name;
+                    const newSchool = document.getElementById('editSchoolName')?.value || currentProf.studentInfo.schoolName;
+                    const newGrade = parseInt(document.getElementById('editGrade')?.value || currentProf.studentInfo.grade, 10);
+                    const newMajor = document.getElementById('editTargetMajor')?.value || currentProf.studentInfo.targetMajor;
+                    const rawAllergies = document.getElementById('editAllergies')?.value || '';
+                    const newAllergies = rawAllergies.split(',').map(s => s.trim()).filter(Boolean);
+
+                    const updatedGrades = (currentProf.grades || []).map((g, idx) => {
+                        const subName = document.getElementById(`editSubName_${idx}`)?.value || g.subject;
+                        const raw = parseFloat(document.getElementById(`editRaw_${idx}`)?.value || g.rawScore);
+                        const written = parseFloat(document.getElementById(`editWritten_${idx}`)?.value || g.writtenScore || raw);
+                        const perf = parseFloat(document.getElementById(`editPerf_${idx}`)?.value || g.perfScore || raw);
+                        const avg = parseFloat(document.getElementById(`editAvg_${idx}`)?.value || g.avg);
+                        const std = parseFloat(document.getElementById(`editStd_${idx}`)?.value || g.std);
+
+                        return {
+                            ...g,
+                            subject: subName,
+                            rawScore: raw,
+                            writtenScore: written,
+                            perfScore: perf,
+                            avg: avg,
+                            std: std
+                        };
+                    });
+
+                    const newProfile = {
+                        ...currentProf,
+                        studentInfo: {
+                            ...currentProf.studentInfo,
+                            name: newName,
+                            schoolName: newSchool,
+                            grade: newGrade,
+                            targetMajor: newMajor,
+                            allergies: newAllergies
+                        },
+                        grades: updatedGrades
+                    };
+
+                    agent.service.saveProfile(newProfile);
+                    alert('입력하신 자녀 성적 및 마이데이터 정보가 성공적으로 반영되었습니다!');
+                    window.renderNEISTabContent('sync');
+                } catch (err) {
+                    console.error('Failed to save custom NEIS data', err);
+                    alert('정보 저장 중 오류가 발생했습니다.');
+                }
+            };
+        }
+
+        const btnReset = document.getElementById('btnResetNEISSample');
+        if (btnReset) {
+            btnReset.onclick = function() {
+                if (confirm('시뮬레이션 기본 샘플 데이터로 복원하시겠습니까?')) {
+                    try {
+                        localStorage.removeItem('learnmap_neis_local_profile');
+                    } catch(err) {}
+                    alert('기본 샘플 데이터로 복원되었습니다.');
+                    window.renderNEISTabContent('sync');
+                }
+            };
+        }
+    } else if (tabName === 'grades') {
+        const el = document.getElementById('neisTabGrades');
+        if (!el) return;
+        el.style.display = 'block';
+
+        const gradesObj = report.grades || {};
+        const subjectList = gradesObj.subjects || [];
+        const subjectRows = subjectList.map(sub => `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 10px; font-weight: 700;">${sub.subject}</td>
+                <td style="padding: 10px; text-align: center;">${sub.rawScore}점</td>
+                <td style="padding: 10px; text-align: center; color: #64748b;">${sub.avg}점 (표준편차 ${sub.std})</td>
+                <td style="padding: 10px; text-align: center;"><span class="neis-badge neis-badge-info">상위 ${sub.percentile}%</span></td>
+                <td style="padding: 10px; text-align: center; font-weight: 700; color: #2563eb;">${sub.estimatedGrade}등급 (${sub.achievement})</td>
+                <td style="padding: 10px; text-align: center;">
+                    ${sub.perfGap > 5 
+                        ? `<span class="neis-badge neis-badge-warning" title="수행평가 감점 ${sub.perfGap}점">수행 감점 -${sub.perfGap}점</span>` 
+                        : `<span class="neis-badge neis-badge-success">수행 우수</span>`}
+                </td>
+            </tr>
+        `).join('');
+
+        const schoolMatchHtml = report.schoolMatch ? `
+            <div class="neis-card" style="background: #eff6ff; border-color: #bfdbfe;">
+                <h4 style="margin: 0 0 6px 0; font-size: 14px; font-weight: 800; color: #1e40af;">🏫 선택된 학교(${report.schoolMatch.schoolName}) 대비 내 자녀 평균 학업성취 분석</h4>
+                <div style="font-size: 12px; color: #1e3a8a;">
+                    학교 전체 평균: <strong>${report.schoolMatch.schoolAvg}점</strong> vs 내 자녀 평균: <strong style="color: #2563eb;">${report.schoolMatch.childAvg}점</strong> 
+                    (${report.schoolMatch.diffScore >= 0 ? `+${report.schoolMatch.diffScore}점 우위` : `${report.schoolMatch.diffScore}점 보완 필요`}) ➔ <span class="neis-badge neis-badge-success">${report.schoolMatch.matchStatus}</span>
+                </div>
+            </div>
+        ` : '';
+
+        el.innerHTML = `
+            ${schoolMatchHtml}
+            <div class="neis-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h4 style="margin: 0; font-size: 14px; font-weight: 800; color: #1e293b;">📊 과목별 성적 정밀 분석표 (Z-Score 석차 산출)</h4>
+                    <span style="font-size: 11px; color: #64748b;">전체 과목 평균: <strong>${gradesObj.overallAvgScore || 88}점</strong> (평균 상위 <strong>${gradesObj.overallPercentile || 7.2}%</strong>)</span>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                    <thead>
+                        <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569; text-align: center;">
+                            <th style="padding: 8px; text-align: left;">과목</th>
+                            <th style="padding: 8px;">원점수</th>
+                            <th style="padding: 8px;">학교 평균/표준편차</th>
+                            <th style="padding: 8px;">백분위 (석차%)</th>
+                            <th style="padding: 8px;">예상 등급</th>
+                            <th style="padding: 8px;">지필 vs 수행 밸런스</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${subjectRows}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } else if (tabName === 'record') {
+        const el = document.getElementById('neisTabRecord');
+        if (!el) return;
+        el.style.display = 'block';
+
+        const recordObj = report.record || {};
+        const compScores = recordObj.competencyScores || { academic: 91, majorSuitability: 88, community: 93 };
+        const keywordsHtml = (recordObj.keywords || []).map(k => `<span style="background: #e0e7ff; color: #3730a3; padding: 4px 10px; border-radius: 14px; font-size: 11px; font-weight: 600;">#${k}</span>`).join(' ');
+        const strengthsHtml = (recordObj.strengths || []).map(s => `<li style="margin-bottom: 4px;">✅ ${s}</li>`).join('');
+        const weaknessesHtml = (recordObj.weaknesses || []).map(w => `<li style="margin-bottom: 4px; color: #dc2626;">⚠️ ${w}</li>`).join('');
+
+        el.innerHTML = `
+            <div class="neis-card" style="background: linear-gradient(135deg, #eef2ff, #fae8ff); border-color: #c7d2fe;">
+                <h4 style="margin: 0 0 10px 0; font-size: 14px; font-weight: 800; color: #312e81;">🎯 희망 지망 전공 적합도 진단: ${studentInfo.targetMajor || '컴퓨터공학 / AI'}</h4>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center; margin-bottom: 12px;">
+                    <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #e0e7ff;">
+                        <div style="font-size: 11px; color: #6366f1;">학업 역량</div>
+                        <div style="font-size: 20px; font-weight: 800; color: #4338ca;">${compScores.academic}점</div>
+                    </div>
+                    <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #e0e7ff;">
+                        <div style="font-size: 11px; color: #a855f7;">전공 적합성</div>
+                        <div style="font-size: 20px; font-weight: 800; color: #7e22ce;">${compScores.majorSuitability}점</div>
+                    </div>
+                    <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #e0e7ff;">
+                        <div style="font-size: 11px; color: #10b981;">공동체/인성</div>
+                        <div style="font-size: 20px; font-weight: 800; color: #047857;">${compScores.community}점</div>
+                    </div>
+                </div>
+                <div style="font-size: 12px; margin-top: 8px;"><strong>추출 세특 탐구 키워드:</strong> <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">${keywordsHtml}</div></div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="neis-card" style="margin-bottom: 0;">
+                    <h4 style="margin: 0 0 8px 0; font-size: 13px; font-weight: 800; color: #166534;">🌟 세특 & 생기부 강점 (Strengths)</h4>
+                    <ul style="padding-left: 0; list-style: none; font-size: 12px; color: #334155; margin: 0;">${strengthsHtml}</ul>
+                </div>
+                <div class="neis-card" style="margin-bottom: 0;">
+                    <h4 style="margin: 0 0 8px 0; font-size: 13px; font-weight: 800; color: #991b1b;">💡 보완 권장 영역 (Weaknesses)</h4>
+                    <ul style="padding-left: 0; list-style: none; font-size: 12px; margin: 0;">${weaknessesHtml}</ul>
+                </div>
+            </div>
+        `;
+    } else if (tabName === 'schedule') {
+        const el = document.getElementById('neisTabSchedule');
+        if (!el) return;
+        el.style.display = 'block';
+
+        const scheduleList = report.schedule || [];
+        const scheduleItems = scheduleList.map(item => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px;">
+                <div>
+                    <span class="neis-badge ${item.type === 'exam' ? 'neis-badge-danger' : (item.type === 'perf' ? 'neis-badge-warning' : 'neis-badge-info')}" style="margin-right: 8px;">${item.type === 'exam' ? '지필시험' : (item.type === 'perf' ? '수행평가' : '학사행사')}</span>
+                    <strong style="font-size: 13px; color: #1e293b;">${item.title}</strong>
+                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${item.detail}</div>
+                </div>
+                <div style="font-size: 12px; font-weight: 700; color: #2563eb;">${item.date}</div>
+            </div>
+        `).join('');
+
+        const attObj = report.attendance || { totalDays: 130, unexcusedAbsence: 0, unexcusedLateness: 0, status: '정상 (개근 유지 중)' };
+
+        el.innerHTML = `
+            <div class="neis-card" style="background: #f0fdf4; border-color: #bbf7d0; margin-bottom: 16px;">
+                <h4 style="margin: 0 0 4px 0; font-size: 14px; font-weight: 800; color: #166534;">🏫 출결 현황 리포트</h4>
+                <div style="font-size: 12px; color: #15803d;">
+                    출석 인정 일수: <strong>${attObj.totalDays}일</strong> | 미인정 결석: <strong>${attObj.unexcusedAbsence}건</strong> | 미인정 지각: <strong>${attObj.unexcusedLateness}건</strong> ➔ <span class="neis-badge neis-badge-success">${attObj.status}</span>
+                </div>
+            </div>
+            <div class="neis-card">
+                <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 800; color: #1e293b;">📅 주요 학사 일정 & 수행평가 제출 타임라인</h4>
+                ${scheduleItems}
+            </div>
+        `;
+    } else if (tabName === 'health') {
+        const el = document.getElementById('neisTabHealth');
+        if (!el) return;
+        el.style.display = 'block';
+
+        const healthObj = report.health || {};
+        const menuList = healthObj.checkedMenu || [];
+        const menuItems = menuList.map(m => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: ${m.hasAllergyRisk ? '#fef2f2' : '#f8fafc'}; border: 1px solid ${m.hasAllergyRisk ? '#fecaca' : '#e2e8f0'}; border-radius: 8px; margin-bottom: 6px;">
+                <span style="font-size: 12px; font-weight: 600; color: ${m.hasAllergyRisk ? '#991b1b' : '#334155'};">${m.name}</span>
+                <div>
+                    ${(m.allergies || []).length > 0 ? `<span style="font-size: 10px; color: #64748b; margin-right: 6px;">(${(m.allergies || []).join(', ')})</span>` : ''}
+                    ${m.hasAllergyRisk 
+                        ? `<span class="neis-badge neis-badge-danger">⚠️ 알레르기 유발 (${(m.matchedAllergies || []).join(', ')})</span>` 
+                        : `<span class="neis-badge neis-badge-success">안전</span>`}
+                </div>
+            </div>
+        `).join('');
+
+        el.innerHTML = `
+            <div class="neis-card" style="background: #f0fdf4; border-color: #bbf7d0; margin-bottom: 16px;">
+                <h4 style="margin: 0 0 6px 0; font-size: 14px; font-weight: 800; color: #166534;">🏃 PAPS 학생건강체력평가 리포트</h4>
+                <div style="font-size: 12px; color: #15803d;">
+                    체력 등급: <strong style="font-size: 14px;">${healthObj.papsGrade || 1}등급 (우수)</strong> | 체질량: <strong>${healthObj.bmiStatus || '표준 (신장 168cm / 체중 56kg)'}</strong>
+                </div>
+            </div>
+            <div class="neis-card">
+                <h4 style="margin: 0 0 10px 0; font-size: 14px; font-weight: 800; color: #1e293b;">🍱 오늘 학교 급식 식단표 (알레르기 실시간 필터링)</h4>
+                ${menuItems}
+            </div>
+        `;
+    }
+};
+
 // 초기 데이터 세팅
+    initAuthModule();
+    initNEISLocalModule();
     loadDistrictData();
 })();
 });

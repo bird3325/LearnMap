@@ -8,12 +8,14 @@
 import { MapAgent } from './map_agent.js';
 import { AnalysisAgent } from './analysis_agent.js';
 import { CompareAgent } from './compare_agent.js';
+import { NEISAgent } from './neis_agent.js';
 
 export class Orchestrator {
     constructor() {
         this.mapAgent = new MapAgent();
         this.analysisAgent = new AnalysisAgent();
         this.compareAgent = new CompareAgent();
+        this.neisAgent = new NEISAgent();
         
         // 애플리케이션 상태 (Application State)
         let savedCompList = [];
@@ -36,6 +38,14 @@ export class Orchestrator {
                 location: { lat: 37.5665, lng: 126.9780 } // default (Seoul)
             }
         };
+    }
+
+    /**
+     * 나이스 융합 진단 리포트 반환 (로컬 전용)
+     */
+    getNEISReport() {
+        if (!this.neisAgent || !this.neisAgent.isAvailable()) return null;
+        return this.neisAgent.generateFusionReport(this.state.selectedSchool);
     }
 
     /**

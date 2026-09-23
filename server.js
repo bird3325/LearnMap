@@ -131,6 +131,85 @@ app.get('/api/config/map-key', async (req, res) => {
     });
 });
 
+// --- User Authentication API ---
+const USERS_FILE_PATH = path.join(DATA_DIR, 'users.json');
+
+function readUsers() {
+    if (!fs.existsSync(USERS_FILE_PATH)) return [];
+    try {
+        return JSON.parse(fs.readFileSync(USERS_FILE_PATH, 'utf8'));
+    } catch (e) {
+        return [];
+    }
+}
+
+function writeUsers(users) {
+    try {
+        fs.writeFileSync(USERS_FILE_PATH, JSON.stringify(users, null, 2), 'utf8');
+    } catch (e) {
+        console.error('Error writing users file:', e);
+    }
+}
+
+app.post('/api/auth/register', (req, res) => {
+    const { email, password, name, role } = req.body;
+    if (!email || !password || !name) {
+        return res.status(400).json({ success: false, message: '모든 필수 항목을 입력해 주세요.' });
+    }
+
+    const users = readUsers();
+    const existing = users.find(u => u.email.toLowerCase() === email.trim().toLowerCase());
+    if (existing) {
+        return res.status(400).json({ success: false, message: '이미 가입된 이메일 계정입니다.' });
+    }
+
+    const newUser = {
+        id: 'user_' + Date.now(),
+        email: email.trim(),
+        password: password,
+        name: name.trim(),
+        role: role || 'parent',
+        createdAt: new Date().toISOString()
+    };
+
+    users.push(newUser);
+    writeUsers(users);
+
+    const sessionUser = { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role };
+    return res.json({ success: true, user: sessionUser, message: '회원가입이 완료되었습니다.' });
+});
+
+app.post('/api/auth/login', (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return res.status(400).json({ success: false, message: '이메일과 비밀번호를 입력해 주세요.' });
+    }
+
+    const users = readUsers();
+    
+    // 기본 체험 계정 자동 생성
+    if (email === 'test@learnmap.com' && password === '1234' && !users.find(u => u.email === email)) {
+        const testUser = {
+            id: 'user_test_default',
+            email: 'test@learnmap.com',
+            password: '1234',
+            name: '학부모 회원',
+            role: 'parent',
+            createdAt: new Date().toISOString()
+        };
+        users.push(testUser);
+        writeUsers(users);
+    }
+
+    const target = users.find(u => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password);
+    if (!target) {
+        return res.status(401).json({ success: false, message: '이메일 또는 비밀번호가 올바르지 않습니다.' });
+    }
+
+    const sessionUser = { id: target.id, email: target.email, name: target.name, role: target.role };
+    return res.json({ success: true, user: sessionUser, message: `${target.name}님 환영합니다!` });
+});
+
 // 3. POST /api/admin/login - Simple admin verification
 app.post('/api/admin/login', (req, res) => {
     const { password } = req.body;
