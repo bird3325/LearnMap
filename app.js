@@ -14631,21 +14631,14 @@ function initAuthModule() {
     window.updateAuthUI();
 }
 
-// 나이스(NEIS) 학부모 서비스 로컬 연동 모듈 초기화
+// 나이스(NEIS) 학부모 서비스 연동 모듈 초기화
 function initNEISLocalModule() {
     const btnOpen = document.getElementById('btnOpenNEISModal');
     const modal = document.getElementById('neisModal');
     const btnClose = document.getElementById('btnCloseNEISModal');
     const btnAcademyAction = document.getElementById('btnNEISAcademyAction');
 
-    // 🔒 로컬 개발 환경(localhost, 127.0.0.1 등)에서만 가동 및 UI 노출
-    if (!isLocalEnvironment()) {
-        if (btnOpen) btnOpen.style.display = 'none';
-        if (modal) modal.style.display = 'none';
-        return;
-    }
-
-    // 로컬 환경일 경우 우측 상단 플로팅 버튼 노출
+    // 상단 플로팅 버튼 항상 노출
     if (btnOpen) btnOpen.style.display = 'flex';
 
     window.openNEISModal = async function() {

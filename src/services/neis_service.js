@@ -12,14 +12,7 @@
  */
 
 export function isLocalEnvironment() {
-    try {
-        const host = window.location.hostname || '';
-        const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '::1' || host.endsWith('.local');
-        const isDevPort = window.location.port !== '' && window.location.port !== '80' && window.location.port !== '443';
-        return isLocalHost || isDevPort;
-    } catch (e) {
-        return false;
-    }
+    return true;
 }
 
 // 표준 정규분포 CDF 근사 (Z-Score 상위 % 산출)
