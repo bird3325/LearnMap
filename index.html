@@ -12,6 +12,19 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+      // easyXDM (Kakao SDK) 브라우저 호환성 패치
+      if (typeof Object.defineProperty === 'function' && !('substring' in Object.prototype)) {
+        try {
+          Object.defineProperty(Object.prototype, 'substring', {
+            value: function () { return ''; },
+            writable: true,
+            configurable: true,
+            enumerable: false,
+          });
+        } catch (_) {}
+      }
+    </script>
     <title>학업여지도 - Academic Achievement Map</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
     <link rel="stylesheet" href="style.css">
@@ -39,7 +52,7 @@
         </button>
 
         <!-- Top Right Floating Settings / Auth Login Button -->
-        <button id="btnOpenSettings" class="floating-action-btn" style="position: absolute; right: 74px; top: 24px;" data-title="회원가입 / 로그인 설정" aria-label="로그인 및 설정" onclick="const s = document.getElementById('settingsModal'); const t = document.getElementById('tutorialSidebarCard'); if (t) t.style.display = 'none'; s.style.display = s.style.display === 'none' ? 'block' : 'none';">
+        <button id="btnOpenSettings" class="floating-action-btn" style="position: absolute; right: 74px; top: 24px;" data-title="회원가입 / 로그인 설정" aria-label="로그인 및 설정" onclick="const s = document.getElementById('settingsModal'); const nm = document.getElementById('neisModal'); if (nm) nm.style.display = 'none'; const t = document.getElementById('tutorialSidebarCard'); if (t) t.style.display = 'none'; const sb = document.querySelector('.sidebar-section'); if (sb && sb.style.display === 'none' && typeof toggleSidebar === 'function') toggleSidebar(); s.style.display = s.style.display === 'none' ? 'block' : 'none'; if (typeof updateAuthUI === 'function') updateAuthUI();">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
@@ -47,7 +60,7 @@
         </button>
 
         <!-- Top Right Floating NEIS Parent Service Button (Local Only) -->
-        <button id="btnOpenNEISModal" class="floating-action-btn" onclick="if(window.openNEISModal) window.openNEISModal();" style="display: none; position: absolute; right: 174px; top: 24px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);" data-title="나이스 학부모 서비스 (로컬 전용)" aria-label="나이스 학부모 서비스">
+        <button id="btnOpenNEISModal" class="floating-action-btn" style="display: none; position: absolute; right: 174px; top: 24px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);" data-title="자녀 내신 정밀 진단 & 학사·급식 리포트" aria-label="자녀 내신 정밀 진단 & 학사·급식 리포트" onclick="if(window.openNEISModal) window.openNEISModal();">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
                 <path d="M6 12.5v4c0 1.66 2.69 3 6 3s6-1.34 6-3v-4"></path>
@@ -858,93 +871,181 @@
                 <p>학교알리미 공시 기반 학부모용 교육 진단 도구</p>
             </div>
 
-            <!-- 설정 영역 (사이드바 내부로 통합 노출됨 - 호갱노노 스타일 마이페이지 개편) -->
-            <div id="settingsModal" class="card" style="display: none; margin: 0 0 20px 0; position: relative; overflow: hidden; flex-shrink: 0;">
+            <!-- 설정 영역 (사이드바 내부로 통합 노출됨 - 4개 독립 카드 분리) -->
+            <div id="settingsModal" class="card" style="display: none; margin: 0 0 20px 0; position: relative; overflow: visible; flex-shrink: 0; box-sizing: border-box;">
                 
-                <!-- 1. PC (웹) 마이페이지 레이아웃 -->
-                <div class="pc-settings-content" style="position: relative; overflow: hidden; height: auto;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px; flex-shrink: 0;">
-                        <h3 style="font-size: 17px; font-weight: 800; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
-                            <span>🔑 로그인 & 통합 설정</span>
-                        </h3>
-                        <button id="btnCloseSettings-pc" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1;">&times;</button>
-                    </div>
+                <!-- 1. PC (웹) 마이페이지 레이아웃 (독립 카드 분리 디자인) -->
+                <div class="pc-settings-content" style="position: relative; overflow: visible; height: auto; max-height: none; background: transparent; padding: 0; box-sizing: border-box;">
                     
-                    <div class="pc-settings-scroll hide-scrollbar" style="display: flex; flex-direction: column; gap: 12px; box-sizing: border-box;">
-                        <!-- 0. 회원가입 / 로그인 & 카카오 간편로그인 연동 카드 -->
-                        <div id="settingsAuthSection" style="margin-bottom: 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
-                            <h4 style="font-size: 13.5px; color: var(--deep-blue); margin-bottom: 10px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
-                                <span>🔑 회원 서비스 (로그인/회원가입)</span>
-                                <span id="settingsAuthBadge" class="neis-badge neis-badge-info" style="font-size: 10px;">나이스 마이데이터 융합 지원</span>
-                            </h4>
+                    <div class="pc-settings-scroll hide-scrollbar" style="display: flex; flex-direction: column; box-sizing: border-box;">
+                        
+                        <!-- [카드 1] 회원 서비스 카드 -->
+                        <div id="settingsAuthSection" class="settings-card-item card" style="margin-bottom: 16px; box-sizing: border-box;">
+                            <!-- 상단 헤더 영역 -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid #f1f5f9; flex-shrink: 0;">
+                                <h2 style="font-size: 18px; font-weight: 800; color: #1e293b; margin: 0; letter-spacing: -0.3px;">회원 서비스</h2>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span id="settingsAuthBadge" style="display: none;">나이스 마이데이터 융합 지원</span>
+                                    <!-- 알림 버튼 -->
+                                    <button type="button" id="btnSettingsNotification" onclick="alert('새로운 알림이 없습니다.');" style="background: none; border: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #475569; transition: background 0.2s;" title="알림">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                                        </svg>
+                                    </button>
+                                    <!-- 닫기 버튼 -->
+                                    <button type="button" id="btnCloseSettings-pc" style="background: none; border: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #475569; transition: background 0.2s;" title="닫기">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
 
-                            <!-- 카카오 1초 간편 로그인 버튼 -->
-                            <button type="button" id="btnKakaoEasyLoginSettings" onclick="if(window.handleKakaoLogin) window.handleKakaoLogin();" style="width: 100%; background: #FEE500; color: #000000; border: none; padding: 10px 14px; border-radius: 8px; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 10px; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1.0'">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#000000">
-                                    <path d="M12 3C6.477 3 2 6.477 2 10.772c0 2.766 1.83 5.185 4.597 6.551l-.97 3.568c-.085.313.26.568.536.385l4.24-2.822c.523.076 1.056.118 1.597.118 5.523 0 10-3.477 10-7.772S17.523 3 12 3z"/>
-                                </svg>
-                                <span>🟡 카카오 1초 간편 로그인</span>
-                            </button>
-
-                            <!-- 이메일 로그인 / 회원가입 아코디언 / 미니 폼 -->
-                            <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                                <div id="settingsAuthUserCard" style="display: none;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
-                                        <div>
-                                            <span id="settingsAuthUserName" style="font-weight: 800; color: #1e293b;"></span> 님 로그인 중
-                                            <div id="settingsAuthUserEmail" style="font-size: 10px; color: #64748b;"></div>
+                            <!-- 로그인 완료 시 노출되는 사용자 프로필 영역 -->
+                            <div id="settingsAuthUserCard" style="display: none;">
+                                <div style="display: flex; align-items: center; gap: 14px;">
+                                    <!-- 아바타 박스 (파란 테두리 라운드 사각형) -->
+                                    <div style="width: 48px; height: 48px; border-radius: 14px; border: 2px solid #2563eb; background: #ffffff; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="#2563eb">
+                                            <path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z"/>
+                                        </svg>
+                                    </div>
+                                    <!-- 텍스트 정보 -->
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span id="settingsAuthUserName" style="font-size: 16px; font-weight: 800; color: #1e293b;">조민기</span>
+                                            <span class="user-tier-badge" style="display: inline-block; background: #eff6ff; color: #2563eb; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 4px; border: 1px solid #dbeafe;">정회원</span>
                                         </div>
-                                        <button id="btnSettingsLogout" onclick="if(window.handleLogout) window.handleLogout();" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">로그아웃</button>
+                                        <div id="settingsAuthUserEmail" style="font-size: 12px; color: #64748b; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: -apple-system, BlinkMacSystemFont, monospace;">bird3325@naver.com</div>
                                     </div>
                                 </div>
-                                <div id="settingsAuthFormArea">
-                                    <div style="display: flex; gap: 4px; margin-bottom: 10px;">
-                                        <button type="button" id="btnSettingsTabLogin" onclick="if(window.switchSettingsAuthTab) window.switchSettingsAuthTab('login');" style="flex: 1; padding: 6px; border: none; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; background: #2563eb; color: white;">로그인</button>
-                                        <button type="button" id="btnSettingsTabRegister" onclick="if(window.switchSettingsAuthTab) window.switchSettingsAuthTab('register');" style="flex: 1; padding: 6px; border: none; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; background: transparent; color: #64748b;">회원가입</button>
-                                    </div>
-                                    
-                                    <!-- Settings Login Form -->
-                                    <div id="settingsLoginForm">
-                                        <input type="email" id="settingsEmail" placeholder="이메일 주소" style="width: 100%; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 11px; margin-bottom: 6px; box-sizing: border-box;">
-                                        <input type="password" id="settingsPassword" placeholder="비밀번호" style="width: 100%; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 11px; margin-bottom: 8px; box-sizing: border-box;">
-                                        <button type="button" onclick="if(window.handleSettingsLogin) window.handleSettingsLogin();" style="width: 100%; background: #2563eb; color: white; border: none; padding: 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">
-                                            🔓 이메일 로그인
-                                        </button>
-                                    </div>
+                                
+                                <!-- 하단 2분할 버튼 (정보수정 / 로그아웃) -->
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px;">
+                                    <button type="button" id="btnSettingsEditProfile" onclick="alert('회원 정보 수정 창으로 연결됩니다.');" style="height: 38px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 12.5px; font-weight: 600; color: #334155; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: all 0.2s;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M12 20h9"></path>
+                                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                                        </svg>
+                                        <span>정보수정</span>
+                                    </button>
+                                    <button type="button" id="btnSettingsLogout" onclick="if(window.handleLogout) window.handleLogout();" style="height: 38px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 12.5px; font-weight: 600; color: #334155; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: all 0.2s;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                            <polyline points="16 17 21 12 16 7"></polyline>
+                                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                                        </svg>
+                                        <span>로그아웃</span>
+                                    </button>
+                                </div>
+                            </div>
 
-                                    <!-- Settings Register Form -->
-                                    <div id="settingsRegisterForm" style="display: none;">
-                                        <input type="text" id="settingsRegName" placeholder="이름 / 학부모 성명" style="width: 100%; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 11px; margin-bottom: 6px; box-sizing: border-box;">
-                                        <input type="email" id="settingsRegEmail" placeholder="이메일 주소" style="width: 100%; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 11px; margin-bottom: 6px; box-sizing: border-box;">
-                                        <input type="password" id="settingsRegPassword" placeholder="비밀번호" style="width: 100%; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 11px; margin-bottom: 8px; box-sizing: border-box;">
-                                        <button type="button" onclick="if(window.handleSettingsRegister) window.handleSettingsRegister();" style="width: 100%; background: #10b981; color: white; border: none; padding: 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">
-                                            ✨ 회원가입 하기
+                            <!-- 미로그인 시 노출되는 간편 로그인 & 이메일 폼 -->
+                            <div id="settingsAuthFormArea">
+                                <div class="toss-auth-subtext" style="margin-top: 0; margin-bottom: 12px; font-size: 12.5px; color: #64748b;">로그인하고 자녀 학교 진단 및 성적 분석을 시작하세요.</div>
+
+                                <!-- 카카오 1초 간편 로그인 버튼 -->
+                                <button type="button" id="btnKakaoEasyLoginSettings" class="toss-btn-kakao" onclick="if(window.handleKakaoLogin) window.handleKakaoLogin();" style="width: 100%; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 700; cursor: pointer; background: #fee500; border: none; margin-bottom: 12px;">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#000000">
+                                        <path d="M12 3C6.477 3 2 6.477 2 10.772c0 2.766 1.83 5.185 4.597 6.551l-.97 3.568c-.085.313.26.568.536.385l4.24-2.822c.523.076 1.056.118 1.597.118 5.523 0 10-3.477 10-7.772S17.523 3 12 3z"/>
+                                    </svg>
+                                    <span>카카오 1초 간편 로그인</span>
+                                </button>
+
+                                <div class="toss-divider" style="text-align: center; margin: 12px 0; color: #94a3b8; font-size: 11px;">
+                                    <span>또는 이메일로 계속하기</span>
+                                </div>
+
+                                <div class="toss-tab-segment" style="display: flex; gap: 4px; background: #f1f5f9; padding: 3px; border-radius: 8px; margin-bottom: 12px;">
+                                    <button type="button" id="btnSettingsTabLogin" class="toss-tab-btn active" onclick="if(window.switchSettingsAuthTab) window.switchSettingsAuthTab('login');" style="flex: 1; padding: 7px; border: none; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">로그인</button>
+                                    <button type="button" id="btnSettingsTabRegister" class="toss-tab-btn" onclick="if(window.switchSettingsAuthTab) window.switchSettingsAuthTab('register');" style="flex: 1; padding: 7px; border: none; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">회원가입</button>
+                                </div>
+                                
+                                <div id="settingsLoginForm">
+                                    <input type="email" id="settingsEmail" class="toss-input" placeholder="이메일 주소" style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 12px; font-size: 12.5px; box-sizing: border-box; margin-bottom: 8px;">
+                                    <div class="toss-pw-wrap" style="position: relative; margin-bottom: 12px;">
+                                        <input type="password" id="settingsPassword" class="toss-input" placeholder="비밀번호" style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 36px 0 12px; font-size: 12.5px; box-sizing: border-box;">
+                                        <button type="button" class="toss-pw-toggle" onclick="if(window.togglePasswordVisibility) window.togglePasswordVisibility('settingsPassword', this);" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b;">
+                                            <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                                            <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                                         </button>
                                     </div>
+                                    <button type="button" class="toss-btn-primary" onclick="if(window.handleSettingsLogin) window.handleSettingsLogin();" style="width: 100%; height: 40px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer;">로그인</button>
+                                    <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 10px; font-size: 11.5px; color: #64748b;">
+                                        <a href="javascript:void(0)" onclick="if(window.openFindAccountModal) window.openFindAccountModal('id');" style="color: #64748b; text-decoration: none; cursor: pointer;">아이디 찾기</a>
+                                        <span style="color: #cbd5e1;">|</span>
+                                        <a href="javascript:void(0)" onclick="if(window.openFindAccountModal) window.openFindAccountModal('pw');" style="color: #64748b; text-decoration: none; cursor: pointer;">비밀번호 찾기</a>
+                                    </div>
+                                </div>
+
+                                <div id="settingsRegisterForm" style="display: none;">
+                                    <input type="text" id="settingsRegName" class="toss-input" placeholder="이름" style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 12px; font-size: 12.5px; box-sizing: border-box; margin-bottom: 8px;">
+                                    <input type="email" id="settingsRegEmail" class="toss-input" placeholder="이메일 주소" style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 12px; font-size: 12.5px; box-sizing: border-box; margin-bottom: 8px;">
+                                    <div class="toss-pw-wrap" style="position: relative; margin-bottom: 8px;">
+                                        <input type="password" id="settingsRegPassword" class="toss-input" placeholder="비밀번호 (6자 이상)" style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 36px 0 12px; font-size: 12.5px; box-sizing: border-box;">
+                                        <button type="button" class="toss-pw-toggle" onclick="if(window.togglePasswordVisibility) window.togglePasswordVisibility('settingsRegPassword', this);" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b;">
+                                            <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                                            <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                        </button>
+                                    </div>
+                                    <div class="toss-pw-wrap" style="position: relative; margin-bottom: 12px;">
+                                        <input type="password" id="settingsRegPasswordConfirm" class="toss-input" placeholder="비밀번호 확인" style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 36px 0 12px; font-size: 12.5px; box-sizing: border-box;">
+                                        <button type="button" class="toss-pw-toggle" onclick="if(window.togglePasswordVisibility) window.togglePasswordVisibility('settingsRegPasswordConfirm', this);" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b;" title="비밀번호 확인 보기" aria-label="비밀번호 확인 보기">
+                                            <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                                            <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                        </button>
+                                    </div>
+                                    <button type="button" class="toss-btn-primary" onclick="if(window.handleSettingsRegister) window.handleSettingsRegister();" style="width: 100%; height: 40px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer;">회원가입 완료</button>
                                 </div>
                             </div>
                         </div>
-                        <!-- 자녀 설정 (로그인 시에만 노출) -->
-                        <div id="settingsChildSection" style="display: none; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
-                            <h4 style="font-size: 13.5px; color: var(--deep-blue); margin-bottom: 10px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
-                                <span>🏫 자녀 정보 및 성적 설정</span>
-                                <button id="btnAddNewChild-pc" style="background: var(--primary-blue); color: white; border: none; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: bold; cursor: pointer;">+ 자녀 추가</button>
-                            </h4>
-                            <div style="display: flex; flex-direction: column; gap: 8px;">
-                                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12px; gap: 8px;">
-                                    <span style="font-weight: 600; color: var(--text-main); width: 80px;">자녀 선택</span>
-                                    <select id="settingsChildSelect-pc" style="flex: 1; padding: 6px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 6px; min-width: 0;"></select>
-                                    <button id="btnSetDefaultChild-pc" style="background: none; border: 1px solid var(--primary-blue); color: var(--primary-blue); border-radius: 4px; padding: 4px 8px; font-size: 10px; cursor: pointer; font-weight: bold; flex-shrink: 0;">기본 설정</button>
-                                    <button id="btnDeleteSelectedChild-pc" style="background: none; border: 1px solid var(--danger-red); color: var(--danger-red); border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; flex-shrink: 0;">삭제</button>
-                                </div>
-                                <div id="settingsChildEditForm-pc" style="display: flex; flex-direction: column; gap: 8px; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
-                                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
-                                        <span style="font-weight: 600; color: var(--text-main); width: 90px; text-align: left;">자녀 이름</span>
-                                        <input type="text" id="settingsChildName-pc" placeholder="예: 홍길동" style="flex: 1; width: 100%; min-width: 0; padding: 6px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 6px; box-sizing: border-box;">
+
+                        <!-- [카드 2] 자녀 정보 및 성적 설정 카드 -->
+                        <div id="settingsChildSection" class="settings-card-item card" style="display: none; margin-bottom: 16px; box-sizing: border-box;">
+                            <!-- 숨김 호환 엘리먼트 (기존 JS 에러 방지) -->
+                            <div style="display: none;">
+                                <select id="settingsChildSelect-pc"></select>
+                                <button id="btnSetDefaultChild-pc"></button>
+                                <button id="btnDeleteSelectedChild-pc"></button>
+                                <button id="btnAddNewChild-pc"></button>
+                            </div>
+
+                            <!-- 섹션 타이틀 헤더 -->
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+                                <div style="display: flex; align-items: flex-start; gap: 10px;">
+                                    <span style="font-size: 20px; line-height: 1;">🏫</span>
+                                    <div>
+                                        <h4 style="margin: 0; font-size: 15px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px;">자녀 정보 및 성적 설정</h4>
+                                        <p style="margin: 3px 0 0 0; font-size: 11.5px; color: #64748b;">내신 예측과 학군 맞춤 학원 추천에 반영됩니다</p>
                                     </div>
-                                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
-                                        <span style="font-weight: 600; color: var(--text-main); width: 90px; text-align: left;">학년</span>
-                                        <select id="settingsChildGrade-pc" style="flex: 1; width: 100%; min-width: 0; padding: 6px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 6px; box-sizing: border-box;">
+                                </div>
+                                <!-- 자녀 삭제 버튼 -->
+                                <button type="button" id="btnDeleteChildAction" onclick="if(typeof window.handleDeleteCurrentChild === 'function') { window.handleDeleteCurrentChild(); } else { const b = document.getElementById('btnDeleteSelectedChild-pc'); if(b) b.click(); }" style="background: #ffffff; border: 1px solid #fecaca; border-radius: 8px; padding: 5px 10px; font-size: 11.5px; font-weight: 600; color: #ef4444; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.03);" onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#f87171';" onmouseout="this.style.background='#ffffff'; this.style.borderColor='#fecaca';" title="선택된 자녀 정보 삭제">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    </svg>
+                                    <span>자녀 삭제</span>
+                                </button>
+                            </div>
+
+                            <!-- 자녀 선택 칩/알약 탭 목록 컨테이너 -->
+                            <div id="childPillTabsContainer" style="display: flex; align-items: center; gap: 8px; margin: 14px 0 16px 0; overflow-x: auto; padding-bottom: 4px;" class="hide-scrollbar">
+                                <!-- JS에서 renderChildPillTabs()로 동적 주입 -->
+                            </div>
+
+                            <!-- 자녀 이름 & 학년 인풋 (2열 그리드) -->
+                            <div id="settingsChildEditForm-pc" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                                <div>
+                                    <label style="display: block; font-size: 11.5px; font-weight: 600; color: #475569; margin-bottom: 6px;">자녀 이름</label>
+                                    <input type="text" id="settingsChildName-pc" placeholder="예: 홍길동" style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0 12px; font-size: 13px; color: #1e293b; background: #ffffff; box-sizing: border-box; outline: none; transition: border-color 0.2s;">
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 11.5px; font-weight: 600; color: #475569; margin-bottom: 6px;">학년</label>
+                                    <div style="position: relative;">
+                                        <select id="settingsChildGrade-pc" style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0 28px 0 12px; font-size: 13px; color: #1e293b; background: #ffffff; box-sizing: border-box; outline: none; appearance: none; -webkit-appearance: none; cursor: pointer;">
                                             <option value="e1">초등 1학년</option>
                                             <option value="e2">초등 2학년</option>
                                             <option value="e3">초등 3학년</option>
@@ -958,57 +1059,223 @@
                                             <option value="h2">고등 2학년</option>
                                             <option value="h3">고등 3학년</option>
                                         </select>
-                                    </div>
-                                    <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
-                                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
-                                            <span style="font-weight: 600; color: var(--text-main); width: 90px; text-align: left;">국어 점수: <strong id="valSettingsChildKor-pc">80점</strong></span>
-                                            <input type="range" id="settingsChildKor-pc" min="0" max="100" value="80" style="flex: 1; width: 100%; min-width: 0; cursor: pointer;">
-                                        </div>
-                                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
-                                            <span style="font-weight: 600; color: var(--text-main); width: 90px; text-align: left;">영어 점수: <strong id="valSettingsChildEng-pc">80점</strong></span>
-                                            <input type="range" id="settingsChildEng-pc" min="0" max="100" value="80" style="flex: 1; width: 100%; min-width: 0; cursor: pointer;">
-                                        </div>
-                                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
-                                            <span style="font-weight: 600; color: var(--text-main); width: 90px; text-align: left;">수학 점수: <strong id="valSettingsChildMath-pc">80점</strong></span>
-                                            <input type="range" id="settingsChildMath-pc" min="0" max="100" value="80" style="flex: 1; width: 100%; min-width: 0; cursor: pointer;">
-                                        </div>
+                                        <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #64748b; font-size: 11px;">▼</span>
                                     </div>
                                 </div>
-                                <button class="btn-primary" id="btnSaveSettingsScores-pc" style="padding: 8px; font-size: 12px; border-radius: 6px; width: 100%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">💾 자녀 성적 저장 및 동기화</button>
+                            </div>
+
+                            <!-- 희망 지망 계열 & 등록 알레르기 인풋 (PC 2열 그리드) -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                                <div>
+                                    <label style="display: block; font-size: 11.5px; font-weight: 600; color: #475569; margin-bottom: 6px;">희망 지망 계열 (목표 전공)</label>
+                                    <input type="text" id="settingsChildTargetMajor-pc" placeholder="예: 컴퓨터공학, 의약학" style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0 12px; font-size: 13px; color: #1e293b; background: #ffffff; box-sizing: border-box; outline: none; transition: border-color 0.2s;">
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 11.5px; font-weight: 600; color: #475569; margin-bottom: 6px;">등록 알레르기 식단</label>
+                                    <input type="text" id="settingsChildAllergies-pc" placeholder="예: 대두, 우유, 땅콩 (쉼표 구분)" style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0 12px; font-size: 13px; color: #1e293b; background: #ffffff; box-sizing: border-box; outline: none; transition: border-color 0.2s;">
+                                </div>
+                            </div>
+
+                            <!-- 배정/목표 학교 카드 -->
+                            <div style="background: #f0f7ff; border: 1px solid #dbeafe; border-radius: 10px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
+                                    <span style="font-size: 13px;">📍</span>
+                                    <span style="font-size: 11.5px; font-weight: 700; color: #2563eb; white-space: nowrap;">배정/목표 학교</span>
+                                    <span id="targetSchoolNameDisplay" style="font-size: 12.5px; font-weight: 700; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">서초구 서운중학교</span>
+                                </div>
+                                <button type="button" id="btnChangeTargetSchool" onclick="if(window.handleChangeSchoolClick) window.handleChangeSchoolClick();" style="background: none; border: none; color: #2563eb; font-size: 11.5px; font-weight: 600; cursor: pointer; text-decoration: underline; white-space: nowrap; padding: 0 0 0 8px;">학교 변경</button>
+                            </div>
+
+                            <!-- 교과목 성적 입력 타이틀 헤더 -->
+                            <!-- 교과목 성적 입력 타이틀 헤더 -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <span style="font-size: 12px; font-weight: 600; color: #64748b;">교과목 성적 입력 (내신 지필/수행)</span>
+                                <span style="font-size: 11.5px; font-weight: 600; color: #2563eb;">5개 과목 기준 (국·영·수·사·과)</span>
+                            </div>
+
+                            <!-- 과목 슬라이더 1: 국어 -->
+                            <div class="score-card-item" style="background: #f8fafc; border: 1px solid #edf2f7; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; display: inline-block;"></span>
+                                        <span style="font-size: 13px; font-weight: 700; color: #1e293b;">국어 점수</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span id="badgeKorGrade" style="background: #eff6ff; color: #2563eb; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; border: 1px solid #dbeafe;">A 등급</span>
+                                        <div style="display: flex; align-items: center; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 1px 6px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);">
+                                            <input type="number" id="inputSettingsChildKor-pc" min="0" max="100" value="92" style="width: 38px; border: none; outline: none; font-size: 14px; font-weight: 800; color: #1e293b; text-align: right; background: transparent; -moz-appearance: textfield; padding: 0;">
+                                            <span style="font-size: 12px; font-weight: 700; color: #475569; margin-left: 2px;">점</span>
+                                        </div>
+                                        <span id="valSettingsChildKor-pc" style="display: none;">92</span>
+                                    </div>
+                                </div>
+                                <div class="custom-range-slider-wrap">
+                                    <input type="range" id="settingsChildKor-pc" min="0" max="100" value="92" class="custom-score-range">
+                                </div>
+                            </div>
+
+                            <!-- 과목 슬라이더 2: 영어 -->
+                            <div class="score-card-item" style="background: #f8fafc; border: 1px solid #edf2f7; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="width: 8px; height: 8px; border-radius: 50%; background: #8b5cf6; display: inline-block;"></span>
+                                        <span style="font-size: 13px; font-weight: 700; color: #1e293b;">영어 점수</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span id="badgeEngGrade" style="background: #f3e8ff; color: #7c3aed; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; border: 1px solid #e9d5ff;">B+ 등급</span>
+                                        <div style="display: flex; align-items: center; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 1px 6px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);">
+                                            <input type="number" id="inputSettingsChildEng-pc" min="0" max="100" value="88" style="width: 38px; border: none; outline: none; font-size: 14px; font-weight: 800; color: #1e293b; text-align: right; background: transparent; -moz-appearance: textfield; padding: 0;">
+                                            <span style="font-size: 12px; font-weight: 700; color: #475569; margin-left: 2px;">점</span>
+                                        </div>
+                                        <span id="valSettingsChildEng-pc" style="display: none;">88</span>
+                                    </div>
+                                </div>
+                                <div class="custom-range-slider-wrap">
+                                    <input type="range" id="settingsChildEng-pc" min="0" max="100" value="88" class="custom-score-range">
+                                </div>
+                            </div>
+
+                            <!-- 과목 슬라이더 3: 수학 -->
+                            <div class="score-card-item" style="background: #f8fafc; border: 1px solid #edf2f7; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+                                        <span style="font-size: 13px; font-weight: 700; color: #1e293b;">수학 점수</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span id="badgeMathGrade" style="background: #ecfdf5; color: #059669; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; border: 1px solid #a7f3d0;">A 등급</span>
+                                        <div style="display: flex; align-items: center; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 1px 6px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);">
+                                            <input type="number" id="inputSettingsChildMath-pc" min="0" max="100" value="95" style="width: 38px; border: none; outline: none; font-size: 14px; font-weight: 800; color: #1e293b; text-align: right; background: transparent; -moz-appearance: textfield; padding: 0;">
+                                            <span style="font-size: 12px; font-weight: 700; color: #475569; margin-left: 2px;">점</span>
+                                        </div>
+                                        <span id="valSettingsChildMath-pc" style="display: none;">95</span>
+                                    </div>
+                                </div>
+                                <div class="custom-range-slider-wrap">
+                                    <input type="range" id="settingsChildMath-pc" min="0" max="100" value="95" class="custom-score-range">
+                                </div>
+                            </div>
+
+                            <!-- 과목 슬라이더 4: 사회(역사) -->
+                            <div class="score-card-item" style="background: #f8fafc; border: 1px solid #edf2f7; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span>
+                                        <span style="font-size: 13px; font-weight: 700; color: #1e293b;">사회·역사 점수</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span id="badgeSocGrade" style="background: #fffbeb; color: #d97706; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; border: 1px solid #fde68a;">B+ 등급</span>
+                                        <div style="display: flex; align-items: center; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 1px 6px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);">
+                                            <input type="number" id="inputSettingsChildSoc-pc" min="0" max="100" value="86" style="width: 38px; border: none; outline: none; font-size: 14px; font-weight: 800; color: #1e293b; text-align: right; background: transparent; -moz-appearance: textfield; padding: 0;">
+                                            <span style="font-size: 12px; font-weight: 700; color: #475569; margin-left: 2px;">점</span>
+                                        </div>
+                                        <span id="valSettingsChildSoc-pc" style="display: none;">86</span>
+                                    </div>
+                                </div>
+                                <div class="custom-range-slider-wrap">
+                                    <input type="range" id="settingsChildSoc-pc" min="0" max="100" value="86" class="custom-score-range">
+                                </div>
+                            </div>
+
+                            <!-- 과목 슬라이더 5: 과학 -->
+                            <div class="score-card-item" style="background: #f8fafc; border: 1px solid #edf2f7; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="width: 8px; height: 8px; border-radius: 50%; background: #06b6d4; display: inline-block;"></span>
+                                        <span style="font-size: 13px; font-weight: 700; color: #1e293b;">과학 점수</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span id="badgeSciGrade" style="background: #ecfeff; color: #0891b2; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; border: 1px solid #a5f3fc;">A 등급</span>
+                                        <div style="display: flex; align-items: center; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 1px 6px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);">
+                                            <input type="number" id="inputSettingsChildSci-pc" min="0" max="100" value="95" style="width: 38px; border: none; outline: none; font-size: 14px; font-weight: 800; color: #1e293b; text-align: right; background: transparent; -moz-appearance: textfield; padding: 0;">
+                                            <span style="font-size: 12px; font-weight: 700; color: #475569; margin-left: 2px;">점</span>
+                                        </div>
+                                        <span id="valSettingsChildSci-pc" style="display: none;">95</span>
+                                    </div>
+                                </div>
+                                <div class="custom-range-slider-wrap">
+                                    <input type="range" id="settingsChildSci-pc" min="0" max="100" value="95" class="custom-score-range">
+                                </div>
+                            </div>
+
+                            <!-- 5과목 평균 분석 요약 박스 -->
+                            <div style="background: #f0f7ff; border: 1px solid #dbeafe; border-radius: 12px; padding: 12px 16px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-size: 11px; color: #64748b; font-weight: 500; margin-bottom: 3px;">5과목 평균 분석</div>
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span style="font-size: 14.5px; font-weight: 800; color: #1e293b;"><strong id="avgScoreDisplay">91.2</strong>점</span>
+                                        <span style="color: #94a3b8; font-size: 12px;">·</span>
+                                        <span id="schoolRankEstimateDisplay" style="font-size: 12.5px; font-weight: 700; color: #2563eb;">서운중 상위 18% 예상</span>
+                                    </div>
+                                </div>
+                                <div id="stabilityBadgeDisplay" style="background: #2563eb; color: #ffffff; font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 8px; white-space: nowrap;">상위권 안정</div>
+                            </div>
+
+
+                            <!-- 대형 파란색 저장 버튼 -->
+                            <button type="button" id="btnSaveSettingsScores-pc" style="width: 100%; height: 44px; background: #2563eb; color: #ffffff; font-size: 13.5px; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(37,99,235,0.25); transition: background 0.2s;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                    <polyline points="7 3 7 8 15 8"></polyline>
+                                								</svg>
+                                <span>자녀 성적 저장 및 분석 동기화</span>
+                            </button>
+                        </div>
+
+                        <!-- [카드 3] 플로팅 창 알파값(투명도) 조정 카드 -->
+                        <div id="settingsOpacitySection-pc" class="settings-card-item card" style="display: none; margin-bottom: 16px; box-sizing: border-box;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 16px;">🎨</span>
+                                    <span style="font-size: 14.5px; font-weight: 800; color: #1e293b;">플로팅 창 알파값(투명도) 조정</span>
+                                </div>
+                                <span id="valOverlayOpacity-pc" style="background: #eff6ff; color: #2563eb; font-size: 11.5px; font-weight: 700; padding: 2px 8px; border: 1px solid #dbeafe; border-radius: 4px;">1.00</span>
+                            </div>
+                            <p style="margin: 4px 0 14px 0; font-size: 11.5px; color: #64748b;">지도 위 오버레이 정보창의 투명도를 설정합니다</p>
+                            
+                            <div class="custom-range-slider-wrap">
+                                <input type="range" id="overlayOpacityRange-pc" min="20" max="100" value="100" class="custom-score-range">
+                            </div>
+                            
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 11px; color: #64748b;">
+                                <span>투명 (0.2)</span>
+                                <span style="color: #2563eb; font-weight: 700;">기본값 (1.0)</span>
+                                <span>불투명 (1.0)</span>
                             </div>
                         </div>
 
-                        <!-- 불투명도 조절 -->
-                        <div style="margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
-                            <h4 style="font-size: 13.5px; color: var(--deep-blue); margin-bottom: 10px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
-                                <span>🎨 플로팅 창 알파값 조정</span>
-                                <span id="valOverlayOpacity-pc" style="font-size: 12px; color: var(--primary-blue);">0.9</span>
-                            </h4>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <span style="font-size: 11px; color: var(--text-muted);">투명</span>
-                                <input type="range" id="overlayOpacityRange-pc" min="10" max="100" value="90" style="flex: 1; cursor: pointer;">
-                                <span style="font-size: 11px; color: var(--text-muted);">불투명</span>
+                        <!-- [카드 4] 알림 설정 카드 -->
+                        <div id="settingsNotificationSection-pc" class="settings-card-item card" style="display: none; margin-bottom: 16px; box-sizing: border-box;">
+                            <div style="display: flex; align-items: center; gap: 6px; padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+                                <span style="font-size: 16px;">🔔</span>
+                                <div>
+                                    <span style="font-size: 14.5px; font-weight: 800; color: #1e293b;">알림</span>
+                                    <div style="font-size: 11px; color: #64748b; margin-top: 1px;">학군 공시정보 및 맞춤 혜택 알림을 관리합니다</div>
+                                </div>
+                            </div>
+                            
+                            <!-- 항목 1: 공시정보 알림 수신 (기본 ON) -->
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 12.5px; font-weight: 600; color: #334155;">학군/학교 공시정보 알림 수신</span>
+                                <label class="custom-switch-toggle">
+                                    <input type="checkbox" id="toggleSchoolNotice" checked>
+                                    <span class="custom-switch-slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div style="height: 1px; background: #f1f5f9; margin: 12px 0;"></div>
+                            
+                            <!-- 항목 2: 할인 혜택 안내 수신 (기본 OFF) -->
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 12.5px; font-weight: 600; color: #334155;">맞춤 학원 할인 혜택 안내 수신</span>
+                                <label class="custom-switch-toggle">
+                                    <input type="checkbox" id="toggleAcademyNotice">
+                                    <span class="custom-switch-slider"></span>
+                                </label>
                             </div>
                         </div>
 
-                        <!-- 고객 지원 및 문의 -->
-                        <div>
-                            <h4 style="font-size: 13.5px; color: var(--deep-blue); margin-bottom: 10px; font-weight: 700;">📢 서비스 문의 및 제보</h4>
-                            <div style="font-size: 12px; line-height: 1.8; display: flex; flex-direction: column; gap: 6px;">
-                                <a href="javascript:void(0)" onclick="document.getElementById('infoEditRequestCard').style.display='block'; document.getElementById('welcomeCard').style.display='none'; document.getElementById('settingsModal').style.display='none';" style="text-decoration: none; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.03); padding-bottom: 4px;" onmouseover="this.style.color='var(--primary-blue)'" onmouseout="this.style.color='var(--text-main)'">
-                                    <span>✏️ 잘못된 정보 수정 요청</span>
-                                    <span style="color: var(--primary-blue); font-weight: 600; font-size: 11px;">수정 요청 ↗</span>
-                                </a>
-                                <a href="javascript:void(0)" onclick="document.getElementById('adInquiryCard').style.display='block'; document.getElementById('welcomeCard').style.display='none'; document.getElementById('settingsModal').style.display='none';" style="text-decoration: none; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.03); padding-bottom: 4px;" onmouseover="this.style.color='var(--primary-blue)'" onmouseout="this.style.color='var(--text-main)'">
-                                    <span>💼 광고 및 제휴 문의</span>
-                                    <span style="color: var(--primary-blue); font-weight: 600; font-size: 11px;">문의하기 ↗</span>
-                                </a>
-                                <a href="javascript:void(0)" onclick="document.getElementById('academyRegisterCard').style.display='block'; document.getElementById('welcomeCard').style.display='none'; document.getElementById('settingsModal').style.display='none';" style="text-decoration: none; color: var(--text-main); display: flex; align-items: center; justify-content: space-between;" onmouseover="this.style.color='var(--primary-blue)'" onmouseout="this.style.color='var(--text-main)'">
-                                    <span>🏫 학원 정보 신규 등록 요청</span>
-                                    <span style="color: var(--primary-blue); font-weight: 600; font-size: 11px;">등록 신청 ↗</span>
-                                </a>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -1128,18 +1395,69 @@
                                                 <option value="h3">고등 3학년</option>
                                             </select>
                                         </div>
+                                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
+                                            <span style="font-weight: 600; color: var(--text-main); width: 80px;">희망 계열</span>
+                                            <input type="text" id="settingsChildTargetMajor" placeholder="예: 컴퓨터공학, 의약학" style="flex: 1; padding: 4px; font-size: 11px; border: 1px solid var(--border-color); border-radius: 4px;">
+                                        </div>
+                                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
+                                            <span style="font-weight: 600; color: var(--text-main); width: 80px;">알레르기</span>
+                                            <input type="text" id="settingsChildAllergies" placeholder="예: 대두, 우유, 땅콩 (쉼표 구분)" style="flex: 1; padding: 4px; font-size: 11px; border: 1px solid var(--border-color); border-radius: 4px;">
+                                        </div>
                                         <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
                                             <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px;">
-                                                <span>국어: <strong id="valSettingsChildKor">80점</strong></span>
-                                                <input type="range" id="settingsChildKor" min="0" max="100" value="80" style="width: 120px;">
+                                                <div style="display: flex; align-items: center; gap: 4px;">
+                                                    <span>국어:</span>
+                                                    <div style="display: flex; align-items: center; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 4px;">
+                                                        <input type="number" id="inputSettingsChildKor" min="0" max="100" value="80" style="width: 32px; border: none; outline: none; font-size: 11px; font-weight: bold; text-align: right; -moz-appearance: textfield; padding: 0;">
+                                                        <span style="font-size: 10px; color: #475569; margin-left: 1px;">점</span>
+                                                    </div>
+                                                    <strong id="valSettingsChildKor" style="display: none;">80점</strong>
+                                                </div>
+                                                <input type="range" id="settingsChildKor" min="0" max="100" value="80" style="width: 110px;">
                                             </div>
                                             <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px;">
-                                                <span>영어: <strong id="valSettingsChildEng">80점</strong></span>
-                                                <input type="range" id="settingsChildEng" min="0" max="100" value="80" style="width: 120px;">
+                                                <div style="display: flex; align-items: center; gap: 4px;">
+                                                    <span>영어:</span>
+                                                    <div style="display: flex; align-items: center; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 4px;">
+                                                        <input type="number" id="inputSettingsChildEng" min="0" max="100" value="80" style="width: 32px; border: none; outline: none; font-size: 11px; font-weight: bold; text-align: right; -moz-appearance: textfield; padding: 0;">
+                                                        <span style="font-size: 10px; color: #475569; margin-left: 1px;">점</span>
+                                                    </div>
+                                                    <strong id="valSettingsChildEng" style="display: none;">80점</strong>
+                                                </div>
+                                                <input type="range" id="settingsChildEng" min="0" max="100" value="80" style="width: 110px;">
                                             </div>
                                             <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px;">
-                                                <span>수학: <strong id="valSettingsChildMath">80점</strong></span>
-                                                <input type="range" id="settingsChildMath" min="0" max="100" value="80" style="width: 120px;">
+                                                <div style="display: flex; align-items: center; gap: 4px;">
+                                                    <span>수학:</span>
+                                                    <div style="display: flex; align-items: center; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 4px;">
+                                                        <input type="number" id="inputSettingsChildMath" min="0" max="100" value="80" style="width: 32px; border: none; outline: none; font-size: 11px; font-weight: bold; text-align: right; -moz-appearance: textfield; padding: 0;">
+                                                        <span style="font-size: 10px; color: #475569; margin-left: 1px;">점</span>
+                                                    </div>
+                                                    <strong id="valSettingsChildMath" style="display: none;">80점</strong>
+                                                </div>
+                                                <input type="range" id="settingsChildMath" min="0" max="100" value="80" style="width: 110px;">
+                                            </div>
+                                            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px;">
+                                                <div style="display: flex; align-items: center; gap: 4px;">
+                                                    <span>사회:</span>
+                                                    <div style="display: flex; align-items: center; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 4px;">
+                                                        <input type="number" id="inputSettingsChildSoc" min="0" max="100" value="80" style="width: 32px; border: none; outline: none; font-size: 11px; font-weight: bold; text-align: right; -moz-appearance: textfield; padding: 0;">
+                                                        <span style="font-size: 10px; color: #475569; margin-left: 1px;">점</span>
+                                                    </div>
+                                                    <strong id="valSettingsChildSoc" style="display: none;">80점</strong>
+                                                </div>
+                                                <input type="range" id="settingsChildSoc" min="0" max="100" value="80" style="width: 110px;">
+                                            </div>
+                                            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px;">
+                                                <div style="display: flex; align-items: center; gap: 4px;">
+                                                    <span>과학:</span>
+                                                    <div style="display: flex; align-items: center; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 4px;">
+                                                        <input type="number" id="inputSettingsChildSci" min="0" max="100" value="80" style="width: 32px; border: none; outline: none; font-size: 11px; font-weight: bold; text-align: right; -moz-appearance: textfield; padding: 0;">
+                                                        <span style="font-size: 10px; color: #475569; margin-left: 1px;">점</span>
+                                                    </div>
+                                                    <strong id="valSettingsChildSci" style="display: none;">80점</strong>
+                                                </div>
+                                                <input type="range" id="settingsChildSci" min="0" max="100" value="80" style="width: 110px;">
                                             </div>
                                         </div>
                                     </div>
@@ -1148,8 +1466,8 @@
                             </div>
                         </div>
 
-                        <!-- Section: 환경 설정 -->
-                        <div style="display: flex; flex-direction: column; gap: 1px; background: white; border-radius: 12px; border: 1px solid var(--border-color); overflow: hidden; flex-shrink: 0;">
+                        <!-- Section: 환경 설정 (로그인 회원 전용) -->
+                        <div id="settingsOpacitySectionMobile" style="display: none; flex-direction: column; gap: 1px; background: white; border-radius: 12px; border: 1px solid var(--border-color); overflow: hidden; flex-shrink: 0;">
                             <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); background: #f8f9fa; padding: 10px 16px; border-bottom: 1px solid var(--border-color); text-align: left;">환경 설정</div>
                             
                             <!-- Menu Item: 화면 알파값 조절 -->
@@ -1238,6 +1556,53 @@
                         </div>
 
                     </div><!-- /settings-scroll-content -->
+                </div>
+            </div>
+
+            <!-- 🎓 자녀 내신 정밀 진단 & 학사·급식 리포트 카드 (사이드바 내부 노출) -->
+            <div id="neisModal" class="card" style="display: none; margin: 0 0 20px 0; position: relative; overflow: visible; flex-shrink: 0; box-sizing: border-box; padding: 0; border: none; background: transparent; width: 100%;">
+                <div class="neis-modal-content" style="background: var(--bg-card, #ffffff); width: 100%; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-color, #e2e8f0); box-sizing: border-box;">
+                    
+                    <!-- Header Bar (사이트 표준 클린 화이트 헤더) -->
+                    <div style="background: #ffffff; padding: 16px 18px 14px 18px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box;">
+                        <div style="display: flex; align-items: center; gap: 11px;">
+                            <div style="width: 38px; height: 38px; border-radius: 10px; background: #eff6ff; border: 1px solid #dbeafe; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">🎓</div>
+                            <div>
+                                <h3 style="margin: 0; font-size: 15.5px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px;">자녀 내신 정밀 진단 & 학사·급식 리포트</h3>
+                                <p style="margin: 2px 0 0 0; font-size: 11.5px; color: #64748b; font-weight: 500;">학교알리미 공시 결합 내신 등수 산출 · 교육부 나이스 실시간 연동</p>
+                            </div>
+                        </div>
+                        <button id="btnCloseNEISModal" onclick="if(window.closeNEISModal) window.closeNEISModal();" style="background: #f8fafc; border: 1px solid #e2e8f0; color: #64748b; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; justify-content: center; align-items: center; flex-shrink: 0; transition: all 0.2s; line-height: 1;" onmouseover="this.style.background='#f1f5f9'; this.style.color='#1e293b';" onmouseout="this.style.background='#f8fafc'; this.style.color='#64748b';" title="닫기">&times;</button>
+                    </div>
+
+                    <!-- Tab Navigation Bar (토스 스타일 세그먼트 알약 탭) -->
+                    <div style="padding: 12px 16px 0 16px; background: #ffffff; box-sizing: border-box;">
+                        <div class="neis-tab-nav hide-scrollbar" style="display: flex; background: #f1f5f9; padding: 4px; border-radius: 10px; gap: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                            <button class="neis-tab-btn active" data-tab="sync" onclick="if(window.switchNEISTab) window.switchNEISTab('sync', this);" style="padding: 7px 11px; border: none; border-radius: 7px; font-size: 11.5px; font-weight: 700; cursor: pointer; background: #ffffff; color: #1e293b; box-shadow: 0 1px 3px rgba(0,0,0,0.08); white-space: nowrap; flex-shrink: 0; transition: all 0.15s ease;">📋 진단 프로필</button>
+                            <button class="neis-tab-btn" data-tab="grades" onclick="if(window.switchNEISTab) window.switchNEISTab('grades', this);" style="padding: 7px 11px; border: none; border-radius: 7px; font-size: 11.5px; font-weight: 600; cursor: pointer; background: transparent; color: #64748b; white-space: nowrap; flex-shrink: 0; transition: all 0.15s ease;">📊 성적/내신 정밀 진단</button>
+                            <button class="neis-tab-btn" data-tab="record" onclick="if(window.switchNEISTab) window.switchNEISTab('record', this);" style="padding: 7px 11px; border: none; border-radius: 7px; font-size: 11.5px; font-weight: 600; cursor: pointer; background: transparent; color: #64748b; white-space: nowrap; flex-shrink: 0; transition: all 0.15s ease;">📜 생기부/세특 AI</button>
+                            <button class="neis-tab-btn" data-tab="schedule" onclick="if(window.switchNEISTab) window.switchNEISTab('schedule', this);" style="padding: 7px 11px; border: none; border-radius: 7px; font-size: 11.5px; font-weight: 600; cursor: pointer; background: transparent; color: #64748b; white-space: nowrap; flex-shrink: 0; transition: all 0.15s ease;">📅 실시간 학사·수행</button>
+                            <button class="neis-tab-btn" data-tab="health" onclick="if(window.switchNEISTab) window.switchNEISTab('health', this);" style="padding: 7px 11px; border: none; border-radius: 7px; font-size: 11.5px; font-weight: 600; cursor: pointer; background: transparent; color: #64748b; white-space: nowrap; flex-shrink: 0; transition: all 0.15s ease;">🍱 실시간 급식 & 건강</button>
+                        </div>
+                    </div>
+
+                    <!-- Tab Content Container -->
+                    <div class="neis-tab-body hide-scrollbar" style="padding: 16px; overflow-y: visible; max-height: none; flex: 1; background: #ffffff; box-sizing: border-box;">
+                        <!-- Tab 1: Sync & Profile -->
+                        <div class="neis-tab-content" id="neisTabSync" style="display: block;"></div>
+
+                        <!-- Tab 2: Grades & Percentile -->
+                        <div class="neis-tab-content" id="neisTabGrades" style="display: none;"></div>
+
+                        <!-- Tab 3: School Record (생기부/세특) -->
+                        <div class="neis-tab-content" id="neisTabRecord" style="display: none;"></div>
+
+                        <!-- Tab 4: Schedule & Attendance -->
+                        <div class="neis-tab-content" id="neisTabSchedule" style="display: none;"></div>
+
+                        <!-- Tab 5: Lunch & Health (PAPS) -->
+                        <div class="neis-tab-content" id="neisTabHealth" style="display: none;"></div>
+                    </div>
                 </div>
             </div>
 
@@ -1449,6 +1814,27 @@
                             <button id="btnClearAllFavorites" onclick="if(typeof window.clearAllFavorites === 'function') window.clearAllFavorites();" style="background: none; border: none; font-size: 10px; color: var(--danger-red, #ff3b30); cursor: pointer; padding: 2px 4px; font-weight: 600;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">전체 삭제</button>
                         </div>
                         <div id="favoriteSchoolsList" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                    </div>
+                </div>
+
+                <!-- 📢 서비스 문의 및 제보 카드 (학교를 선택해 주세요 카드 밑에 배치) -->
+                <div class="card" id="serviceInquiryCard" style="margin-top: 14px;">
+                    <div class="card-title" style="font-size: 14px; color: var(--deep-blue); font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                        <span>📢 서비스 문의 및 제보</span>
+                    </div>
+                    <div style="font-size: 12px; line-height: 1.8; display: flex; flex-direction: column; gap: 6px;">
+                        <a href="javascript:void(0)" onclick="if(typeof window.openInquiryCard === 'function') window.openInquiryCard('infoEditRequestCard'); else { document.getElementById('infoEditRequestCard').style.display='block'; document.getElementById('welcomeCard').style.display='none'; const s = document.getElementById('serviceInquiryCard'); if(s) s.style.display='none'; }" style="text-decoration: none; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.04); padding-bottom: 6px;" onmouseover="this.style.color='var(--primary-blue)'" onmouseout="this.style.color='var(--text-main)'">
+                            <span>✏️ 잘못된 정보 수정 요청</span>
+                            <span style="color: var(--primary-blue); font-weight: 600; font-size: 11px;">수정 요청 ↗</span>
+                        </a>
+                        <a href="javascript:void(0)" onclick="if(typeof window.openInquiryCard === 'function') window.openInquiryCard('adInquiryCard'); else { document.getElementById('adInquiryCard').style.display='block'; document.getElementById('welcomeCard').style.display='none'; const s = document.getElementById('serviceInquiryCard'); if(s) s.style.display='none'; }" style="text-decoration: none; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.04); padding-bottom: 6px;" onmouseover="this.style.color='var(--primary-blue)'" onmouseout="this.style.color='var(--text-main)'">
+                            <span>💼 광고 및 제휴 문의</span>
+                            <span style="color: var(--primary-blue); font-weight: 600; font-size: 11px;">문의하기 ↗</span>
+                        </a>
+                        <a href="javascript:void(0)" onclick="if(typeof window.openInquiryCard === 'function') window.openInquiryCard('academyRegisterCard'); else { document.getElementById('academyRegisterCard').style.display='block'; document.getElementById('welcomeCard').style.display='none'; const s = document.getElementById('serviceInquiryCard'); if(s) s.style.display='none'; }" style="text-decoration: none; color: var(--text-main); display: flex; align-items: center; justify-content: space-between;" onmouseover="this.style.color='var(--primary-blue)'" onmouseout="this.style.color='var(--text-main)'">
+                            <span>🏫 학원 정보 신규 등록 요청</span>
+                            <span style="color: var(--primary-blue); font-weight: 600; font-size: 11px;">등록 신청 ↗</span>
+                        </a>
                     </div>
                 </div>
 
@@ -2578,7 +2964,19 @@
             </div>
             <div style="margin-bottom: 16px;">
                 <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">비밀번호</label>
-                <input type="password" id="schoolReviewPassword" placeholder="수정/삭제용 비밀번호 (선택)" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; outline: none; font-size: 14px; box-sizing: border-box;">
+                <div style="position: relative; width: 100%; display: flex; align-items: center;">
+                    <input type="password" id="schoolReviewPassword" placeholder="수정/삭제용 비밀번호 (선택)" style="width: 100%; padding: 8px 38px 8px 8px; border: 1px solid var(--border-color); border-radius: 4px; outline: none; font-size: 14px; box-sizing: border-box;">
+                    <button type="button" class="toss-pw-toggle" onclick="if(window.togglePasswordVisibility) window.togglePasswordVisibility('schoolReviewPassword', this);" title="비밀번호 보기" aria-label="비밀번호 보기" style="right: 6px;">
+                        <svg class="icon-eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                        <svg class="icon-eye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div style="margin-bottom: 16px;">
                 <div id="schoolStarContainer" style="font-size: 32px; color: #e4e4e7; cursor: pointer; display: flex; gap: 4px; padding: 4px 0; user-select: none;">
@@ -2879,58 +3277,6 @@
         </button>
     </div>
 
-    <!-- 나이스(NEIS) 학부모 서비스 로컬 전용 융합 진단 모달 -->
-    <div id="neisModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(8px); z-index: 10090; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
-        <div class="neis-modal-content" style="background: var(--bg-card, #ffffff); width: 100%; max-width: 860px; max-height: 90vh; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.25); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-color, #e2e8f0);">
-            
-            <!-- Header Bar -->
-            <div style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 18px 24px; color: white; display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #10b981, #059669); display: flex; align-items: center; justify-content: center; font-size: 20px;">🎓</div>
-                    <div>
-                        <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">나이스(NEIS) 학부모 서비스 & LearnMap 융합 진단</h3>
-                        <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">공시 성적 통계 + 자녀 마이데이터(성적/생기부/건강) 로컬 초개인화 엔진</span>
-                    </div>
-                </div>
-                <button id="btnCloseNEISModal" onclick="if(window.closeNEISModal) window.closeNEISModal();" style="background: rgba(255,255,255,0.1); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; justify-content: center; align-items: center;">&times;</button>
-            </div>
-
-            <!-- Tab Navigation Bar -->
-            <div class="neis-tab-nav" style="display: flex; background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 6px 12px; gap: 6px; overflow-x: auto;">
-                <button class="neis-tab-btn active" data-tab="sync" onclick="if(window.switchNEISTab) window.switchNEISTab('sync', this);" style="padding: 10px 14px; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; background: var(--primary-blue, #2563eb); color: white;">🔐 마이데이터 연동</button>
-                <button class="neis-tab-btn" data-tab="grades" onclick="if(window.switchNEISTab) window.switchNEISTab('grades', this);" style="padding: 10px 14px; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; background: transparent; color: #64748b;">📊 성적/내신 정밀 진단</button>
-                <button class="neis-tab-btn" data-tab="record" onclick="if(window.switchNEISTab) window.switchNEISTab('record', this);" style="padding: 10px 14px; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; background: transparent; color: #64748b;">📜 생기부/세특 AI 역량</button>
-                <button class="neis-tab-btn" data-tab="schedule" onclick="if(window.switchNEISTab) window.switchNEISTab('schedule', this);" style="padding: 10px 14px; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; background: transparent; color: #64748b;">📅 학사/수행 타임라인</button>
-                <button class="neis-tab-btn" data-tab="health" onclick="if(window.switchNEISTab) window.switchNEISTab('health', this);" style="padding: 10px 14px; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; background: transparent; color: #64748b;">🍱 급식 & PAPS 웰니스</button>
-            </div>
-
-            <!-- Tab Content Container -->
-            <div class="neis-tab-body hide-scrollbar" style="padding: 24px; overflow-y: auto; flex: 1; background: #ffffff;">
-                
-                <!-- Tab 1: Sync & Profile -->
-                <div class="neis-tab-content" id="neisTabSync" style="display: block;"></div>
-
-                <!-- Tab 2: Grades & Percentile -->
-                <div class="neis-tab-content" id="neisTabGrades" style="display: none;"></div>
-
-                <!-- Tab 3: School Record (생기부/세특) -->
-                <div class="neis-tab-content" id="neisTabRecord" style="display: none;"></div>
-
-                <!-- Tab 4: Schedule & Attendance -->
-                <div class="neis-tab-content" id="neisTabSchedule" style="display: none;"></div>
-
-                <!-- Tab 5: Lunch & Health (PAPS) -->
-                <div class="neis-tab-content" id="neisTabHealth" style="display: none;"></div>
-            </div>
-
-            <!-- Modal Footer -->
-            <div style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #64748b;">
-                <span id="neisFooterStatus">🟢 로컬 개발 전용 에이전트 활성화 (NEIS MyData Synced)</span>
-                <button id="btnNEISAcademyAction" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; transition: all 0.2s;">🔍 약점 과목 인근 학원 바로 찾기</button>
-            </div>
-        </div>
-    </div>
-
     <!-- 회원가입 및 로그인 모달 -->
     <div id="authModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(8px); z-index: 10095; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
         <div class="auth-modal-content" style="background: var(--bg-card, #ffffff); width: 100%; max-width: 440px; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.25); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-color, #e2e8f0);">
@@ -2948,60 +3294,226 @@
             </div>
 
             <!-- Auth Mode Tab Navigation -->
-            <div style="display: flex; background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 6px; gap: 6px;">
-                <button id="btnAuthTabLogin" onclick="if(window.switchAuthTab) window.switchAuthTab('login');" style="flex: 1; padding: 10px; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; background: #2563eb; color: white;">로그인</button>
-                <button id="btnAuthTabRegister" onclick="if(window.switchAuthTab) window.switchAuthTab('register');" style="flex: 1; padding: 10px; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; background: transparent; color: #64748b;">회원가입</button>
+            <!-- Auth Mode Tab Navigation -->
+            <div style="padding: 14px 24px 0 24px;">
+                <div class="toss-tab-segment" style="margin-bottom: 0;">
+                    <button type="button" id="btnAuthTabLogin" class="toss-tab-btn active" onclick="if(window.switchAuthTab) window.switchAuthTab('login');">로그인</button>
+                    <button type="button" id="btnAuthTabRegister" class="toss-tab-btn" onclick="if(window.switchAuthTab) window.switchAuthTab('register');">회원가입</button>
+                </div>
             </div>
 
             <!-- Login View -->
-            <div id="authViewLogin" style="padding: 24px; display: block;">
+            <div id="authViewLogin" style="padding: 20px 24px 24px 24px; display: block;">
                 <form id="formLogin" onsubmit="if(window.handleLoginSubmit) { window.handleLoginSubmit(event); } return false;">
-                    <div style="margin-bottom: 14px;">
-                        <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 6px;">아이디 (이메일 주소)</label>
-                        <input type="email" id="loginEmail" required placeholder="user@example.com" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; box-sizing: border-box;">
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; font-size: 12px; font-weight: 600; color: #4e5968; margin-bottom: 6px;">아이디 (이메일 주소)</label>
+                        <input type="email" id="loginEmail" class="toss-input" required placeholder="user@example.com">
                     </div>
-                    <div style="margin-bottom: 18px;">
-                        <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 6px;">비밀번호</label>
-                        <input type="password" id="loginPassword" required placeholder="비밀번호 입력" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; box-sizing: border-box;">
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; font-size: 12px; font-weight: 600; color: #4e5968; margin-bottom: 6px;">비밀번호</label>
+                        <div class="toss-pw-wrap">
+                            <input type="password" id="loginPassword" class="toss-input" required placeholder="비밀번호 입력" style="margin-bottom: 0;">
+                            <button type="button" class="toss-pw-toggle" onclick="if(window.togglePasswordVisibility) window.togglePasswordVisibility('loginPassword', this);" title="비밀번호 보기" aria-label="비밀번호 보기">
+                                <svg class="icon-eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                </svg>
+                                <svg class="icon-eye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
-                    <button type="submit" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
-                        🔓 로그인하기
+                    <button type="submit" class="toss-btn-primary">
+                        로그인
                     </button>
+                    <div style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 10px; font-size: 12px; color: #64748b;">
+                        <a href="javascript:void(0)" onclick="if(window.openFindAccountModal) window.openFindAccountModal('id');" style="color: #64748b; text-decoration: none; cursor: pointer;">아이디 찾기</a>
+                        <span style="color: #cbd5e1;">|</span>
+                        <a href="javascript:void(0)" onclick="if(window.openFindAccountModal) window.openFindAccountModal('pw');" style="color: #64748b; text-decoration: none; cursor: pointer;">비밀번호 찾기</a>
+                    </div>
                 </form>
 
-                <div style="margin-top: 16px; padding-top: 14px; border-top: 1px dashed #e2e8f0; text-align: center;">
-                    <button type="button" onclick="if(window.handleQuickTestLogin) window.handleQuickTestLogin();" style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 8px 14px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; width: 100%;">
-                        ⚡ 체험 학부모 계정으로 1초 빠른 로그인 (test@learnmap.com)
+                <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid #f2f4f6; text-align: center;">
+                    <button type="button" onclick="if(window.handleQuickTestLogin) window.handleQuickTestLogin();" class="toss-btn-logout" style="width: 100%; padding: 9px; font-size: 11.5px;">
+                        ⚡ 체험 학부모 계정으로 1초 빠른 로그인
                     </button>
                 </div>
             </div>
 
             <!-- Register View -->
-            <div id="authViewRegister" style="padding: 24px; display: none;">
+            <div id="authViewRegister" style="padding: 20px 24px 24px 24px; display: none;">
                 <form id="formRegister" onsubmit="if(window.handleRegisterSubmit) { window.handleRegisterSubmit(event); } return false;">
-                    <div style="margin-bottom: 12px;">
-                        <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">이름 / 보호자 성명</label>
-                        <input type="text" id="regName" required placeholder="홍길동" style="width: 100%; padding: 9px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; box-sizing: border-box;">
+                    <div style="margin-bottom: 10px;">
+                        <label style="display: block; font-size: 12px; font-weight: 600; color: #4e5968; margin-bottom: 4px;">이름</label>
+                        <input type="text" id="regName" class="toss-input" required placeholder="홍길동">
                     </div>
-                    <div style="margin-bottom: 12px;">
-                        <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">아이디 (이메일 주소)</label>
-                        <input type="email" id="regEmail" required placeholder="parent@example.com" style="width: 100%; padding: 9px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; box-sizing: border-box;">
+                    <div style="margin-bottom: 10px;">
+                        <label style="display: block; font-size: 12px; font-weight: 600; color: #4e5968; margin-bottom: 4px;">아이디 (이메일 주소)</label>
+                        <input type="email" id="regEmail" class="toss-input" required placeholder="parent@example.com">
                     </div>
-                    <div style="margin-bottom: 12px;">
-                        <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">비밀번호</label>
-                        <input type="password" id="regPassword" required placeholder="비밀번호 입력" style="width: 100%; padding: 9px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; box-sizing: border-box;">
+                    <div style="margin-bottom: 10px;">
+                        <label style="display: block; font-size: 12px; font-weight: 600; color: #4e5968; margin-bottom: 4px;">비밀번호</label>
+                        <div class="toss-pw-wrap">
+                            <input type="password" id="regPassword" class="toss-input" required placeholder="비밀번호 입력 (6자 이상)" style="margin-bottom: 0;">
+                            <button type="button" class="toss-pw-toggle" onclick="if(window.togglePasswordVisibility) window.togglePasswordVisibility('regPassword', this);" title="비밀번호 보기" aria-label="비밀번호 보기">
+                                <svg class="icon-eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                </svg>
+                                <svg class="icon-eye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="display: block; font-size: 12px; font-weight: 600; color: #4e5968; margin-bottom: 4px;">비밀번호 확인</label>
+                        <div class="toss-pw-wrap">
+                            <input type="password" id="regPasswordConfirm" class="toss-input" required placeholder="비밀번호 재입력" style="margin-bottom: 0;">
+                            <button type="button" class="toss-pw-toggle" onclick="if(window.togglePasswordVisibility) window.togglePasswordVisibility('regPasswordConfirm', this);" title="비밀번호 확인 보기" aria-label="비밀번호 확인 보기">
+                                <svg class="icon-eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                </svg>
+                                <svg class="icon-eye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                     <div style="margin-bottom: 16px;">
-                        <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">회원 구분</label>
-                        <select id="regRole" style="width: 100%; padding: 9px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; box-sizing: border-box; background: white;">
+                        <label style="display: block; font-size: 12px; font-weight: 600; color: #4e5968; margin-bottom: 4px;">회원 구분</label>
+                        <select id="regRole" class="toss-input" style="padding: 10px 14px; background: #f9fafb; margin-bottom: 0;">
                             <option value="parent">학부모 회원</option>
                             <option value="student">학생 회원</option>
                         </select>
                     </div>
-                    <button type="submit" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
-                        ✨ 회원가입 완료 후 로그인하기
+                    <button type="submit" class="toss-btn-primary">
+                        회원가입 완료
                     </button>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 아이디 / 비밀번호 찾기 모달 -->
+    <div id="findAccountModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(8px); z-index: 10098; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+        <div class="auth-modal-content" style="background: var(--bg-card, #ffffff); width: 100%; max-width: 440px; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.25); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-color, #e2e8f0);">
+            
+            <!-- Header Bar -->
+            <div style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 18px 24px; color: white; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); display: flex; align-items: center; justify-content: center; font-size: 18px;">🔍</div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #ffffff;">계정 찾기</h3>
+                        <span style="font-size: 11px; color: #94a3b8;">아이디(이메일) 조회 및 비밀번호 재설정</span>
+                    </div>
+                </div>
+                <button type="button" onclick="if(window.closeFindAccountModal) window.closeFindAccountModal();" style="background: rgba(255,255,255,0.1); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; justify-content: center; align-items: center;">&times;</button>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div style="padding: 14px 24px 0 24px;">
+                <div class="toss-tab-segment" style="margin-bottom: 0;">
+                    <button type="button" id="btnFindTabId" class="toss-tab-btn active" onclick="if(window.switchFindAccountTab) window.switchFindAccountTab('id');">아이디 찾기</button>
+                    <button type="button" id="btnFindTabPw" class="toss-tab-btn" onclick="if(window.switchFindAccountTab) window.switchFindAccountTab('pw');">비밀번호 찾기</button>
+                </div>
+            </div>
+
+            <!-- View: 아이디 찾기 -->
+            <div id="findAccountViewId" style="padding: 20px 24px 24px 24px; display: block;">
+                <div style="font-size: 12.5px; color: #64748b; margin-bottom: 14px; line-height: 1.5;">
+                    가입 시 등록하신 <strong>이름(성명)</strong>을 입력하시면 가입된 아이디(이메일)를 확인하실 수 있습니다.
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: #4e5968; margin-bottom: 6px;">이름</label>
+                    <input type="text" id="findIdInputName" class="toss-input" placeholder="홍길동" style="margin-bottom: 0;">
+                </div>
+                <button type="button" onclick="if(window.handleFindIdSubmit) window.handleFindIdSubmit();" class="toss-btn-primary" style="margin-bottom: 12px;">
+                    아이디 찾기
+                </button>
+                
+                <!-- 아이디 찾기 결과 영역 -->
+                <div id="findIdResultBox" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; text-align: center; margin-top: 10px;">
+                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px;">조회된 가입 아이디</div>
+                    <div id="findIdResultText" style="font-size: 15px; font-weight: 800; color: #2563eb; word-break: break-all; margin-bottom: 10px;"></div>
+                    <button type="button" onclick="if(window.applyFoundIdToLogin) window.applyFoundIdToLogin();" style="background: #2563eb; color: white; border: none; padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                        이 아이디로 로그인하기
+                    </button>
+                </div>
+            </div>
+
+            <!-- View: 비밀번호 재설정 -->
+            <div id="findAccountViewPw" style="padding: 20px 24px 24px 24px; display: none;">
+                <div style="font-size: 12.5px; color: #64748b; margin-bottom: 14px; line-height: 1.5;">
+                    가입하신 <strong>이름</strong>과 <strong>아이디(이메일)</strong>를 확인한 후 새로운 비밀번호로 재설정합니다.
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: #4e5968; margin-bottom: 4px;">이름</label>
+                    <input type="text" id="findPwInputName" class="toss-input" placeholder="홍길동" style="margin-bottom: 0;">
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: #4e5968; margin-bottom: 4px;">아이디 (이메일 주소)</label>
+                    <input type="email" id="findPwInputEmail" class="toss-input" placeholder="user@example.com" style="margin-bottom: 0;">
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: #4e5968; margin-bottom: 4px;">새 비밀번호 (6자 이상)</label>
+                    <div class="toss-pw-wrap">
+                        <input type="password" id="findPwInputNewPassword" class="toss-input" placeholder="새로운 비밀번호 입력" style="margin-bottom: 0;">
+                        <button type="button" class="toss-pw-toggle" onclick="if(window.togglePasswordVisibility) window.togglePasswordVisibility('findPwInputNewPassword', this);" title="비밀번호 보기" aria-label="비밀번호 보기">
+                            <svg class="icon-eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                            </svg>
+                            <svg class="icon-eye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <button type="button" onclick="if(window.handleResetPasswordSubmit) window.handleResetPasswordSubmit();" class="toss-btn-primary">
+                    비밀번호 재설정 완료
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 배정 / 목표 학교 검색 및 선택 모달 -->
+    <div id="targetSchoolSelectModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 100005; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+        <div style="background: #ffffff; border-radius: 18px; width: 100%; max-width: 440px; box-shadow: 0 24px 48px rgba(0,0,0,0.25); overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; border: 1px solid #e2e8f0;">
+            <!-- Modal Header -->
+            <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 18px;">🏫</span>
+                    <div>
+                        <h3 style="margin: 0; font-size: 15px; font-weight: 700; color: #1e293b;">배정 / 목표 학교 선택</h3>
+                        <span style="font-size: 11px; color: #64748b;">자녀의 학업 진단 기준이 될 학교를 선택하세요</span>
+                    </div>
+                </div>
+                <button type="button" onclick="if(window.closeTargetSchoolSelectModal) window.closeTargetSchoolSelectModal();" style="background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer; padding: 2px 6px; line-height: 1; border-radius: 6px;" aria-label="닫기">&times;</button>
+            </div>
+            
+            <!-- Search Input Box -->
+            <div style="padding: 14px 18px; border-bottom: 1px solid #f1f5f9; background: #ffffff;">
+                <div style="position: relative; display: flex; align-items: center;">
+                    <span style="position: absolute; left: 12px; font-size: 14px; color: #94a3b8; pointer-events: none;">🔍</span>
+                    <input type="text" id="inputTargetSchoolModalSearch" placeholder="학교명을 검색하세요 (예: 서운중, 대치중, 휘문고)" style="width: 100%; height: 42px; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 0 12px 0 38px; font-size: 13px; color: #1e293b; outline: none; transition: border-color 0.2s; box-sizing: border-box;">
+                </div>
+            </div>
+
+            <!-- School List Body -->
+            <div id="targetSchoolModalList" style="flex: 1; overflow-y: auto; padding: 12px 18px; display: flex; flex-direction: column; gap: 8px; min-height: 220px; max-height: 380px; background: #fbfcfd;">
+                <!-- 학교 목록 렌더링 -->
+            </div>
+
+            <!-- Modal Footer -->
+            <div style="padding: 12px 20px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end;">
+                <button type="button" onclick="if(window.closeTargetSchoolSelectModal) window.closeTargetSchoolSelectModal();" style="padding: 8px 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; color: #475569; font-size: 12px; font-weight: 600; cursor: pointer;">닫기</button>
             </div>
         </div>
     </div>

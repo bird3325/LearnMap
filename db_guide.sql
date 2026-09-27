@@ -80,3 +80,21 @@ ALTER TABLE public.academy_registration_requests ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public read access" ON public.academy_registration_requests FOR SELECT USING (true);
 CREATE POLICY "Allow public insert access" ON public.academy_registration_requests FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public delete access" ON public.academy_registration_requests FOR DELETE USING (true);
+
+
+-- 6. 회원 기본 정보 테이블 (users) 및 RLS 보안 해제
+CREATE TABLE IF NOT EXISTS public.users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'parent' CHECK (role IN ('parent', 'student', 'admin')),
+    phone VARCHAR(20),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    last_login_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- RLS 비활성화 (익명 회원가입 및 로그인 저장 즉시 허용)
+ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;

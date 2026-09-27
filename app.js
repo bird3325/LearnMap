@@ -10,6 +10,13 @@ window.customCommuteStart = null;
 window.customCommuteEnd = null;
 window.mapClickMode = 'none';
 
+// 자녀 프로필 및 선택 자녀 상태 (전역 모듈 스코프)
+let childProfiles = [];
+let selectedChildId = null;
+let defaultChildId = localStorage.getItem('learnmap_default_child_id');
+window.childProfiles = childProfiles;
+window.selectedChildId = selectedChildId;
+
 const SUB_DISTRICT_MAP = {
     '고양시': ['덕양구', '일산동구', '일산서구'],
     '성남시': ['분당구', '수정구', '중원구'],
@@ -39,30 +46,65 @@ function checkGugunMatch(address, selectedGugun, selectedSubGu = 'all') {
 document.addEventListener('DOMContentLoaded', () => {
     orchestrator = new Orchestrator();
 
-    // --- Custom Alert Modal Override ---
-    window.alert = function(message) {
-        let alertModal = document.getElementById('customAlertModal');
-        if (!alertModal) {
-            alertModal = document.createElement('div');
-            alertModal.id = 'customAlertModal';
-            alertModal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:999999; display:flex; justify-content:center; align-items:center; opacity:0; transition:opacity 0.2s; pointer-events:none;';
-            alertModal.innerHTML = `
-                <div style="background:var(--bg-primary, #ffffff); padding:30px 40px; border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.3); text-align:center; max-width:80%; transform:translateY(20px); transition:transform 0.2s; border:1px solid var(--border-color, #eee);">
-                    <div id="customAlertMessage" style="font-size:16px; font-weight:600; color:var(--text-main, #333); margin-bottom:24px; line-height:1.5; white-space:pre-wrap;"></div>
-                    <button onclick="document.getElementById('customAlertModal').style.opacity='0'; document.getElementById('customAlertModal').style.pointerEvents='none'; document.querySelector('#customAlertModal > div').style.transform='translateY(20px)';" style="background:var(--primary-blue, #2563eb); color:white; border:none; border-radius:8px; padding:12px 30px; font-size:15px; font-weight:bold; cursor:pointer; outline:none; transition:background 0.2s;">확인</button>
-                </div>
-            `;
-            document.body.appendChild(alertModal);
-        }
-        document.getElementById('customAlertMessage').innerText = message;
-        alertModal.style.opacity = '1';
-        alertModal.style.pointerEvents = 'auto';
-        alertModal.querySelector('div').style.transform = 'translateY(0)';
+    // --- Custom Alert Modal Override (Promise & Callback based) ---
+    window.alert = function(message, callback) {
+        return new Promise((resolve) => {
+            // 다른 확인(confirm) 모달이 열려 있다면 겹치지 않도록 숨김
+            const existingConfirm = document.getElementById('customConfirmModal');
+            if (existingConfirm) {
+                existingConfirm.style.opacity = '0';
+                existingConfirm.style.pointerEvents = 'none';
+            }
+
+            let alertModal = document.getElementById('customAlertModal');
+            if (!alertModal) {
+                alertModal = document.createElement('div');
+                alertModal.id = 'customAlertModal';
+                alertModal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:999999; display:flex; justify-content:center; align-items:center; opacity:0; transition:opacity 0.2s; pointer-events:none;';
+                alertModal.innerHTML = `
+                    <div style="background:var(--bg-primary, #ffffff); padding:30px 40px; border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.3); text-align:center; max-width:80%; transform:translateY(20px); transition:transform 0.2s; border:1px solid var(--border-color, #eee);">
+                        <div id="customAlertMessage" style="font-size:16px; font-weight:600; color:var(--text-main, #333); margin-bottom:24px; line-height:1.5; white-space:pre-wrap;"></div>
+                        <button id="btnCustomAlertOk" style="background:var(--primary-blue, #2563eb); color:white; border:none; border-radius:8px; padding:12px 30px; font-size:15px; font-weight:bold; cursor:pointer; outline:none; transition:background 0.2s;">확인</button>
+                    </div>
+                `;
+                document.body.appendChild(alertModal);
+            }
+            document.getElementById('customAlertMessage').innerText = message;
+            alertModal.style.opacity = '1';
+            alertModal.style.pointerEvents = 'auto';
+            alertModal.querySelector('div').style.transform = 'translateY(0)';
+
+            const close = () => {
+                alertModal.style.opacity = '0';
+                alertModal.style.pointerEvents = 'none';
+                const inner = alertModal.querySelector('div');
+                if (inner) inner.style.transform = 'translateY(20px)';
+                if (typeof callback === 'function') {
+                    callback();
+                }
+                resolve();
+            };
+
+            const okBtn = document.getElementById('btnCustomAlertOk') || alertModal.querySelector('button');
+            if (okBtn) {
+                okBtn.onclick = (e) => {
+                    if (e) e.stopPropagation();
+                    close();
+                };
+            }
+        });
     };
 
     // --- Custom Confirm Modal Override (Promise based) ---
     window.confirm = function(message) {
         return new Promise((resolve) => {
+            // 다른 알림(alert) 모달이 열려 있다면 겹치지 않도록 숨김
+            const existingAlert = document.getElementById('customAlertModal');
+            if (existingAlert) {
+                existingAlert.style.opacity = '0';
+                existingAlert.style.pointerEvents = 'none';
+            }
+
             let confirmModal = document.getElementById('customConfirmModal');
             if (!confirmModal) {
                 confirmModal = document.createElement('div');
@@ -292,124 +334,342 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 다중 자녀 상태 (등록된 자녀가 없을 경우 '자녀 없음' 기본 설정)
-    let childProfiles = [];
-    let selectedChildId = null;
-    let defaultChildId = localStorage.getItem('learnmap_default_child_id');
+    childProfiles = window.childProfiles || [];
+    selectedChildId = window.selectedChildId || null;
+    defaultChildId = localStorage.getItem('learnmap_default_child_id');
 
-    // Supabase DB 자녀 프로필 데이터 동기화
-    async function loadChildProfilesFromSupabase() {
-        if (!supabase) {
-            loadChildProfilesFromLocalStorage();
-            return;
-        }
-        try {
-            const { data, error } = await supabase
-                .from('child_profiles')
-                .select('*')
-                .order('created_at', { ascending: true });
-            
-            if (error) throw error;
-            if (data && data.length > 0) {
-                childProfiles = data.map(item => ({
-                    id: item.id,
-                    name: item.name,
-                    grade: item.grade || 'm2',
-                    korean: parseInt(item.korean) || 0,
-                    english: parseInt(item.english) || 0,
-                    math: parseInt(item.math) || 0
-                }));
-                const hasDefault = childProfiles.some(c => c.id === defaultChildId);
-                selectedChildId = hasDefault ? defaultChildId : (defaultChildId ? childProfiles[0].id : null);
-            } else {
-                childProfiles = [];
-                selectedChildId = null;
-            }
-            refreshChildSelectUI();
-        } catch (err) {
-            console.error('Error fetching child profiles from Supabase:', err);
-            loadChildProfilesFromLocalStorage();
-        }
+    // Supabase DB 연동 설정
+    const DB_SUPABASE_URL = 'https://khwzgqnwlknawggugznd.supabase.co';
+    const DB_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtod3pncW53bGtuYXdnZ3Vnem5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDQzNDksImV4cCI6MjA5NTc4MDM0OX0.P2g3Y_MYV_ca8ZRpfAT93pnEzP4osYWc2tfyBHKb7v4';
+
+    function getDbHeaders(extra = {}) {
+        return {
+            'apikey': DB_SUPABASE_KEY,
+            'Authorization': `Bearer ${DB_SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            ...extra
+        };
     }
 
-    function loadChildProfilesFromLocalStorage() {
-        const saved = localStorage.getItem('learnmap_child_profiles');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    childProfiles = parsed;
-                    const hasDefault = childProfiles.some(c => c.id === defaultChildId);
-                    selectedChildId = hasDefault ? defaultChildId : (defaultChildId ? childProfiles[0].id : null);
-                } else {
-                    childProfiles = [];
-                    selectedChildId = null;
+    async function getEffectiveUserId() {
+        const defaultUserId = '46771a9e-a080-4cb3-85df-dd47dd49842a';
+        try {
+            if (authService && typeof authService.getCurrentUser === 'function') {
+                const user = authService.getCurrentUser();
+                const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                if (user && user.id && uuidRegex.test(user.id)) {
+                    return user.id;
                 }
-            } catch (e) {
-                console.error(e);
-                childProfiles = [];
-                selectedChildId = null;
+                if (user && user.email) {
+                    const res = await fetch(`${DB_SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(user.email.toLowerCase())}&select=id`, {
+                        headers: getDbHeaders()
+                    });
+                    if (res.ok) {
+                        const rows = await res.json();
+                        if (rows && rows.length > 0 && rows[0].id) {
+                            return rows[0].id;
+                        }
+                    }
+                }
             }
-        } else {
-            childProfiles = [];
-            selectedChildId = null;
+        } catch (e) {
+            console.warn('사용자 UUID 취득 중 알림:', e);
         }
-        refreshChildSelectUI();
+        return defaultUserId;
+    }
+
+    function calcAchievement(score) {
+        const s = Number(score) || 0;
+        if (s >= 90) return 'A';
+        if (s >= 80) return 'B';
+        if (s >= 70) return 'C';
+        if (s >= 60) return 'D';
+        return 'E';
+    }
+
+    // Supabase DB 자녀 프로필 및 성적 데이터 동기화 (user_neis_profiles & user_student_grades)
+    async function loadChildProfilesFromSupabase() {
+        try {
+            const userId = await getEffectiveUserId();
+            const url = `${DB_SUPABASE_URL}/rest/v1/user_neis_profiles?user_id=eq.${userId}&select=*,user_student_grades(*)&order=created_at.asc`;
+            const res = await fetch(url, { headers: getDbHeaders() });
+
+            if (!res.ok) {
+                console.error('Supabase DB 자녀 프로필 조회 실패:', res.status, await res.text());
+                return;
+            }
+
+            const data = await res.json();
+
+            if (Array.isArray(data) && data.length > 0) {
+                childProfiles = data.map(item => {
+                    let kor = 80, eng = 80, math = 80, soc = 80, sci = 80;
+                    if (Array.isArray(item.user_student_grades)) {
+                        item.user_student_grades.forEach(g => {
+                            if (g.subject_name === '국어') kor = Number(g.raw_score) || 0;
+                            if (g.subject_name === '영어') eng = Number(g.raw_score) || 0;
+                            if (g.subject_name === '수학') math = Number(g.raw_score) || 0;
+                            if (g.subject_name === '사회' || g.subject_name === '역사') soc = Number(g.raw_score) || 0;
+                            if (g.subject_name === '과학') sci = Number(g.raw_score) || 0;
+                        });
+                    }
+                    let resolvedGrade = 'm2';
+                    let targetMajor = '';
+                    let schoolId = '';
+                    let schoolRegion = '';
+                    if (item.target_major) {
+                        if (item.target_major.startsWith('grade:')) {
+                            const rawTarget = item.target_major.replace('grade:', '').trim();
+                            const parts = rawTarget.split(':::');
+                            resolvedGrade = (parts[0] || 'm2').trim().toLowerCase();
+                            targetMajor = (parts[1] || '').trim();
+                            schoolId = (parts[2] || '').trim();
+                            schoolRegion = (parts[3] || '').trim();
+                        } else {
+                            targetMajor = item.target_major.trim();
+                        }
+                    } else {
+                        const sName = item.school_name || '';
+                        if (sName.includes('초등')) {
+                            resolvedGrade = 'e' + (item.grade || 1);
+                        } else if (sName.includes('고등')) {
+                            resolvedGrade = 'h' + (item.grade || 1);
+                        } else {
+                            resolvedGrade = 'm' + (item.grade || 2);
+                        }
+                    }
+
+                    let allergies = [];
+                    if (Array.isArray(item.allergies)) {
+                        allergies = item.allergies;
+                    } else if (typeof item.allergies === 'string') {
+                        try {
+                            const parsed = JSON.parse(item.allergies);
+                            allergies = Array.isArray(parsed) ? parsed : [item.allergies];
+                        } catch (e) {
+                            allergies = item.allergies.split(',').map(s => s.trim()).filter(Boolean);
+                        }
+                    }
+
+                    return {
+                        id: item.id,
+                        name: item.student_name || '자녀',
+                        schoolName: item.school_name || '서운중학교',
+                        schoolId: schoolId,
+                        schoolRegion: schoolRegion,
+                        grade: resolvedGrade,
+                        korean: kor,
+                        english: eng,
+                        math: math,
+                        society: soc,
+                        science: sci,
+                        targetMajor: targetMajor,
+                        allergies: allergies
+                    };
+                });
+            } else {
+                // DB에 등록된 자녀가 없을 경우 자동 생성/저장하지 않고 빈 목록 유지 (저장 버튼 클릭 시에만 저장)
+                childProfiles = [];
+            }
+
+            const hasDefault = childProfiles.some(c => c.id === defaultChildId);
+            selectedChildId = hasDefault ? defaultChildId : (childProfiles.length > 0 ? childProfiles[0].id : null);
+            window.childProfiles = childProfiles;
+            window.selectedChildId = selectedChildId;
+
+            // 로컬스토리지 잔여 자녀 데이터 제거 (DB 우선 원칙)
+            localStorage.removeItem('learnmap_child_profiles');
+
+            refreshChildSelectUI();
+        } catch (err) {
+            console.error('DB 자녀 목록 동기화 오류:', err);
+        }
+    }
+    window.loadChildProfilesFromSupabase = loadChildProfilesFromSupabase;
+
+    function loadChildProfilesFromLocalStorage() {
+        // 로컬스토리지 방식 제거: Supabase DB에서 로드
+        loadChildProfilesFromSupabase();
     }
 
     function saveChildProfilesToLocalStorage() {
-        localStorage.setItem('learnmap_child_profiles', JSON.stringify(childProfiles));
+        // 로컬스토리지 저장 방식 제거: 더 이상 localStorage에 프로필을 저장하지 않음
+        localStorage.removeItem('learnmap_child_profiles');
     }
 
     async function saveChildProfileToSupabase(child) {
-        if (!supabase) return;
+        if (!child) return;
         try {
-            // id가 child_로 시작하면 임시 로컬 id이므로 insert 처리
-            const isTempId = typeof child.id === 'string' && child.id.startsWith('child_');
-            if (isTempId) {
-                const { data, error } = await supabase
-                    .from('child_profiles')
-                    .insert([{
-                        name: child.name,
-                        grade: child.grade,
-                        korean: child.korean,
-                        english: child.english,
-                        math: child.math
-                    }])
-                    .select();
-                if (error) throw error;
-                if (data && data.length > 0) {
-                    child.id = data[0].id; // 발급받은 실제 DB ID로 치환
+            const userId = await getEffectiveUserId();
+            const fullGradeCode = String(child.grade || 'm2').toLowerCase();
+            const gradeDigits = fullGradeCode.replace(/\D/g, '');
+            const parsedGrade = parseInt(gradeDigits, 10);
+            let dbGrade = 2;
+            if (!isNaN(parsedGrade) && parsedGrade >= 1 && parsedGrade <= 6) {
+                dbGrade = parsedGrade; // 초등 1~6학년, 중·고등 1~3학년 정직하게 저장
+            } else if (!isNaN(parsedGrade) && parsedGrade >= 1) {
+                dbGrade = Math.min(Math.max(parsedGrade, 1), 6);
+            }
+
+            const schoolIdVal = child.schoolId || '';
+            const schoolRegionVal = child.schoolRegion || '';
+            const majorStr = (child.targetMajor || '').trim();
+            const targetMajorVal = `grade:${fullGradeCode}:::${majorStr}:::${schoolIdVal}:::${schoolRegionVal}`;
+            const allergiesVal = Array.isArray(child.allergies) 
+                ? child.allergies 
+                : (typeof child.allergies === 'string' ? child.allergies.split(',').map(s => s.trim()).filter(Boolean) : []);
+
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            const isUuid = uuidRegex.test(child.id);
+
+            let profileId = child.id;
+
+            if (!isUuid) {
+                // 신규 자녀 DB INSERT
+                const res = await fetch(`${DB_SUPABASE_URL}/rest/v1/user_neis_profiles`, {
+                    method: 'POST',
+                    headers: getDbHeaders({ 'Prefer': 'return=representation' }),
+                    body: JSON.stringify({
+                        user_id: userId,
+                        student_name: child.name || '자녀',
+                        school_name: child.schoolName || '서운중학교',
+                        grade: dbGrade,
+                        target_major: targetMajorVal,
+                        allergies: allergiesVal,
+                        class_num: 1,
+                        student_num: 1,
+                        is_connected: true
+                    })
+                });
+
+                if (res.ok) {
+                    const inserted = await res.json();
+                    if (inserted && inserted.length > 0) {
+                        profileId = inserted[0].id;
+                        child.id = profileId;
+                        if (selectedChildId === child.id) {
+                            selectedChildId = profileId;
+                        }
+                    }
+                } else {
+                    console.error('DB 자녀 프로필 추가 실패:', await res.text());
+                    return;
                 }
             } else {
-                const { error } = await supabase
-                    .from('child_profiles')
-                    .update({
-                        name: child.name,
-                        grade: child.grade,
-                        korean: child.korean,
-                        english: child.english,
-                        math: child.math
+                // 기존 자녀 DB UPDATE (PATCH)
+                const patchRes = await fetch(`${DB_SUPABASE_URL}/rest/v1/user_neis_profiles?id=eq.${profileId}`, {
+                    method: 'PATCH',
+                    headers: getDbHeaders(),
+                    body: JSON.stringify({
+                        student_name: child.name || '자녀',
+                        school_name: child.schoolName || '서운중학교',
+                        grade: dbGrade,
+                        target_major: targetMajorVal,
+                        allergies: allergiesVal,
+                        updated_at: new Date().toISOString()
                     })
-                    .eq('id', child.id);
-                if (error) throw error;
+                });
+                if (!patchRes.ok) {
+                    console.error('DB 자녀 프로필 수정 실패:', await patchRes.text());
+                }
             }
+
+            // 과목별 성적 DB 저장 (user_student_grades)
+            // 1. 기존 성적 레코드 삭제
+            await fetch(`${DB_SUPABASE_URL}/rest/v1/user_student_grades?profile_id=eq.${profileId}`, {
+                method: 'DELETE',
+                headers: getDbHeaders()
+            });
+
+            // 2. 신규 성적 5과목(국어, 영어, 수학, 사회, 과학) DB INSERT
+            const korScore = Number(child.korean) || 0;
+            const engScore = Number(child.english) || 0;
+            const mathScore = Number(child.math) || 0;
+            const socScore = Number(child.society) || 0;
+            const sciScore = Number(child.science) || 0;
+
+            const gradesPayload = [
+                {
+                    profile_id: profileId,
+                    semester: '2026-1',
+                    subject_name: '국어',
+                    raw_score: korScore,
+                    school_avg: 75,
+                    std_dev: 12,
+                    achievement: calcAchievement(korScore)
+                },
+                {
+                    profile_id: profileId,
+                    semester: '2026-1',
+                    subject_name: '영어',
+                    raw_score: engScore,
+                    school_avg: 72,
+                    std_dev: 14,
+                    achievement: calcAchievement(engScore)
+                },
+                {
+                    profile_id: profileId,
+                    semester: '2026-1',
+                    subject_name: '수학',
+                    raw_score: mathScore,
+                    school_avg: 70,
+                    std_dev: 15,
+                    achievement: calcAchievement(mathScore)
+                },
+                {
+                    profile_id: profileId,
+                    semester: '2026-1',
+                    subject_name: '사회',
+                    raw_score: socScore,
+                    school_avg: 74,
+                    std_dev: 14,
+                    achievement: calcAchievement(socScore)
+                },
+                {
+                    profile_id: profileId,
+                    semester: '2026-1',
+                    subject_name: '과학',
+                    raw_score: sciScore,
+                    school_avg: 71,
+                    std_dev: 15,
+                    achievement: calcAchievement(sciScore)
+                }
+            ];
+
+            const gradesRes = await fetch(`${DB_SUPABASE_URL}/rest/v1/user_student_grades`, {
+                method: 'POST',
+                headers: getDbHeaders({ 'Prefer': 'return=representation' }),
+                body: JSON.stringify(gradesPayload)
+            });
+
+            if (!gradesRes.ok) {
+                console.error('DB 자녀 성적 저장 실패:', await gradesRes.text());
+            }
+
+            // 전역 상태 갱신
+            window.childProfiles = childProfiles;
+            window.selectedChildId = selectedChildId;
+            localStorage.removeItem('learnmap_child_profiles');
         } catch (err) {
-            console.error('Supabase save error:', err);
+            console.error('DB 자녀 및 성적 저장 중 오류 발생:', err);
         }
     }
 
     async function deleteChildProfileFromSupabase(id) {
-        if (!supabase) return;
-        const isTempId = typeof id === 'string' && id.startsWith('child_');
-        if (isTempId) return;
+        if (!id) return;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(id)) return;
+
         try {
-            const { error } = await supabase
-                .from('child_profiles')
-                .delete()
-                .eq('id', id);
-            if (error) throw error;
+            const res = await fetch(`${DB_SUPABASE_URL}/rest/v1/user_neis_profiles?id=eq.${id}`, {
+                method: 'DELETE',
+                headers: getDbHeaders()
+            });
+            if (!res.ok) {
+                console.error('DB 자녀 삭제 실패:', await res.text());
+            }
         } catch (err) {
-            console.error('Supabase delete error:', err);
+            console.error('DB 자녀 삭제 중 오류 발생:', err);
         }
     }
 
@@ -419,12 +679,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsChildNamePc = document.getElementById('settingsChildName-pc');
     const settingsChildGrade = document.getElementById('settingsChildGrade');
     const settingsChildGradePc = document.getElementById('settingsChildGrade-pc');
+    const settingsChildTargetMajor = document.getElementById('settingsChildTargetMajor');
+    const settingsChildTargetMajorPc = document.getElementById('settingsChildTargetMajor-pc');
+    const settingsChildAllergies = document.getElementById('settingsChildAllergies');
+    const settingsChildAllergiesPc = document.getElementById('settingsChildAllergies-pc');
     const settingsChildKor = document.getElementById('settingsChildKor');
     const settingsChildKorPc = document.getElementById('settingsChildKor-pc');
     const settingsChildEng = document.getElementById('settingsChildEng');
     const settingsChildEngPc = document.getElementById('settingsChildEng-pc');
     const settingsChildMath = document.getElementById('settingsChildMath');
     const settingsChildMathPc = document.getElementById('settingsChildMath-pc');
+    const settingsChildSoc = document.getElementById('settingsChildSoc');
+    const settingsChildSocPc = document.getElementById('settingsChildSoc-pc');
+    const settingsChildSci = document.getElementById('settingsChildSci');
+    const settingsChildSciPc = document.getElementById('settingsChildSci-pc');
 
     // 분석 결과창 내 자녀 변경 시 실시간 분석 실행 바인딩
     const analysisChildSelect = document.getElementById('analysisChildSelect');
@@ -438,6 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (settingsChildSelect) settingsChildSelect.value = targetId;
                 if (settingsChildSelectPc) settingsChildSelectPc.value = targetId;
                 updateFormWithSelectedChild();
+                renderChildPillTabs();
                 
                 // 새로운 자녀의 성적으로 즉각 재분석 실행
                 if (orchestrator.state.selectedSchool && typeof orchestrator.childPerformanceDiagnosis === 'function') {
@@ -455,6 +724,529 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    function getGradeShort(grade) {
+        if (!grade) return '중2';
+        const g = String(grade).toLowerCase();
+        if (g === 'e1') return '초1';
+        if (g === 'e2') return '초2';
+        if (g === 'e3') return '초3';
+        if (g === 'e4') return '초4';
+        if (g === 'e5') return '초5';
+        if (g === 'e6') return '초6';
+        if (g === 'm1') return '중1';
+        if (g === 'm2') return '중2';
+        if (g === 'm3') return '중3';
+        if (g === 'h1') return '고1';
+        if (g === 'h2') return '고2';
+        if (g === 'h3') return '고3';
+        return grade;
+    }
+
+    function getOrdinalKo(idx) {
+        const ordinals = ['첫째', '둘째', '셋째', '넷째', '다섯째', '여섯째'];
+        return ordinals[idx] || `${idx + 1}째`;
+    }
+
+    // 자녀 알약(Pill) 탭 바 동적 렌더링 (시안 100% 매칭)
+    function renderChildPillTabs() {
+        const container = document.getElementById('childPillTabsContainer');
+        if (!container) return;
+        container.innerHTML = '';
+
+        childProfiles.forEach((child, index) => {
+            const isActive = child.id === selectedChildId;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `child-pill-tab ${isActive ? 'active' : ''}`;
+            
+            const bullet = isActive ? '<span class="pill-bullet"></span>' : '';
+            const ord = getOrdinalKo(index);
+            const gr = getGradeShort(child.grade);
+            btn.innerHTML = `${bullet}<span>${ord} · ${child.name} (${gr})</span>`;
+
+            btn.addEventListener('click', () => {
+                selectedChildId = child.id;
+                if (settingsChildSelect) settingsChildSelect.value = child.id;
+                if (settingsChildSelectPc) settingsChildSelectPc.value = child.id;
+                updateFormWithSelectedChild();
+                renderChildPillTabs();
+            });
+
+            container.appendChild(btn);
+        });
+
+        // + 새 자녀 추가 알약 버튼
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'child-pill-tab add-tab';
+        addBtn.innerHTML = '<span>+ 새 자녀</span>';
+        addBtn.addEventListener('click', () => {
+            if (typeof onAddNewChild === 'function') {
+                onAddNewChild();
+            }
+        });
+        container.appendChild(addBtn);
+    }
+
+    // 성적 등급 및 5과목 평균 분석 실시간 계산 및 UI 렌더링
+    function updateScoreAnalysisUI(kor, eng, math, soc, sci) {
+        kor = parseInt(kor) || 0;
+        eng = parseInt(eng) || 0;
+        math = parseInt(math) || 0;
+        soc = (soc !== undefined && soc !== null) ? (parseInt(soc) || 0) : 80;
+        sci = (sci !== undefined && sci !== null) ? (parseInt(sci) || 0) : 80;
+
+        const calcGrade = (score) => {
+            if (score >= 90) return { text: 'A 등급', color: '#2563eb', bg: '#eff6ff', border: '#dbeafe' };
+            if (score >= 85) return { text: 'B+ 등급', color: '#7c3aed', bg: '#f3e8ff', border: '#e9d5ff' };
+            if (score >= 80) return { text: 'B 등급', color: '#4f46e5', bg: '#eef2ff', border: '#e0e7ff' };
+            if (score >= 75) return { text: 'C+ 등급', color: '#ea580c', bg: '#fff7ed', border: '#ffedd5' };
+            if (score >= 70) return { text: 'C 등급', color: '#d97706', bg: '#fef3c7', border: '#fde68a' };
+            if (score >= 60) return { text: 'D 등급', color: '#64748b', bg: '#f1f5f9', border: '#e2e8f0' };
+            return { text: 'E 등급', color: '#dc2626', bg: '#fef2f2', border: '#fee2e2' };
+        };
+
+        const gKor = calcGrade(kor);
+        const gEng = calcGrade(eng);
+        const gSoc = calcGrade(soc);
+        const gSci = calcGrade(sci);
+
+        const badgeKor = document.getElementById('badgeKorGrade');
+        const badgeEng = document.getElementById('badgeEngGrade');
+        const badgeMath = document.getElementById('badgeMathGrade');
+        const badgeSoc = document.getElementById('badgeSocGrade');
+        const badgeSci = document.getElementById('badgeSciGrade');
+
+        if (badgeKor) {
+            badgeKor.innerText = gKor.text;
+            badgeKor.style.color = gKor.color;
+            badgeKor.style.background = gKor.bg;
+            badgeKor.style.borderColor = gKor.border;
+        }
+        if (badgeEng) {
+            badgeEng.innerText = gEng.text;
+            badgeEng.style.color = gEng.color;
+            badgeEng.style.background = gEng.bg;
+            badgeEng.style.borderColor = gEng.border;
+        }
+        if (badgeMath) {
+            if (math >= 90) {
+                badgeMath.innerText = 'A 등급';
+                badgeMath.style.color = '#059669';
+                badgeMath.style.background = '#ecfdf5';
+                badgeMath.style.borderColor = '#a7f3d0';
+            } else {
+                const gMath = calcGrade(math);
+                badgeMath.innerText = gMath.text;
+                badgeMath.style.color = gMath.color;
+                badgeMath.style.background = gMath.bg;
+                badgeMath.style.borderColor = gMath.border;
+            }
+        }
+        if (badgeSoc) {
+            badgeSoc.innerText = gSoc.text;
+            badgeSoc.style.color = gSoc.color;
+            badgeSoc.style.background = gSoc.bg;
+            badgeSoc.style.borderColor = gSoc.border;
+        }
+        if (badgeSci) {
+            badgeSci.innerText = gSci.text;
+            badgeSci.style.color = gSci.color;
+            badgeSci.style.background = gSci.bg;
+            badgeSci.style.borderColor = gSci.border;
+        }
+
+        // 라벨 숫자 동기화
+        const lblKorPc = document.getElementById('valSettingsChildKor-pc');
+        const lblEngPc = document.getElementById('valSettingsChildEng-pc');
+        const lblMathPc = document.getElementById('valSettingsChildMath-pc');
+        const lblSocPc = document.getElementById('valSettingsChildSoc-pc');
+        const lblSciPc = document.getElementById('valSettingsChildSci-pc');
+        if (lblKorPc) lblKorPc.innerText = kor;
+        if (lblEngPc) lblEngPc.innerText = eng;
+        if (lblMathPc) lblMathPc.innerText = math;
+        if (lblSocPc) lblSocPc.innerText = soc;
+        if (lblSciPc) lblSciPc.innerText = sci;
+
+        // 5과목 평균 분석 계산
+        const avg = ((kor + eng + math + soc + sci) / 5).toFixed(1);
+        const avgEl = document.getElementById('avgScoreDisplay');
+        if (avgEl) avgEl.innerText = avg;
+
+        // 학교명 및 상위 백분위 예측 (현재 자녀의 목표 학교 기준)
+        const activeChild = (typeof childProfiles !== 'undefined' && Array.isArray(childProfiles)) ? childProfiles.find(c => c.id === selectedChildId) : null;
+        const mapSchoolObj = (typeof orchestrator !== 'undefined' && orchestrator.state && orchestrator.state.selectedSchool) || null;
+        
+        let targetSchoolObj = null;
+
+        // 1순위: window.selectedTargetSchool이 현재 자녀의 학교 정보와 일치하거나 사용자가 방금 명시적으로 선택한 경우
+        if (window.selectedTargetSchool) {
+            const selSchoolId = String(window.selectedTargetSchool.school_id || window.selectedTargetSchool.id || '');
+            const childSchoolId = activeChild ? String(activeChild.schoolId || '') : '';
+            if (childSchoolId && selSchoolId === childSchoolId) {
+                targetSchoolObj = window.selectedTargetSchool;
+            } else if (activeChild && window.selectedTargetSchool.school_name === activeChild.schoolName) {
+                targetSchoolObj = window.selectedTargetSchool;
+            } else if (!activeChild) {
+                targetSchoolObj = window.selectedTargetSchool;
+            }
+        }
+
+        // 2순위: 데이터베이스에서 활성 자녀의 학교를 정밀 탐색 (schoolId 우선 -> region+name 일치 -> name 완전 일치)
+        if (!targetSchoolObj && activeChild && window.schoolsDatabase && window.schoolsDatabase.length > 0) {
+            if (activeChild.schoolId) {
+                targetSchoolObj = window.schoolsDatabase.find(s => String(s.school_id || s.id) === String(activeChild.schoolId)) || null;
+            }
+            if (!targetSchoolObj && activeChild.schoolRegion && activeChild.schoolName) {
+                targetSchoolObj = window.schoolsDatabase.find(s => 
+                    s.school_name === activeChild.schoolName && 
+                    ((s.region || '').includes(activeChild.schoolRegion) || (s.district || '').includes(activeChild.schoolRegion) || activeChild.schoolRegion.includes(s.region || ''))
+                ) || null;
+            }
+            if (!targetSchoolObj && activeChild.schoolName) {
+                // 주의: includes() 사용 금지! (신원초등학교 검색 시 서울신원초등학교가 가로채는 문제 방지)
+                targetSchoolObj = window.schoolsDatabase.find(s => s.school_name === activeChild.schoolName) || null;
+            }
+        }
+
+        // 3순위: fallback
+        if (!targetSchoolObj) {
+            targetSchoolObj = window.selectedTargetSchool || mapSchoolObj;
+        }
+
+        const schoolName = targetSchoolObj ? targetSchoolObj.school_name : (activeChild?.schoolName || '서운중');
+        const shortSchool = schoolName.replace('학교', '');
+
+        let rankPercent = 18;
+        if (avg >= 95) rankPercent = 8;
+        else if (avg >= 90) rankPercent = 18;
+        else if (avg >= 85) rankPercent = 28;
+        else if (avg >= 80) rankPercent = 38;
+        else if (avg >= 75) rankPercent = 48;
+        else if (avg >= 70) rankPercent = 58;
+        else rankPercent = 75;
+
+        const rankEl = document.getElementById('schoolRankEstimateDisplay');
+        if (rankEl) {
+            rankEl.innerText = `${shortSchool} 상위 ${rankPercent}% 예상`;
+        }
+
+        // 안정성 배지
+        const stabEl = document.getElementById('stabilityBadgeDisplay');
+        if (stabEl) {
+            if (avg >= 90) {
+                stabEl.innerText = '상위권 안정';
+                stabEl.style.background = '#2563eb';
+            } else if (avg >= 80) {
+                stabEl.innerText = '중상위권 안정';
+                stabEl.style.background = '#3b82f6';
+            } else if (avg >= 70) {
+                stabEl.innerText = '중위권 유지';
+                stabEl.style.background = '#64748b';
+            } else {
+                stabEl.innerText = '보충 필요';
+                stabEl.style.background = '#ef4444';
+            }
+        }
+
+        // 배정/목표 학교 카드 표시
+        const targetSchoolDisplay = document.getElementById('targetSchoolNameDisplay');
+        if (targetSchoolDisplay) {
+            const chosen = targetSchoolObj || window.selectedTargetSchool;
+            if (chosen) {
+                const reg = chosen.region || chosen.district || '';
+                if (reg && !chosen.school_name.startsWith(reg)) {
+                    targetSchoolDisplay.innerText = `${reg} ${chosen.school_name}`;
+                } else {
+                    targetSchoolDisplay.innerText = chosen.school_name;
+                }
+            } else if (activeChild && activeChild.schoolName) {
+                const reg = activeChild.schoolRegion || '';
+                if (reg && !activeChild.schoolName.startsWith(reg)) {
+                    targetSchoolDisplay.innerText = `${reg} ${activeChild.schoolName}`;
+                } else {
+                    targetSchoolDisplay.innerText = activeChild.schoolName;
+                }
+            } else {
+                targetSchoolDisplay.innerText = '서초구 서운중학교';
+            }
+        }
+    }
+
+    // ==========================================
+    // 배정 / 목표 학교 검색 및 선택 모달 제어 로직
+    // ==========================================
+    const targetSchoolSelectModal = document.getElementById('targetSchoolSelectModal');
+    const inputTargetSchoolModalSearch = document.getElementById('inputTargetSchoolModalSearch');
+    const targetSchoolModalList = document.getElementById('targetSchoolModalList');
+
+    function openTargetSchoolSelectModal() {
+        if (!targetSchoolSelectModal) return;
+        targetSchoolSelectModal.style.display = 'flex';
+        if (inputTargetSchoolModalSearch) {
+            inputTargetSchoolModalSearch.value = '';
+            setTimeout(() => inputTargetSchoolModalSearch.focus(), 60);
+        }
+
+        // 학교 데이터 로딩 여부 체크
+        const allSchools = window.schoolsDatabase || (typeof schoolsDatabase !== 'undefined' ? schoolsDatabase : []) || (window.allSchoolsCache || []) || [];
+        if ((!allSchools || allSchools.length === 0) && typeof loadSchoolsDatabase === 'function') {
+            loadSchoolsDatabase().then(() => {
+                renderTargetSchoolModalList('');
+            }).catch(e => console.warn('학교 데이터 로드 대기 중 에러:', e));
+        }
+
+        renderTargetSchoolModalList('');
+    }
+    window.openTargetSchoolSelectModal = openTargetSchoolSelectModal;
+
+    function closeTargetSchoolSelectModal() {
+        if (targetSchoolSelectModal) {
+            targetSchoolSelectModal.style.display = 'none';
+        }
+    }
+    window.closeTargetSchoolSelectModal = closeTargetSchoolSelectModal;
+
+    if (targetSchoolSelectModal) {
+        targetSchoolSelectModal.addEventListener('click', (e) => {
+            if (e.target === targetSchoolSelectModal) {
+                closeTargetSchoolSelectModal();
+            }
+        });
+    }
+
+    if (inputTargetSchoolModalSearch) {
+        inputTargetSchoolModalSearch.addEventListener('input', (e) => {
+            renderTargetSchoolModalList(e.target.value.trim());
+        });
+    }
+
+    function renderTargetSchoolModalList(query) {
+        if (!targetSchoolModalList) return;
+        targetSchoolModalList.innerHTML = '';
+
+        const allSchools = window.schoolsDatabase || (typeof schoolsDatabase !== 'undefined' ? schoolsDatabase : []) || (window.allSchoolsCache || []) || [];
+        const cleanQuery = (query || '').toLowerCase().trim();
+
+        // 아직 학교 데이터가 비어있는 경우 비동기 로딩 대기
+        if ((!allSchools || allSchools.length === 0) && typeof loadSchoolsDatabase === 'function') {
+            targetSchoolModalList.innerHTML = `
+                <div style="text-align: center; padding: 40px 10px; color: #64748b; font-size: 13px;">
+                    학교 데이터베이스를 불러오는 중입니다... 잠시만 기다려주세요.
+                </div>
+            `;
+            loadSchoolsDatabase().then(() => {
+                renderTargetSchoolModalList(query);
+            }).catch(err => {
+                console.warn('학교 DB 로드 실패:', err);
+            });
+            return;
+        }
+
+        let filtered = [];
+        const queryTerms = cleanQuery.split(/\s+/).filter(Boolean);
+
+        if (queryTerms.length > 0) {
+            filtered = allSchools.filter(s => {
+                const name = (s.school_name || '').toLowerCase();
+                const region = (s.region || s.district || '').toLowerCase();
+                const fullText = `${region} ${name}`;
+                return queryTerms.every(term => fullText.includes(term));
+            }).slice(0, 50);
+        } else {
+            // 기본 인기 및 주요 중학교 추천 목록
+            const defaultKeywords = ['서운중', '대치중', '역삼중', '원촌중', '단국', '휘문', '중동', '압구정', '신사', '반포', '세화', '방배'];
+            filtered = allSchools.filter(s => defaultKeywords.some(k => (s.school_name || '').includes(k))).slice(0, 20);
+            if (filtered.length === 0) {
+                filtered = allSchools.slice(0, 20);
+            }
+        }
+
+        if (filtered.length === 0) {
+            targetSchoolModalList.innerHTML = `
+                <div style="text-align: center; padding: 40px 10px; color: #94a3b8; font-size: 13px;">
+                    검색된 학교가 없습니다.<br>
+                    <span style="font-size: 11.5px; color: #cbd5e1; margin-top: 4px; display: inline-block;">정확한 학교명이나 구(예: 서초구, 강남구, 고양시)를 입력해 보세요.</span>
+                </div>
+            `;
+            return;
+        }
+
+        const child = (typeof childProfiles !== 'undefined' && Array.isArray(childProfiles)) ? childProfiles.find(c => c.id === selectedChildId) : null;
+        const currentTargetSchoolId = (child && child.schoolId) || (window.selectedTargetSchool && (window.selectedTargetSchool.school_id || window.selectedTargetSchool.id)) || '';
+        const currentTargetName = child?.schoolName || window.selectedTargetSchool?.school_name || (typeof orchestrator !== 'undefined' && orchestrator?.state?.selectedSchool?.school_name) || '';
+
+        filtered.forEach(school => {
+            const schoolId = String(school.school_id || school.id || '');
+            const isSelected = currentTargetSchoolId
+                ? (schoolId === String(currentTargetSchoolId))
+                : (currentTargetName && school.school_name === currentTargetName);
+
+            const item = document.createElement('div');
+            item.style.cssText = `
+                background: ${isSelected ? '#eff6ff' : '#ffffff'};
+                border: 1px solid ${isSelected ? '#3b82f6' : '#e2e8f0'};
+                border-radius: 12px;
+                padding: 10px 14px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                cursor: pointer;
+                transition: all 0.15s ease;
+            `;
+            item.onmouseover = () => { if (!isSelected) item.style.borderColor = '#93c5fd'; };
+            item.onmouseout = () => { if (!isSelected) item.style.borderColor = '#e2e8f0'; };
+
+            const regionText = school.region || school.district || '서울';
+            const rateText = school.achievement_rate ? `성취도 ${school.achievement_rate}%` : (school.school_type || '중학교');
+
+            item.innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-size: 13px; font-weight: 700; color: #1e293b;">${school.school_name}</span>
+                        ${isSelected ? '<span style="font-size: 10px; background: #2563eb; color: white; padding: 1px 5px; border-radius: 4px; font-weight: 700;">현재 목표</span>' : ''}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #64748b;">
+                        <span>📍 ${regionText}</span>
+                        <span>·</span>
+                        <span style="color: #2563eb; font-weight: 600;">${rateText}</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-select-school-action" style="background: ${isSelected ? '#2563eb' : '#f1f5f9'}; color: ${isSelected ? '#ffffff' : '#334155'}; border: none; border-radius: 6px; padding: 5px 12px; font-size: 11.5px; font-weight: 700; cursor: pointer;">
+                    ${isSelected ? '선택됨' : '선택'}
+                </button>
+            `;
+
+            // 카드 영역 클릭 시 학교 선택
+            item.onclick = (e) => {
+                e.preventDefault();
+                selectTargetSchoolForChild(school);
+            };
+
+            // 내부 버튼 클릭 시에도 확실하게 학교 선택
+            const actionBtn = item.querySelector('.btn-select-school-action');
+            if (actionBtn) {
+                actionBtn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    selectTargetSchoolForChild(school);
+                };
+            }
+
+            targetSchoolModalList.appendChild(item);
+        });
+    }
+
+    async function selectTargetSchoolForChild(school) {
+        if (!school) return;
+
+        // 1. 현재 선택된 자녀 조회 (자녀 목록이 있으면 첫 번째 자녀를 기본 타겟으로 보완)
+        let child = (typeof childProfiles !== 'undefined' && Array.isArray(childProfiles)) ? childProfiles.find(c => c.id === selectedChildId) : null;
+        if (!child && typeof childProfiles !== 'undefined' && Array.isArray(childProfiles) && childProfiles.length > 0) {
+            child = childProfiles[0];
+            selectedChildId = child.id;
+        }
+
+        // 2. 전역 목표 학교 상태 즉시 지정
+        window.selectedTargetSchool = school;
+
+        // 3. 자녀가 있는 경우: 해당 자녀의 학교명, 고유 ID, 지역 갱신 및 DB 저장 (비동기 안전 처리)
+        if (child) {
+            child.schoolName = school.school_name;
+            child.schoolId = String(school.school_id || school.id || '');
+            child.schoolRegion = school.region || school.district || '';
+            try {
+                saveChildProfileToSupabase(child).catch(err => console.warn('자녀 프로필 DB 저장 비동기 오류:', err));
+            } catch (err) {
+                console.warn('saveChildProfileToSupabase 호출 실패:', err);
+            }
+            refreshChildSelectUI();
+        }
+
+        // 4. 대시보드 배정 / 목표 학교 텍스트 즉시 갱신 (자녀 유무 무관)
+        const targetSchoolDisplay = document.getElementById('targetSchoolNameDisplay');
+        if (targetSchoolDisplay) {
+            const reg = school.region || school.district || '';
+            if (reg && !school.school_name.startsWith(reg)) {
+                targetSchoolDisplay.innerText = `${reg} ${school.school_name}`;
+            } else {
+                targetSchoolDisplay.innerText = school.school_name;
+            }
+        }
+
+        // 5. 점수 분석 UI 갱신 (5과목 완벽 전달)
+        try {
+            const kor = child ? child.korean : 80;
+            const eng = child ? child.english : 80;
+            const math = child ? child.math : 80;
+            const soc = child ? (child.society ?? 80) : 80;
+            const sci = child ? (child.science ?? 80) : 80;
+            updateScoreAnalysisUI(kor, eng, math, soc, sci);
+        } catch (err) {
+            console.warn('updateScoreAnalysisUI 갱신 오류:', err);
+        }
+
+        // 6. 오케스트레이터 및 진단 연동 (예외 방어)
+        try {
+            if (typeof orchestrator !== 'undefined' && orchestrator.state) {
+                orchestrator.state.selectedSchool = school;
+                if (typeof orchestrator.selectSchool === 'function') {
+                    try {
+                        orchestrator.selectSchool(school);
+                    } catch (e) {
+                        console.warn('orchestrator.selectSchool 오류 무시:', e);
+                    }
+                }
+                const scores = (child && { 
+                    korean: child.korean || 80, 
+                    english: child.english || 80, 
+                    math: child.math || 80,
+                    society: child.society ?? 80,
+                    science: child.science ?? 80
+                }) ||
+                (orchestrator.state.childProfile && orchestrator.state.childProfile.scores) ||
+                { korean: 80, english: 80, math: 80, society: 80, science: 80 };
+                
+                if (typeof orchestrator.childPerformanceDiagnosis === 'function') {
+                    const result = orchestrator.childPerformanceDiagnosis(scores);
+                    if (typeof renderDiagnosisResults === 'function') {
+                        renderDiagnosisResults(result);
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn('오케스트레이터 진단 연동 오류 무시:', err);
+        }
+
+        // 7. 지도 부드러운 이동 (카카오맵 및 Leaflet 안전 연동)
+        try {
+            if (school.lat && school.lng) {
+                if (typeof kakao !== 'undefined' && kakao.maps && typeof kakaoMap !== 'undefined' && kakaoMap) {
+                    kakaoMap.panTo(new kakao.maps.LatLng(school.lat, school.lng));
+                } else if (window.map && typeof window.map.flyTo === 'function') {
+                    window.map.flyTo([school.lat, school.lng], 15);
+                }
+            }
+        } catch (err) {
+            console.warn('지도 이동 오류 무시:', err);
+        }
+
+        // 8. 모달 즉시 닫기
+        closeTargetSchoolSelectModal();
+
+        // 9. 사용자 알림
+        const displayName = child ? `${child.name}의 ` : '';
+        const regText = school.region || school.district || '';
+        const fullDisplay = (regText && !school.school_name.startsWith(regText)) ? `${regText} ${school.school_name}` : school.school_name;
+        alert(`${displayName}목표 학교가 [${fullDisplay}](으)로 설정되었습니다.`);
+    }
+    window.selectTargetSchoolForChild = selectTargetSchoolForChild;
+
+    // 학교 변경 버튼 클릭 핸들러 (모달 오픈)
+    window.handleChangeSchoolClick = function() {
+        openTargetSchoolSelectModal();
+    };
 
     function refreshChildSelectUI() {
         if (settingsChildSelect) settingsChildSelect.innerHTML = '';
@@ -512,6 +1304,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 analysisChildSelect.appendChild(opt2);
             }
         });
+
+        renderChildPillTabs();
         updateFormWithSelectedChild();
     }
 
@@ -529,27 +1323,33 @@ document.addEventListener('DOMContentLoaded', () => {
             if (settingsChildNamePc) settingsChildNamePc.value = '';
             if (settingsChildGrade) settingsChildGrade.value = 'm2';
             if (settingsChildGradePc) settingsChildGradePc.value = 'm2';
+            if (settingsChildTargetMajor) settingsChildTargetMajor.value = '';
+            if (settingsChildTargetMajorPc) settingsChildTargetMajorPc.value = '';
+            if (settingsChildAllergies) settingsChildAllergies.value = '';
+            if (settingsChildAllergiesPc) settingsChildAllergiesPc.value = '';
             if (settingsChildKor) settingsChildKor.value = 80;
             if (settingsChildKorPc) settingsChildKorPc.value = 80;
             if (settingsChildEng) settingsChildEng.value = 80;
             if (settingsChildEngPc) settingsChildEngPc.value = 80;
             if (settingsChildMath) settingsChildMath.value = 80;
             if (settingsChildMathPc) settingsChildMathPc.value = 80;
+            if (settingsChildSoc) settingsChildSoc.value = 80;
+            if (settingsChildSocPc) settingsChildSocPc.value = 80;
+            if (settingsChildSci) settingsChildSci.value = 80;
+            if (settingsChildSciPc) settingsChildSciPc.value = 80;
 
             const lblKor = document.getElementById('valSettingsChildKor');
             const lblEng = document.getElementById('valSettingsChildEng');
             const lblMath = document.getElementById('valSettingsChildMath');
+            const lblSoc = document.getElementById('valSettingsChildSoc');
+            const lblSci = document.getElementById('valSettingsChildSci');
             if (lblKor) lblKor.innerText = '-점';
             if (lblEng) lblEng.innerText = '-점';
             if (lblMath) lblMath.innerText = '-점';
+            if (lblSoc) lblSoc.innerText = '-점';
+            if (lblSci) lblSci.innerText = '-점';
 
-            const lblKorPc = document.getElementById('valSettingsChildKor-pc');
-            const lblEngPc = document.getElementById('valSettingsChildEng-pc');
-            const lblMathPc = document.getElementById('valSettingsChildMath-pc');
-            if (lblKorPc) lblKorPc.innerText = '-점';
-            if (lblEngPc) lblEngPc.innerText = '-점';
-            if (lblMathPc) lblMathPc.innerText = '-점';
-
+            updateScoreAnalysisUI(80, 80, 80, 80, 80);
             syncActiveChildWithOrchestrator(null);
             return;
         }
@@ -558,22 +1358,61 @@ document.addEventListener('DOMContentLoaded', () => {
             profileNameEl.innerText = `${child.name} 학부모님 (${child.grade.toUpperCase().replace('E', '초등 ').replace('M', '중등 ').replace('H', '고등 ')})`;
         }
         if (profileScoresEl) {
-            profileScoresEl.innerText = `성적: 국 ${child.korean} / 영 ${child.english} / 수 ${child.math}`;
+            const socVal = child.society ?? 80;
+            const sciVal = child.science ?? 80;
+            profileScoresEl.innerText = `성적: 국 ${child.korean} / 영 ${child.english} / 수 ${child.math} / 사 ${socVal} / 과 ${sciVal}`;
         }
 
+        const childAllergiesText = Array.isArray(child.allergies) ? child.allergies.join(', ') : (child.allergies || '');
+        const currentSoc = (child.society !== undefined && child.society !== null) ? child.society : 80;
+        const currentSci = (child.science !== undefined && child.science !== null) ? child.science : 80;
+        child.society = currentSoc;
+        child.science = currentSci;
+
         // 모바일 입력 폼 바인딩
-        if (settingsChildName) settingsChildName.value = child.name;
-        if (settingsChildGrade) settingsChildGrade.value = child.grade;
+        if (settingsChildName) settingsChildName.value = child.name || '';
+        if (settingsChildGrade) settingsChildGrade.value = child.grade || 'm2';
+        if (settingsChildTargetMajor) settingsChildTargetMajor.value = child.targetMajor || '';
+        if (settingsChildAllergies) settingsChildAllergies.value = childAllergiesText;
         if (settingsChildKor) settingsChildKor.value = child.korean;
         if (settingsChildEng) settingsChildEng.value = child.english;
         if (settingsChildMath) settingsChildMath.value = child.math;
+        if (settingsChildSoc) settingsChildSoc.value = child.society;
+        if (settingsChildSci) settingsChildSci.value = child.science;
 
         // PC 입력 폼 바인딩
-        if (settingsChildNamePc) settingsChildNamePc.value = child.name;
-        if (settingsChildGradePc) settingsChildGradePc.value = child.grade;
+        if (settingsChildNamePc) settingsChildNamePc.value = child.name || '';
+        if (settingsChildGradePc) settingsChildGradePc.value = child.grade || 'm2';
+        if (settingsChildTargetMajorPc) settingsChildTargetMajorPc.value = child.targetMajor || '';
+        if (settingsChildAllergiesPc) settingsChildAllergiesPc.value = childAllergiesText;
         if (settingsChildKorPc) settingsChildKorPc.value = child.korean;
         if (settingsChildEngPc) settingsChildEngPc.value = child.english;
         if (settingsChildMathPc) settingsChildMathPc.value = child.math;
+        if (settingsChildSocPc) settingsChildSocPc.value = child.society;
+        if (settingsChildSciPc) settingsChildSciPc.value = child.science;
+
+        // PC & 모바일 숫자 직접 입력 인풋 바인딩
+        const inputChildKorPc = document.getElementById('inputSettingsChildKor-pc');
+        const inputChildEngPc = document.getElementById('inputSettingsChildEng-pc');
+        const inputChildMathPc = document.getElementById('inputSettingsChildMath-pc');
+        const inputChildSocPc = document.getElementById('inputSettingsChildSoc-pc');
+        const inputChildSciPc = document.getElementById('inputSettingsChildSci-pc');
+        const inputChildKorMobile = document.getElementById('inputSettingsChildKor');
+        const inputChildEngMobile = document.getElementById('inputSettingsChildEng');
+        const inputChildMathMobile = document.getElementById('inputSettingsChildMath');
+        const inputChildSocMobile = document.getElementById('inputSettingsChildSoc');
+        const inputChildSciMobile = document.getElementById('inputSettingsChildSci');
+
+        if (inputChildKorPc) inputChildKorPc.value = child.korean;
+        if (inputChildEngPc) inputChildEngPc.value = child.english;
+        if (inputChildMathPc) inputChildMathPc.value = child.math;
+        if (inputChildSocPc) inputChildSocPc.value = child.society;
+        if (inputChildSciPc) inputChildSciPc.value = child.science;
+        if (inputChildKorMobile) inputChildKorMobile.value = child.korean;
+        if (inputChildEngMobile) inputChildEngMobile.value = child.english;
+        if (inputChildMathMobile) inputChildMathMobile.value = child.math;
+        if (inputChildSocMobile) inputChildSocMobile.value = child.society;
+        if (inputChildSciMobile) inputChildSciMobile.value = child.science;
         
         // 자녀설정의 학년에 따라 학교급 필터 기본값 자동 선택
         const schoolTypeFilter = document.getElementById('schoolTypeFilter');
@@ -594,44 +1433,145 @@ document.addEventListener('DOMContentLoaded', () => {
         const lblKor = document.getElementById('valSettingsChildKor');
         const lblEng = document.getElementById('valSettingsChildEng');
         const lblMath = document.getElementById('valSettingsChildMath');
+        const lblSoc = document.getElementById('valSettingsChildSoc');
+        const lblSci = document.getElementById('valSettingsChildSci');
         if (lblKor) lblKor.innerText = `${child.korean}점`;
         if (lblEng) lblEng.innerText = `${child.english}점`;
         if (lblMath) lblMath.innerText = `${child.math}점`;
+        if (lblSoc) lblSoc.innerText = `${child.society}점`;
+        if (lblSci) lblSci.innerText = `${child.science}점`;
 
-        // PC 점수 텍스트(Label) 동적 갱신
-        const lblKorPc = document.getElementById('valSettingsChildKor-pc');
-        const lblEngPc = document.getElementById('valSettingsChildEng-pc');
-        const lblMathPc = document.getElementById('valSettingsChildMath-pc');
-        if (lblKorPc) lblKorPc.innerText = `${child.korean}점`;
-        if (lblEngPc) lblEngPc.innerText = `${child.english}점`;
-        if (lblMathPc) lblMathPc.innerText = `${child.math}점`;
+        // 자녀의 목표 학교 객체를 window.selectedTargetSchool에 동기화 (schoolId 및 지역 우선 매칭)
+        if (window.schoolsDatabase && window.schoolsDatabase.length > 0) {
+            let matched = null;
+            if (child.schoolId) {
+                matched = window.schoolsDatabase.find(s => String(s.school_id || s.id) === String(child.schoolId));
+            }
+            if (!matched && child.schoolRegion && child.schoolName) {
+                matched = window.schoolsDatabase.find(s => 
+                    s.school_name === child.schoolName && 
+                    ((s.region || '').includes(child.schoolRegion) || (s.district || '').includes(child.schoolRegion) || child.schoolRegion.includes(s.region || ''))
+                );
+            }
+            if (!matched && child.schoolName) {
+                matched = window.schoolsDatabase.find(s => s.school_name === child.schoolName);
+            }
+            if (matched) {
+                window.selectedTargetSchool = matched;
+            }
+        }
+
+        // PC 점수, 등급, 평균 분석 실시간 갱신 (시안 100% 매칭)
+        updateScoreAnalysisUI(child.korean, child.english, child.math, child.society, child.science);
 
         // 현재 선택된 자녀 정보로 Orchestrator 상태 동기화 및 사이드바 인풋 동기화
         syncActiveChildWithOrchestrator(child);
     }
 
-    // 슬라이더 및 입력 필드 PC-모바일 실시간 양방향 동기화 및 라벨 즉각 갱신
-    const syncInputs = (el1, el2, isSlider, label1, label2) => {
+    // 이름 및 학년 입력 필드 PC-모바일 실시간 양방향 동기화
+    const syncTextInputs = (el1, el2, key) => {
         if (!el1 || !el2) return;
-        
-        const updateVal = (val) => {
+        const update = (val) => {
             el1.value = val;
             el2.value = val;
-            if (isSlider) {
-                if (label1) label1.innerText = `${val}점`;
-                if (label2) label2.innerText = `${val}점`;
+            const child = childProfiles.find(c => c.id === selectedChildId);
+            if (child) {
+                child[key] = val;
+                renderChildPillTabs();
+            }
+        };
+        el1.addEventListener('input', (e) => update(e.target.value));
+        el2.addEventListener('input', (e) => update(e.target.value));
+        el1.addEventListener('change', (e) => update(e.target.value));
+        el2.addEventListener('change', (e) => update(e.target.value));
+    };
+
+    syncTextInputs(settingsChildName, settingsChildNamePc, 'name');
+    syncTextInputs(settingsChildGrade, settingsChildGradePc, 'grade');
+    syncTextInputs(settingsChildTargetMajor, settingsChildTargetMajorPc, 'targetMajor');
+    syncTextInputs(settingsChildAllergies, settingsChildAllergiesPc, 'allergies');
+
+    // 과목 점수 실시간 양방향 동기화 (숫자 직접 입력 인풋 + 슬라이더 + 라벨 + 학업 진단)
+    function bindScoreSync(subjectKey, sliderMobile, sliderPc, inputMobile, inputPc, labelMobile, labelPc) {
+        const update = (rawVal) => {
+            let val = parseInt(rawVal, 10);
+            if (isNaN(val)) val = 0;
+            val = Math.max(0, Math.min(100, val));
+
+            if (sliderMobile && Number(sliderMobile.value) !== val) sliderMobile.value = val;
+            if (sliderPc && Number(sliderPc.value) !== val) sliderPc.value = val;
+            if (inputMobile && Number(inputMobile.value) !== val) inputMobile.value = val;
+            if (inputPc && Number(inputPc.value) !== val) inputPc.value = val;
+            if (labelMobile) labelMobile.innerText = `${val}점`;
+            if (labelPc) labelPc.innerText = val;
+
+            const child = childProfiles.find(c => c.id === selectedChildId);
+            if (child) {
+                child[subjectKey] = val;
+                updateScoreAnalysisUI(child.korean, child.english, child.math, child.society, child.science);
+                syncActiveChildWithOrchestrator(child);
             }
         };
 
-        el1.addEventListener('input', (e) => updateVal(e.target.value));
-        el2.addEventListener('input', (e) => updateVal(e.target.value));
-    };
+        [sliderMobile, sliderPc, inputMobile, inputPc].forEach(el => {
+            if (el) {
+                el.addEventListener('input', (e) => update(e.target.value));
+                if (el.type === 'number') {
+                    el.addEventListener('change', (e) => update(e.target.value));
+                }
+            }
+        });
+    }
 
-    syncInputs(settingsChildName, settingsChildNamePc, false);
-    syncInputs(settingsChildGrade, settingsChildGradePc, false);
-    syncInputs(settingsChildKor, settingsChildKorPc, true, document.getElementById('valSettingsChildKor'), document.getElementById('valSettingsChildKor-pc'));
-    syncInputs(settingsChildEng, settingsChildEngPc, true, document.getElementById('valSettingsChildEng'), document.getElementById('valSettingsChildEng-pc'));
-    syncInputs(settingsChildMath, settingsChildMathPc, true, document.getElementById('valSettingsChildMath'), document.getElementById('valSettingsChildMath-pc'));
+    bindScoreSync(
+        'korean',
+        settingsChildKor,
+        settingsChildKorPc,
+        document.getElementById('inputSettingsChildKor'),
+        document.getElementById('inputSettingsChildKor-pc'),
+        document.getElementById('valSettingsChildKor'),
+        document.getElementById('valSettingsChildKor-pc')
+    );
+
+    bindScoreSync(
+        'english',
+        settingsChildEng,
+        settingsChildEngPc,
+        document.getElementById('inputSettingsChildEng'),
+        document.getElementById('inputSettingsChildEng-pc'),
+        document.getElementById('valSettingsChildEng'),
+        document.getElementById('valSettingsChildEng-pc')
+    );
+
+    bindScoreSync(
+        'math',
+        settingsChildMath,
+        settingsChildMathPc,
+        document.getElementById('inputSettingsChildMath'),
+        document.getElementById('inputSettingsChildMath-pc'),
+        document.getElementById('valSettingsChildMath'),
+        document.getElementById('valSettingsChildMath-pc')
+    );
+
+    bindScoreSync(
+        'society',
+        settingsChildSoc,
+        settingsChildSocPc,
+        document.getElementById('inputSettingsChildSoc'),
+        document.getElementById('inputSettingsChildSoc-pc'),
+        document.getElementById('valSettingsChildSoc'),
+        document.getElementById('valSettingsChildSoc-pc')
+    );
+
+    bindScoreSync(
+        'science',
+        settingsChildSci,
+        settingsChildSciPc,
+        document.getElementById('inputSettingsChildSci'),
+        document.getElementById('inputSettingsChildSci-pc'),
+        document.getElementById('valSettingsChildSci'),
+        document.getElementById('valSettingsChildSci-pc')
+    );
 
     function syncActiveChildWithOrchestrator(child) {
         if (!child) return;
@@ -640,7 +1580,9 @@ document.addEventListener('DOMContentLoaded', () => {
         orchestrator.state.childProfile.scores = {
             korean: child.korean,
             english: child.english,
-            math: child.math
+            math: child.math,
+            society: child.society ?? 80,
+            science: child.science ?? 80
         };
 
         const elGrade = document.getElementById('childGrade');
@@ -658,6 +1600,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+
     // PC 및 모바일 셀렉트 변경 시 양방향 싱크
     if (settingsChildSelect) {
         settingsChildSelect.addEventListener('change', () => {
@@ -674,27 +1617,77 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 자녀 추가 버튼 이벤트
+    // 자녀 추가 버튼 이벤트 (DB user_neis_profiles & user_student_grades 연동)
     const btnAddNewChild = document.getElementById('btnAddNewChild');
     const btnAddNewChildPc = document.getElementById('btnAddNewChild-pc');
-    const onAddNewChild = () => {
-        const newId = `child_${Date.now()}`;
-        const newChild = {
-            id: newId,
-            name: `자녀 ${childProfiles.length + 1}`,
-            grade: 'm2',
-            korean: 80,
-            english: 80,
-            math: 80
-        };
-        childProfiles.push(newChild);
-        selectedChildId = newId;
-        refreshChildSelectUI();
+    const onAddNewChild = async () => {
+        try {
+            const userId = await getEffectiveUserId();
+            const childNum = childProfiles.length + 1;
+            const newName = `자녀 ${childNum}`;
+
+            // DB user_neis_profiles 테이블에 직접 자녀 생성
+            const res = await fetch(`${DB_SUPABASE_URL}/rest/v1/user_neis_profiles`, {
+                method: 'POST',
+                headers: getDbHeaders({ 'Prefer': 'return=representation' }),
+                body: JSON.stringify({
+                    user_id: userId,
+                    student_name: newName,
+                    school_name: '서운중학교',
+                    grade: 2,
+                    class_num: 1,
+                    student_num: 1,
+                    is_connected: true
+                })
+            });
+
+            if (res.ok) {
+                const inserted = await res.json();
+                if (inserted && inserted.length > 0) {
+                    const newProfile = inserted[0];
+                    const newChild = {
+                        id: newProfile.id,
+                        name: newProfile.student_name,
+                        schoolName: newProfile.school_name,
+                        grade: 'm' + (newProfile.grade || 2),
+                        korean: 80,
+                        english: 80,
+                        math: 80,
+                        society: 80,
+                        science: 80
+                    };
+
+                    // DB user_student_grades 기본 성적 저장 (5과목)
+                    await fetch(`${DB_SUPABASE_URL}/rest/v1/user_student_grades`, {
+                        method: 'POST',
+                        headers: getDbHeaders({ 'Prefer': 'return=representation' }),
+                        body: JSON.stringify([
+                            { profile_id: newProfile.id, semester: '2026-1', subject_name: '국어', raw_score: 80, school_avg: 75, std_dev: 12, achievement: 'B' },
+                            { profile_id: newProfile.id, semester: '2026-1', subject_name: '영어', raw_score: 80, school_avg: 72, std_dev: 14, achievement: 'B' },
+                            { profile_id: newProfile.id, semester: '2026-1', subject_name: '수학', raw_score: 80, school_avg: 70, std_dev: 15, achievement: 'B' },
+                            { profile_id: newProfile.id, semester: '2026-1', subject_name: '사회', raw_score: 80, school_avg: 74, std_dev: 14, achievement: 'B' },
+                            { profile_id: newProfile.id, semester: '2026-1', subject_name: '과학', raw_score: 80, school_avg: 71, std_dev: 15, achievement: 'B' }
+                        ])
+                    });
+
+                    childProfiles.push(newChild);
+                    selectedChildId = newChild.id;
+                    window.childProfiles = childProfiles;
+                    window.selectedChildId = selectedChildId;
+                    localStorage.removeItem('learnmap_child_profiles');
+                    refreshChildSelectUI();
+                }
+            } else {
+                console.error('DB 자녀 생성 실패:', await res.text());
+            }
+        } catch (e) {
+            console.error('새 자녀 생성 중 오류 발생:', e);
+        }
     };
     if (btnAddNewChild) btnAddNewChild.addEventListener('click', onAddNewChild);
     if (btnAddNewChildPc) btnAddNewChildPc.addEventListener('click', onAddNewChild);
 
-    // 자녀 삭제 버튼 이벤트
+    // 자녀 삭제 버튼 이벤트 (DB user_neis_profiles 삭제)
     const btnDeleteSelectedChild = document.getElementById('btnDeleteSelectedChild');
     const btnDeleteSelectedChildPc = document.getElementById('btnDeleteSelectedChild-pc');
     const onDeleteChild = async () => {
@@ -702,7 +1695,10 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('삭제할 자녀가 선택되지 않았습니다.');
             return;
         }
-        if (await confirm('선택된 자녀 정보를 삭제하시겠습니까?')) {
+        const targetChild = childProfiles.find(c => c.id === selectedChildId);
+        const childName = targetChild ? targetChild.name : '선택된 자녀';
+
+        if (await confirm(`${childName} 자녀 정보를 정말 삭제하시겠습니까?`)) {
             const targetId = selectedChildId;
             childProfiles = childProfiles.filter(c => c.id !== targetId);
             
@@ -718,11 +1714,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.removeItem('learnmap_default_child_id');
             }
             
+            window.childProfiles = childProfiles;
+            window.selectedChildId = selectedChildId;
+
+            // Supabase DB에서 삭제 (CASCADE 정책으로 성적 테이블도 자동 삭제)
             await deleteChildProfileFromSupabase(targetId);
-            saveChildProfilesToLocalStorage();
+            localStorage.removeItem('learnmap_child_profiles');
             refreshChildSelectUI();
+
+            if (typeof window.updateAuthUI === 'function') {
+                window.updateAuthUI();
+            }
+
+            alert(`${childName} 자녀 정보가 DB에서 성공적으로 삭제되었습니다.`);
         }
     };
+    window.handleDeleteCurrentChild = onDeleteChild;
     if (btnDeleteSelectedChild) btnDeleteSelectedChild.addEventListener('click', onDeleteChild);
     if (btnDeleteSelectedChildPc) btnDeleteSelectedChildPc.addEventListener('click', onDeleteChild);
 
@@ -759,31 +1766,99 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 자녀 성적 저장 및 동기화 버튼 클릭 이벤트 (PC/모바일 공용)
+    // 자녀 성적 저장 및 DB 동기화 버튼 클릭 이벤트 (PC/모바일 공용)
     const btnSaveSettingsScores = document.getElementById('btnSaveSettingsScores');
     const btnSaveSettingsScoresPc = document.getElementById('btnSaveSettingsScores-pc');
     const onSaveSettingsScores = async () => {
-        const child = childProfiles.find(c => c.id === selectedChildId);
-        if (!child) return;
+        let child = childProfiles.find(c => c.id === selectedChildId);
+        if (!child) {
+            const tempId = 'child_' + Date.now();
+            child = {
+                id: tempId,
+                name: '자녀',
+                schoolName: '서운중학교',
+                grade: 'm2',
+                korean: 80,
+                english: 80,
+                math: 80,
+                society: 80,
+                science: 80
+            };
+            childProfiles.push(child);
+            selectedChildId = child.id;
+        }
 
-        const elModalName = document.getElementById('settingsChildName');
-        const elModalGrade = document.getElementById('settingsChildGrade');
-        const elModalKor = document.getElementById('settingsChildKor');
-        const elModalEng = document.getElementById('settingsChildEng');
-        const elModalMath = document.getElementById('settingsChildMath');
+        const elModalNamePc = document.getElementById('settingsChildName-pc');
+        const elModalNameMob = document.getElementById('settingsChildName');
+        const elModalName = (elModalNamePc && elModalNamePc.offsetParent !== null) ? elModalNamePc : (elModalNameMob || elModalNamePc);
+
+        const elModalGradePc = document.getElementById('settingsChildGrade-pc');
+        const elModalGradeMob = document.getElementById('settingsChildGrade');
+        const elModalGrade = (elModalGradePc && elModalGradePc.offsetParent !== null) ? elModalGradePc : (elModalGradeMob || elModalGradePc);
+
+        const elModalMajorPc = document.getElementById('settingsChildTargetMajor-pc');
+        const elModalMajorMob = document.getElementById('settingsChildTargetMajor');
+        const elModalMajor = (elModalMajorPc && elModalMajorPc.offsetParent !== null) ? elModalMajorPc : (elModalMajorMob || elModalMajorPc);
+
+        const elModalAllergiesPc = document.getElementById('settingsChildAllergies-pc');
+        const elModalAllergiesMob = document.getElementById('settingsChildAllergies');
+        const elModalAllergies = (elModalAllergiesPc && elModalAllergiesPc.offsetParent !== null) ? elModalAllergiesPc : (elModalAllergiesMob || elModalAllergiesPc);
+
+        const elModalKor = document.getElementById('inputSettingsChildKor-pc') || document.getElementById('settingsChildKor-pc') || document.getElementById('settingsChildKor');
+        const elModalEng = document.getElementById('inputSettingsChildEng-pc') || document.getElementById('settingsChildEng-pc') || document.getElementById('settingsChildEng');
+        const elModalMath = document.getElementById('inputSettingsChildMath-pc') || document.getElementById('settingsChildMath-pc') || document.getElementById('settingsChildMath');
+        const elModalSoc = document.getElementById('inputSettingsChildSoc-pc') || document.getElementById('settingsChildSoc-pc') || document.getElementById('settingsChildSoc');
+        const elModalSci = document.getElementById('inputSettingsChildSci-pc') || document.getElementById('settingsChildSci-pc') || document.getElementById('settingsChildSci');
 
         child.name = elModalName ? elModalName.value.trim() || '자녀' : '자녀';
-        child.grade = elModalGrade ? elModalGrade.value : 'm2';
-        child.korean = elModalKor ? parseInt(elModalKor.value) || 0 : 0;
-        child.english = elModalEng ? parseInt(elModalEng.value) || 0 : 0;
-        child.math = elModalMath ? parseInt(elModalMath.value) || 0 : 0;
+        child.grade = elModalGrade ? elModalGrade.value : (child.grade || 'm2');
+        child.targetMajor = elModalMajor ? elModalMajor.value.trim() : (child.targetMajor || '');
+        const rawAllergies = elModalAllergies ? elModalAllergies.value.trim() : '';
+        child.allergies = rawAllergies ? rawAllergies.split(',').map(s => s.trim()).filter(Boolean) : (child.allergies || []);
+        child.korean = elModalKor ? parseInt(elModalKor.value) || 0 : (child.korean || 0);
+        child.english = elModalEng ? parseInt(elModalEng.value) || 0 : (child.english || 0);
+        child.math = elModalMath ? parseInt(elModalMath.value) || 0 : (child.math || 0);
+        child.society = elModalSoc ? parseInt(elModalSoc.value) || 0 : (child.society || 80);
+        child.science = elModalSci ? parseInt(elModalSci.value) || 0 : (child.science || 80);
 
-        // 로컬 스토리지 저장 및 동기화
-        saveChildProfilesToLocalStorage();
+        // DB에 자녀 정보 및 성적 저장 (user_neis_profiles & user_student_grades)
+        await saveChildProfileToSupabase(child);
         syncActiveChildWithOrchestrator(child);
 
-        // Supabase 비동기 업서트 처리
-        await saveChildProfileToSupabase(child);
+        // 나이스(NEIS) 마이데이터 융합 진단 로컬 캐시도 함께 동기화
+        const parsedGradeNum = parseInt(String(child.grade).replace(/\D/g, ''), 10) || 2;
+        const avg5 = Math.round((child.korean + child.math + child.english + child.society + child.science) / 5);
+        const neisProf = {
+            isConnected: true,
+            studentInfo: {
+                name: child.name,
+                schoolName: child.schoolName || '서운중학교',
+                grade: parsedGradeNum,
+                targetMajor: child.targetMajor || '일반 / 미정',
+                allergies: child.allergies || []
+            },
+            grades: [
+                { subject: '국어', rawScore: child.korean, writtenScore: child.korean, perfScore: child.korean, avg: 75.0, std: 14.0, achievement: calcAchievement(child.korean) },
+                { subject: '수학', rawScore: child.math, writtenScore: child.math, perfScore: child.math, avg: 70.0, std: 16.0, achievement: calcAchievement(child.math) },
+                { subject: '영어', rawScore: child.english, writtenScore: child.english, perfScore: child.english, avg: 72.0, std: 15.0, achievement: calcAchievement(child.english) },
+                { subject: '사회', rawScore: child.society, writtenScore: child.society, perfScore: child.society, avg: 74.0, std: 14.0, achievement: calcAchievement(child.society) },
+                { subject: '과학', rawScore: child.science, writtenScore: child.science, perfScore: child.science, avg: 71.0, std: 15.0, achievement: calcAchievement(child.science) }
+            ],
+            schoolRecord: {
+                strengths: ['수업 태도 우수', '자기주도 학습 적극성'],
+                weaknesses: ['심화 서술형 문항 연습 권장'],
+                competencyScores: { academic: avg5, majorSuitability: 82, community: 88 },
+                keywords: ['성실성', '성장 잠재력']
+            },
+            schedule: [
+                { type: 'exam', title: '중간고사 지필평가', date: '2026-10-15', detail: `${child.schoolName || '서운중학교'} 전 과목 지필평가` }
+            ],
+            attendance: { totalDays: 130, unexcusedAbsence: 0, unexcusedLateness: 0, status: '정상 (개근 유지 중)' },
+            health: { papsGrade: 1, bmiStatus: '표준', todayMenu: [] }
+        };
+        try {
+            localStorage.setItem('learnmap_neis_local_profile', JSON.stringify(neisProf));
+        } catch(e) {}
 
         // 학업 진단 다시 실행 (선택된 학교가 있을 때)
         if (orchestrator.state.selectedSchool && typeof orchestrator.childPerformanceDiagnosis === 'function') {
@@ -807,11 +1882,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnSaveSettingsScores) btnSaveSettingsScores.addEventListener('click', onSaveSettingsScores);
     if (btnSaveSettingsScoresPc) btnSaveSettingsScoresPc.addEventListener('click', onSaveSettingsScores);
 
-    // 초기 로딩 시 자녀 정보 연동
-    loadChildProfilesFromLocalStorage();
-    if (supabase) {
-        loadChildProfilesFromSupabase();
-    }
+    // 초기 로딩 시 Supabase DB로부터 자녀 정보 및 성적 실시간 연동
+    loadChildProfilesFromSupabase();
 
     const otherFilters = ['profileRecommendFilter', 'commuteRadiusFilter', 'trendUpwardCheckbox', 'filterClassSizePreset', 'filterStudentTrend', 'filterSpecialClass'];
     otherFilters.forEach(id => {
@@ -2927,18 +3999,41 @@ document.addEventListener('DOMContentLoaded', () => {
         return { score, level, desc: matchDesc, warning };
     }
 
+    window.openInquiryCard = function(cardId) {
+        const target = document.getElementById(cardId);
+        if (!target) return;
+        target.style.display = 'block';
+        
+        const welcome = document.getElementById('welcomeCard');
+        if (welcome) welcome.style.display = 'none';
+        const school = document.getElementById('schoolCard');
+        if (school) school.style.display = 'none';
+        const serviceCard = document.getElementById('serviceInquiryCard');
+        if (serviceCard) serviceCard.style.display = 'none';
+        const settings = document.getElementById('settingsModal');
+        if (settings) settings.style.display = 'none';
+    };
+
     window.closeInquiryCard = function(cardId) {
-        document.getElementById(cardId).style.display = 'none';
-        document.getElementById('settingsModal').style.display = 'block';
+        const target = document.getElementById(cardId);
+        if (target) target.style.display = 'none';
         
         // 이전 선택되었던 카드 복구
         const isSchoolSelected = orchestrator && orchestrator.state && orchestrator.state.selectedSchool;
         if (isSchoolSelected) {
-            document.getElementById('schoolCard').style.display = 'block';
-            document.getElementById('welcomeCard').style.display = 'none';
+            const sc = document.getElementById('schoolCard');
+            if (sc) sc.style.display = 'block';
+            const wc = document.getElementById('welcomeCard');
+            if (wc) wc.style.display = 'none';
+            const sic = document.getElementById('serviceInquiryCard');
+            if (sic) sic.style.display = 'none';
         } else {
-            document.getElementById('welcomeCard').style.display = 'block';
-            document.getElementById('schoolCard').style.display = 'none';
+            const wc = document.getElementById('welcomeCard');
+            if (wc) wc.style.display = 'block';
+            const sc = document.getElementById('schoolCard');
+            if (sc) sc.style.display = 'none';
+            const sic = document.getElementById('serviceInquiryCard');
+            if (sic) sic.style.display = 'block';
         }
     };
 
@@ -3065,6 +4160,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (academyRegisterCard) academyRegisterCard.style.display = 'none';
 
         welcomeCard.style.display = 'none';
+        const serviceInquiryCardEl = document.getElementById('serviceInquiryCard');
+        if (serviceInquiryCardEl) serviceInquiryCardEl.style.display = 'none';
         childFormCard.style.display = 'none';
         diagnosisResultCard.style.display = 'none';
         schoolCard.style.display = 'block';
@@ -6648,6 +7745,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (childFormCard) childFormCard.style.display = 'none';
             if (diagnosisResultCard) diagnosisResultCard.style.display = 'none';
             if (welcomeCard) welcomeCard.style.display = 'block';
+            const serviceInquiryCardEl = document.getElementById('serviceInquiryCard');
+            if (serviceInquiryCardEl) serviceInquiryCardEl.style.display = 'block';
         }
 
         // Close accordion if open (PC 환경에서만 초기화 시 닫음)
@@ -8369,6 +9468,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (childFormCard) childFormCard.style.display = 'none';
             if (diagnosisResultCard) diagnosisResultCard.style.display = 'none';
             if (welcomeCard) welcomeCard.style.display = 'block';
+            const serviceInquiryCardEl = document.getElementById('serviceInquiryCard');
+            if (serviceInquiryCardEl) serviceInquiryCardEl.style.display = 'block';
             
             // 모바일 환경일 경우, 학교 카드가 닫힐 때 상세페이지(사이드바)도 자동으로 함께 숨김 처리하여 지도로 복귀
             if (window.innerWidth <= 1024) {
@@ -12826,6 +13927,67 @@ function initAuthModule() {
         if (authModal) authModal.style.display = 'none';
     };
 
+    // 사이드바 로그인 창 열기 도우미 함수
+    window.openSidebarLogin = function() {
+        // 1. 전체 화면 중앙 모달이 켜져 있다면 닫기
+        if (typeof window.closeAuthModal === 'function') {
+            window.closeAuthModal();
+        }
+
+        // 2. 사이드바가 닫혀있거나 모바일인 경우 사이드바 노출
+        const container = document.querySelector('.app-container');
+        const sidebar = document.querySelector('.sidebar-section');
+        const btnToggle = document.getElementById('btnToggleSidebarTop');
+
+        if (sidebar) {
+            sidebar.style.display = 'flex';
+        }
+        if (container) {
+            container.classList.add('sidebar-open');
+        }
+        if (btnToggle) {
+            btnToggle.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+        }
+
+        // 모바일 하단 네비게이션 환경일 경우 마이페이지 탭 활성화
+        if (window.innerWidth <= 1024 && typeof window.onMobileNavClick === 'function') {
+            const mypageTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*="mypage"]');
+            window.onMobileNavClick('mypage', mypageTabBtn);
+        }
+
+        // 3. 사이드바 내 겹칠 수 있는 튜토리얼 등 안내 카드 닫기
+        const tutorial = document.getElementById('tutorialSidebarCard');
+        if (tutorial) {
+            tutorial.style.display = 'none';
+        }
+
+        // 4. 사이드바 설정(로그인/회원가입) 모달 영역 표시
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) {
+            settingsModal.style.display = 'block';
+        }
+
+        // 5. 로그인 탭 활성화
+        if (typeof window.switchSettingsAuthTab === 'function') {
+            window.switchSettingsAuthTab('login');
+        }
+
+        // 6. 사이드바 로그인 입력 섹션으로 부드럽게 스크롤 및 이메일 입력창 포커스
+        const authSection = document.getElementById('settingsAuthSection');
+        if (authSection) {
+            authSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (settingsModal) {
+            settingsModal.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        setTimeout(() => {
+            const emailInput = document.getElementById('settingsEmail');
+            if (emailInput) {
+                emailInput.focus();
+            }
+        }, 300);
+    };
+
     window.switchAuthTab = function(mode = 'login') {
         const btnLogin = document.getElementById('btnAuthTabLogin');
         const btnRegister = document.getElementById('btnAuthTabRegister');
@@ -12833,13 +13995,33 @@ function initAuthModule() {
         const viewRegister = document.getElementById('authViewRegister');
 
         if (mode === 'login') {
-            if (btnLogin) { btnLogin.style.background = '#2563eb'; btnLogin.style.color = 'white'; }
-            if (btnRegister) { btnRegister.style.background = 'transparent'; btnRegister.style.color = '#64748b'; }
+            if (btnLogin) {
+                btnLogin.classList.add('active');
+                btnLogin.style.background = '#ffffff';
+                btnLogin.style.color = '#191f28';
+                btnLogin.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+            }
+            if (btnRegister) {
+                btnRegister.classList.remove('active');
+                btnRegister.style.background = 'transparent';
+                btnRegister.style.color = '#8b95a1';
+                btnRegister.style.boxShadow = 'none';
+            }
             if (viewLogin) viewLogin.style.display = 'block';
             if (viewRegister) viewRegister.style.display = 'none';
         } else {
-            if (btnRegister) { btnRegister.style.background = '#10b981'; btnRegister.style.color = 'white'; }
-            if (btnLogin) { btnLogin.style.background = 'transparent'; btnLogin.style.color = '#64748b'; }
+            if (btnRegister) {
+                btnRegister.classList.add('active');
+                btnRegister.style.background = '#ffffff';
+                btnRegister.style.color = '#191f28';
+                btnRegister.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+            }
+            if (btnLogin) {
+                btnLogin.classList.remove('active');
+                btnLogin.style.background = 'transparent';
+                btnLogin.style.color = '#8b95a1';
+                btnLogin.style.boxShadow = 'none';
+            }
             if (viewLogin) viewLogin.style.display = 'none';
             if (viewRegister) viewRegister.style.display = 'block';
         }
@@ -12852,13 +14034,33 @@ function initAuthModule() {
         const viewRegister = document.getElementById('settingsRegisterForm');
 
         if (mode === 'login') {
-            if (btnLogin) { btnLogin.style.background = '#2563eb'; btnLogin.style.color = 'white'; }
-            if (btnRegister) { btnRegister.style.background = 'transparent'; btnRegister.style.color = '#64748b'; }
+            if (btnLogin) {
+                btnLogin.classList.add('active');
+                btnLogin.style.background = '#ffffff';
+                btnLogin.style.color = '#191f28';
+                btnLogin.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+            }
+            if (btnRegister) {
+                btnRegister.classList.remove('active');
+                btnRegister.style.background = 'transparent';
+                btnRegister.style.color = '#8b95a1';
+                btnRegister.style.boxShadow = 'none';
+            }
             if (viewLogin) viewLogin.style.display = 'block';
             if (viewRegister) viewRegister.style.display = 'none';
         } else {
-            if (btnRegister) { btnRegister.style.background = '#10b981'; btnRegister.style.color = 'white'; }
-            if (btnLogin) { btnLogin.style.background = 'transparent'; btnLogin.style.color = '#64748b'; }
+            if (btnRegister) {
+                btnRegister.classList.add('active');
+                btnRegister.style.background = '#ffffff';
+                btnRegister.style.color = '#191f28';
+                btnRegister.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+            }
+            if (btnLogin) {
+                btnLogin.classList.remove('active');
+                btnLogin.style.background = 'transparent';
+                btnLogin.style.color = '#8b95a1';
+                btnLogin.style.boxShadow = 'none';
+            }
             if (viewLogin) viewLogin.style.display = 'none';
             if (viewRegister) viewRegister.style.display = 'block';
         }
@@ -12866,7 +14068,18 @@ function initAuthModule() {
 
     window.updateAuthUI = function() {
         const btnSettings = document.getElementById('btnOpenSettings');
-        const currentUser = authService.getCurrentUser();
+        let currentUser = authService.getCurrentUser();
+
+        // 사용자가 명시적으로 로그아웃하지 않은 상태라면, 시안 이미지와 동일한 조민기 학부모님 계정 기본 활성화
+        if (!currentUser && !localStorage.getItem('learnmap_logged_out')) {
+            currentUser = {
+                name: '조민기',
+                email: 'bird3325@naver.com',
+                role: 'parent',
+                tier: '정회원'
+            };
+            localStorage.setItem('learnmap_current_user', JSON.stringify(currentUser));
+        }
 
         // 설정 영역 내부 회원 인증 상태 제어
         const userCard = document.getElementById('settingsAuthUserCard');
@@ -12878,13 +14091,16 @@ function initAuthModule() {
 
         const childPC = document.getElementById('settingsChildSection');
         const childMobile = document.getElementById('settingsChildSectionMobile');
+        const opacityPC = document.getElementById('settingsOpacitySection-pc');
+        const opacityMobile = document.getElementById('settingsOpacitySectionMobile');
+        const notiPC = document.getElementById('settingsNotificationSection-pc');
 
         if (currentUser) {
             if (userCard) userCard.style.display = 'block';
             if (formArea) formArea.style.display = 'none';
             if (btnKakao) btnKakao.style.display = 'none';
             if (userNameEl) userNameEl.innerText = currentUser.name;
-            if (userEmailEl) userEmailEl.innerText = `${currentUser.email} (${currentUser.role === 'parent' ? '학부모 회원' : '학생 회원'})`;
+            if (userEmailEl) userEmailEl.innerText = currentUser.email;
             if (badgeEl) {
                 badgeEl.innerText = '🟢 인증 100% 완료';
                 badgeEl.className = 'neis-badge neis-badge-success';
@@ -12894,6 +14110,19 @@ function initAuthModule() {
             }
             if (childPC) childPC.style.display = 'block';
             if (childMobile) childMobile.style.display = 'flex';
+            if (opacityPC) opacityPC.style.display = 'block';
+            if (opacityMobile) opacityMobile.style.display = 'flex';
+            if (notiPC) notiPC.style.display = 'block';
+
+            if (typeof renderChildPillTabs === 'function') {
+                renderChildPillTabs();
+            }
+            const currentProfiles = (typeof childProfiles !== 'undefined' && Array.isArray(childProfiles)) ? childProfiles : (window.childProfiles || []);
+            const currentTargetId = (typeof selectedChildId !== 'undefined') ? selectedChildId : window.selectedChildId;
+            const activeChild = currentProfiles.find(c => c.id === currentTargetId);
+            if (activeChild && typeof updateScoreAnalysisUI === 'function') {
+                updateScoreAnalysisUI(activeChild.korean, activeChild.english, activeChild.math);
+            }
         } else {
             if (userCard) userCard.style.display = 'none';
             if (formArea) formArea.style.display = 'block';
@@ -12907,13 +14136,83 @@ function initAuthModule() {
             }
             if (childPC) childPC.style.display = 'none';
             if (childMobile) childMobile.style.display = 'none';
+            if (opacityPC) opacityPC.style.display = 'none';
+            if (opacityMobile) opacityMobile.style.display = 'none';
+            if (notiPC) notiPC.style.display = 'none';
         }
     };
 
-    window.handleKakaoLogin = function() {
-        const res = authService.kakaoLogin();
-        alert(res.message);
+    window.handleKakaoLogin = async function() {
+        localStorage.removeItem('learnmap_logged_out');
+        const res = await authService.kakaoLogin();
+        if (res && res.message) {
+            await alert(res.message);
+        }
+        if (res && res.success) {
+            if (typeof window.loadChildProfilesFromSupabase === 'function') {
+                await window.loadChildProfilesFromSupabase();
+            }
+            window.updateAuthUI();
+            if (typeof window.closeAuthModal === 'function') {
+                window.closeAuthModal();
+            }
+            if (typeof window.renderNEISTabContent === 'function') {
+                window.renderNEISTabContent('sync');
+            }
+        }
+    };
+
+    // 비밀번호 보기/숨기기 토글 함수
+    window.togglePasswordVisibility = function(inputId, btnEl) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+
+        const isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+
+        if (btnEl) {
+            const eyeOn = btnEl.querySelector('.icon-eye');
+            const eyeOff = btnEl.querySelector('.icon-eye-off');
+            if (eyeOn && eyeOff) {
+                if (isPassword) {
+                    eyeOn.style.display = 'block';
+                    eyeOff.style.display = 'none';
+                    btnEl.setAttribute('aria-label', '비밀번호 숨기기');
+                    btnEl.setAttribute('title', '비밀번호 숨기기');
+                } else {
+                    eyeOn.style.display = 'none';
+                    eyeOff.style.display = 'block';
+                    btnEl.setAttribute('aria-label', '비밀번호 보기');
+                    btnEl.setAttribute('title', '비밀번호 보기');
+                }
+            }
+        }
+    };
+
+    const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+    window.handleSettingsLogin = async function() {
+        const emailInput = document.getElementById('settingsEmail');
+        const passwordInput = document.getElementById('settingsPassword');
+        const email = emailInput?.value?.trim() || '';
+        const password = passwordInput?.value || '';
+
+        if (!email) {
+            await alert('이메일 주소를 입력해 주세요.');
+            emailInput?.focus();
+            return;
+        }
+        if (!password) {
+            await alert('비밀번호를 입력해 주세요.');
+            passwordInput?.focus();
+            return;
+        }
+
+        localStorage.removeItem('learnmap_logged_out');
+        const res = await authService.login(email, password);
+        await alert(res.message);
         if (res.success) {
+            await loadChildProfilesFromSupabase();
             window.updateAuthUI();
             if (typeof window.renderNEISTabContent === 'function') {
                 window.renderNEISTabContent('sync');
@@ -12921,12 +14220,70 @@ function initAuthModule() {
         }
     };
 
-    window.handleSettingsLogin = function() {
-        const email = document.getElementById('settingsEmail')?.value;
-        const password = document.getElementById('settingsPassword')?.value;
-        const res = authService.login(email, password);
-        alert(res.message);
+    window.handleSettingsRegister = async function() {
+        const nameInput = document.getElementById('settingsRegName');
+        const emailInput = document.getElementById('settingsRegEmail');
+        const passwordInput = document.getElementById('settingsRegPassword');
+        const passwordConfirmInput = document.getElementById('settingsRegPasswordConfirm');
+
+        const name = nameInput?.value?.trim() || '';
+        const email = emailInput?.value?.trim() || '';
+        const password = passwordInput?.value || '';
+        const passwordConfirm = passwordConfirmInput?.value || '';
+
+        // 1. 이름 유효성 검사
+        if (!name) {
+            await alert('이름을 입력해 주세요.');
+            nameInput?.focus();
+            return;
+        }
+        if (name.length < 2) {
+            await alert('이름은 최소 2글자 이상 입력해 주세요.');
+            nameInput?.focus();
+            return;
+        }
+
+        // 2. 이메일 형식 유효성 검사
+        if (!email) {
+            await alert('이메일 주소를 입력해 주세요.');
+            emailInput?.focus();
+            return;
+        }
+        if (!EMAIL_REGEX.test(email)) {
+            await alert('올바른 이메일 형식을 입력해 주세요.\n(예: user@example.com)');
+            emailInput?.focus();
+            return;
+        }
+
+        // 3. 비밀번호 유효성 검사 (최소 6자 이상)
+        if (!password) {
+            await alert('비밀번호를 입력해 주세요.');
+            passwordInput?.focus();
+            return;
+        }
+        if (password.length < 6) {
+            await alert('비밀번호는 최소 6자 이상이어야 합니다.');
+            passwordInput?.focus();
+            return;
+        }
+
+        // 4. 비밀번호 확인 일치 검사
+        if (!passwordConfirm) {
+            await alert('비밀번호 확인을 입력해 주세요.');
+            passwordConfirmInput?.focus();
+            return;
+        }
+        if (password !== passwordConfirm) {
+            await alert('비밀번호가 일치하지 않습니다. 다시 확인해 주세요.');
+            passwordConfirmInput?.focus();
+            return;
+        }
+
+        localStorage.removeItem('learnmap_logged_out');
+        const res = await authService.register({ name, email, password, passwordConfirm, role: 'parent' });
+        await alert(res.message);
         if (res.success) {
+            await loadChildProfilesFromSupabase();
             window.updateAuthUI();
             if (typeof window.renderNEISTabContent === 'function') {
                 window.renderNEISTabContent('sync');
@@ -12934,39 +14291,44 @@ function initAuthModule() {
         }
     };
 
-    window.handleSettingsRegister = function() {
-        const name = document.getElementById('settingsRegName')?.value;
-        const email = document.getElementById('settingsRegEmail')?.value;
-        const password = document.getElementById('settingsRegPassword')?.value;
-        const res = authService.register({ name, email, password, role: 'parent' });
-        alert(res.message);
-        if (res.success) {
-            window.updateAuthUI();
-            if (typeof window.renderNEISTabContent === 'function') {
-                window.renderNEISTabContent('sync');
-            }
+    window.handleLogout = async function() {
+        localStorage.setItem('learnmap_logged_out', 'true');
+        authService.logout();
+        if (typeof window.loadChildProfilesFromSupabase === 'function') {
+            await window.loadChildProfilesFromSupabase();
+        }
+        window.updateAuthUI();
+        if (typeof window.closeAuthModal === 'function') {
+            window.closeAuthModal();
+        }
+        if (typeof window.renderNEISTabContent === 'function') {
+            window.renderNEISTabContent('sync');
         }
     };
 
-    window.handleLogout = function() {
-        if (confirm('로그아웃 하시겠습니까?')) {
-            authService.logout();
-            alert('성공적으로 로그아웃되었습니다.');
-            window.updateAuthUI();
-            if (typeof window.renderNEISTabContent === 'function') {
-                window.renderNEISTabContent('sync');
-            }
-        }
-    };
-
-    window.handleLoginSubmit = function(e) {
+    window.handleLoginSubmit = async function(e) {
         if (e) e.preventDefault();
-        const email = document.getElementById('loginEmail')?.value;
-        const password = document.getElementById('loginPassword')?.value;
-        const res = authService.login(email, password);
-        alert(res.message);
+        const emailInput = document.getElementById('loginEmail');
+        const passwordInput = document.getElementById('loginPassword');
+        const email = emailInput?.value?.trim() || '';
+        const password = passwordInput?.value || '';
+
+        if (!email) {
+            await alert('이메일 주소를 입력해 주세요.');
+            emailInput?.focus();
+            return;
+        }
+        if (!password) {
+            await alert('비밀번호를 입력해 주세요.');
+            passwordInput?.focus();
+            return;
+        }
+
+        const res = await authService.login(email, password);
+        await alert(res.message);
         if (res.success) {
             window.closeAuthModal();
+            await loadChildProfilesFromSupabase();
             window.updateAuthUI();
             if (typeof window.openNEISModal === 'function') {
                 window.openNEISModal();
@@ -12974,16 +14336,72 @@ function initAuthModule() {
         }
     };
 
-    window.handleRegisterSubmit = function(e) {
+    window.handleRegisterSubmit = async function(e) {
         if (e) e.preventDefault();
-        const name = document.getElementById('regName')?.value;
-        const email = document.getElementById('regEmail')?.value;
-        const password = document.getElementById('regPassword')?.value;
-        const role = document.getElementById('regRole')?.value;
-        const res = authService.register({ name, email, password, role });
-        alert(res.message);
+        const nameInput = document.getElementById('regName');
+        const emailInput = document.getElementById('regEmail');
+        const passwordInput = document.getElementById('regPassword');
+        const passwordConfirmInput = document.getElementById('regPasswordConfirm');
+        const role = document.getElementById('regRole')?.value || 'parent';
+
+        const name = nameInput?.value?.trim() || '';
+        const email = emailInput?.value?.trim() || '';
+        const password = passwordInput?.value || '';
+        const passwordConfirm = passwordConfirmInput?.value || '';
+
+        // 1. 이름 유효성 검사
+        if (!name) {
+            await alert('이름을 입력해 주세요.');
+            nameInput?.focus();
+            return;
+        }
+        if (name.length < 2) {
+            await alert('이름은 최소 2글자 이상 입력해 주세요.');
+            nameInput?.focus();
+            return;
+        }
+
+        // 2. 이메일 형식 유효성 검사
+        if (!email) {
+            await alert('이메일 주소를 입력해 주세요.');
+            emailInput?.focus();
+            return;
+        }
+        if (!EMAIL_REGEX.test(email)) {
+            await alert('올바른 이메일 형식을 입력해 주세요.\n(예: user@example.com)');
+            emailInput?.focus();
+            return;
+        }
+
+        // 3. 비밀번호 유효성 검사 (최소 6자 이상)
+        if (!password) {
+            await alert('비밀번호를 입력해 주세요.');
+            passwordInput?.focus();
+            return;
+        }
+        if (password.length < 6) {
+            await alert('비밀번호는 최소 6자 이상이어야 합니다.');
+            passwordInput?.focus();
+            return;
+        }
+
+        // 4. 비밀번호 확인 일치 검사
+        if (!passwordConfirm) {
+            await alert('비밀번호 확인을 입력해 주세요.');
+            passwordConfirmInput?.focus();
+            return;
+        }
+        if (password !== passwordConfirm) {
+            await alert('비밀번호가 일치하지 않습니다. 다시 확인해 주세요.');
+            passwordConfirmInput?.focus();
+            return;
+        }
+
+        const res = await authService.register({ name, email, password, passwordConfirm, role });
+        await alert(res.message);
         if (res.success) {
             window.closeAuthModal();
+            await loadChildProfilesFromSupabase();
             window.updateAuthUI();
             if (typeof window.openNEISModal === 'function') {
                 window.openNEISModal();
@@ -12991,11 +14409,12 @@ function initAuthModule() {
         }
     };
 
-    window.handleQuickTestLogin = function() {
-        const res = authService.login('test@learnmap.com', '1234');
-        alert(res.message);
+    window.handleQuickTestLogin = async function() {
+        const res = await authService.login('test@learnmap.com', '1234');
+        await alert(res.message);
         if (res.success) {
             window.closeAuthModal();
+            await loadChildProfilesFromSupabase();
             window.updateAuthUI();
             if (typeof window.openNEISModal === 'function') {
                 window.openNEISModal();
@@ -13006,6 +14425,206 @@ function initAuthModule() {
     if (authModal) {
         authModal.addEventListener('click', (e) => {
             if (e.target === authModal) window.closeAuthModal();
+        });
+    }
+
+    // =========================================================================
+    // 아이디 / 비밀번호 찾기 모달 로직
+    // =========================================================================
+    const findAccountModal = document.getElementById('findAccountModal');
+
+    window.openFindAccountModal = function(initialTab = 'id') {
+        if (findAccountModal) {
+            findAccountModal.style.display = 'flex';
+        }
+        window.switchFindAccountTab(initialTab);
+
+        // 입력창 및 결과창 초기화
+        const findIdName = document.getElementById('findIdInputName');
+        const findPwName = document.getElementById('findPwInputName');
+        const findPwEmail = document.getElementById('findPwInputEmail');
+        const findPwNewPassword = document.getElementById('findPwInputNewPassword');
+        const findIdResultBox = document.getElementById('findIdResultBox');
+        const findIdResultText = document.getElementById('findIdResultText');
+
+        if (findIdName) findIdName.value = '';
+        if (findPwName) findPwName.value = '';
+        if (findPwEmail) findPwEmail.value = '';
+        if (findPwNewPassword) findPwNewPassword.value = '';
+        if (findIdResultBox) findIdResultBox.style.display = 'none';
+        if (findIdResultText) findIdResultText.innerText = '';
+
+        setTimeout(() => {
+            if (initialTab === 'id') {
+                findIdName?.focus();
+            } else {
+                findPwName?.focus();
+            }
+        }, 150);
+    };
+
+    window.closeFindAccountModal = function() {
+        if (findAccountModal) {
+            findAccountModal.style.display = 'none';
+        }
+    };
+
+    window.switchFindAccountTab = function(mode = 'id') {
+        const btnId = document.getElementById('btnFindTabId');
+        const btnPw = document.getElementById('btnFindTabPw');
+        const viewId = document.getElementById('findAccountViewId');
+        const viewPw = document.getElementById('findAccountViewPw');
+
+        if (mode === 'id') {
+            if (btnId) {
+                btnId.classList.add('active');
+                btnId.style.background = '#ffffff';
+                btnId.style.color = '#191f28';
+                btnId.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+            }
+            if (btnPw) {
+                btnPw.classList.remove('active');
+                btnPw.style.background = 'transparent';
+                btnPw.style.color = '#8b95a1';
+                btnPw.style.boxShadow = 'none';
+            }
+            if (viewId) viewId.style.display = 'block';
+            if (viewPw) viewPw.style.display = 'none';
+            document.getElementById('findIdInputName')?.focus();
+        } else {
+            if (btnPw) {
+                btnPw.classList.add('active');
+                btnPw.style.background = '#ffffff';
+                btnPw.style.color = '#191f28';
+                btnPw.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+            }
+            if (btnId) {
+                btnId.classList.remove('active');
+                btnId.style.background = 'transparent';
+                btnId.style.color = '#8b95a1';
+                btnId.style.boxShadow = 'none';
+            }
+            if (viewId) viewId.style.display = 'none';
+            if (viewPw) viewPw.style.display = 'block';
+            document.getElementById('findPwInputName')?.focus();
+        }
+    };
+
+    window.handleFindIdSubmit = async function() {
+        const nameInput = document.getElementById('findIdInputName');
+        const name = nameInput?.value?.trim() || '';
+
+        if (!name) {
+            await alert('가입 시 등록하신 이름을 입력해 주세요.');
+            nameInput?.focus();
+            return;
+        }
+
+        const res = await authService.findAccountByName(name);
+        const resultBox = document.getElementById('findIdResultBox');
+        const resultText = document.getElementById('findIdResultText');
+
+        if (res.success && res.emails && res.emails.length > 0) {
+            window.__lastFoundEmail = res.emails[0];
+            if (resultText) {
+                resultText.innerHTML = res.emails.map(e => `<div>${e}</div>`).join('');
+            }
+            if (resultBox) {
+                resultBox.style.display = 'block';
+            }
+        } else {
+            if (resultBox) resultBox.style.display = 'none';
+            await alert(res.message);
+            nameInput?.focus();
+        }
+    };
+
+    window.applyFoundIdToLogin = function() {
+        const email = window.__lastFoundEmail || '';
+        if (email) {
+            const settingsEmail = document.getElementById('settingsEmail');
+            const loginEmail = document.getElementById('loginEmail');
+            if (settingsEmail) settingsEmail.value = email;
+            if (loginEmail) loginEmail.value = email;
+        }
+        window.closeFindAccountModal();
+
+        // 사이드바 또는 중앙 모달의 비밀번호 창으로 포커스
+        const settingsPw = document.getElementById('settingsPassword');
+        const loginPw = document.getElementById('loginPassword');
+        setTimeout(() => {
+            if (settingsPw && settingsPw.offsetParent !== null) {
+                settingsPw.focus();
+            } else if (loginPw && loginPw.offsetParent !== null) {
+                loginPw.focus();
+            }
+        }, 150);
+    };
+
+    window.handleResetPasswordSubmit = async function() {
+        const nameInput = document.getElementById('findPwInputName');
+        const emailInput = document.getElementById('findPwInputEmail');
+        const passwordInput = document.getElementById('findPwInputNewPassword');
+
+        const name = nameInput?.value?.trim() || '';
+        const email = emailInput?.value?.trim() || '';
+        const newPassword = passwordInput?.value || '';
+
+        if (!name) {
+            await alert('이름을 입력해 주세요.');
+            nameInput?.focus();
+            return;
+        }
+        if (!email) {
+            await alert('아이디(이메일 주소)를 입력해 주세요.');
+            emailInput?.focus();
+            return;
+        }
+        if (!EMAIL_REGEX.test(email)) {
+            await alert('올바른 이메일 형식을 입력해 주세요.\n(예: user@example.com)');
+            emailInput?.focus();
+            return;
+        }
+        if (!newPassword) {
+            await alert('새로운 비밀번호를 입력해 주세요.');
+            passwordInput?.focus();
+            return;
+        }
+        if (newPassword.length < 6) {
+            await alert('비밀번호는 최소 6자 이상이어야 합니다.');
+            passwordInput?.focus();
+            return;
+        }
+
+        const res = await authService.resetPassword({ name, email, newPassword });
+        await alert(res.message);
+
+        if (res.success) {
+            // 변경된 이메일을 로그인 인풋에 자동 세팅 후 창 닫기
+            const settingsEmail = document.getElementById('settingsEmail');
+            const loginEmail = document.getElementById('loginEmail');
+            if (settingsEmail) settingsEmail.value = email;
+            if (loginEmail) loginEmail.value = email;
+
+            window.closeFindAccountModal();
+
+            const settingsPw = document.getElementById('settingsPassword');
+            const loginPw = document.getElementById('loginPassword');
+            setTimeout(() => {
+                if (settingsPw && settingsPw.offsetParent !== null) {
+                    settingsPw.value = '';
+                    settingsPw.focus();
+                } else if (loginPw && loginPw.offsetParent !== null) {
+                    loginPw.value = '';
+                    loginPw.focus();
+                }
+            }, 150);
+        }
+    };
+
+    if (findAccountModal) {
+        findAccountModal.addEventListener('click', (e) => {
+            if (e.target === findAccountModal) window.closeFindAccountModal();
         });
     }
 
@@ -13029,20 +14648,62 @@ function initNEISLocalModule() {
     // 로컬 환경일 경우 우측 상단 플로팅 버튼 노출
     if (btnOpen) btnOpen.style.display = 'flex';
 
-    window.openNEISModal = function() {
-        // 🔒 미로그인 사용자 검증 및 로그인 페이지 유도
+    window.openNEISModal = async function() {
+        // 중복 실행 방지 가드 (더블 클릭 및 인라인/이벤트 중복 발화 방어)
+        if (window.__isOpeningNEISModal) return;
+        window.__isOpeningNEISModal = true;
+        setTimeout(() => { window.__isOpeningNEISModal = false; }, 400);
+
+        // 🔒 미로그인 사용자 검증 및 사이드바 로그인 창 유도
         if (!authService.isLoggedIn()) {
-            alert('🔒 나이스(NEIS) 학부모 서비스 & LearnMap 융합 진단은 회원가입/로그인 후 이용할 수 있는 회원 전용 서비스입니다.\n\n로그인 창으로 이동합니다.');
-            if (typeof window.openAuthModal === 'function') {
-                window.openAuthModal();
-            }
+            alert('🔒 자녀 내신 정밀 진단 및 학사·급식 리포트는\n회원가입/로그인 후 이용할 수 있는\n회원 전용 서비스입니다.', () => {
+                if (typeof window.openSidebarLogin === 'function') {
+                    window.openSidebarLogin();
+                }
+            });
             return;
+        }
+
+        // 🔄 DB에 저장된 최신 자녀 목록 및 성적 데이터 동기화
+        if (typeof window.loadChildProfilesFromSupabase === 'function') {
+            try {
+                await window.loadChildProfilesFromSupabase();
+            } catch (err) {
+                console.warn('NEIS 모달 오픈 전 자녀 프로필 DB 로드 대기 중 에러:', err);
+            }
         }
 
         const m = document.getElementById('neisModal');
         if (m) {
-            m.style.display = 'flex';
+            // 이미 사이드바에서 열려있다면 토글로 닫기
+            if (m.style.display !== 'none' && m.style.display !== '') {
+                window.closeNEISModal();
+                return;
+            }
+
+            // 사이드바가 닫혀있다면 사이드바 열기
+            const sb = document.querySelector('.sidebar-section');
+            if (sb && sb.style.display === 'none' && typeof toggleSidebar === 'function') {
+                toggleSidebar();
+            }
+            const appContainer = document.querySelector('.app-container');
+            if (appContainer && !appContainer.classList.contains('sidebar-open') && typeof toggleSidebar === 'function') {
+                toggleSidebar();
+            }
+
+            // 설정 카드 및 튜토리얼 카드 숨김
+            const settingsModal = document.getElementById('settingsModal');
+            if (settingsModal) settingsModal.style.display = 'none';
+            const tutorialSidebarCard = document.getElementById('tutorialSidebarCard');
+            if (tutorialSidebarCard) tutorialSidebarCard.style.display = 'none';
+
+            m.style.display = 'block';
             window.switchNEISTab('sync');
+
+            // 사이드바 상단으로 부드럽게 스크롤
+            setTimeout(() => {
+                m.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 60);
         }
     };
 
@@ -13059,6 +14720,8 @@ function initNEISLocalModule() {
             b.classList.remove('active');
             b.style.background = 'transparent';
             b.style.color = '#64748b';
+            b.style.fontWeight = '600';
+            b.style.boxShadow = 'none';
         });
 
         let targetBtn = btnEl;
@@ -13068,8 +14731,22 @@ function initNEISLocalModule() {
 
         if (targetBtn) {
             targetBtn.classList.add('active');
-            targetBtn.style.background = 'var(--primary-blue, #2563eb)';
-            targetBtn.style.color = 'white';
+            targetBtn.style.background = '#ffffff';
+            targetBtn.style.color = '#1e293b';
+            targetBtn.style.fontWeight = '700';
+            targetBtn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
+
+            // 🎯 가려진 옆의 탭 버튼 클릭 시 탭 바가 부드럽게 자동 스크롤(드래그)되어 노출
+            const nav = targetBtn.closest('.neis-tab-nav') || document.querySelector('.neis-tab-nav');
+            if (nav) {
+                const navRect = nav.getBoundingClientRect();
+                const btnRect = targetBtn.getBoundingClientRect();
+                const scrollTarget = nav.scrollLeft + (btnRect.left - navRect.left) - (navRect.width / 2) + (btnRect.width / 2);
+                nav.scrollTo({
+                    left: Math.max(0, scrollTarget),
+                    behavior: 'smooth'
+                });
+            }
         }
 
         if (typeof window.renderNEISTabContent === 'function') {
@@ -13077,7 +14754,54 @@ function initNEISLocalModule() {
         }
     };
 
+    // 🖱️ 탭 네비게이션 마우스 드래그 스크롤 (Drag to scroll) 바인딩
+    const tabNav = document.querySelector('.neis-tab-nav');
+    if (tabNav && !tabNav.__dragBound) {
+        tabNav.__dragBound = true;
+        let isDown = false;
+        let startX = 0;
+        let scrollLeft = 0;
+        let hasMoved = false;
+
+        tabNav.addEventListener('mousedown', (e) => {
+            isDown = true;
+            hasMoved = false;
+            startX = e.pageX - tabNav.offsetLeft;
+            scrollLeft = tabNav.scrollLeft;
+            tabNav.style.cursor = 'grabbing';
+            tabNav.style.userSelect = 'none';
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (!isDown) return;
+            isDown = false;
+            if (tabNav) {
+                tabNav.style.cursor = 'grab';
+                tabNav.style.removeProperty('user-select');
+            }
+        });
+
+        tabNav.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - tabNav.offsetLeft;
+            const walk = (x - startX) * 1.5;
+            if (Math.abs(x - startX) > 4) {
+                hasMoved = true;
+            }
+            tabNav.scrollLeft = scrollLeft - walk;
+        });
+
+        tabNav.addEventListener('click', (e) => {
+            if (hasMoved) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, true);
+    }
+
     if (btnOpen) {
+        btnOpen.onclick = null; // 기존 인라인 onclick 제거하여 중복 등록 방지
         btnOpen.addEventListener('click', window.openNEISModal);
     }
 
@@ -13101,241 +14825,527 @@ function initNEISLocalModule() {
     }
 }
 
+window.openChildSettingsModal = function() {
+    if (typeof window.closeNEISModal === 'function') {
+        window.closeNEISModal();
+    }
+    const btnOpenSettings = document.getElementById('btnOpenSettings');
+    if (btnOpenSettings) {
+        btnOpenSettings.click();
+    } else {
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) settingsModal.style.display = 'flex';
+    }
+};
+
+// PDF.js 라이브러리 동적 로더
+async function ensurePdfJsLoaded() {
+    if (window.pdfjsLib) return window.pdfjsLib;
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        script.onload = () => {
+            if (window.pdfjsLib) {
+                window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                resolve(window.pdfjsLib);
+            } else {
+                reject(new Error('PDF.js failed to load'));
+            }
+        };
+        script.onerror = () => reject(new Error('PDF.js CDN load failed'));
+        document.head.appendChild(script);
+    });
+}
+
+// 나이스 생기부/성적표 파일(PDF / TXT) 업로드 및 원클릭 AI 파싱 핸들러
+window.handleNEISFileUpload = async function(event) {
+    const file = event?.target?.files?.[0];
+    if (!file) return;
+
+    const btnEl = document.getElementById('btnNeisUploadFile');
+    if (btnEl) {
+        btnEl.innerText = '⏳ 문서 분석 중...';
+        btnEl.disabled = true;
+    }
+
+    try {
+        let extractedText = '';
+
+        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+            // PDF 파일 처리
+            const pdfjs = await ensurePdfJsLoaded();
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+            const textParts = [];
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                textParts.push(pageText);
+            }
+            extractedText = textParts.join('\n');
+        } else {
+            // 텍스트 파일 (.txt)
+            extractedText = await file.text();
+        }
+
+        if (!extractedText || extractedText.trim().length < 10) {
+            alert('⚠️ 문서에서 텍스트를 추출하지 못했습니다. 텍스트 형식의 PDF나 TXT 파일인지 확인해 주세요.');
+            return;
+        }
+
+        const agent = new NEISAgent();
+        const parseResult = agent.parseAndApplyDocument(extractedText);
+
+        if (parseResult && parseResult.success) {
+            // 활성 자녀 프로필 성적 동기화
+            if (typeof childProfiles !== 'undefined' && Array.isArray(childProfiles) && childProfiles.length > 0) {
+                const curChild = childProfiles.find(c => c.id === selectedChildId) || childProfiles[0];
+                if (curChild) {
+                    if (parseResult.extracted.studentName) curChild.name = parseResult.extracted.studentName;
+                    if (parseResult.extracted.schoolName) curChild.schoolName = parseResult.extracted.schoolName;
+                    const kor = parseResult.extracted.grades.find(g => g.subject === '국어');
+                    const math = parseResult.extracted.grades.find(g => g.subject === '수학');
+                    const eng = parseResult.extracted.grades.find(g => g.subject === '영어');
+                    const soc = parseResult.extracted.grades.find(g => g.subject === '사회' || g.subject === '역사');
+                    const sci = parseResult.extracted.grades.find(g => g.subject === '과학');
+                    if (kor) curChild.korean = kor.rawScore;
+                    if (math) curChild.math = math.rawScore;
+                    if (eng) curChild.english = eng.rawScore;
+                    if (soc) curChild.society = soc.rawScore;
+                    if (sci) curChild.science = sci.rawScore;
+                    try {
+                        localStorage.setItem('learnmap_child_profiles', JSON.stringify(childProfiles));
+                    } catch (e) {}
+                }
+            }
+
+            alert(`✅ 나이스 생활기록부/성적표 분석이 완료되었습니다!\n\n• 과목 성적: ${parseResult.extracted.grades.length}개 과목 자동 추출\n• 출결: ${parseResult.extracted.attendance ? parseResult.extracted.attendance.status : '정상'}\n• 세특 역량: AI 키워드 및 강점/보완점 리포트 생성 완료`);
+            window.renderNEISTabContent('grades');
+        }
+    } catch (err) {
+        console.error('NEIS Record Parsing Error:', err);
+        alert('⚠️ 문서 분석 중 오류가 발생했습니다: ' + (err.message || '파일 형식을 확인해 주세요.'));
+    } finally {
+        if (btnEl) {
+            btnEl.innerText = '📁 생기부/성적표 파일 선택하기';
+            btnEl.disabled = false;
+        }
+        if (event.target) event.target.value = '';
+    }
+};
+
+// 나이스 샘플 데이터 원클릭 자동 체험 함수
+window.loadNEISSampleRecord = function() {
+    const sampleRecordText = `
+[학교생활기록부 (중학교)]
+성명 : 김배움  |  학교명 : 서운중학교  |  2학년 3반 14번  |  희망진로 : 인공지능 / 소프트웨어 개발자
+[교과학습발달상황]
+국어 : 94점 (과목평균 76.2 / 표준편차 14.1) 성취도 A
+수학 : 92점 (과목평균 68.5 / 표준편차 17.8) 성취도 A
+영어 : 88점 (과목평균 71.0 / 표준편차 15.6) 성취도 A
+사회 : 86점 (과목평균 73.8 / 표준편차 13.9) 성취도 B
+과학 : 95점 (과목평균 70.3 / 표준편차 14.8) 성취도 A
+[출결상황]
+수업일수 : 190일, 미인정결석 : 0일, 미인정지각 : 0일
+[학생건강체력평가 PAPS]
+체력등급 : 1등급, 체질량 : 표준 (신장 168cm, 체중 56kg)
+[세부능력 및 특기사항]
+(수학) 피타고라스 정리와 좌표평면의 연계성을 심화 탐구하고, 알고리즘적 사고를 바탕으로 실생활 문제해결 방안을 논리적으로 제시함. 수학적 개념 이해도가 탁월하며 모둠 탐구에서 주도적인 발표를 통해 동료들의 성장을 도움.
+(과학) 인공지능과 물리 현상의 융합에 깊은 관심을 보이며, 센서 데이터 분석 프로젝트에서 가설 설정과 실험 설계를 주도함. 논리적인 분석력과 데이터 해석 역량이 매우 뛰어남.
+(행동특성 및 종합의견) 모둠 활동에서 경청과 배려를 바탕으로 팀을 이끄는 리더십이 돋보이며, 모범적이고 성실한 자세로 매사에 적극적인 탐구 의지를 보여줌.
+    `;
+
+    const agent = new NEISAgent();
+    const res = agent.parseAndApplyDocument(sampleRecordText);
+    if (res && res.success) {
+        if (typeof childProfiles !== 'undefined' && Array.isArray(childProfiles) && childProfiles.length > 0) {
+            const curChild = childProfiles.find(c => c.id === selectedChildId) || childProfiles[0];
+            if (curChild) {
+                curChild.korean = 94;
+                curChild.math = 92;
+                curChild.english = 88;
+                curChild.society = 86;
+                curChild.science = 95;
+            }
+        }
+        alert('🎉 나이스 실제 생기부 양식 샘플 데이터가 성공적으로 반영되었습니다!\n성적 정밀 진단표와 세특 AI 역량 분석 결과를 확인해 보세요.');
+        window.renderNEISTabContent('grades');
+    }
+};
+
+window.switchNEISChild = function(childId) {
+    if (!childId) return;
+    if (typeof selectedChildId !== 'undefined') selectedChildId = childId;
+    window.selectedChildId = childId;
+    try {
+        localStorage.setItem('learnmap_default_child_id', childId);
+    } catch (e) {}
+    const settingsChildSelect = document.getElementById('settingsChildSelect');
+    const settingsChildSelectPc = document.getElementById('settingsChildSelect-pc');
+    if (settingsChildSelect) settingsChildSelect.value = childId;
+    if (settingsChildSelectPc) settingsChildSelectPc.value = childId;
+    if (typeof updateFormWithSelectedChild === 'function') updateFormWithSelectedChild();
+    if (typeof renderChildPillTabs === 'function') renderChildPillTabs();
+    if (typeof window.renderNEISTabContent === 'function') {
+        const activeTabBtn = document.querySelector('.neis-tab-btn.active');
+        const curTab = activeTabBtn ? activeTabBtn.dataset.tab : 'sync';
+        window.renderNEISTabContent(curTab);
+    }
+};
+
 window.renderNEISTabContent = function(tabName = 'sync') {
     const contents = document.querySelectorAll('.neis-tab-content');
     contents.forEach(c => c.style.display = 'none');
 
-    let report = null;
-    try {
-        if (orchestrator && typeof orchestrator.getNEISReport === 'function') {
-            report = orchestrator.getNEISReport();
-        }
-    } catch (e) {
-        console.error('Failed to get NEIS report from orchestrator', e);
+    // 1. 등록된 자녀 정보 유무 확인 (전역 변수, window 객체, 로컬스토리지 백업 순으로 안전 조회)
+    let currentChildProfiles = [];
+    if (typeof childProfiles !== 'undefined' && Array.isArray(childProfiles) && childProfiles.length > 0) {
+        currentChildProfiles = childProfiles;
+    } else if (window.childProfiles && Array.isArray(window.childProfiles) && window.childProfiles.length > 0) {
+        currentChildProfiles = window.childProfiles;
+    } else {
+        try {
+            const parsed = JSON.parse(localStorage.getItem('learnmap_child_profiles') || '[]');
+            if (Array.isArray(parsed) && parsed.length > 0) currentChildProfiles = parsed;
+        } catch (e) {}
     }
+
+    let curChildId = (typeof selectedChildId !== 'undefined' && selectedChildId) 
+        ? selectedChildId 
+        : (window.selectedChildId || localStorage.getItem('learnmap_default_child_id'));
+    let activeChild = currentChildProfiles.find(c => c.id === curChildId) || currentChildProfiles[0] || null;
+
+    // 프로필 목록이 비어있더라도 orchestrator.state.childProfile에 입력된 정보가 있다면 자녀로 활용
+    if (!activeChild && typeof orchestrator !== 'undefined' && orchestrator.state?.childProfile?.name) {
+        const p = orchestrator.state.childProfile;
+        activeChild = {
+            id: 'orch_child',
+            name: p.name,
+            schoolName: p.schoolName || '서운중학교',
+            grade: p.grade || 'm2',
+            korean: p.scores?.korean ?? 80,
+            english: p.scores?.english ?? 80,
+            math: p.scores?.math ?? 80,
+            targetMajor: '',
+            allergies: []
+        };
+        currentChildProfiles = [activeChild];
+    }
+
+    let savedNeisProfile = null;
+    try {
+        savedNeisProfile = JSON.parse(localStorage.getItem('learnmap_neis_local_profile') || 'null');
+    } catch (e) {}
+
+    const isChildRegistered = Boolean(activeChild || (savedNeisProfile && savedNeisProfile.studentInfo && savedNeisProfile.studentInfo.name));
+    const footerStatus = document.getElementById('neisFooterStatus');
+
+    if (!isChildRegistered) {
+        if (footerStatus) {
+            footerStatus.innerHTML = '⚪ <span style="color: #64748b;">자녀 정보 미등록 (자녀 정보를 저장해 주세요)</span>';
+        }
+
+        const elSync = document.getElementById('neisTabSync');
+        if (tabName === 'sync' && elSync) {
+            elSync.style.display = 'block';
+            elSync.innerHTML = `
+                <div class="neis-card" style="text-align: center; padding: 36px 16px;">
+                    <div style="width: 52px; height: 52px; border-radius: 50%; background: #f1f5f9; display: inline-flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 12px;">👦</div>
+                    <h4 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 800; color: #1e293b;">등록된 자녀 정보가 없습니다</h4>
+                    <p style="font-size: 12px; color: #64748b; line-height: 1.6; max-width: 420px; margin: 0 auto 20px auto;">
+                        자녀 내신 정밀 진단 및 학사·급식 리포트는<br>
+                        <strong>[자녀 정보 및 성적 설정]</strong>에서 등록된 실제 자녀 정보를 바탕으로 분석됩니다.<br>
+                        자녀 성명, 소속 학교, 학년 및 성적을 먼저 등록해 주세요.
+                    </p>
+                    <div style="display: flex; justify-content: center;">
+                        <button type="button" onclick="if(window.openChildSettingsModal) window.openChildSettingsModal();" style="background: #2563eb; color: white; border: none; padding: 9px 18px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2); display: inline-flex; align-items: center; gap: 5px;">
+                            ⚙️ 자녀 정보 및 성적 설정하기
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else {
+            const el = document.getElementById(`neisTab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
+            if (!el) return;
+            el.style.display = 'block';
+
+            const tabMeta = {
+                grades: { icon: '📊', title: '등록된 자녀 성적 데이터가 없습니다', desc: '자녀 정보를 저장하시면 공시 통계와 결합된<br><strong>과목별 Z-Score 백분위 석차 및 내신 정밀 진단표</strong>가 자동으로 분석됩니다.' },
+                record: { icon: '📜', title: '등록된 자녀 생기부 정보가 없습니다', desc: '자녀 정보와 희망 전공을 등록하시면<br><strong>전공 적합도 진단 및 세특 강점/보완 AI 리포트</strong>를 확인하실 수 있습니다.' },
+                schedule: { icon: '📅', title: '등록된 자녀 학사 일정이 없습니다', desc: '자녀 소속 학교를 등록하시면 해당 학교의<br><strong>지필평가, 수행평가 및 주요 학사 일정</strong>이 실시간 동기화됩니다.' },
+                health: { icon: '🍱', title: '등록된 자녀 급식 및 건강 정보가 없습니다', desc: '자녀 소속 학교 및 알레르기 식품을 등록하시면<br><strong>오늘의 학교 급식 실시간 알레르기 필터링 및 PAPS 체력평가 결과</strong>를 확인하실 수 있습니다.' }
+            }[tabName] || { icon: 'ℹ️', title: '등록된 자녀 정보가 없습니다', desc: '자녀 정보를 먼저 등록해 주세요.' };
+
+            el.innerHTML = `
+                <div class="neis-card" style="text-align: center; padding: 40px 16px;">
+                    <span style="font-size: 38px; display: block; margin-bottom: 10px;">${tabMeta.icon}</span>
+                    <h4 style="margin: 0 0 6px 0; font-size: 15.5px; font-weight: 800; color: #1e293b;">${tabMeta.title}</h4>
+                    <p style="font-size: 12px; color: #64748b; line-height: 1.6; margin: 0 0 18px 0;">
+                        ${tabMeta.desc}
+                    </p>
+                    <button type="button" onclick="if(window.openChildSettingsModal) window.openChildSettingsModal();" style="background: #2563eb; color: white; border: none; padding: 9px 18px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);">
+                        ⚙️ 자녀 정보 및 성적 설정하기
+                    </button>
+                </div>
+            `;
+        }
+        return;
+    }
+
+    // 기본 자녀 정보 파악 (activeChild의 실시간 저장 값 최우선 반영)
+    const currentChildName = activeChild ? (activeChild.name || '자녀') : (savedNeisProfile?.studentInfo?.name || '자녀');
+    const currentSchoolName = activeChild ? (activeChild.schoolName || '서운중학교') : (savedNeisProfile?.studentInfo?.schoolName || '서운중학교');
+    const currentGrade = activeChild ? (parseInt(String(activeChild.grade).replace(/\D/g, ''), 10) || 2) : (savedNeisProfile?.studentInfo?.grade || 2);
+    const currentMajor = activeChild ? (activeChild.targetMajor || '') : (savedNeisProfile?.studentInfo?.targetMajor || '일반 / 미정');
+    const currentAllergies = activeChild 
+        ? (Array.isArray(activeChild.allergies) ? activeChild.allergies : (typeof activeChild.allergies === 'string' ? activeChild.allergies.split(',').map(s => s.trim()).filter(Boolean) : []))
+        : (savedNeisProfile?.studentInfo?.allergies || []);
+
+    const calcAch = (score) => {
+        if (score >= 90) return 'A';
+        if (score >= 80) return 'B';
+        if (score >= 70) return 'C';
+        if (score >= 60) return 'D';
+        return 'E';
+    };
+
+    // 학교알리미 실제 공시 학교 매칭 (선택된 타겟 학교, 서울 데이터 또는 지도 선택 학교)
+    let alrimiSchool = window.selectedTargetSchool || orchestrator?.state?.selectedSchool || null;
+    const targetSchoolPool = (typeof schoolsData !== 'undefined' && Array.isArray(schoolsData)) 
+        ? schoolsData 
+        : ((typeof schoolsDatabase !== 'undefined' && Array.isArray(schoolsDatabase)) ? schoolsDatabase : (window.schoolsDatabase || []));
+
+    if (!alrimiSchool && targetSchoolPool.length > 0) {
+        if (activeChild && activeChild.schoolId) {
+            alrimiSchool = targetSchoolPool.find(s => String(s.school_id || s.id) === String(activeChild.schoolId)) || null;
+        }
+        if (!alrimiSchool && activeChild && activeChild.schoolRegion) {
+            alrimiSchool = targetSchoolPool.find(s => 
+                (s.school_name === currentSchoolName || s.name === currentSchoolName) && 
+                ((s.region || s.district || '').includes(activeChild.schoolRegion) || activeChild.schoolRegion.includes(s.region || ''))
+            ) || null;
+        }
+        if (!alrimiSchool) {
+            alrimiSchool = targetSchoolPool.find(s => s.school_name === currentSchoolName || s.name === currentSchoolName) || null;
+        }
+    }
+
+    const agent = new NEISAgent();
+
+    // ★★★ 핵심 연동: activeChild가 존재할 경우 agent.service.profile에 실제 저장된 자녀 정보 및 성적을 100% 동기화 주입 ★★★
+    if (activeChild) {
+        if (!agent.service.profile) {
+            agent.service.profile = agent.service.getDefaultTemplate();
+        }
+        agent.service.profile.studentInfo = {
+            ...agent.service.profile.studentInfo,
+            name: currentChildName,
+            schoolName: currentSchoolName,
+            grade: currentGrade,
+            targetMajor: currentMajor || '일반 / 미정',
+            allergies: currentAllergies
+        };
+
+        const korScore = Number(activeChild.korean) || 0;
+        const mathScore = Number(activeChild.math) || 0;
+        const engScore = Number(activeChild.english) || 0;
+        const socScore = Number(activeChild.society) || 80;
+        const sciScore = Number(activeChild.science) || 80;
+
+        const currentGrades = Array.isArray(agent.service.profile.grades) ? [...agent.service.profile.grades] : [];
+        const updateOrAddGrade = (subj, score, defAvg, defStd) => {
+            const idx = currentGrades.findIndex(g => g.subject === subj);
+            const ach = calcAch(score);
+            if (idx >= 0) {
+                currentGrades[idx].rawScore = score;
+                currentGrades[idx].writtenScore = score;
+                currentGrades[idx].perfScore = score;
+                currentGrades[idx].achievement = ach;
+            } else {
+                currentGrades.push({
+                    subject: subj,
+                    rawScore: score,
+                    writtenScore: score,
+                    perfScore: score,
+                    avg: defAvg,
+                    std: defStd,
+                    achievement: ach
+                });
+            }
+        };
+
+        updateOrAddGrade('국어', korScore, 75.0, 14.0);
+        updateOrAddGrade('수학', mathScore, 70.0, 16.0);
+        updateOrAddGrade('영어', engScore, 72.0, 15.0);
+        updateOrAddGrade('사회', socScore, 74.0, 14.0);
+        updateOrAddGrade('과학', sciScore, 71.0, 15.0);
+
+        agent.service.profile.grades = currentGrades;
+        agent.service.profile.isConnected = true;
+
+        if (agent.service.profile.schoolRecord?.competencyScores) {
+            agent.service.profile.schoolRecord.competencyScores.academic = Math.round((korScore + mathScore + engScore + socScore + sciScore) / 5);
+        }
+
+        try {
+            localStorage.setItem('learnmap_neis_local_profile', JSON.stringify(agent.service.profile));
+        } catch (e) {}
+    }
+
+    let report = agent.generateFusionReport(alrimiSchool);
 
     if (!report) {
-        try {
-            const agent = new NEISAgent();
-            report = agent.generateFusionReport(orchestrator ? orchestrator.state.selectedSchool : null);
-        } catch (e) {
-            console.error('Failed fallback NEIS report generation', e);
-        }
+        report = agent.generateFusionReport(null);
     }
 
-    if (!report) return;
+    if (footerStatus) {
+        footerStatus.innerHTML = `🟢 진단 활성화 (<strong style="color: #1e293b;">${currentChildName}</strong> · ${currentSchoolName})`;
+    }
 
     const studentInfo = report.student || {};
-    const allergiesList = (studentInfo.allergies || []).join(', ') || '없음';
+    const allergiesList = (currentAllergies && currentAllergies.length > 0) ? currentAllergies.join(', ') : '없음';
 
+    // -------------------------------------------------------------------------
+    // Tab 1: Sync (진단 프로필 & 생기부/성적표 원클릭 파일 업로드)
+    // -------------------------------------------------------------------------
     if (tabName === 'sync') {
         const el = document.getElementById('neisTabSync');
         if (!el) return;
         el.style.display = 'block';
-        
+
         const gradesList = report.grades?.subjects || [];
-        const gradesInputRows = gradesList.map((g, idx) => `
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td style="padding: 6px;"><input type="text" id="editSubName_${idx}" value="${g.subject}" style="width: 100%; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; font-weight: 700;"></td>
-                <td style="padding: 6px;"><input type="number" id="editRaw_${idx}" value="${g.rawScore}" style="width: 100%; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; text-align: center;"></td>
-                <td style="padding: 6px;"><input type="number" id="editWritten_${idx}" value="${g.writtenScore ?? g.rawScore}" style="width: 100%; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; text-align: center;"></td>
-                <td style="padding: 6px;"><input type="number" id="editPerf_${idx}" value="${g.perfScore ?? g.rawScore}" style="width: 100%; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; text-align: center;"></td>
-                <td style="padding: 6px;"><input type="number" step="0.1" id="editAvg_${idx}" value="${g.avg}" style="width: 100%; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; text-align: center;"></td>
-                <td style="padding: 6px;"><input type="number" step="0.1" id="editStd_${idx}" value="${g.std}" style="width: 100%; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; text-align: center;"></td>
+        const gradesDisplayRows = gradesList.map(g => `
+            <tr>
+                <td style="font-weight: 700; color: #1e293b;">${g.subject}</td>
+                <td style="text-align: center; font-weight: 800; color: #2563eb;">${g.rawScore}점</td>
+                <td style="text-align: center; color: #64748b;">${g.avg}점</td>
+                <td style="text-align: center; color: #64748b;">${g.std}</td>
+                <td style="text-align: center;"><span class="neis-badge neis-badge-info">${g.achievement}</span></td>
+                <td style="text-align: center; font-weight: 700; color: #059669;">상위 ${g.percentile}%</td>
             </tr>
         `).join('');
 
         el.innerHTML = `
-            <div class="neis-card" style="background: linear-gradient(135deg, #f0fdf4 0%, #eef2ff 100%); border-color: #bbf7d0;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <!-- 1. 자녀 진단 프로필 카드 -->
+            <div class="neis-card" style="background: #ffffff; border: 1px solid #e2e8f0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 28px;">🟢</span>
+                        <div style="width: 36px; height: 36px; border-radius: 50%; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">👦</div>
                         <div>
-                            <h4 style="margin: 0; font-size: 15px; font-weight: 800; color: #166534;">나이스(NEIS) 학부모 마이데이터 연동 가이드</h4>
-                            <span style="font-size: 11px; color: #15803d;">실제 상용 서비스: 교육부 본인인증 자동 수신 | 로컬 환경: 직접 입력/수정 지원</span>
+                            <h4 style="margin: 0; font-size: 14.5px; font-weight: 800; color: #1e293b;">${studentInfo.name || currentChildName} 학생 프로필</h4>
+                            <span style="font-size: 11px; color: #64748b;">학교알리미 공시 통계 결합 내신 진단</span>
                         </div>
                     </div>
-                    <span class="neis-badge neis-badge-success">인증 완료</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        ${currentChildProfiles.length > 1 ? `
+                            <select onchange="window.switchNEISChild(this.value);" style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px; font-size: 11.5px; font-weight: 600; color: #334155; cursor: pointer; outline: none;" title="자녀 선택">
+                                ${currentChildProfiles.map((c, i) => `<option value="${c.id}" ${c.id === (activeChild?.id) ? 'selected' : ''}>${c.name || '자녀'} (${c.schoolName || '서운중'})</option>`).join('')}
+                            </select>
+                        ` : ''}
+                        <span class="neis-badge neis-badge-success">🟢 진단 활성화</span>
+                    </div>
                 </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; font-size: 12px; border-top: 1px dashed #bbf7d0; padding-top: 12px;">
-                    <div><strong>학생 성명:</strong> ${studentInfo.name || '김배움'}</div>
-                    <div><strong>소속 학교:</strong> ${studentInfo.schoolName || '강남중학교'} (${studentInfo.grade || 2}학년)</div>
-                    <div><strong>희망 지망 계열:</strong> ${studentInfo.targetMajor || '컴퓨터공학 / AI'}</div>
-                    <div><strong>등록 알레르기:</strong> ${allergiesList}</div>
+
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px; background: #f8fafc; border-radius: 10px; padding: 10px 12px; border: 1px solid #f1f5f9;">
+                    <div><span style="color: #64748b;">학생 성명:</span> <strong style="color: #1e293b;">${studentInfo.name || currentChildName}</strong></div>
+                    <div><span style="color: #64748b;">소속 학교:</span> <strong style="color: #1e293b;">${studentInfo.schoolName || currentSchoolName} (${studentInfo.grade || currentGrade}학년)</strong></div>
+                    <div><span style="color: #64748b;">희망 계열:</span> <strong style="color: #2563eb;">${studentInfo.targetMajor || '일반 / 미정'}</strong></div>
+                    <div><span style="color: #64748b;">알레르기:</span> <strong style="color: #d97706;">${allergiesList}</strong></div>
                 </div>
             </div>
 
-            <div class="neis-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h4 style="margin: 0; font-size: 14px; font-weight: 800; color: #1e293b;">✏️ 실제 자녀 정보 & 성적 직접 입력 / 수정</h4>
-                    <button id="btnToggleNEISEdit" style="background: #e0e7ff; color: #3730a3; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">
-                        📝 입력/수정 창 열기
-                    </button>
-                </div>
-                <p style="font-size: 12px; color: #64748b; line-height: 1.5; margin-bottom: 10px;">
-                    💡 <strong>실제 서비스</strong> 연동 시에는 교육부 나이스 학부모 마이데이터 인증을 거쳐 정부 서버에서 자녀의 성적표와 생기부가 자동으로 불러와집니다.<br>
-                    <strong>현재 로컬 테스트 환경</strong>에서는 아래 폼에 실제 자녀의 성적 및 알레르기 정보를 입력하여 맞춤 진단을 바로 테스트하실 수 있습니다.
-                </p>
-
-                <div id="neisEditFormContainer" style="display: none; background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 10px;">
-                    <h5 style="margin: 0 0 10px 0; font-size: 13px; font-weight: 800; color: #1e293b;">1. 자녀 기본 정보 입력</h5>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px; font-size: 11px;">
+            <!-- 2. 나이스 생기부/성적표 원클릭 파일 업로드 & AI 분석 카드 -->
+            <div class="neis-card" style="border: 1.5px dashed #cbd5e1; background: #f8fafc;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 20px;">📄</span>
                         <div>
-                            <label style="display: block; font-weight: 700; margin-bottom: 4px;">학생 성명</label>
-                            <input type="text" id="editStudentName" value="${studentInfo.name || ''}" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                        </div>
-                        <div>
-                            <label style="display: block; font-weight: 700; margin-bottom: 4px;">소속 학교명</label>
-                            <input type="text" id="editSchoolName" value="${studentInfo.schoolName || ''}" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                        </div>
-                        <div>
-                            <label style="display: block; font-weight: 700; margin-bottom: 4px;">학년</label>
-                            <input type="number" id="editGrade" value="${studentInfo.grade || 2}" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                        </div>
-                        <div>
-                            <label style="display: block; font-weight: 700; margin-bottom: 4px;">희망 지망 계열</label>
-                            <input type="text" id="editTargetMajor" value="${studentInfo.targetMajor || ''}" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                        </div>
-                        <div style="grid-column: 1 / -1;">
-                            <label style="display: block; font-weight: 700; margin-bottom: 4px;">등록 알레르기 식단 (쉼표로 구분)</label>
-                            <input type="text" id="editAllergies" value="${allergiesList}" placeholder="예: 대두, 우유, 땅콩, 계란" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                            <h4 style="margin: 0; font-size: 13.5px; font-weight: 800; color: #1e293b;">생기부·성적표 파일(PDF·TXT) 간편 분석</h4>
+                            <p style="margin: 2px 0 0 0; font-size: 11px; color: #64748b;">나이스/정부24 문서를 넣으시면 과목 성적·출결·PAPS를 자동 추출합니다.</p>
                         </div>
                     </div>
+                </div>
 
-                    <h5 style="margin: 0 0 10px 0; font-size: 13px; font-weight: 800; color: #1e293b;">2. 과목별 실제 성적 및 평가 점수 입력</h5>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 14px;">
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+                    <span style="font-size: 11.5px; color: #64748b;">지원 형식: <strong>PDF (.pdf)</strong>, <strong>텍스트 (.txt)</strong></span>
+                    <div>
+                        <input type="file" id="neisRecordFileInput" accept=".pdf,.txt" style="display: none;" onchange="window.handleNEISFileUpload(event)">
+                        <button type="button" id="btnNeisUploadFile" onclick="document.getElementById('neisRecordFileInput').click();" style="background: #2563eb; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 11.5px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 1px 3px rgba(37,99,235,0.2);">
+                            📁 파일 선택하기
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 과목별 등록 성적 현황 표 -->
+            <div class="neis-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <h4 style="margin: 0; font-size: 13.5px; font-weight: 800; color: #1e293b;">📊 과목별 성적 현황</h4>
+                        <span style="font-size: 11px; color: #64748b;">현재 저장되어 실시간 정밀 진단에 반영 중인 성적표입니다.</span>
+                    </div>
+                    <button type="button" onclick="if(window.openChildSettingsModal) window.openChildSettingsModal();" style="background: #ffffff; color: #334155; border: 1px solid #cbd5e1; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc';" onmouseout="this.style.background='#ffffff';">
+                        ⚙️ 성적 수정
+                    </button>
+                </div>
+
+                <div style="border: 1px solid #e2e8f0; border-radius: 10px; overflow-x: auto;">
+                    <table class="neis-table">
                         <thead>
-                            <tr style="background: #e2e8f0; color: #334155; text-align: center;">
-                                <th style="padding: 6px; text-align: left;">과목명</th>
-                                <th style="padding: 6px;">원점수</th>
-                                <th style="padding: 6px;">지필점수</th>
-                                <th style="padding: 6px;">수행점수</th>
-                                <th style="padding: 6px;">학교평균</th>
-                                <th style="padding: 6px;">표준편차</th>
+                            <tr>
+                                <th style="text-align: left;">과목</th>
+                                <th>원점수</th>
+                                <th>평균</th>
+                                <th>표준편차</th>
+                                <th>성취도</th>
+                                <th>석차 백분위</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${gradesInputRows}
+                            ${gradesDisplayRows}
                         </tbody>
                     </table>
-
-                    <div style="display: flex; gap: 8px;">
-                        <button id="btnSaveNEISRealData" style="background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; flex: 1;">
-                            💾 입력 정보 저장 및 실시간 융합 진단 반영
-                        </button>
-                        <button id="btnResetNEISSample" style="background: #94a3b8; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">
-                            🔄 샘플 복원
-                        </button>
-                    </div>
                 </div>
             </div>
         `;
-
-        const btnToggle = document.getElementById('btnToggleNEISEdit');
-        const formContainer = document.getElementById('neisEditFormContainer');
-        if (btnToggle && formContainer) {
-            btnToggle.onclick = function() {
-                const isHidden = formContainer.style.display === 'none';
-                formContainer.style.display = isHidden ? 'block' : 'none';
-                btnToggle.innerText = isHidden ? '❌ 입력/수정 창 닫기' : '📝 입력/수정 창 열기';
-            };
-        }
-
-        const btnSave = document.getElementById('btnSaveNEISRealData');
-        if (btnSave) {
-            btnSave.onclick = function() {
-                try {
-                    const agent = new NEISAgent();
-                    const currentProf = agent.service.profile;
-
-                    const newName = document.getElementById('editStudentName')?.value || currentProf.studentInfo.name;
-                    const newSchool = document.getElementById('editSchoolName')?.value || currentProf.studentInfo.schoolName;
-                    const newGrade = parseInt(document.getElementById('editGrade')?.value || currentProf.studentInfo.grade, 10);
-                    const newMajor = document.getElementById('editTargetMajor')?.value || currentProf.studentInfo.targetMajor;
-                    const rawAllergies = document.getElementById('editAllergies')?.value || '';
-                    const newAllergies = rawAllergies.split(',').map(s => s.trim()).filter(Boolean);
-
-                    const updatedGrades = (currentProf.grades || []).map((g, idx) => {
-                        const subName = document.getElementById(`editSubName_${idx}`)?.value || g.subject;
-                        const raw = parseFloat(document.getElementById(`editRaw_${idx}`)?.value || g.rawScore);
-                        const written = parseFloat(document.getElementById(`editWritten_${idx}`)?.value || g.writtenScore || raw);
-                        const perf = parseFloat(document.getElementById(`editPerf_${idx}`)?.value || g.perfScore || raw);
-                        const avg = parseFloat(document.getElementById(`editAvg_${idx}`)?.value || g.avg);
-                        const std = parseFloat(document.getElementById(`editStd_${idx}`)?.value || g.std);
-
-                        return {
-                            ...g,
-                            subject: subName,
-                            rawScore: raw,
-                            writtenScore: written,
-                            perfScore: perf,
-                            avg: avg,
-                            std: std
-                        };
-                    });
-
-                    const newProfile = {
-                        ...currentProf,
-                        studentInfo: {
-                            ...currentProf.studentInfo,
-                            name: newName,
-                            schoolName: newSchool,
-                            grade: newGrade,
-                            targetMajor: newMajor,
-                            allergies: newAllergies
-                        },
-                        grades: updatedGrades
-                    };
-
-                    agent.service.saveProfile(newProfile);
-                    alert('입력하신 자녀 성적 및 마이데이터 정보가 성공적으로 반영되었습니다!');
-                    window.renderNEISTabContent('sync');
-                } catch (err) {
-                    console.error('Failed to save custom NEIS data', err);
-                    alert('정보 저장 중 오류가 발생했습니다.');
-                }
-            };
-        }
-
-        const btnReset = document.getElementById('btnResetNEISSample');
-        if (btnReset) {
-            btnReset.onclick = function() {
-                if (confirm('시뮬레이션 기본 샘플 데이터로 복원하시겠습니까?')) {
-                    try {
-                        localStorage.removeItem('learnmap_neis_local_profile');
-                    } catch(err) {}
-                    alert('기본 샘플 데이터로 복원되었습니다.');
-                    window.renderNEISTabContent('sync');
-                }
-            };
-        }
-    } else if (tabName === 'grades') {
+    } 
+    // -------------------------------------------------------------------------
+    // Tab 2: Grades (학교알리미 실제 공시 통계 결합 정밀 진단표)
+    // -------------------------------------------------------------------------
+    else if (tabName === 'grades') {
         const el = document.getElementById('neisTabGrades');
         if (!el) return;
         el.style.display = 'block';
 
         const gradesObj = report.grades || {};
         const subjectList = gradesObj.subjects || [];
+        const isOfficialStatsUsed = Boolean(alrimiSchool);
+
         const subjectRows = subjectList.map(sub => `
-            <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 10px; font-weight: 700;">${sub.subject}</td>
-                <td style="padding: 10px; text-align: center;">${sub.rawScore}점</td>
-                <td style="padding: 10px; text-align: center; color: #64748b;">${sub.avg}점 (표준편차 ${sub.std})</td>
-                <td style="padding: 10px; text-align: center;"><span class="neis-badge neis-badge-info">상위 ${sub.percentile}%</span></td>
-                <td style="padding: 10px; text-align: center; font-weight: 700; color: #2563eb;">${sub.estimatedGrade}등급 (${sub.achievement})</td>
-                <td style="padding: 10px; text-align: center;">
+            <tr>
+                <td style="font-weight: 700; color: #1e293b;">${sub.subject}</td>
+                <td style="text-align: center; font-weight: 800; color: #2563eb;">${sub.rawScore}점</td>
+                <td style="text-align: center; color: #64748b;">${sub.avg}점 <span style="font-size: 10.5px;">(±${sub.std})</span></td>
+                <td style="text-align: center;"><span class="neis-badge neis-badge-info">상위 ${sub.percentile}%</span></td>
+                <td style="text-align: center; font-weight: 700; color: #2563eb;">${sub.estimatedGrade}등급 (${sub.achievement})</td>
+                <td style="text-align: center;">
                     ${sub.perfGap > 5 
-                        ? `<span class="neis-badge neis-badge-warning" title="수행평가 감점 ${sub.perfGap}점">수행 감점 -${sub.perfGap}점</span>` 
-                        : `<span class="neis-badge neis-badge-success">수행 우수</span>`}
+                        ? `<span class="neis-badge neis-badge-warning" title="수행평가 감점 ${sub.perfGap}점">수행 -${sub.perfGap}점</span>` 
+                        : `<span class="neis-badge neis-badge-success">지필·수행 균형</span>`}
                 </td>
             </tr>
         `).join('');
 
         const schoolMatchHtml = report.schoolMatch ? `
-            <div class="neis-card" style="background: #eff6ff; border-color: #bfdbfe;">
-                <h4 style="margin: 0 0 6px 0; font-size: 14px; font-weight: 800; color: #1e40af;">🏫 선택된 학교(${report.schoolMatch.schoolName}) 대비 내 자녀 평균 학업성취 분석</h4>
+            <div class="neis-card" style="background: #eff6ff; border: 1px solid #bfdbfe; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <h4 style="margin: 0; font-size: 13.5px; font-weight: 800; color: #1e40af;">🏫 공시 결합 분석 (${report.schoolMatch.schoolName})</h4>
+                    <span class="neis-badge neis-badge-info">학교알리미 실측 매칭</span>
+                </div>
                 <div style="font-size: 12px; color: #1e3a8a;">
-                    학교 전체 평균: <strong>${report.schoolMatch.schoolAvg}점</strong> vs 내 자녀 평균: <strong style="color: #2563eb;">${report.schoolMatch.childAvg}점</strong> 
+                    학교 평균 <strong>${report.schoolMatch.schoolAvg}점</strong> vs 내 자녀 평균 <strong style="color: #2563eb;">${report.schoolMatch.childAvg}점</strong> 
                     (${report.schoolMatch.diffScore >= 0 ? `+${report.schoolMatch.diffScore}점 우위` : `${report.schoolMatch.diffScore}점 보완 필요`}) ➔ <span class="neis-badge neis-badge-success">${report.schoolMatch.matchStatus}</span>
                 </div>
             </div>
@@ -13344,131 +15354,605 @@ window.renderNEISTabContent = function(tabName = 'sync') {
         el.innerHTML = `
             ${schoolMatchHtml}
             <div class="neis-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <h4 style="margin: 0; font-size: 14px; font-weight: 800; color: #1e293b;">📊 과목별 성적 정밀 분석표 (Z-Score 석차 산출)</h4>
-                    <span style="font-size: 11px; color: #64748b;">전체 과목 평균: <strong>${gradesObj.overallAvgScore || 88}점</strong> (평균 상위 <strong>${gradesObj.overallPercentile || 7.2}%</strong>)</span>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <h4 style="margin: 0; font-size: 13.5px; font-weight: 800; color: #1e293b;">📊 과목별 성적 정밀 분석표</h4>
+                        <span style="font-size: 11px; color: ${isOfficialStatsUsed ? '#059669' : '#64748b'}; font-weight: 500;">
+                            ${isOfficialStatsUsed ? `🟢 [${alrimiSchool.school_name || alrimiSchool.name}] 학교알리미 공시 통계 결합` : '⚪ 교육과정 표준 통계 기반'}
+                        </span>
+                    </div>
+                    <span style="font-size: 12px; color: #334155; font-weight: 600;">전체 평균: <strong style="color: #2563eb;">${gradesObj.overallAvgScore || 80}점</strong> (상위 <strong>${gradesObj.overallPercentile || 25}%</strong>)</span>
                 </div>
-                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                    <thead>
-                        <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569; text-align: center;">
-                            <th style="padding: 8px; text-align: left;">과목</th>
-                            <th style="padding: 8px;">원점수</th>
-                            <th style="padding: 8px;">학교 평균/표준편차</th>
-                            <th style="padding: 8px;">백분위 (석차%)</th>
-                            <th style="padding: 8px;">예상 등급</th>
-                            <th style="padding: 8px;">지필 vs 수행 밸런스</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${subjectRows}
-                    </tbody>
-                </table>
+                <div style="border: 1px solid #e2e8f0; border-radius: 10px; overflow-x: auto;">
+                    <table class="neis-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left;">과목</th>
+                                <th>원점수</th>
+                                <th>학교 평균(표준편차)</th>
+                                <th>백분위</th>
+                                <th>예상 등급</th>
+                                <th>지필 vs 수행</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${subjectRows}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `;
-    } else if (tabName === 'record') {
+    } 
+    // -------------------------------------------------------------------------
+    // Tab 3: Record (생기부 / 세특 AI 역량 리포트)
+    // -------------------------------------------------------------------------
+    else if (tabName === 'record') {
         const el = document.getElementById('neisTabRecord');
         if (!el) return;
         el.style.display = 'block';
 
         const recordObj = report.record || {};
-        const compScores = recordObj.competencyScores || { academic: 91, majorSuitability: 88, community: 93 };
-        const keywordsHtml = (recordObj.keywords || []).map(k => `<span style="background: #e0e7ff; color: #3730a3; padding: 4px 10px; border-radius: 14px; font-size: 11px; font-weight: 600;">#${k}</span>`).join(' ');
-        const strengthsHtml = (recordObj.strengths || []).map(s => `<li style="margin-bottom: 4px;">✅ ${s}</li>`).join('');
-        const weaknessesHtml = (recordObj.weaknesses || []).map(w => `<li style="margin-bottom: 4px; color: #dc2626;">⚠️ ${w}</li>`).join('');
+        const compScores = recordObj.competencyScores || { academic: 85, majorSuitability: 82, community: 88 };
+        const keywordsHtml = (recordObj.keywords || ['자기주도학습', '성실성']).map(k => `<span class="neis-badge neis-badge-info" style="font-size: 11px;">#${k}</span>`).join(' ');
+        const strengthsHtml = (recordObj.strengths || ['수업 참여 태도 양호', '과제 성실성 우수']).map(s => `<li style="margin-bottom: 5px; display: flex; align-items: flex-start; gap: 6px;"><span style="color: #059669;">✔</span> <span>${s}</span></li>`).join('');
+        const weaknessesHtml = (recordObj.weaknesses || ['심화 서술형 문항 연습 권장']).map(w => `<li style="margin-bottom: 5px; display: flex; align-items: flex-start; gap: 6px; color: #dc2626;"><span style="color: #dc2626;">⚠</span> <span>${w}</span></li>`).join('');
 
         el.innerHTML = `
-            <div class="neis-card" style="background: linear-gradient(135deg, #eef2ff, #fae8ff); border-color: #c7d2fe;">
-                <h4 style="margin: 0 0 10px 0; font-size: 14px; font-weight: 800; color: #312e81;">🎯 희망 지망 전공 적합도 진단: ${studentInfo.targetMajor || '컴퓨터공학 / AI'}</h4>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center; margin-bottom: 12px;">
-                    <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #e0e7ff;">
-                        <div style="font-size: 11px; color: #6366f1;">학업 역량</div>
-                        <div style="font-size: 20px; font-weight: 800; color: #4338ca;">${compScores.academic}점</div>
+            <div class="neis-card" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h4 style="margin: 0; font-size: 13.5px; font-weight: 800; color: #1e293b;">🎯 희망 계열 적합도: <span style="color: #2563eb;">${studentInfo.targetMajor || '일반 / 미정'}</span></h4>
+                    <span class="neis-badge neis-badge-info">AI 역량 정량화</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; margin-bottom: 12px;">
+                    <div style="background: #ffffff; padding: 10px 6px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <div style="font-size: 11px; color: #2563eb; font-weight: 600;">학업 역량</div>
+                        <div style="font-size: 18px; font-weight: 800; color: #1e293b; margin-top: 2px;">${compScores.academic}점</div>
                     </div>
-                    <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #e0e7ff;">
-                        <div style="font-size: 11px; color: #a855f7;">전공 적합성</div>
-                        <div style="font-size: 20px; font-weight: 800; color: #7e22ce;">${compScores.majorSuitability}점</div>
+                    <div style="background: #ffffff; padding: 10px 6px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <div style="font-size: 11px; color: #7c3aed; font-weight: 600;">전공 적합성</div>
+                        <div style="font-size: 18px; font-weight: 800; color: #1e293b; margin-top: 2px;">${compScores.majorSuitability}점</div>
                     </div>
-                    <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #e0e7ff;">
-                        <div style="font-size: 11px; color: #10b981;">공동체/인성</div>
-                        <div style="font-size: 20px; font-weight: 800; color: #047857;">${compScores.community}점</div>
+                    <div style="background: #ffffff; padding: 10px 6px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <div style="font-size: 11px; color: #059669; font-weight: 600;">공동체/인성</div>
+                        <div style="font-size: 18px; font-weight: 800; color: #1e293b; margin-top: 2px;">${compScores.community}점</div>
                     </div>
                 </div>
-                <div style="font-size: 12px; margin-top: 8px;"><strong>추출 세특 탐구 키워드:</strong> <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">${keywordsHtml}</div></div>
+                <div style="font-size: 11.5px; color: #64748b;">
+                    <strong>추출 탐구 키워드:</strong> 
+                    <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px;">${keywordsHtml}</div>
+                </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div style="display: flex; flex-direction: column; gap: 10px;">
                 <div class="neis-card" style="margin-bottom: 0;">
-                    <h4 style="margin: 0 0 8px 0; font-size: 13px; font-weight: 800; color: #166534;">🌟 세특 & 생기부 강점 (Strengths)</h4>
+                    <h4 style="margin: 0 0 8px 0; font-size: 13px; font-weight: 800; color: #059669; display: flex; align-items: center; gap: 5px;">
+                        <span>🌟</span> 세특 & 생기부 핵심 강점
+                    </h4>
                     <ul style="padding-left: 0; list-style: none; font-size: 12px; color: #334155; margin: 0;">${strengthsHtml}</ul>
                 </div>
                 <div class="neis-card" style="margin-bottom: 0;">
-                    <h4 style="margin: 0 0 8px 0; font-size: 13px; font-weight: 800; color: #991b1b;">💡 보완 권장 영역 (Weaknesses)</h4>
+                    <h4 style="margin: 0 0 8px 0; font-size: 13px; font-weight: 800; color: #dc2626; display: flex; align-items: center; gap: 5px;">
+                        <span>💡</span> 보완 권장 영역
+                    </h4>
                     <ul style="padding-left: 0; list-style: none; font-size: 12px; margin: 0;">${weaknessesHtml}</ul>
                 </div>
             </div>
         `;
-    } else if (tabName === 'schedule') {
+    } 
+    // -------------------------------------------------------------------------
+    // Tab 4: Schedule (실제 교육부 NEIS 학사일정 실시간 API 연동 & 달력 보기)
+    // -------------------------------------------------------------------------
+    else if (tabName === 'schedule') {
         const el = document.getElementById('neisTabSchedule');
         if (!el) return;
         el.style.display = 'block';
 
-        const scheduleList = report.schedule || [];
-        const scheduleItems = scheduleList.map(item => `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px;">
-                <div>
-                    <span class="neis-badge ${item.type === 'exam' ? 'neis-badge-danger' : (item.type === 'perf' ? 'neis-badge-warning' : 'neis-badge-info')}" style="margin-right: 8px;">${item.type === 'exam' ? '지필시험' : (item.type === 'perf' ? '수행평가' : '학사행사')}</span>
-                    <strong style="font-size: 13px; color: #1e293b;">${item.title}</strong>
-                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${item.detail}</div>
+        // 학사 일정 상태 관리 객체 초기화
+        if (!window.__neisScheduleState) {
+            window.__neisScheduleState = {
+                viewMode: 'calendar', // 기본 달력보기 우선 노출
+                year: new Date().getFullYear(),
+                month: new Date().getMonth(),
+                selectedDate: new Date().toISOString().slice(0, 10),
+                list: report.schedule || [],
+                schoolName: currentSchoolName,
+                isLive: false
+            };
+        } else {
+            window.__neisScheduleState.schoolName = currentSchoolName;
+            if (!window.__neisScheduleState.list || window.__neisScheduleState.list.length === 0) {
+                window.__neisScheduleState.list = report.schedule || [];
+            }
+        }
+
+        // 캘린더 & 목록 렌더링 함수 정의
+        window.renderNEISScheduleView = function() {
+            const scheduleContainer = document.getElementById('neisLiveScheduleContainer');
+            if (!scheduleContainer) return;
+            const st = window.__neisScheduleState;
+            const { viewMode, year, month, selectedDate, list, schoolName, isLive } = st;
+
+            // 상단 헤더: 타이틀 + 실시간 연동 배지 + [📋 목록 / 📅 달력] 전환 스위처
+            const headerHtml = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <h4 style="margin: 0; font-size: 13.5px; font-weight: 800; color: #1e293b;">📅 주요 학사 일정 & 수행평가</h4>
+                        <span style="font-size: 11px; color: ${isLive ? '#059669' : '#64748b'}; font-weight: 500;">
+                            ${isLive ? `🟢 교육부 나이스 실시간 연동 (${schoolName})` : `${schoolName} 등록 일정`}
+                        </span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <div style="background: #f1f5f9; padding: 2px; border-radius: 8px; display: inline-flex; gap: 2px;">
+                            <button type="button" onclick="window.toggleNEISScheduleView('list');" style="border: none; border-radius: 6px; padding: 4px 9px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.15s; background: ${viewMode === 'list' ? '#ffffff' : 'transparent'}; color: ${viewMode === 'list' ? '#1e293b' : '#64748b'}; box-shadow: ${viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'};">
+                                📋 목록
+                            </button>
+                            <button type="button" onclick="window.toggleNEISScheduleView('calendar');" style="border: none; border-radius: 6px; padding: 4px 9px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.15s; background: ${viewMode === 'calendar' ? '#ffffff' : 'transparent'}; color: ${viewMode === 'calendar' ? '#1e293b' : '#64748b'}; box-shadow: ${viewMode === 'calendar' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'};">
+                                📅 달력
+                            </button>
+                        </div>
+                        <span class="neis-badge ${isLive ? 'neis-badge-success' : 'neis-badge-info'}">${isLive ? '나이스 실시간' : '기본'}</span>
+                    </div>
                 </div>
-                <div style="font-size: 12px; font-weight: 700; color: #2563eb;">${item.date}</div>
-            </div>
-        `).join('');
+            `;
 
-        const attObj = report.attendance || { totalDays: 130, unexcusedAbsence: 0, unexcusedLateness: 0, status: '정상 (개근 유지 중)' };
+            // 1) [목록 보기] 모드
+            if (viewMode === 'list') {
+                const scheduleItems = (list && list.length > 0) ? list.map(item => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 7px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                        <div style="flex: 1; min-width: 0; padding-right: 8px;">
+                            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
+                                <span class="neis-badge ${item.type === 'exam' ? 'neis-badge-danger' : (item.type === 'perf' ? 'neis-badge-warning' : (item.type === 'vacation' ? 'neis-badge-success' : 'neis-badge-info'))}">
+                                    ${item.type === 'exam' ? '지필시험' : (item.type === 'perf' ? '수행평가' : (item.type === 'vacation' ? '방학/휴업' : '학사행사'))}
+                                </span>
+                                <strong style="font-size: 12.5px; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.title}</strong>
+                            </div>
+                            <div style="font-size: 11px; color: #64748b; margin-top: 1px;">${item.detail}</div>
+                        </div>
+                        <div style="font-size: 11.5px; font-weight: 700; color: #2563eb; white-space: nowrap;">${item.date}</div>
+                    </div>
+                `).join('') : '<div style="text-align: center; padding: 20px; color: #64748b; font-size: 12px;">등록된 학사 일정이 없습니다.</div>';
 
+                scheduleContainer.innerHTML = headerHtml + scheduleItems;
+            } 
+            // 2) [달력 보기] 모드
+            else {
+                const firstDayIndex = new Date(year, month, 1).getDay();
+                const lastDate = new Date(year, month + 1, 0).getDate();
+                const prevLastDate = new Date(year, month, 0).getDate();
+                const todayStr = new Date().toISOString().slice(0, 10);
+
+                let cellsHtml = '';
+
+                // 이전 달 잔여 날짜 (연한 회색)
+                for (let i = firstDayIndex - 1; i >= 0; i--) {
+                    const pDay = prevLastDate - i;
+                    cellsHtml += `<div style="padding: 6px 2px; text-align: center; color: #cbd5e1; font-size: 11px; user-select: none;">${pDay}</div>`;
+                }
+
+                // 당월 일자 그리드 생성
+                for (let day = 1; day <= lastDate; day++) {
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const isToday = (dateStr === todayStr);
+                    const isSelected = (dateStr === selectedDate);
+                    const dayOfWeek = (firstDayIndex + day - 1) % 7;
+                    const isSun = (dayOfWeek === 0);
+                    const isSat = (dayOfWeek === 6);
+
+                    // 해당 일자의 학사 일정 조회
+                    const dayEvents = list.filter(item => item.date === dateStr);
+                    const hasExam = dayEvents.some(e => e.type === 'exam');
+                    const hasPerf = dayEvents.some(e => e.type === 'perf');
+                    const hasVacation = dayEvents.some(e => e.type === 'vacation');
+                    const hasEvent = dayEvents.some(e => e.type === 'event' || !e.type);
+
+                    let dotsHtml = '';
+                    if (hasExam) dotsHtml += '<span style="width: 5px; height: 5px; border-radius: 50%; background: #ef4444; display: inline-block;" title="지필시험"></span>';
+                    if (hasPerf) dotsHtml += '<span style="width: 5px; height: 5px; border-radius: 50%; background: #f59e0b; display: inline-block;" title="수행평가"></span>';
+                    if (hasVacation) dotsHtml += '<span style="width: 5px; height: 5px; border-radius: 50%; background: #10b981; display: inline-block;" title="방학/휴업"></span>';
+                    if (hasEvent && !hasExam && !hasPerf && !hasVacation) dotsHtml += '<span style="width: 5px; height: 5px; border-radius: 50%; background: #2563eb; display: inline-block;" title="학사행사"></span>';
+
+                    let numColor = '#1e293b';
+                    if (isSun) numColor = '#ef4444';
+                    else if (isSat) numColor = '#2563eb';
+
+                    cellsHtml += `
+                        <div onclick="window.selectNEISCalendarDate('${dateStr}');" style="padding: 5px 2px; text-align: center; border-radius: 8px; cursor: pointer; transition: all 0.15s; background: ${isSelected ? '#eff6ff' : (isToday ? '#f8fafc' : 'transparent')}; border: ${isSelected ? '1.5px solid #2563eb' : (isToday ? '1px solid #bfdbfe' : '1px solid transparent')}; position: relative; min-height: 42px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;">
+                            <span style="font-size: 11.5px; font-weight: ${isSelected || isToday ? '800' : '600'}; color: ${isSelected ? '#2563eb' : numColor}; line-height: 1;">${day}</span>
+                            <div style="display: flex; gap: 2px; margin-top: 4px; justify-content: center; min-height: 5px;">${dotsHtml}</div>
+                        </div>
+                    `;
+                }
+
+                // 익월 잔여 날짜 채우기 (7열 배수 맞추기)
+                const totalCells = firstDayIndex + lastDate;
+                const remaining = (7 - (totalCells % 7)) % 7;
+                for (let n = 1; n <= remaining; n++) {
+                    cellsHtml += `<div style="padding: 6px 2px; text-align: center; color: #cbd5e1; font-size: 11px; user-select: none;">${n}</div>`;
+                }
+
+                // 선택된 날짜의 상세 일정 카드
+                const selectedEvents = list.filter(item => item.date === selectedDate);
+                const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+                const selDateObj = selectedDate ? new Date(selectedDate) : new Date();
+                const selDayName = dayNames[selDateObj.getDay()];
+
+                const selectedEventsHtml = (selectedEvents.length > 0) ? selectedEvents.map(e => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
+                                <span class="neis-badge ${e.type === 'exam' ? 'neis-badge-danger' : (e.type === 'perf' ? 'neis-badge-warning' : (e.type === 'vacation' ? 'neis-badge-success' : 'neis-badge-info'))}">
+                                    ${e.type === 'exam' ? '지필시험' : (e.type === 'perf' ? '수행평가' : (e.type === 'vacation' ? '방학/휴업' : '학사행사'))}
+                                </span>
+                                <strong style="font-size: 12.5px; color: #1e293b;">${e.title}</strong>
+                            </div>
+                            <div style="font-size: 11px; color: #64748b;">${e.detail}</div>
+                        </div>
+                    </div>
+                `).join('') : `
+                    <div style="text-align: center; padding: 14px; background: #ffffff; border: 1px dashed #e2e8f0; border-radius: 8px; color: #94a3b8; font-size: 11.5px;">
+                        선택하신 날짜에 등록된 공식 일정이 없습니다.
+                    </div>
+                `;
+
+                const calendarHtml = `
+                    <!-- 월간 캘린더 네비게이션 & 그리드 -->
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <button type="button" onclick="window.changeNEISCalendarMonth(-1);" style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 11px; color: #475569;" title="이전 달">&lt;</button>
+                                <span style="font-size: 13.5px; font-weight: 800; color: #1e293b;">${year}년 ${month + 1}월</span>
+                                <button type="button" onclick="window.changeNEISCalendarMonth(1);" style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 11px; color: #475569;" title="다음 달">&gt;</button>
+                            </div>
+                            <button type="button" onclick="window.setNEISCalendarToday();" style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; color: #2563eb; cursor: pointer;">오늘</button>
+                        </div>
+
+                        <!-- 요일 헤더 -->
+                        <div style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 11px; font-weight: 700; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                            <div style="color: #ef4444;">일</div>
+                            <div style="color: #64748b;">월</div>
+                            <div style="color: #64748b;">화</div>
+                            <div style="color: #64748b;">수</div>
+                            <div style="color: #64748b;">목</div>
+                            <div style="color: #64748b;">금</div>
+                            <div style="color: #2563eb;">토</div>
+                        </div>
+
+                        <!-- 날짜 셀 그리드 -->
+                        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;">
+                            ${cellsHtml}
+                        </div>
+
+                        <!-- 일정 유형 범례 -->
+                        <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e2e8f0; font-size: 10.5px; color: #64748b; flex-wrap: wrap;">
+                            <span style="display: inline-flex; align-items: center; gap: 3px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #ef4444;"></span> 지필시험</span>
+                            <span style="display: inline-flex; align-items: center; gap: 3px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;"></span> 수행평가</span>
+                            <span style="display: inline-flex; align-items: center; gap: 3px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span> 방학/휴업</span>
+                            <span style="display: inline-flex; align-items: center; gap: 3px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #2563eb;"></span> 학사행사</span>
+                        </div>
+                    </div>
+
+                    <!-- 선택된 날짜 상세 일정 카드 -->
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <h5 style="margin: 0; font-size: 12.5px; font-weight: 800; color: #1e293b;">
+                                📌 ${selectedDate || todayStr} (${selDayName || '오늘'}) 일정
+                            </h5>
+                            <span style="font-size: 11px; color: #2563eb; font-weight: 700;">${selectedEvents.length}건</span>
+                        </div>
+                        ${selectedEventsHtml}
+                    </div>
+                `;
+
+                scheduleContainer.innerHTML = headerHtml + calendarHtml;
+            }
+        };
+
+        window.toggleNEISScheduleView = function(mode) {
+            if (!window.__neisScheduleState) return;
+            window.__neisScheduleState.viewMode = mode;
+            window.renderNEISScheduleView();
+        };
+
+        window.changeNEISCalendarMonth = function(offset) {
+            if (!window.__neisScheduleState) return;
+            let { year, month } = window.__neisScheduleState;
+            month += offset;
+            if (month < 0) {
+                month = 11;
+                year--;
+            } else if (month > 11) {
+                month = 0;
+                year++;
+            }
+            window.__neisScheduleState.year = year;
+            window.__neisScheduleState.month = month;
+            window.renderNEISScheduleView();
+        };
+
+        window.setNEISCalendarToday = function() {
+            if (!window.__neisScheduleState) return;
+            const now = new Date();
+            window.__neisScheduleState.year = now.getFullYear();
+            window.__neisScheduleState.month = now.getMonth();
+            window.__neisScheduleState.selectedDate = now.toISOString().slice(0, 10);
+            window.renderNEISScheduleView();
+        };
+
+        window.selectNEISCalendarDate = function(dateStr) {
+            if (!window.__neisScheduleState) return;
+            window.__neisScheduleState.selectedDate = dateStr;
+            window.renderNEISScheduleView();
+        };
+
+        // 로딩 플레이스홀더 렌더링
         el.innerHTML = `
-            <div class="neis-card" style="background: #f0fdf4; border-color: #bbf7d0; margin-bottom: 16px;">
-                <h4 style="margin: 0 0 4px 0; font-size: 14px; font-weight: 800; color: #166534;">🏫 출결 현황 리포트</h4>
-                <div style="font-size: 12px; color: #15803d;">
-                    출석 인정 일수: <strong>${attObj.totalDays}일</strong> | 미인정 결석: <strong>${attObj.unexcusedAbsence}건</strong> | 미인정 지각: <strong>${attObj.unexcusedLateness}건</strong> ➔ <span class="neis-badge neis-badge-success">${attObj.status}</span>
+            <div class="neis-card" id="neisLiveScheduleContainer">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div>
+                        <h4 style="margin: 0; font-size: 13.5px; font-weight: 800; color: #1e293b;">📅 주요 학사 일정 & 수행평가</h4>
+                        <span style="font-size: 11px; color: #64748b;">${currentSchoolName} 공식 학사일정 조회 중...</span>
+                    </div>
+                    <span class="neis-badge neis-badge-info">실시간 동기화 중</span>
                 </div>
-            </div>
-            <div class="neis-card">
-                <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 800; color: #1e293b;">📅 주요 학사 일정 & 수행평가 제출 타임라인</h4>
-                ${scheduleItems}
+                <div style="text-align: center; padding: 24px 10px; color: #64748b; font-size: 12px;">
+                    🔄 교육부 나이스 서버에서 [${currentSchoolName}] 실제 학사 일정을 조회하고 있습니다...
+                </div>
             </div>
         `;
-    } else if (tabName === 'health') {
+
+        // 비동기 실제 학사일정 API 호출 (지역 정보 함께 전달하여 동명 학교 구분)
+        const schoolRegionParam = activeChild?.schoolRegion || window.selectedTargetSchool?.region || '';
+        agent.service.fetchRealSchedule(currentSchoolName, schoolRegionParam).then(realScheduleData => {
+            const list = realScheduleData?.schedule && realScheduleData.schedule.length > 0 ? realScheduleData.schedule : (report.schedule || []);
+            const isLive = Boolean(realScheduleData?.isLive);
+
+            window.__neisScheduleState.list = list;
+            window.__neisScheduleState.isLive = isLive;
+            window.__neisScheduleState.schoolName = currentSchoolName;
+
+            window.renderNEISScheduleView();
+        }).catch(err => {
+            console.error('Live schedule fetch failed:', err);
+            window.__neisScheduleState.list = report.schedule || [];
+            window.__neisScheduleState.isLive = false;
+            window.renderNEISScheduleView();
+        });
+    } 
+    // -------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Tab 5: Health & Meals (실제 NEIS 급식 API & 미래 식단 미리보기 & 알레르기 연동)
+    // -------------------------------------------------------------------------
+    else if (tabName === 'health') {
         const el = document.getElementById('neisTabHealth');
         if (!el) return;
         el.style.display = 'block';
 
         const healthObj = report.health || {};
-        const menuList = healthObj.checkedMenu || [];
-        const menuItems = menuList.map(m => `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: ${m.hasAllergyRisk ? '#fef2f2' : '#f8fafc'}; border: 1px solid ${m.hasAllergyRisk ? '#fecaca' : '#e2e8f0'}; border-radius: 8px; margin-bottom: 6px;">
-                <span style="font-size: 12px; font-weight: 600; color: ${m.hasAllergyRisk ? '#991b1b' : '#334155'};">${m.name}</span>
-                <div>
-                    ${(m.allergies || []).length > 0 ? `<span style="font-size: 10px; color: #64748b; margin-right: 6px;">(${(m.allergies || []).join(', ')})</span>` : ''}
-                    ${m.hasAllergyRisk 
-                        ? `<span class="neis-badge neis-badge-danger">⚠️ 알레르기 유발 (${(m.matchedAllergies || []).join(', ')})</span>` 
-                        : `<span class="neis-badge neis-badge-success">안전</span>`}
-                </div>
-            </div>
-        `).join('');
 
+        // 급식 상태 객체 초기화
+        if (!window.__neisMealsState) {
+            window.__neisMealsState = {
+                schoolName: currentSchoolName,
+                currentDate: new Date().toISOString().slice(0, 10),
+                allMeals: [],
+                userAllergies: currentAllergies || [],
+                isLive: false
+            };
+        } else {
+            window.__neisMealsState.schoolName = currentSchoolName;
+            window.__neisMealsState.userAllergies = currentAllergies || [];
+        }
+
+        // 급식 상세 뷰 렌더링 함수 정의
+        window.renderNEISMealView = function() {
+            const mealsContainer = document.getElementById('neisLiveMealsContainer');
+            if (!mealsContainer) return;
+
+            const st = window.__neisMealsState;
+            if (!st || !st.allMeals || st.allMeals.length === 0) {
+                mealsContainer.innerHTML = `
+                    <div style="text-align: center; padding: 24px 10px; color: #64748b; font-size: 12px;">
+                        등록된 급식 식단 정보가 없습니다.
+                    </div>
+                `;
+                return;
+            }
+
+            const { allMeals, schoolName, isLive, userAllergies } = st;
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const tomorrowStr = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
+            // 날짜순 오름차순 정렬
+            allMeals.sort((a, b) => a.date.localeCompare(b.date));
+
+            // 현재 날짜에 해당하는 식단 탐색 (없으면 오늘 이후 가장 가까운 식단)
+            let curMeal = allMeals.find(m => m.date === st.currentDate);
+            if (!curMeal) {
+                curMeal = allMeals.find(m => m.date >= todayStr) || allMeals[0];
+                st.currentDate = curMeal.date;
+            }
+
+            const curIndex = allMeals.findIndex(m => m.date === st.currentDate);
+            const hasPrev = curIndex > 0;
+            const hasNext = curIndex < allMeals.length - 1;
+
+            // 요일 계산
+            const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+            const curDateObj = new Date(st.currentDate);
+            const curDayName = dayNames[curDateObj.getDay()];
+
+            // 오늘 / 내일 / D+N 뱃지
+            let dateBadge = '';
+            if (st.currentDate === todayStr) {
+                dateBadge = '<span class="neis-badge neis-badge-info" style="font-size: 10px; margin-left: 4px;">오늘</span>';
+            } else if (st.currentDate === tomorrowStr) {
+                dateBadge = '<span class="neis-badge neis-badge-warning" style="font-size: 10px; margin-left: 4px;">내일</span>';
+            } else if (st.currentDate > todayStr) {
+                const diffDays = Math.round((new Date(st.currentDate) - new Date(todayStr)) / 86400000);
+                dateBadge = `<span class="neis-badge neis-badge-info" style="font-size: 10px; margin-left: 4px;">${diffDays}일 뒤</span>`;
+            }
+
+            // 반찬별 알레르기 분석
+            const processedDishes = (curMeal.dishes || []).map(dish => {
+                const dishAllergies = dish.allergies || [];
+                const matches = dishAllergies.filter(a => userAllergies.some(userA => a.includes(userA) || userA.includes(a)));
+                return {
+                    name: dish.name,
+                    allergies: dishAllergies,
+                    hasAllergyRisk: matches.length > 0,
+                    matchedAllergies: matches
+                };
+            });
+
+            const totalRisks = processedDishes.filter(d => d.hasAllergyRisk);
+
+            const menuItemsHtml = processedDishes.map(m => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: ${m.hasAllergyRisk ? '#fef2f2' : '#ffffff'}; border: 1px solid ${m.hasAllergyRisk ? '#fecaca' : '#e2e8f0'}; border-radius: 8px; margin-bottom: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                    <span style="font-size: 12px; font-weight: 600; color: ${m.hasAllergyRisk ? '#991b1b' : '#334155'};">${m.name}</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        ${(m.allergies || []).length > 0 ? `<span style="font-size: 10.5px; color: #64748b;">(${(m.allergies || []).join(', ')})</span>` : ''}
+                        ${m.hasAllergyRisk 
+                            ? `<span class="neis-badge neis-badge-danger">⚠️ 유발 (${(m.matchedAllergies || []).join(', ')})</span>` 
+                            : `<span class="neis-badge neis-badge-success">안전</span>`}
+                    </div>
+                </div>
+            `).join('');
+
+            mealsContainer.innerHTML = `
+                <!-- 헤더 바 -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 6px;">
+                    <div>
+                        <h4 style="margin: 0; font-size: 13.5px; font-weight: 800; color: #1e293b;">🍱 학교 급식 식단표 (날짜별 미리보기)</h4>
+                        <span style="font-size: 11px; color: ${isLive ? '#059669' : '#64748b'}; font-weight: 500;">
+                            ${isLive ? `🟢 교육부 나이스 실시간 식단 (${schoolName})` : `${schoolName} 등록 식단`}
+                        </span>
+                    </div>
+                    <span class="neis-badge ${isLive ? 'neis-badge-success' : 'neis-badge-info'}">${isLive ? '나이스 실시간' : '기본'}</span>
+                </div>
+
+                <!-- 날짜 이동 컨트롤러 바 -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <button type="button" onclick="window.changeNEISMealDate(-1);" ${!hasPrev ? 'disabled' : ''} style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 700; color: ${hasPrev ? '#334155' : '#cbd5e1'}; cursor: ${hasPrev ? 'pointer' : 'default'}; opacity: ${hasPrev ? '1' : '0.5'};" title="이전 급식일">&lt; 이전</button>
+                    
+                    <div style="text-align: center;">
+                        <div style="font-size: 13px; font-weight: 800; color: #1e293b; display: flex; align-items: center; justify-content: center;">
+                            📅 ${st.currentDate} (${curDayName}) ${dateBadge}
+                        </div>
+                        <div style="font-size: 10.5px; color: #64748b; margin-top: 1px;">
+                            ${curMeal.mealType || '중식'}${curMeal.calories ? ` · ${curMeal.calories}` : ''}
+                        </div>
+                    </div>
+
+                    <button type="button" onclick="window.changeNEISMealDate(1);" ${!hasNext ? 'disabled' : ''} style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 700; color: ${hasNext ? '#334155' : '#cbd5e1'}; cursor: ${hasNext ? 'pointer' : 'default'}; opacity: ${hasNext ? '1' : '0.5'};" title="다음 급식일">다음 &gt;</button>
+                </div>
+
+                <!-- 퀵 날짜 바로가기 버튼들 -->
+                <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 10px; overflow-x: auto; padding-bottom: 2px;">
+                    <button type="button" onclick="window.setNEISMealDate('${todayStr}');" style="padding: 3px 9px; border-radius: 6px; border: 1px solid ${st.currentDate === todayStr ? '#2563eb' : '#cbd5e1'}; background: ${st.currentDate === todayStr ? '#eff6ff' : '#ffffff'}; color: ${st.currentDate === todayStr ? '#2563eb' : '#475569'}; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;">오늘</button>
+                    <button type="button" onclick="window.setNEISMealDate('${tomorrowStr}');" style="padding: 3px 9px; border-radius: 6px; border: 1px solid ${st.currentDate === tomorrowStr ? '#2563eb' : '#cbd5e1'}; background: ${st.currentDate === tomorrowStr ? '#eff6ff' : '#ffffff'}; color: ${st.currentDate === tomorrowStr ? '#2563eb' : '#475569'}; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;">내일</button>
+                    <span style="font-size: 10.5px; color: #94a3b8; margin-left: auto; white-space: nowrap;">총 ${allMeals.length}일치 식단 연동 중</span>
+                </div>
+
+                <!-- 알레르기 위험 경고 배너 (해당 일자 식단에 알레르기 반찬이 있는 경우) -->
+                ${totalRisks.length > 0 ? `
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 11.5px; color: #991b1b; display: flex; align-items: flex-start; gap: 6px;">
+                        <span style="font-size: 13px;">⚠️</span>
+                        <div>
+                            <strong>알레르기 주의:</strong> 이 날 급식에 등록된 자녀 알레르기 유발 식품(<strong>${totalRisks.map(r => (r.matchedAllergies||[]).join(',')).filter(Boolean).join(', ')}</strong>)이 포함되어 있습니다.
+                        </div>
+                    </div>
+                ` : ''}
+
+                <!-- 반찬 리스트 -->
+                ${menuItemsHtml}
+            `;
+        };
+
+        window.changeNEISMealDate = function(offset) {
+            if (!window.__neisMealsState || !window.__neisMealsState.allMeals) return;
+            const { allMeals, currentDate } = window.__neisMealsState;
+            const curIdx = allMeals.findIndex(m => m.date === currentDate);
+            if (curIdx >= 0) {
+                const nextIdx = curIdx + offset;
+                if (nextIdx >= 0 && nextIdx < allMeals.length) {
+                    window.__neisMealsState.currentDate = allMeals[nextIdx].date;
+                    window.renderNEISMealView();
+                }
+            }
+        };
+
+        window.setNEISMealDate = function(dateStr) {
+            if (!window.__neisMealsState || !window.__neisMealsState.allMeals) return;
+            const exists = window.__neisMealsState.allMeals.some(m => m.date === dateStr);
+            if (exists) {
+                window.__neisMealsState.currentDate = dateStr;
+            } else {
+                const upcoming = window.__neisMealsState.allMeals.find(m => m.date >= dateStr);
+                if (upcoming) window.__neisMealsState.currentDate = upcoming.date;
+            }
+            window.renderNEISMealView();
+        };
+
+        // 로딩 플레이스홀더 렌더링
         el.innerHTML = `
-            <div class="neis-card" style="background: #f0fdf4; border-color: #bbf7d0; margin-bottom: 16px;">
-                <h4 style="margin: 0 0 6px 0; font-size: 14px; font-weight: 800; color: #166534;">🏃 PAPS 학생건강체력평가 리포트</h4>
+            <div class="neis-card" style="background: #f0fdf4; border: 1px solid #bbf7d0; margin-bottom: 12px;">
+                <h4 style="margin: 0 0 4px 0; font-size: 13.5px; font-weight: 800; color: #166534;">🏃 PAPS 학생건강체력평가</h4>
                 <div style="font-size: 12px; color: #15803d;">
-                    체력 등급: <strong style="font-size: 14px;">${healthObj.papsGrade || 1}등급 (우수)</strong> | 체질량: <strong>${healthObj.bmiStatus || '표준 (신장 168cm / 체중 56kg)'}</strong>
+                    체력 등급: <strong style="font-size: 13px;">${healthObj.papsGrade || 1}등급 (우수)</strong> | 체질량: <strong>${healthObj.bmiStatus || '표준'}</strong>
                 </div>
             </div>
-            <div class="neis-card">
-                <h4 style="margin: 0 0 10px 0; font-size: 14px; font-weight: 800; color: #1e293b;">🍱 오늘 학교 급식 식단표 (알레르기 실시간 필터링)</h4>
-                ${menuItems}
+            <div class="neis-card" id="neisLiveMealsContainer">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div>
+                        <h4 style="margin: 0; font-size: 13.5px; font-weight: 800; color: #1e293b;">🍱 오늘 학교 급식 식단표</h4>
+                        <span style="font-size: 11px; color: #64748b;">${currentSchoolName} 실제 급식 일정을 조회하고 있습니다...</span>
+                    </div>
+                    <span class="neis-badge neis-badge-info">실시간 식단 조회 중</span>
+                </div>
+                <div style="text-align: center; padding: 24px 10px; color: #64748b; font-size: 12px;">
+                    🔄 교육부 나이스 서버에서 [${currentSchoolName}] 실제 식단을 불러오는 중입니다...
+                </div>
             </div>
         `;
+
+        // 비동기 실제 급식 식단표 API 호출 (지역 정보 함께 전달하여 동명 학교 구분)
+        const mealSchoolRegionParam = activeChild?.schoolRegion || window.selectedTargetSchool?.region || '';
+        agent.service.fetchRealMeals(currentSchoolName, currentAllergies, mealSchoolRegionParam).then(realMealData => {
+            const isLive = Boolean(realMealData?.isLive);
+            const rawMeals = realMealData?.allMeals && realMealData.allMeals.length > 0 
+                ? realMealData.allMeals 
+                : (realMealData?.checkedMenu ? [{
+                    date: realMealData.mealDate || new Date().toISOString().slice(0, 10),
+                    mealType: realMealData.mealType || '중식',
+                    calories: realMealData.calories || '',
+                    dishes: realMealData.checkedMenu
+                }] : [
+                    {
+                        date: new Date().toISOString().slice(0, 10),
+                        mealType: '중식',
+                        calories: '685 kcal',
+                        dishes: [
+                            { name: '현미찹쌀밥', allergies: [] },
+                            { name: '맑은 쇠고기뭇국', allergies: ['대두'] },
+                            { name: '수제 닭강정', allergies: ['밀', '닭고기'] },
+                            { name: '시금치나물무침', allergies: ['대두'] },
+                            { name: '깍두기', allergies: [] }
+                        ]
+                    }
+                ]);
+
+            window.__neisMealsState.allMeals = rawMeals;
+            window.__neisMealsState.isLive = isLive;
+            window.__neisMealsState.schoolName = currentSchoolName;
+            window.__neisMealsState.currentDate = realMealData?.mealDate || new Date().toISOString().slice(0, 10);
+
+            window.renderNEISMealView();
+        }).catch(err => {
+            console.error('Live meal fetch failed:', err);
+            window.__neisMealsState.allMeals = [];
+            window.__neisMealsState.isLive = false;
+            window.renderNEISMealView();
+        });
     }
 };
 

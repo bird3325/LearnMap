@@ -151,23 +151,56 @@ function writeUsers(users) {
     }
 }
 
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
     const { email, password, name, role } = req.body;
     if (!email || !password || !name) {
         return res.status(400).json({ success: false, message: '모든 필수 항목을 입력해 주세요.' });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = name.trim();
+
+    // 1. Supabase users 테이블 저장 시도
+    let userId = 'user_' + Date.now();
+    try {
+        const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({
+                email: cleanEmail,
+                password_hash: password,
+                name: cleanName,
+                role: role || 'parent',
+                is_active: true
+            })
+        });
+        if (sbRes.ok) {
+            const data = await sbRes.json();
+            if (data && data[0]) {
+                userId = data[0].id;
+            }
+        }
+    } catch (e) {
+        console.warn('Supabase register error:', e.message);
+    }
+
+    // 2. 로컬 백업 파일 저장
     const users = readUsers();
-    const existing = users.find(u => u.email.toLowerCase() === email.trim().toLowerCase());
+    const existing = users.find(u => u.email.toLowerCase() === cleanEmail);
     if (existing) {
         return res.status(400).json({ success: false, message: '이미 가입된 이메일 계정입니다.' });
     }
 
     const newUser = {
-        id: 'user_' + Date.now(),
-        email: email.trim(),
+        id: userId,
+        email: cleanEmail,
         password: password,
-        name: name.trim(),
+        name: cleanName,
         role: role || 'parent',
         createdAt: new Date().toISOString()
     };
@@ -176,19 +209,44 @@ app.post('/api/auth/register', (req, res) => {
     writeUsers(users);
 
     const sessionUser = { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role };
-    return res.json({ success: true, user: sessionUser, message: '회원가입이 완료되었습니다.' });
+    return res.json({ success: true, user: sessionUser, message: '회원가입이 완료되었습니다. 학교 진단 및 성적 분석을 시작하세요.' });
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
         return res.status(400).json({ success: false, message: '이메일과 비밀번호를 입력해 주세요.' });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+
+    // 1. Supabase users 테이블 조회 시도
+    try {
+        const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(cleanEmail)}`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        if (sbRes.ok) {
+            const dbUsers = await sbRes.json();
+            if (Array.isArray(dbUsers) && dbUsers.length > 0) {
+                const target = dbUsers[0];
+                if (target.password_hash === password) {
+                    const sessionUser = { id: target.id, email: target.email, name: target.name, role: target.role };
+                    return res.json({ success: true, user: sessionUser, message: `${target.name}님 환영합니다!` });
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('Supabase login check error:', e.message);
+    }
+
+    // 2. 로컬 파일 조회
     const users = readUsers();
     
     // 기본 체험 계정 자동 생성
-    if (email === 'test@learnmap.com' && password === '1234' && !users.find(u => u.email === email)) {
+    if (cleanEmail === 'test@learnmap.com' && password === '1234' && !users.find(u => u.email === cleanEmail)) {
         const testUser = {
             id: 'user_test_default',
             email: 'test@learnmap.com',
@@ -201,13 +259,101 @@ app.post('/api/auth/login', (req, res) => {
         writeUsers(users);
     }
 
-    const target = users.find(u => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password);
+    const target = users.find(u => u.email.toLowerCase() === cleanEmail && u.password === password);
     if (!target) {
         return res.status(401).json({ success: false, message: '이메일 또는 비밀번호가 올바르지 않습니다.' });
     }
 
     const sessionUser = { id: target.id, email: target.email, name: target.name, role: target.role };
     return res.json({ success: true, user: sessionUser, message: `${target.name}님 환영합니다!` });
+});
+
+// POST /api/auth/kakao - 카카오 간편로그인 (users 테이블 및 로컬 백업 동기화)
+app.post('/api/auth/kakao', async (req, res) => {
+    try {
+        const { kakaoId, email, name, avatarUrl, accessToken } = req.body;
+        const id = kakaoId || String(Date.now());
+        const cleanEmail = (email || `kakao_${id}@kakao.com`).trim().toLowerCase();
+        const cleanName = (name || '카카오 회원').trim();
+        let userId = 'user_kakao_' + id;
+
+        // 1. Supabase users 테이블 조회/생성
+        try {
+            const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(cleanEmail)}`, {
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
+            });
+            if (checkRes.ok) {
+                const existing = await checkRes.json();
+                if (Array.isArray(existing) && existing.length > 0) {
+                    userId = existing[0].id || userId;
+                } else {
+                    const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+                        method: 'POST',
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
+                        },
+                        body: JSON.stringify({
+                            email: cleanEmail,
+                            password_hash: 'kakao_oauth_' + id,
+                            name: cleanName,
+                            role: 'parent',
+                            is_active: true
+                        })
+                    });
+                    if (insertRes.ok) {
+                        const data = await insertRes.json();
+                        if (data && data[0]) {
+                            userId = data[0].id || userId;
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Supabase kakao auth sync error:', e.message);
+        }
+
+        // 2. 로컬 users.json 백업
+        const users = readUsers();
+        let localUser = users.find(u => u.email.toLowerCase() === cleanEmail);
+        if (!localUser) {
+            localUser = {
+                id: userId,
+                email: cleanEmail,
+                name: cleanName,
+                role: 'parent',
+                provider: 'kakao',
+                avatarUrl: avatarUrl || '',
+                accessToken: accessToken || '',
+                createdAt: new Date().toISOString()
+            };
+            users.push(localUser);
+            writeUsers(users);
+        }
+
+        const sessionUser = {
+            id: localUser.id || userId,
+            email: cleanEmail,
+            name: cleanName,
+            role: 'parent',
+            provider: 'kakao',
+            avatarUrl: avatarUrl || ''
+        };
+
+        return res.json({
+            success: true,
+            user: sessionUser,
+            message: `🟡 ${cleanName}님, 카카오 간편 로그인에 성공하였습니다!`
+        });
+    } catch (err) {
+        console.error('Kakao auth error:', err);
+        return res.status(500).json({ success: false, message: '카카오 로그인 처리 중 오류가 발생했습니다.' });
+    }
 });
 
 // 3. POST /api/admin/login - Simple admin verification
@@ -664,6 +810,194 @@ app.get('/api/academies/fees', async (req, res) => {
     } catch (err) {
         console.warn('Academy Fees API Warning:', err);
         res.json({ acaInsTiInfo: null });
+    }
+});
+
+// --- NEIS Real-Time Integration APIs (School Info, Meal Diet, School Schedule) ---
+
+// 알레르기 번호 한글 식품명 매핑 표 (식품의약품안전처/교육부 나이스 표준 1~19)
+const ALLERGY_MAP = {
+    '1': '난류(달걀)',
+    '2': '우유',
+    '3': '메밀',
+    '4': '땅콩',
+    '5': '대두(콩)',
+    '6': '밀',
+    '7': '고등어',
+    '8': '게',
+    '9': '새우',
+    '10': '돼지고기',
+    '11': '복숭아',
+    '12': '토마토',
+    '13': '아황산류',
+    '14': '호두',
+    '15': '닭고기',
+    '16': '쇠고기',
+    '17': '오징어',
+    '18': '조개류(굴/전복/홍합)',
+    '19': '잣'
+};
+
+// 1) 학교 검색 API (학교코드, 교육청코드 획득)
+app.get('/api/neis/school-search', async (req, res) => {
+    const { school_name } = req.query;
+    if (!school_name) return res.status(400).json({ error: 'school_name is required' });
+
+    try {
+        const config = await readConfig();
+        const neisKey = config.neis_api_key || 'fb397febaaca465b9f02736cc6f37188';
+        const url = `https://open.neis.go.kr/hub/schoolInfo?KEY=${neisKey}&Type=json&pIndex=1&pSize=10&SCHUL_NM=${encodeURIComponent(school_name.trim())}`;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+            return res.json({ schools: [] });
+        }
+        const data = await response.json();
+        const rows = data?.schoolInfo?.[1]?.row || [];
+        const schools = rows.map(r => ({
+            atpt_code: r.ATPT_OFCDC_SC_CODE,
+            atpt_name: r.ATPT_OFCDC_SC_NM,
+            school_code: r.SD_SCHUL_CODE,
+            school_name: r.SCHUL_NM,
+            school_type: r.SCHUL_KND_SC_NM,
+            address: r.ORG_RDNMA,
+            homepage: r.HMPG_ADRES
+        }));
+        return res.json({ schools });
+    } catch (err) {
+        console.warn('NEIS School Search Error:', err);
+        return res.json({ schools: [] });
+    }
+});
+
+// 2) 실시간 급식 식단표 및 알레르기 분석 API
+app.get('/api/neis/meals', async (req, res) => {
+    const { atpt_code, school_code, from_date, to_date } = req.query;
+    if (!atpt_code || !school_code) {
+        return res.status(400).json({ error: 'atpt_code and school_code are required' });
+    }
+
+    try {
+        const config = await readConfig();
+        const neisKey = config.neis_api_key || 'fb397febaaca465b9f02736cc6f37188';
+        
+        // 날짜가 지정되지 않은 경우 오늘 기준 앞뒤 14일
+        const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const from = from_date || new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10).replace(/-/g, '');
+        const to = to_date || new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10).replace(/-/g, '');
+
+        const url = `https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${neisKey}&Type=json&ATPT_OFCDC_SC_CODE=${atpt_code}&SD_SCHUL_CODE=${school_code}&MLSV_FROM_YMD=${from}&MLSV_TO_YMD=${to}`;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+            return res.json({ meals: [] });
+        }
+        const data = await response.json();
+        const rows = data?.mealServiceDietInfo?.[1]?.row || [];
+
+        const meals = rows.map(r => {
+            // "현미밥<br/>쇠고기미역국 (5.6.16.)<br/>닭봉조림 (5.6.15.)" 파싱
+            const rawDishes = (r.DDISH_NM || '').split(/<br\s*\/?>|\n/).map(s => s.trim()).filter(Boolean);
+            const dishes = rawDishes.map(dishStr => {
+                // 알레르기 번호 추출: 예 (5.6.16.)
+                const match = dishStr.match(/\(([\d\.]+)\)/);
+                const allergyNums = match ? match[1].split('.').filter(Boolean) : [];
+                const cleanName = dishStr.replace(/\([\d\.]+\)/g, '').trim();
+                const allergyNames = allergyNums.map(n => ALLERGY_MAP[n] || `${n}번`).filter(Boolean);
+
+                return {
+                    name: cleanName,
+                    raw: dishStr,
+                    allergyNumbers: allergyNums,
+                    allergies: allergyNames
+                };
+            });
+
+            // 전체 식단의 알레르기 목록 집계
+            const allMealAllergies = [...new Set(dishes.flatMap(d => d.allergies))];
+
+            // YYYYMMDD -> YYYY-MM-DD
+            const ymd = r.MLSV_YMD;
+            const formattedDate = `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`;
+
+            return {
+                date: formattedDate,
+                rawDate: ymd,
+                mealType: r.MMEAL_SC_NM || '중식',
+                calories: r.CAL_INFO || '',
+                nutrition: r.NTR_INFO || '',
+                dishes: dishes,
+                allAllergies: allMealAllergies
+            };
+        });
+
+        return res.json({ meals });
+    } catch (err) {
+        console.warn('NEIS Meals API Error:', err);
+        return res.json({ meals: [] });
+    }
+});
+
+// 3) 실시간 학사 일정 API
+app.get('/api/neis/schedule', async (req, res) => {
+    const { atpt_code, school_code, from_date, to_date } = req.query;
+    if (!atpt_code || !school_code) {
+        return res.status(400).json({ error: 'atpt_code and school_code are required' });
+    }
+
+    try {
+        const config = await readConfig();
+        const neisKey = config.neis_api_key || 'fb397febaaca465b9f02736cc6f37188';
+
+        // 기본 날짜: 오늘 기준 이전 15일 ~ 이후 60일
+        const from = from_date || new Date(Date.now() - 15 * 86400000).toISOString().slice(0, 10).replace(/-/g, '');
+        const to = to_date || new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10).replace(/-/g, '');
+
+        const url = `https://open.neis.go.kr/hub/SchoolSchedule?KEY=${neisKey}&Type=json&ATPT_OFCDC_SC_CODE=${atpt_code}&SD_SCHUL_CODE=${school_code}&AA_FROM_YMD=${from}&AA_TO_YMD=${to}`;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+            return res.json({ schedule: [] });
+        }
+        const data = await response.json();
+        const rows = data?.SchoolSchedule?.[1]?.row || [];
+
+        const schedule = rows.map(r => {
+            const ymd = r.AA_YMD;
+            const formattedDate = `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`;
+            const eventNm = r.EVENT_NM || '';
+
+            // 이벤트 유형 분류 (exam: 시험, perf: 수행평가/발표, event: 학교행사, vacation: 방학/휴업)
+            let type = 'event';
+            if (/고사|평가|시험|모의|학업성취/.test(eventNm)) {
+                type = 'exam';
+            } else if (/수행|제출|보고서|과제/.test(eventNm)) {
+                type = 'perf';
+            } else if (/방학|휴업|재량|개교기념/.test(eventNm)) {
+                type = 'vacation';
+            }
+
+            return {
+                date: formattedDate,
+                rawDate: ymd,
+                title: eventNm,
+                detail: r.EVENT_CNTNT || r.SBTR_DD_SC_NM || '학사 일정',
+                type: type,
+                gradeTarget: [
+                    r.ONE_GRADE_EVENT_YN === 'Y' ? '1학년' : '',
+                    r.TW_GRADE_EVENT_YN === 'Y' ? '2학년' : '',
+                    r.THREE_GRADE_EVENT_YN === 'Y' ? '3학년' : ''
+                ].filter(Boolean).join(', ') || '전체 학년'
+            };
+        });
+
+        // 날짜순 정렬
+        schedule.sort((a, b) => a.rawDate.localeCompare(b.rawDate));
+
+        return res.json({ schedule });
+    } catch (err) {
+        console.warn('NEIS Schedule API Error:', err);
+        return res.json({ schedule: [] });
     }
 });
 

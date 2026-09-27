@@ -2134,6 +2134,592 @@ body.is-resizing-sidebar .academy-sidebar-section {
     transition: width 0.5s ease;
 }
 
+/* ==========================================================================
+   Toss Style Auth & Member Services (토스 스타일 로그인/회원가입 디자인)
+   ========================================================================== */
+.toss-auth-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid #eef1f4;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+    transition: all 0.2s ease;
+}
 
+.toss-auth-title {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: #191f28;
+    letter-spacing: -0.3px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
 
+.toss-auth-subtext {
+    font-size: 11.5px;
+    color: #8b95a1;
+    margin-top: 4px;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
 
+/* 카카오 1초 로그인 버튼 (토스 스타일) */
+.toss-btn-kakao {
+    width: 100%;
+    background: #FEE500;
+    color: #191f28;
+    border: none;
+    padding: 11px 16px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-sizing: border-box;
+}
+.toss-btn-kakao:hover {
+    background: #fada0a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(254, 229, 0, 0.35);
+}
+.toss-btn-kakao:active {
+    transform: scale(0.99);
+}
+
+/* 감각적인 디바이더 */
+.toss-divider {
+    display: flex;
+    align-items: center;
+    margin: 14px 0 12px 0;
+    color: #b0b8c1;
+    font-size: 11px;
+    font-weight: 500;
+}
+.toss-divider::before,
+.toss-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #eef1f4;
+}
+.toss-divider span {
+    padding: 0 10px;
+}
+
+/* 세그먼트 컨트롤 탭 */
+.toss-tab-segment {
+    display: flex;
+    background: #f2f4f6;
+    padding: 3px;
+    border-radius: 11px;
+    gap: 2px;
+    margin-bottom: 12px;
+    box-sizing: border-box;
+}
+
+.toss-tab-btn {
+    flex: 1;
+    padding: 7px 10px;
+    border: none;
+    border-radius: 9px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    background: transparent;
+    color: #8b95a1;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toss-tab-btn.active {
+    background: #ffffff;
+    color: #191f28;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+/* 모던 토스 인풋 필드 */
+.toss-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: #f9fafb;
+    border: 1px solid #e5e8eb;
+    border-radius: 10px;
+    font-size: 12.5px;
+    color: #191f28;
+    outline: none;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+    font-family: inherit;
+}
+.toss-input:focus {
+    background: #ffffff;
+    border-color: #3182f6;
+    box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.12);
+}
+.toss-input::placeholder {
+    color: #b0b8c1;
+    font-size: 12px;
+}
+
+/* 비밀번호 보기/숨기기 토글 필드 */
+.toss-pw-wrap {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+.toss-pw-wrap .toss-input {
+    width: 100%;
+    padding-right: 40px !important;
+}
+.toss-pw-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8b95a1;
+    z-index: 2;
+    transition: color 0.15s ease, background-color 0.15s ease;
+    border-radius: 6px;
+}
+.toss-pw-toggle:hover {
+    color: #333d4b;
+    background: rgba(0, 0, 0, 0.04);
+}
+.toss-pw-toggle:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+/* 토스 프라이머리 액션 버튼 */
+.toss-btn-primary {
+    width: 100%;
+    background: #3182f6;
+    color: #ffffff;
+    border: none;
+    padding: 11px 16px;
+    border-radius: 11px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgba(49, 130, 246, 0.25);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-sizing: border-box;
+}
+.toss-btn-primary:hover {
+    background: #1b64da;
+    box-shadow: 0 5px 14px rgba(49, 130, 246, 0.35);
+    transform: translateY(-1px);
+}
+.toss-btn-primary:active {
+    background: #1554bb;
+    transform: scale(0.99);
+}
+
+/* 로그인 후 회원 카드 (토스 스타일) */
+.toss-user-card {
+    background: #f8faff;
+    border: 1px solid #e1e7f5;
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.toss-user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #e8f3ff;
+    color: #3182f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+}
+.toss-btn-logout {
+    background: #f2f4f6;
+    color: #4e5968;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.toss-btn-logout:hover {
+    background: #e5e8eb;
+    color: #191f28;
+}
+
+/* ==========================================================================
+   PC 로그인 후 회원 서비스 사이드 페이지 전용 스타일 (시안 100% 매칭)
+   ========================================================================== */
+
+/* PC 환경에서 settingsModal 또는 neisModal이 열려 있을 때 사이드바 전체를 해당 전용 페이지로 전환 */
+@media (min-width: 1025px) {
+    .sidebar-section:has(#settingsModal:not([style*="display: none"])) #welcomeCard,
+    .sidebar-section:has(#settingsModal:not([style*="display: none"])) #schoolCard,
+    .sidebar-section:has(#settingsModal:not([style*="display: none"])) #childFormCard,
+    .sidebar-section:has(#settingsModal:not([style*="display: none"])) #diagnosisResultCard,
+    .sidebar-section:has(#settingsModal:not([style*="display: none"])) #tutorialSidebarCard,
+    .sidebar-section:has(#settingsModal:not([style*="display: none"])) #storyContentCard,
+    .sidebar-section:has(#settingsModal:not([style*="display: none"])) #serviceInquiryCard,
+    .sidebar-section:has(#settingsModal:not([style*="display: none"])) #neisModal,
+    .sidebar-section:has(#settingsModal:not([style*="display: none"])) #academyFloatingCard,
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #welcomeCard,
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #schoolCard,
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #childFormCard,
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #diagnosisResultCard,
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #tutorialSidebarCard,
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #storyContentCard,
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #serviceInquiryCard,
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #settingsModal,
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #academyFloatingCard {
+        display: none !important;
+    }
+    
+    #settingsModal.card {
+        background: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 0 20px 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        overflow: visible !important;
+        height: auto !important;
+        max-height: none !important;
+    }
+
+    #settingsModal.card .settings-card-item {
+        background: #ffffff !important;
+        border: 1px solid var(--border-color, #e2e8f0) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04) !important;
+        padding: 20px !important;
+        margin: 0 0 16px 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .pc-settings-content {
+        padding: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        overflow: visible !important;
+        height: auto !important;
+        max-height: none !important;
+    }
+
+    .pc-settings-scroll {
+        overflow: visible !important;
+        height: auto !important;
+        max-height: none !important;
+    }
+
+    .pc-settings-content::-webkit-scrollbar,
+    .pc-settings-scroll::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+}
+
+/* 모바일 환경에서도 neisModal 열림 시 사이드바 전환 */
+@media (max-width: 1024px) {
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #welcomeCard,
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #schoolCard,
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #childFormCard,
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #diagnosisResultCard,
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #tutorialSidebarCard,
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #storyContentCard,
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #serviceInquiryCard,
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #settingsModal,
+    .sidebar-section:has(#neisModal:not([style*="display: none"])) #academyFloatingCard {
+        display: none !important;
+    }
+}
+
+/* 커스텀 레인지 슬라이더 (시안 매칭: 회색 트랙 + 흰색 원/파란 테두리 썸) */
+.custom-range-slider-wrap {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 2px 0;
+}
+
+.custom-score-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 6px;
+    outline: none;
+    cursor: pointer;
+    margin: 4px 0;
+    transition: background 0.2s;
+}
+
+.custom-score-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 3.5px solid #2563eb;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.2s;
+}
+
+.custom-score-range::-webkit-slider-thumb:hover {
+    transform: scale(1.12);
+    box-shadow: 0 3px 8px rgba(37, 99, 235, 0.35);
+}
+
+.custom-score-range::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 3.5px solid #2563eb;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
+    cursor: pointer;
+}
+
+/* 커스텀 스위치 토글 (시안 매칭: ON시 파란색, OFF시 연회색) */
+.custom-switch-toggle {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.custom-switch-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.custom-switch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #cbd5e1;
+    transition: .25s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 24px;
+}
+
+.custom-switch-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .25s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.custom-switch-toggle input:checked + .custom-switch-slider {
+    background-color: #2563eb;
+}
+
+.custom-switch-toggle input:checked + .custom-switch-slider:before {
+    transform: translateX(20px);
+}
+
+/* 자녀 선택 알약 탭 (Pill Tabs) */
+.child-pill-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    user-select: none;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.child-pill-tab:hover {
+    background: #e2e8f0;
+}
+
+.child-pill-tab.active {
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+
+.child-pill-tab.active .pill-bullet {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #ffffff;
+    display: inline-block;
+}
+
+.child-pill-tab.add-tab {
+    background: #ffffff;
+    border: 1px dashed #cbd5e1;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.child-pill-tab.add-tab:hover {
+    border-color: #94a3b8;
+    color: #334155;
+    background: #f8fafc;
+}
+
+/* ==========================================================================
+   🎓 자녀 내신 정밀 진단 & 학사·급식 리포트 (LearnMap 디자인 시스템 일치)
+   ========================================================================== */
+.neis-modal-content {
+    background: var(--bg-card, #ffffff);
+    width: 100%;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--border-color, #e2e8f0);
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.neis-card {
+    background: #ffffff;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+    box-sizing: border-box;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.neis-card:last-child {
+    margin-bottom: 0;
+}
+
+.neis-tab-nav {
+    scroll-behavior: smooth;
+    cursor: grab;
+    -webkit-overflow-scrolling: touch;
+    user-select: none;
+}
+
+.neis-tab-nav:active {
+    cursor: grabbing;
+}
+
+.neis-tab-btn {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.neis-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap;
+}
+
+.neis-badge-info {
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #dbeafe;
+}
+
+.neis-badge-success {
+    background: #ecfdf5;
+    color: #059669;
+    border: 1px solid #a7f3d0;
+}
+
+.neis-badge-warning {
+    background: #fffbeb;
+    color: #d97706;
+    border: 1px solid #fde68a;
+}
+
+.neis-badge-danger {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+.neis-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    box-sizing: border-box;
+}
+
+.neis-table th {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    color: #475569;
+    font-weight: 700;
+    padding: 9px 10px;
+    font-size: 11.5px;
+    white-space: nowrap;
+}
+
+.neis-table td {
+    padding: 10px 10px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    vertical-align: middle;
+}
+
+.neis-table tr:last-child td {
+    border-bottom: none;
+}
+
+.neis-table tr:hover td {
+    background: #fafafa;
+}
