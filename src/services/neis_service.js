@@ -118,6 +118,7 @@ export class NEISService {
                 { subject: '수학', rawScore: 80, writtenScore: 80, perfScore: 80, avg: 70.0, std: 16.0, achievement: 'B' },
                 { subject: '영어', rawScore: 80, writtenScore: 80, perfScore: 80, avg: 72.0, std: 15.0, achievement: 'B' },
                 { subject: '사회', rawScore: 80, writtenScore: 80, perfScore: 80, avg: 74.0, std: 14.0, achievement: 'B' },
+                { subject: '역사', rawScore: 80, writtenScore: 80, perfScore: 80, avg: 73.0, std: 14.5, achievement: 'B' },
                 { subject: '과학', rawScore: 80, writtenScore: 80, perfScore: 80, avg: 71.0, std: 15.0, achievement: 'B' }
             ],
             schoolRecord: {

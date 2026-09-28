@@ -403,13 +403,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (Array.isArray(data) && data.length > 0) {
                 childProfiles = data.map(item => {
-                    let kor = 80, eng = 80, math = 80, soc = 80, sci = 80;
+                    let kor = 80, eng = 80, math = 80, soc = 80, his = 80, sci = 80;
                     if (Array.isArray(item.user_student_grades)) {
                         item.user_student_grades.forEach(g => {
                             if (g.subject_name === '국어') kor = Number(g.raw_score) || 0;
                             if (g.subject_name === '영어') eng = Number(g.raw_score) || 0;
                             if (g.subject_name === '수학') math = Number(g.raw_score) || 0;
-                            if (g.subject_name === '사회' || g.subject_name === '역사') soc = Number(g.raw_score) || 0;
+                            if (g.subject_name === '사회') soc = Number(g.raw_score) || 0;
+                            if (g.subject_name === '역사') his = Number(g.raw_score) || 0;
                             if (g.subject_name === '과학') sci = Number(g.raw_score) || 0;
                         });
                     }
@@ -462,6 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         english: eng,
                         math: math,
                         society: soc,
+                        history: his,
                         science: sci,
                         targetMajor: targetMajor,
                         allergies: allergies
@@ -581,11 +583,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: getDbHeaders()
             });
 
-            // 2. 신규 성적 5과목(국어, 영어, 수학, 사회, 과학) DB INSERT
+            // 2. 신규 성적 6과목(국어, 영어, 수학, 사회, 역사, 과학) DB INSERT
             const korScore = Number(child.korean) || 0;
             const engScore = Number(child.english) || 0;
             const mathScore = Number(child.math) || 0;
             const socScore = Number(child.society) || 0;
+            const hisScore = Number(child.history) || 0;
             const sciScore = Number(child.science) || 0;
 
             const gradesPayload = [
@@ -624,6 +627,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     school_avg: 74,
                     std_dev: 14,
                     achievement: calcAchievement(socScore)
+                },
+                {
+                    profile_id: profileId,
+                    semester: '2026-1',
+                    subject_name: '역사',
+                    raw_score: hisScore,
+                    school_avg: 73,
+                    std_dev: 14.5,
+                    achievement: calcAchievement(hisScore)
                 },
                 {
                     profile_id: profileId,
@@ -691,6 +703,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsChildMathPc = document.getElementById('settingsChildMath-pc');
     const settingsChildSoc = document.getElementById('settingsChildSoc');
     const settingsChildSocPc = document.getElementById('settingsChildSoc-pc');
+    const settingsChildHis = document.getElementById('settingsChildHis');
+    const settingsChildHisPc = document.getElementById('settingsChildHis-pc');
     const settingsChildSci = document.getElementById('settingsChildSci');
     const settingsChildSciPc = document.getElementById('settingsChildSci-pc');
 
@@ -748,53 +762,61 @@ document.addEventListener('DOMContentLoaded', () => {
         return ordinals[idx] || `${idx + 1}째`;
     }
 
-    // 자녀 알약(Pill) 탭 바 동적 렌더링 (시안 100% 매칭)
+    // 자녀 알약(Pill) 탭 바 동적 렌더링 (시안 100% 매칭 - PC 및 모바일 공용)
     function renderChildPillTabs() {
-        const container = document.getElementById('childPillTabsContainer');
-        if (!container) return;
-        container.innerHTML = '';
+        const containers = [
+            document.getElementById('childPillTabsContainer'),
+            document.getElementById('childPillTabsContainerMobile')
+        ].filter(Boolean);
 
-        childProfiles.forEach((child, index) => {
-            const isActive = child.id === selectedChildId;
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = `child-pill-tab ${isActive ? 'active' : ''}`;
-            
-            const bullet = isActive ? '<span class="pill-bullet"></span>' : '';
-            const ord = getOrdinalKo(index);
-            const gr = getGradeShort(child.grade);
-            btn.innerHTML = `${bullet}<span>${ord} · ${child.name} (${gr})</span>`;
+        if (containers.length === 0) return;
 
-            btn.addEventListener('click', () => {
-                selectedChildId = child.id;
-                if (settingsChildSelect) settingsChildSelect.value = child.id;
-                if (settingsChildSelectPc) settingsChildSelectPc.value = child.id;
-                updateFormWithSelectedChild();
-                renderChildPillTabs();
+        containers.forEach(container => {
+            container.innerHTML = '';
+
+            childProfiles.forEach((child, index) => {
+                const isActive = child.id === selectedChildId;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `child-pill-tab ${isActive ? 'active' : ''}`;
+                
+                const bullet = isActive ? '<span class="pill-bullet"></span>' : '';
+                const ord = getOrdinalKo(index);
+                const gr = getGradeShort(child.grade);
+                btn.innerHTML = `${bullet}<span>${ord} · ${child.name} (${gr})</span>`;
+
+                btn.addEventListener('click', () => {
+                    selectedChildId = child.id;
+                    if (settingsChildSelect) settingsChildSelect.value = child.id;
+                    if (settingsChildSelectPc) settingsChildSelectPc.value = child.id;
+                    updateFormWithSelectedChild();
+                    renderChildPillTabs();
+                });
+
+                container.appendChild(btn);
             });
 
-            container.appendChild(btn);
+            // + 새 자녀 추가 알약 버튼
+            const addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'child-pill-tab add-tab';
+            addBtn.innerHTML = '<span>+ 새 자녀</span>';
+            addBtn.addEventListener('click', () => {
+                if (typeof onAddNewChild === 'function') {
+                    onAddNewChild();
+                }
+            });
+            container.appendChild(addBtn);
         });
-
-        // + 새 자녀 추가 알약 버튼
-        const addBtn = document.createElement('button');
-        addBtn.type = 'button';
-        addBtn.className = 'child-pill-tab add-tab';
-        addBtn.innerHTML = '<span>+ 새 자녀</span>';
-        addBtn.addEventListener('click', () => {
-            if (typeof onAddNewChild === 'function') {
-                onAddNewChild();
-            }
-        });
-        container.appendChild(addBtn);
     }
 
     // 성적 등급 및 5과목 평균 분석 실시간 계산 및 UI 렌더링
-    function updateScoreAnalysisUI(kor, eng, math, soc, sci) {
+    function updateScoreAnalysisUI(kor, eng, math, soc, his, sci) {
         kor = parseInt(kor) || 0;
         eng = parseInt(eng) || 0;
         math = parseInt(math) || 0;
         soc = (soc !== undefined && soc !== null) ? (parseInt(soc) || 0) : 80;
+        his = (his !== undefined && his !== null) ? (parseInt(his) || 0) : 80;
         sci = (sci !== undefined && sci !== null) ? (parseInt(sci) || 0) : 80;
 
         const calcGrade = (score) => {
@@ -810,51 +832,43 @@ document.addEventListener('DOMContentLoaded', () => {
         const gKor = calcGrade(kor);
         const gEng = calcGrade(eng);
         const gSoc = calcGrade(soc);
+        const gHis = calcGrade(his);
         const gSci = calcGrade(sci);
 
         const badgeKor = document.getElementById('badgeKorGrade');
         const badgeEng = document.getElementById('badgeEngGrade');
         const badgeMath = document.getElementById('badgeMathGrade');
         const badgeSoc = document.getElementById('badgeSocGrade');
+        const badgeHis = document.getElementById('badgeHisGrade');
         const badgeSci = document.getElementById('badgeSciGrade');
 
-        if (badgeKor) {
-            badgeKor.innerText = gKor.text;
-            badgeKor.style.color = gKor.color;
-            badgeKor.style.background = gKor.bg;
-            badgeKor.style.borderColor = gKor.border;
-        }
-        if (badgeEng) {
-            badgeEng.innerText = gEng.text;
-            badgeEng.style.color = gEng.color;
-            badgeEng.style.background = gEng.bg;
-            badgeEng.style.borderColor = gEng.border;
-        }
-        if (badgeMath) {
-            if (math >= 90) {
-                badgeMath.innerText = 'A 등급';
-                badgeMath.style.color = '#059669';
-                badgeMath.style.background = '#ecfdf5';
-                badgeMath.style.borderColor = '#a7f3d0';
-            } else {
-                const gMath = calcGrade(math);
-                badgeMath.innerText = gMath.text;
-                badgeMath.style.color = gMath.color;
-                badgeMath.style.background = gMath.bg;
-                badgeMath.style.borderColor = gMath.border;
-            }
-        }
-        if (badgeSoc) {
-            badgeSoc.innerText = gSoc.text;
-            badgeSoc.style.color = gSoc.color;
-            badgeSoc.style.background = gSoc.bg;
-            badgeSoc.style.borderColor = gSoc.border;
-        }
-        if (badgeSci) {
-            badgeSci.innerText = gSci.text;
-            badgeSci.style.color = gSci.color;
-            badgeSci.style.background = gSci.bg;
-            badgeSci.style.borderColor = gSci.border;
+        const setBadgeStyle = (elements, text, color, bg, border) => {
+            elements.filter(Boolean).forEach(b => {
+                b.innerText = text;
+                b.style.color = color;
+                b.style.background = bg;
+                b.style.borderColor = border;
+            });
+        };
+
+        const badgesKor = [document.getElementById('badgeKorGrade'), document.getElementById('badgeKorGradeMobile')];
+        const badgesEng = [document.getElementById('badgeEngGrade'), document.getElementById('badgeEngGradeMobile')];
+        const badgesMath = [document.getElementById('badgeMathGrade'), document.getElementById('badgeMathGradeMobile')];
+        const badgesSoc = [document.getElementById('badgeSocGrade'), document.getElementById('badgeSocGradeMobile')];
+        const badgesHis = [document.getElementById('badgeHisGrade'), document.getElementById('badgeHisGradeMobile')];
+        const badgesSci = [document.getElementById('badgeSciGrade'), document.getElementById('badgeSciGradeMobile')];
+
+        setBadgeStyle(badgesKor, gKor.text, gKor.color, gKor.bg, gKor.border);
+        setBadgeStyle(badgesEng, gEng.text, gEng.color, gEng.bg, gEng.border);
+        setBadgeStyle(badgesSoc, gSoc.text, gSoc.color, gSoc.bg, gSoc.border);
+        setBadgeStyle(badgesHis, gHis.text, gHis.color, gHis.bg, gHis.border);
+        setBadgeStyle(badgesSci, gSci.text, gSci.color, gSci.bg, gSci.border);
+
+        if (math >= 90) {
+            setBadgeStyle(badgesMath, 'A 등급', '#059669', '#ecfdf5', '#a7f3d0');
+        } else {
+            const gMath = calcGrade(math);
+            setBadgeStyle(badgesMath, gMath.text, gMath.color, gMath.bg, gMath.border);
         }
 
         // 라벨 숫자 동기화
@@ -862,17 +876,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const lblEngPc = document.getElementById('valSettingsChildEng-pc');
         const lblMathPc = document.getElementById('valSettingsChildMath-pc');
         const lblSocPc = document.getElementById('valSettingsChildSoc-pc');
+        const lblHisPc = document.getElementById('valSettingsChildHis-pc');
         const lblSciPc = document.getElementById('valSettingsChildSci-pc');
         if (lblKorPc) lblKorPc.innerText = kor;
         if (lblEngPc) lblEngPc.innerText = eng;
         if (lblMathPc) lblMathPc.innerText = math;
         if (lblSocPc) lblSocPc.innerText = soc;
+        if (lblHisPc) lblHisPc.innerText = his;
         if (lblSciPc) lblSciPc.innerText = sci;
 
-        // 5과목 평균 분석 계산
-        const avg = ((kor + eng + math + soc + sci) / 5).toFixed(1);
+        // 6과목 평균 분석 계산
+        const avg = ((kor + eng + math + soc + his + sci) / 6).toFixed(1);
         const avgEl = document.getElementById('avgScoreDisplay');
+        const avgElMobile = document.getElementById('avgScoreDisplayMobile');
         if (avgEl) avgEl.innerText = avg;
+        if (avgElMobile) avgElMobile.innerText = avg;
 
         // 학교명 및 상위 백분위 예측 (현재 자녀의 목표 학교 기준)
         const activeChild = (typeof childProfiles !== 'undefined' && Array.isArray(childProfiles)) ? childProfiles.find(c => c.id === selectedChildId) : null;
@@ -928,9 +946,10 @@ document.addEventListener('DOMContentLoaded', () => {
         else rankPercent = 75;
 
         const rankEl = document.getElementById('schoolRankEstimateDisplay');
-        if (rankEl) {
-            rankEl.innerText = `${shortSchool} 상위 ${rankPercent}% 예상`;
-        }
+        const rankElMobile = document.getElementById('schoolRankEstimateDisplayMobile');
+        const rankText = `${shortSchool} 상위 ${rankPercent}% 예상`;
+        if (rankEl) rankEl.innerText = rankText;
+        if (rankElMobile) rankElMobile.innerText = rankText;
 
         // 안정성 배지
         const stabEl = document.getElementById('stabilityBadgeDisplay');
@@ -951,26 +970,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 배정/목표 학교 카드 표시
-        const targetSchoolDisplay = document.getElementById('targetSchoolNameDisplay');
-        if (targetSchoolDisplay) {
+        const targetSchoolDisplays = [
+            document.getElementById('targetSchoolNameDisplay'),
+            document.getElementById('targetSchoolNameDisplayMobile')
+        ].filter(Boolean);
+
+        if (targetSchoolDisplays.length > 0) {
             const chosen = targetSchoolObj || window.selectedTargetSchool;
+            let finalSchoolName = '서초구 서운중학교';
             if (chosen) {
                 const reg = chosen.region || chosen.district || '';
                 if (reg && !chosen.school_name.startsWith(reg)) {
-                    targetSchoolDisplay.innerText = `${reg} ${chosen.school_name}`;
+                    finalSchoolName = `${reg} ${chosen.school_name}`;
                 } else {
-                    targetSchoolDisplay.innerText = chosen.school_name;
+                    finalSchoolName = chosen.school_name;
                 }
             } else if (activeChild && activeChild.schoolName) {
                 const reg = activeChild.schoolRegion || '';
                 if (reg && !activeChild.schoolName.startsWith(reg)) {
-                    targetSchoolDisplay.innerText = `${reg} ${activeChild.schoolName}`;
+                    finalSchoolName = `${reg} ${activeChild.schoolName}`;
                 } else {
-                    targetSchoolDisplay.innerText = activeChild.schoolName;
+                    finalSchoolName = activeChild.schoolName;
                 }
-            } else {
-                targetSchoolDisplay.innerText = '서초구 서운중학교';
             }
+            targetSchoolDisplays.forEach(el => el.innerText = finalSchoolName);
         }
     }
 
@@ -1175,14 +1198,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // 5. 점수 분석 UI 갱신 (5과목 완벽 전달)
+        // 5. 점수 분석 UI 갱신 (6과목 완벽 전달)
         try {
             const kor = child ? child.korean : 80;
             const eng = child ? child.english : 80;
             const math = child ? child.math : 80;
             const soc = child ? (child.society ?? 80) : 80;
+            const his = child ? (child.history ?? 80) : 80;
             const sci = child ? (child.science ?? 80) : 80;
-            updateScoreAnalysisUI(kor, eng, math, soc, sci);
+            updateScoreAnalysisUI(kor, eng, math, soc, his, sci);
         } catch (err) {
             console.warn('updateScoreAnalysisUI 갱신 오류:', err);
         }
@@ -1203,10 +1227,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     english: child.english || 80, 
                     math: child.math || 80,
                     society: child.society ?? 80,
+                    history: child.history ?? 80,
                     science: child.science ?? 80
                 }) ||
                 (orchestrator.state.childProfile && orchestrator.state.childProfile.scores) ||
-                { korean: 80, english: 80, math: 80, society: 80, science: 80 };
+                { korean: 80, english: 80, math: 80, society: 80, history: 80, science: 80 };
                 
                 if (typeof orchestrator.childPerformanceDiagnosis === 'function') {
                     const result = orchestrator.childPerformanceDiagnosis(scores);
@@ -1335,6 +1360,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (settingsChildMathPc) settingsChildMathPc.value = 80;
             if (settingsChildSoc) settingsChildSoc.value = 80;
             if (settingsChildSocPc) settingsChildSocPc.value = 80;
+            if (settingsChildHis) settingsChildHis.value = 80;
+            if (settingsChildHisPc) settingsChildHisPc.value = 80;
             if (settingsChildSci) settingsChildSci.value = 80;
             if (settingsChildSciPc) settingsChildSciPc.value = 80;
 
@@ -1342,14 +1369,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const lblEng = document.getElementById('valSettingsChildEng');
             const lblMath = document.getElementById('valSettingsChildMath');
             const lblSoc = document.getElementById('valSettingsChildSoc');
+            const lblHis = document.getElementById('valSettingsChildHis');
             const lblSci = document.getElementById('valSettingsChildSci');
             if (lblKor) lblKor.innerText = '-점';
             if (lblEng) lblEng.innerText = '-점';
             if (lblMath) lblMath.innerText = '-점';
             if (lblSoc) lblSoc.innerText = '-점';
+            if (lblHis) lblHis.innerText = '-점';
             if (lblSci) lblSci.innerText = '-점';
 
-            updateScoreAnalysisUI(80, 80, 80, 80, 80);
+            updateScoreAnalysisUI(80, 80, 80, 80, 80, 80);
             syncActiveChildWithOrchestrator(null);
             return;
         }
@@ -1359,14 +1388,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (profileScoresEl) {
             const socVal = child.society ?? 80;
+            const hisVal = child.history ?? 80;
             const sciVal = child.science ?? 80;
-            profileScoresEl.innerText = `성적: 국 ${child.korean} / 영 ${child.english} / 수 ${child.math} / 사 ${socVal} / 과 ${sciVal}`;
+            profileScoresEl.innerText = `성적: 국 ${child.korean} / 영 ${child.english} / 수 ${child.math} / 사 ${socVal} / 역 ${hisVal} / 과 ${sciVal}`;
         }
 
         const childAllergiesText = Array.isArray(child.allergies) ? child.allergies.join(', ') : (child.allergies || '');
         const currentSoc = (child.society !== undefined && child.society !== null) ? child.society : 80;
+        const currentHis = (child.history !== undefined && child.history !== null) ? child.history : 80;
         const currentSci = (child.science !== undefined && child.science !== null) ? child.science : 80;
         child.society = currentSoc;
+        child.history = currentHis;
         child.science = currentSci;
 
         // 모바일 입력 폼 바인딩
@@ -1378,6 +1410,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (settingsChildEng) settingsChildEng.value = child.english;
         if (settingsChildMath) settingsChildMath.value = child.math;
         if (settingsChildSoc) settingsChildSoc.value = child.society;
+        if (settingsChildHis) settingsChildHis.value = child.history;
         if (settingsChildSci) settingsChildSci.value = child.science;
 
         // PC 입력 폼 바인딩
@@ -1389,6 +1422,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (settingsChildEngPc) settingsChildEngPc.value = child.english;
         if (settingsChildMathPc) settingsChildMathPc.value = child.math;
         if (settingsChildSocPc) settingsChildSocPc.value = child.society;
+        if (settingsChildHisPc) settingsChildHisPc.value = child.history;
         if (settingsChildSciPc) settingsChildSciPc.value = child.science;
 
         // PC & 모바일 숫자 직접 입력 인풋 바인딩
@@ -1396,22 +1430,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const inputChildEngPc = document.getElementById('inputSettingsChildEng-pc');
         const inputChildMathPc = document.getElementById('inputSettingsChildMath-pc');
         const inputChildSocPc = document.getElementById('inputSettingsChildSoc-pc');
+        const inputChildHisPc = document.getElementById('inputSettingsChildHis-pc');
         const inputChildSciPc = document.getElementById('inputSettingsChildSci-pc');
         const inputChildKorMobile = document.getElementById('inputSettingsChildKor');
         const inputChildEngMobile = document.getElementById('inputSettingsChildEng');
         const inputChildMathMobile = document.getElementById('inputSettingsChildMath');
         const inputChildSocMobile = document.getElementById('inputSettingsChildSoc');
+        const inputChildHisMobile = document.getElementById('inputSettingsChildHis');
         const inputChildSciMobile = document.getElementById('inputSettingsChildSci');
 
         if (inputChildKorPc) inputChildKorPc.value = child.korean;
         if (inputChildEngPc) inputChildEngPc.value = child.english;
         if (inputChildMathPc) inputChildMathPc.value = child.math;
         if (inputChildSocPc) inputChildSocPc.value = child.society;
+        if (inputChildHisPc) inputChildHisPc.value = child.history;
         if (inputChildSciPc) inputChildSciPc.value = child.science;
         if (inputChildKorMobile) inputChildKorMobile.value = child.korean;
         if (inputChildEngMobile) inputChildEngMobile.value = child.english;
         if (inputChildMathMobile) inputChildMathMobile.value = child.math;
         if (inputChildSocMobile) inputChildSocMobile.value = child.society;
+        if (inputChildHisMobile) inputChildHisMobile.value = child.history;
         if (inputChildSciMobile) inputChildSciMobile.value = child.science;
         
         // 자녀설정의 학년에 따라 학교급 필터 기본값 자동 선택
@@ -1434,11 +1472,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const lblEng = document.getElementById('valSettingsChildEng');
         const lblMath = document.getElementById('valSettingsChildMath');
         const lblSoc = document.getElementById('valSettingsChildSoc');
+        const lblHis = document.getElementById('valSettingsChildHis');
         const lblSci = document.getElementById('valSettingsChildSci');
         if (lblKor) lblKor.innerText = `${child.korean}점`;
         if (lblEng) lblEng.innerText = `${child.english}점`;
         if (lblMath) lblMath.innerText = `${child.math}점`;
         if (lblSoc) lblSoc.innerText = `${child.society}점`;
+        if (lblHis) lblHis.innerText = `${child.history}점`;
         if (lblSci) lblSci.innerText = `${child.science}점`;
 
         // 자녀의 목표 학교 객체를 window.selectedTargetSchool에 동기화 (schoolId 및 지역 우선 매칭)
@@ -1462,7 +1502,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // PC 점수, 등급, 평균 분석 실시간 갱신 (시안 100% 매칭)
-        updateScoreAnalysisUI(child.korean, child.english, child.math, child.society, child.science);
+        updateScoreAnalysisUI(child.korean, child.english, child.math, child.society, child.history, child.science);
 
         // 현재 선택된 자녀 정보로 Orchestrator 상태 동기화 및 사이드바 인풋 동기화
         syncActiveChildWithOrchestrator(child);
@@ -1508,7 +1548,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const child = childProfiles.find(c => c.id === selectedChildId);
             if (child) {
                 child[subjectKey] = val;
-                updateScoreAnalysisUI(child.korean, child.english, child.math, child.society, child.science);
+                updateScoreAnalysisUI(child.korean, child.english, child.math, child.society, child.history, child.science);
                 syncActiveChildWithOrchestrator(child);
             }
         };
@@ -1564,6 +1604,16 @@ document.addEventListener('DOMContentLoaded', () => {
     );
 
     bindScoreSync(
+        'history',
+        settingsChildHis,
+        settingsChildHisPc,
+        document.getElementById('inputSettingsChildHis'),
+        document.getElementById('inputSettingsChildHis-pc'),
+        document.getElementById('valSettingsChildHis'),
+        document.getElementById('valSettingsChildHis-pc')
+    );
+
+    bindScoreSync(
         'science',
         settingsChildSci,
         settingsChildSciPc,
@@ -1582,6 +1632,7 @@ document.addEventListener('DOMContentLoaded', () => {
             english: child.english,
             math: child.math,
             society: child.society ?? 80,
+            history: child.history ?? 80,
             science: child.science ?? 80
         };
 
@@ -1654,10 +1705,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         english: 80,
                         math: 80,
                         society: 80,
+                        history: 80,
                         science: 80
                     };
 
-                    // DB user_student_grades 기본 성적 저장 (5과목)
+                    // DB user_student_grades 기본 성적 저장 (6과목)
                     await fetch(`${DB_SUPABASE_URL}/rest/v1/user_student_grades`, {
                         method: 'POST',
                         headers: getDbHeaders({ 'Prefer': 'return=representation' }),
@@ -1666,6 +1718,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             { profile_id: newProfile.id, semester: '2026-1', subject_name: '영어', raw_score: 80, school_avg: 72, std_dev: 14, achievement: 'B' },
                             { profile_id: newProfile.id, semester: '2026-1', subject_name: '수학', raw_score: 80, school_avg: 70, std_dev: 15, achievement: 'B' },
                             { profile_id: newProfile.id, semester: '2026-1', subject_name: '사회', raw_score: 80, school_avg: 74, std_dev: 14, achievement: 'B' },
+                            { profile_id: newProfile.id, semester: '2026-1', subject_name: '역사', raw_score: 80, school_avg: 73, std_dev: 14.5, achievement: 'B' },
                             { profile_id: newProfile.id, semester: '2026-1', subject_name: '과학', raw_score: 80, school_avg: 71, std_dev: 15, achievement: 'B' }
                         ])
                     });
@@ -1808,6 +1861,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const elModalEng = document.getElementById('inputSettingsChildEng-pc') || document.getElementById('settingsChildEng-pc') || document.getElementById('settingsChildEng');
         const elModalMath = document.getElementById('inputSettingsChildMath-pc') || document.getElementById('settingsChildMath-pc') || document.getElementById('settingsChildMath');
         const elModalSoc = document.getElementById('inputSettingsChildSoc-pc') || document.getElementById('settingsChildSoc-pc') || document.getElementById('settingsChildSoc');
+        const elModalHis = document.getElementById('inputSettingsChildHis-pc') || document.getElementById('settingsChildHis-pc') || document.getElementById('settingsChildHis');
         const elModalSci = document.getElementById('inputSettingsChildSci-pc') || document.getElementById('settingsChildSci-pc') || document.getElementById('settingsChildSci');
 
         child.name = elModalName ? elModalName.value.trim() || '자녀' : '자녀';
@@ -1819,6 +1873,7 @@ document.addEventListener('DOMContentLoaded', () => {
         child.english = elModalEng ? parseInt(elModalEng.value) || 0 : (child.english || 0);
         child.math = elModalMath ? parseInt(elModalMath.value) || 0 : (child.math || 0);
         child.society = elModalSoc ? parseInt(elModalSoc.value) || 0 : (child.society || 80);
+        child.history = elModalHis ? parseInt(elModalHis.value) || 0 : (child.history || 80);
         child.science = elModalSci ? parseInt(elModalSci.value) || 0 : (child.science || 80);
 
         // DB에 자녀 정보 및 성적 저장 (user_neis_profiles & user_student_grades)
@@ -1827,7 +1882,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 나이스(NEIS) 마이데이터 융합 진단 로컬 캐시도 함께 동기화
         const parsedGradeNum = parseInt(String(child.grade).replace(/\D/g, ''), 10) || 2;
-        const avg5 = Math.round((child.korean + child.math + child.english + child.society + child.science) / 5);
+        const avg6 = Math.round((child.korean + child.math + child.english + child.society + child.history + child.science) / 6);
         const neisProf = {
             isConnected: true,
             studentInfo: {
@@ -1842,12 +1897,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 { subject: '수학', rawScore: child.math, writtenScore: child.math, perfScore: child.math, avg: 70.0, std: 16.0, achievement: calcAchievement(child.math) },
                 { subject: '영어', rawScore: child.english, writtenScore: child.english, perfScore: child.english, avg: 72.0, std: 15.0, achievement: calcAchievement(child.english) },
                 { subject: '사회', rawScore: child.society, writtenScore: child.society, perfScore: child.society, avg: 74.0, std: 14.0, achievement: calcAchievement(child.society) },
+                { subject: '역사', rawScore: child.history, writtenScore: child.history, perfScore: child.history, avg: 73.0, std: 14.5, achievement: calcAchievement(child.history) },
                 { subject: '과학', rawScore: child.science, writtenScore: child.science, perfScore: child.science, avg: 71.0, std: 15.0, achievement: calcAchievement(child.science) }
             ],
             schoolRecord: {
                 strengths: ['수업 태도 우수', '자기주도 학습 적극성'],
                 weaknesses: ['심화 서술형 문항 연습 권장'],
-                competencyScores: { academic: avg5, majorSuitability: 82, community: 88 },
+                competencyScores: { academic: avg6, majorSuitability: 82, community: 88 },
                 keywords: ['성실성', '성장 잠재력']
             },
             schedule: [
@@ -11282,7 +11338,7 @@ window.toggleMypageAccordion = function(sectionName) {
 };
 
 window.switchMypageTab = function(tabName) {
-    const accordions = ['child', 'favorites', 'display', 'help'];
+    const accordions = ['neis', 'child', 'favorites', 'comparison', 'display', 'help'];
     accordions.forEach(name => {
         const content = document.getElementById('mypageAccordionContent-' + name);
         const arrow = document.getElementById('mypageAccordionArrow-' + name);
@@ -14091,6 +14147,7 @@ function initAuthModule() {
 
         const childPC = document.getElementById('settingsChildSection');
         const childMobile = document.getElementById('settingsChildSectionMobile');
+        const neisMobile = document.getElementById('settingsNEISSectionMobile');
         const opacityPC = document.getElementById('settingsOpacitySection-pc');
         const opacityMobile = document.getElementById('settingsOpacitySectionMobile');
         const notiPC = document.getElementById('settingsNotificationSection-pc');
@@ -14110,6 +14167,7 @@ function initAuthModule() {
             }
             if (childPC) childPC.style.display = 'block';
             if (childMobile) childMobile.style.display = 'flex';
+            if (neisMobile) neisMobile.style.display = 'flex';
             if (opacityPC) opacityPC.style.display = 'block';
             if (opacityMobile) opacityMobile.style.display = 'flex';
             if (notiPC) notiPC.style.display = 'block';
@@ -14121,7 +14179,7 @@ function initAuthModule() {
             const currentTargetId = (typeof selectedChildId !== 'undefined') ? selectedChildId : window.selectedChildId;
             const activeChild = currentProfiles.find(c => c.id === currentTargetId);
             if (activeChild && typeof updateScoreAnalysisUI === 'function') {
-                updateScoreAnalysisUI(activeChild.korean, activeChild.english, activeChild.math);
+                updateScoreAnalysisUI(activeChild.korean, activeChild.english, activeChild.math, activeChild.society, activeChild.history, activeChild.science);
             }
         } else {
             if (userCard) userCard.style.display = 'none';
@@ -14136,6 +14194,7 @@ function initAuthModule() {
             }
             if (childPC) childPC.style.display = 'none';
             if (childMobile) childMobile.style.display = 'none';
+            if (neisMobile) neisMobile.style.display = 'flex';
             if (opacityPC) opacityPC.style.display = 'none';
             if (opacityMobile) opacityMobile.style.display = 'none';
             if (notiPC) notiPC.style.display = 'none';
@@ -14686,6 +14745,9 @@ function initNEISLocalModule() {
 
             // 설정 카드 및 튜토리얼 카드 숨김
             const settingsModal = document.getElementById('settingsModal');
+            if (settingsModal && (settingsModal.style.display !== 'none' && settingsModal.style.display !== '')) {
+                window.__openedNEISFromMypage = true;
+            }
             if (settingsModal) settingsModal.style.display = 'none';
             const tutorialSidebarCard = document.getElementById('tutorialSidebarCard');
             if (tutorialSidebarCard) tutorialSidebarCard.style.display = 'none';
@@ -14704,6 +14766,20 @@ function initNEISLocalModule() {
         const m = document.getElementById('neisModal');
         if (m) {
             m.style.display = 'none';
+        }
+
+        const wasFromMypage = window.__openedNEISFromMypage;
+        window.__openedNEISFromMypage = false;
+
+        // 모바일 환경이거나 마이페이지에서 모달을 열었을 경우 닫을 때 마이페이지(설정) 화면으로 복귀
+        if (window.innerWidth <= 1024 || wasFromMypage) {
+            const mypageTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*="mypage"]');
+            if (window.innerWidth <= 1024 && mypageTabBtn && typeof window.onMobileNavClick === 'function') {
+                window.onMobileNavClick('mypage', mypageTabBtn);
+            } else {
+                const setModal = document.getElementById('settingsModal');
+                if (setModal) setModal.style.display = 'block';
+            }
         }
     };
 
@@ -14901,12 +14977,14 @@ window.handleNEISFileUpload = async function(event) {
                     const kor = parseResult.extracted.grades.find(g => g.subject === '국어');
                     const math = parseResult.extracted.grades.find(g => g.subject === '수학');
                     const eng = parseResult.extracted.grades.find(g => g.subject === '영어');
-                    const soc = parseResult.extracted.grades.find(g => g.subject === '사회' || g.subject === '역사');
+                    const soc = parseResult.extracted.grades.find(g => g.subject === '사회');
+                    const his = parseResult.extracted.grades.find(g => g.subject === '역사');
                     const sci = parseResult.extracted.grades.find(g => g.subject === '과학');
                     if (kor) curChild.korean = kor.rawScore;
                     if (math) curChild.math = math.rawScore;
                     if (eng) curChild.english = eng.rawScore;
                     if (soc) curChild.society = soc.rawScore;
+                    if (his) curChild.history = his.rawScore;
                     if (sci) curChild.science = sci.rawScore;
                     try {
                         localStorage.setItem('learnmap_child_profiles', JSON.stringify(childProfiles));
@@ -14939,6 +15017,7 @@ window.loadNEISSampleRecord = function() {
 수학 : 92점 (과목평균 68.5 / 표준편차 17.8) 성취도 A
 영어 : 88점 (과목평균 71.0 / 표준편차 15.6) 성취도 A
 사회 : 86점 (과목평균 73.8 / 표준편차 13.9) 성취도 B
+역사 : 86점 (과목평균 73.0 / 표준편차 14.5) 성취도 B
 과학 : 95점 (과목평균 70.3 / 표준편차 14.8) 성취도 A
 [출결상황]
 수업일수 : 190일, 미인정결석 : 0일, 미인정지각 : 0일
@@ -14960,6 +15039,7 @@ window.loadNEISSampleRecord = function() {
                 curChild.math = 92;
                 curChild.english = 88;
                 curChild.society = 86;
+                curChild.history = 86;
                 curChild.science = 95;
             }
         }
@@ -15145,6 +15225,7 @@ window.renderNEISTabContent = function(tabName = 'sync') {
         const mathScore = Number(activeChild.math) || 0;
         const engScore = Number(activeChild.english) || 0;
         const socScore = Number(activeChild.society) || 80;
+        const hisScore = Number(activeChild.history) || 80;
         const sciScore = Number(activeChild.science) || 80;
 
         const currentGrades = Array.isArray(agent.service.profile.grades) ? [...agent.service.profile.grades] : [];
@@ -15173,13 +15254,14 @@ window.renderNEISTabContent = function(tabName = 'sync') {
         updateOrAddGrade('수학', mathScore, 70.0, 16.0);
         updateOrAddGrade('영어', engScore, 72.0, 15.0);
         updateOrAddGrade('사회', socScore, 74.0, 14.0);
+        updateOrAddGrade('역사', hisScore, 73.0, 14.5);
         updateOrAddGrade('과학', sciScore, 71.0, 15.0);
 
         agent.service.profile.grades = currentGrades;
         agent.service.profile.isConnected = true;
 
         if (agent.service.profile.schoolRecord?.competencyScores) {
-            agent.service.profile.schoolRecord.competencyScores.academic = Math.round((korScore + mathScore + engScore + socScore + sciScore) / 5);
+            agent.service.profile.schoolRecord.competencyScores.academic = Math.round((korScore + mathScore + engScore + socScore + hisScore + sciScore) / 6);
         }
 
         try {
@@ -15284,7 +15366,7 @@ window.renderNEISTabContent = function(tabName = 'sync') {
                     </button>
                 </div>
 
-                <div style="border: 1px solid #e2e8f0; border-radius: 10px; overflow-x: auto;">
+                <div class="neis-table-wrapper" style="border: 1px solid #e2e8f0; border-radius: 10px; overflow-x: auto;">
                     <table class="neis-table">
                         <thead>
                             <tr>
@@ -15293,7 +15375,7 @@ window.renderNEISTabContent = function(tabName = 'sync') {
                                 <th>평균</th>
                                 <th>표준편차</th>
                                 <th>성취도</th>
-                                <th>석차 백분위</th>
+                                <th>석차백분위</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -15318,15 +15400,15 @@ window.renderNEISTabContent = function(tabName = 'sync') {
 
         const subjectRows = subjectList.map(sub => `
             <tr>
-                <td style="font-weight: 700; color: #1e293b;">${sub.subject}</td>
+                <td style="font-weight: 700; color: #1e293b; text-align: left;">${sub.subject}</td>
                 <td style="text-align: center; font-weight: 800; color: #2563eb;">${sub.rawScore}점</td>
-                <td style="text-align: center; color: #64748b;">${sub.avg}점 <span style="font-size: 10.5px;">(±${sub.std})</span></td>
+                <td style="text-align: center; color: #64748b; line-height: 1.2;">${sub.avg}점<br><span style="font-size: 9.5px; color: #94a3b8; font-weight: normal;">(±${sub.std})</span></td>
                 <td style="text-align: center;"><span class="neis-badge neis-badge-info">상위 ${sub.percentile}%</span></td>
-                <td style="text-align: center; font-weight: 700; color: #2563eb;">${sub.estimatedGrade}등급 (${sub.achievement})</td>
+                <td style="text-align: center; font-weight: 700; color: #2563eb; line-height: 1.2;">${sub.estimatedGrade}등급<br><span style="font-size: 9.5px; color: #64748b; font-weight: 500;">(${sub.achievement})</span></td>
                 <td style="text-align: center;">
                     ${sub.perfGap > 5 
-                        ? `<span class="neis-badge neis-badge-warning" title="수행평가 감점 ${sub.perfGap}점">수행 -${sub.perfGap}점</span>` 
-                        : `<span class="neis-badge neis-badge-success">지필·수행 균형</span>`}
+                        ? `<span class="neis-badge neis-badge-warning" title="수행평가 감점 ${sub.perfGap}점">수행 -${sub.perfGap}</span>` 
+                        : `<span class="neis-badge neis-badge-success">균형</span>`}
                 </td>
             </tr>
         `).join('');
@@ -15356,16 +15438,16 @@ window.renderNEISTabContent = function(tabName = 'sync') {
                     </div>
                     <span style="font-size: 12px; color: #334155; font-weight: 600;">전체 평균: <strong style="color: #2563eb;">${gradesObj.overallAvgScore || 80}점</strong> (상위 <strong>${gradesObj.overallPercentile || 25}%</strong>)</span>
                 </div>
-                <div style="border: 1px solid #e2e8f0; border-radius: 10px; overflow-x: auto;">
+                <div class="neis-table-wrapper" style="border: 1px solid #e2e8f0; border-radius: 10px; overflow-x: auto;">
                     <table class="neis-table">
                         <thead>
                             <tr>
                                 <th style="text-align: left;">과목</th>
                                 <th>원점수</th>
-                                <th>학교 평균(표준편차)</th>
+                                <th>학교평균</th>
                                 <th>백분위</th>
-                                <th>예상 등급</th>
-                                <th>지필 vs 수행</th>
+                                <th>예상등급</th>
+                                <th>수행·지필</th>
                             </tr>
                         </thead>
                         <tbody>

@@ -1090,7 +1090,7 @@
                             <!-- 교과목 성적 입력 타이틀 헤더 -->
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                                 <span style="font-size: 12px; font-weight: 600; color: #64748b;">교과목 성적 입력 (내신 지필/수행)</span>
-                                <span style="font-size: 11.5px; font-weight: 600; color: #2563eb;">5개 과목 기준 (국·영·수·사·과)</span>
+                                <span style="font-size: 11.5px; font-weight: 600; color: #2563eb;">6개 과목 기준 (국·영·수·사·역·과)</span>
                             </div>
 
                             <!-- 과목 슬라이더 1: 국어 -->
@@ -1156,12 +1156,12 @@
                                 </div>
                             </div>
 
-                            <!-- 과목 슬라이더 4: 사회(역사) -->
+                            <!-- 과목 슬라이더 4: 사회 -->
                             <div class="score-card-item" style="background: #f8fafc; border: 1px solid #edf2f7; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <span style="width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span>
-                                        <span style="font-size: 13px; font-weight: 700; color: #1e293b;">사회·역사 점수</span>
+                                        <span style="font-size: 13px; font-weight: 700; color: #1e293b;">사회 점수</span>
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <span id="badgeSocGrade" style="background: #fffbeb; color: #d97706; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; border: 1px solid #fde68a;">B+ 등급</span>
@@ -1177,7 +1177,28 @@
                                 </div>
                             </div>
 
-                            <!-- 과목 슬라이더 5: 과학 -->
+                            <!-- 과목 슬라이더 5: 역사 -->
+                            <div class="score-card-item" style="background: #f8fafc; border: 1px solid #edf2f7; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="width: 8px; height: 8px; border-radius: 50%; background: #d97706; display: inline-block;"></span>
+                                        <span style="font-size: 13px; font-weight: 700; color: #1e293b;">역사 점수</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span id="badgeHisGrade" style="background: #fffbeb; color: #d97706; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; border: 1px solid #fde68a;">B+ 등급</span>
+                                        <div style="display: flex; align-items: center; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 1px 6px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);">
+                                            <input type="number" id="inputSettingsChildHis-pc" min="0" max="100" value="86" style="width: 38px; border: none; outline: none; font-size: 14px; font-weight: 800; color: #1e293b; text-align: right; background: transparent; -moz-appearance: textfield; padding: 0;">
+                                            <span style="font-size: 12px; font-weight: 700; color: #475569; margin-left: 2px;">점</span>
+                                        </div>
+                                        <span id="valSettingsChildHis-pc" style="display: none;">86</span>
+                                    </div>
+                                </div>
+                                <div class="custom-range-slider-wrap">
+                                    <input type="range" id="settingsChildHis-pc" min="0" max="100" value="86" class="custom-score-range">
+                                </div>
+                            </div>
+
+                            <!-- 과목 슬라이더 6: 과학 -->
                             <div class="score-card-item" style="background: #f8fafc; border: 1px solid #edf2f7; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
@@ -1198,10 +1219,10 @@
                                 </div>
                             </div>
 
-                            <!-- 5과목 평균 분석 요약 박스 -->
+                            <!-- 6과목 평균 분석 요약 박스 -->
                             <div style="background: #f0f7ff; border: 1px solid #dbeafe; border-radius: 12px; padding: 12px 16px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
                                 <div>
-                                    <div style="font-size: 11px; color: #64748b; font-weight: 500; margin-bottom: 3px;">5과목 평균 분석</div>
+                                    <div style="font-size: 11px; color: #64748b; font-weight: 500; margin-bottom: 3px;">6과목 평균 분석</div>
                                     <div style="display: flex; align-items: center; gap: 6px;">
                                         <span style="font-size: 14.5px; font-weight: 800; color: #1e293b;"><strong id="avgScoreDisplay">91.2</strong>점</span>
                                         <span style="color: #94a3b8; font-size: 12px;">·</span>
@@ -1302,11 +1323,29 @@
                             </div>
                         </div>
 
+                        <!-- 🎓 자녀 내신 정밀 진단 모바일 전용 배너 카드 -->
+                        <div style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px; padding: 16px; color: white; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.25); display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; flex-shrink: 0;" onclick="if(typeof window.openNEISModal === 'function') window.openNEISModal();">
+                            <div style="display: flex; align-items: center; gap: 12px; text-align: left;">
+                                <div style="width: 42px; height: 42px; border-radius: 10px; background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;">
+                                    🎓
+                                </div>
+                                <div>
+                                    <div style="font-size: 14px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px;">자녀 내신 정밀 진단 & 리포트</div>
+                                    <div style="font-size: 11px; color: rgba(255, 255, 255, 0.88); margin-top: 2px;">학교알리미 등수 산출 · 나이스 생기부 AI 파싱</div>
+                                </div>
+                            </div>
+                            <span style="font-size: 11.5px; font-weight: 800; background: rgba(255, 255, 255, 0.25); padding: 6px 12px; border-radius: 20px; white-space: nowrap; flex-shrink: 0;">진단하기 ↗</span>
+                        </div>
+
                         <!-- 2. Hogangnono Style Menu Sections -->
                         
                         <!-- Section: 나의 활동 -->
                         <div style="display: flex; flex-direction: column; gap: 1px; background: white; border-radius: 12px; border: 1px solid var(--border-color); overflow: hidden; flex-shrink: 0;">
                             <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); background: #f8f9fa; padding: 10px 16px; border-bottom: 1px solid var(--border-color); text-align: left;">나의 활동</div>
+                            
+                            <!-- Menu Item: 자녀 내신 정밀 진단 & 학사·급식 리포트 (상단 초록색 배너 카드와 중복 노출 방지 숨김) -->
+                            <div id="settingsNEISSectionMobile" style="display: none;"></div>
+                            <div id="mypageAccordionContent-neis" style="display: none;"></div>
                             
                             <!-- Menu Item: 즐겨찾는 학교 -->
                             <div onclick="if(typeof window.toggleMypageAccordion === 'function') window.toggleMypageAccordion('favorites');" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; cursor: pointer; transition: background 0.2s; background: white;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
@@ -1360,27 +1399,47 @@
                                 </div>
                                 <span style="font-size: 12px; color: var(--text-muted);" id="mypageAccordionArrow-child">▼</span>
                             </div>
-                            <!-- Accordion Content: 자녀 성적 입력 양식 -->
-                            <div id="mypageAccordionContent-child" style="display: none; padding: 12px 16px; border-top: 1px dashed var(--border-color); background: #fcfcfc;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 11px;">
-                                    <span style="font-weight: bold; color: var(--deep-blue);">🏫 다중 자녀 프로필 설정</span>
-                                    <button id="btnAddNewChild" style="background: var(--primary-blue); color: white; border: none; border-radius: 4px; padding: 2px 8px; font-size: 10px; font-weight: bold; cursor: pointer;">+ 자녀 추가</button>
-                                </div>
-                                <div style="display: flex; flex-direction: column; gap: 8px;">
-                                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
-                                        <span style="font-weight: 600; color: var(--text-main); width: 80px;">자녀 선택</span>
-                                        <select id="settingsChildSelect" style="flex: 1; padding: 6px; font-size: 11px; border: 1px solid var(--border-color); border-radius: 6px; min-width: 0;"></select>
-                                        <button id="btnSetDefaultChild" style="background: none; border: 1px solid var(--primary-blue); color: var(--primary-blue); border-radius: 4px; padding: 4px 8px; font-size: 10px; cursor: pointer; font-weight: bold; flex-shrink: 0;">기본 설정</button>
-                                        <button id="btnDeleteSelectedChild" style="background: none; border: 1px solid var(--danger-red); color: var(--danger-red); border-radius: 4px; padding: 4px 8px; font-size: 10px; cursor: pointer; flex-shrink: 0;">삭제</button>
+                            <!-- Accordion Content: 자녀 성적 입력 양식 (PC 시안 100% 매칭) -->
+                            <div id="mypageAccordionContent-child" style="display: none; padding: 12px 14px; border-top: 1px dashed var(--border-color); background: #fcfcfc;">
+                                
+                                <!-- 섹션 헤더 & 자녀 삭제 버튼 -->
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9;">
+                                    <div>
+                                        <h5 style="margin: 0; font-size: 13.5px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px;">자녀 정보 및 성적 설정</h5>
+                                        <p style="margin: 2px 0 0 0; font-size: 10.5px; color: #64748b;">내신 예측과 학군 맞춤 학원 추천에 반영됩니다</p>
                                     </div>
-                                    <div id="settingsChildEditForm" style="display: flex; flex-direction: column; gap: 6px; background: white; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
-                                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
-                                            <span style="font-weight: 600; color: var(--text-main); width: 80px;">이름</span>
-                                            <input type="text" id="settingsChildName" placeholder="예: 홍길동" style="flex: 1; padding: 4px; font-size: 11px; border: 1px solid var(--border-color); border-radius: 4px;">
-                                        </div>
-                                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
-                                            <span style="font-weight: 600; color: var(--text-main); width: 80px;">학년</span>
-                                            <select id="settingsChildGrade" style="flex: 1; padding: 4px; font-size: 11px; border: 1px solid var(--border-color); border-radius: 4px;">
+                                    <button type="button" id="btnDeleteChildActionMobile" onclick="if(typeof window.handleDeleteCurrentChild === 'function') { window.handleDeleteCurrentChild(); } else { const b = document.getElementById('btnDeleteSelectedChild'); if(b) b.click(); }" style="background: #ffffff; border: 1px solid #fecaca; border-radius: 8px; padding: 4px 8px; font-size: 10.5px; font-weight: 600; color: #ef4444; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; white-space: nowrap;" onmouseover="this.style.background='#fef2f2';" onmouseout="this.style.background='#ffffff';" title="선택된 자녀 정보 삭제">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        </svg>
+                                        <span>자녀 삭제</span>
+                                    </button>
+                                </div>
+
+                                <!-- 숨김 호환 엘리먼트 (기존 JS 연동 유지) -->
+                                <div style="display: none;">
+                                    <select id="settingsChildSelect"></select>
+                                    <button id="btnSetDefaultChild"></button>
+                                    <button id="btnDeleteSelectedChild"></button>
+                                    <button id="btnAddNewChild"></button>
+                                </div>
+
+                                <!-- 자녀 선택 알약 탭 목록 컨테이너 -->
+                                <div id="childPillTabsContainerMobile" style="display: flex; align-items: center; gap: 6px; margin: 10px 0 12px 0; overflow-x: auto; padding-bottom: 4px;" class="hide-scrollbar">
+                                    <!-- JS에서 renderChildPillTabs()로 동적 주입 -->
+                                </div>
+
+                                <!-- 자녀 이름 & 학년 인풋 (2열 그리드) -->
+                                <div id="settingsChildEditForm" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                                    <div>
+                                        <label style="display: block; font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 4px;">자녀 이름</label>
+                                        <input type="text" id="settingsChildName" placeholder="예: 홍길동" style="width: 100%; height: 36px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 10px; font-size: 12px; color: #1e293b; background: #ffffff; box-sizing: border-box; outline: none;">
+                                    </div>
+                                    <div>
+                                        <label style="display: block; font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 4px;">학년</label>
+                                        <div style="position: relative;">
+                                            <select id="settingsChildGrade" style="width: 100%; height: 36px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 24px 0 10px; font-size: 12px; color: #1e293b; background: #ffffff; box-sizing: border-box; outline: none; appearance: none; -webkit-appearance: none; cursor: pointer;">
                                                 <option value="e1">초등 1학년</option>
                                                 <option value="e2">초등 2학년</option>
                                                 <option value="e3">초등 3학년</option>
@@ -1394,75 +1453,178 @@
                                                 <option value="h2">고등 2학년</option>
                                                 <option value="h3">고등 3학년</option>
                                             </select>
-                                        </div>
-                                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
-                                            <span style="font-weight: 600; color: var(--text-main); width: 80px;">희망 계열</span>
-                                            <input type="text" id="settingsChildTargetMajor" placeholder="예: 컴퓨터공학, 의약학" style="flex: 1; padding: 4px; font-size: 11px; border: 1px solid var(--border-color); border-radius: 4px;">
-                                        </div>
-                                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 8px;">
-                                            <span style="font-weight: 600; color: var(--text-main); width: 80px;">알레르기</span>
-                                            <input type="text" id="settingsChildAllergies" placeholder="예: 대두, 우유, 땅콩 (쉼표 구분)" style="flex: 1; padding: 4px; font-size: 11px; border: 1px solid var(--border-color); border-radius: 4px;">
-                                        </div>
-                                        <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
-                                            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px;">
-                                                <div style="display: flex; align-items: center; gap: 4px;">
-                                                    <span>국어:</span>
-                                                    <div style="display: flex; align-items: center; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 4px;">
-                                                        <input type="number" id="inputSettingsChildKor" min="0" max="100" value="80" style="width: 32px; border: none; outline: none; font-size: 11px; font-weight: bold; text-align: right; -moz-appearance: textfield; padding: 0;">
-                                                        <span style="font-size: 10px; color: #475569; margin-left: 1px;">점</span>
-                                                    </div>
-                                                    <strong id="valSettingsChildKor" style="display: none;">80점</strong>
-                                                </div>
-                                                <input type="range" id="settingsChildKor" min="0" max="100" value="80" style="width: 110px;">
-                                            </div>
-                                            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px;">
-                                                <div style="display: flex; align-items: center; gap: 4px;">
-                                                    <span>영어:</span>
-                                                    <div style="display: flex; align-items: center; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 4px;">
-                                                        <input type="number" id="inputSettingsChildEng" min="0" max="100" value="80" style="width: 32px; border: none; outline: none; font-size: 11px; font-weight: bold; text-align: right; -moz-appearance: textfield; padding: 0;">
-                                                        <span style="font-size: 10px; color: #475569; margin-left: 1px;">점</span>
-                                                    </div>
-                                                    <strong id="valSettingsChildEng" style="display: none;">80점</strong>
-                                                </div>
-                                                <input type="range" id="settingsChildEng" min="0" max="100" value="80" style="width: 110px;">
-                                            </div>
-                                            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px;">
-                                                <div style="display: flex; align-items: center; gap: 4px;">
-                                                    <span>수학:</span>
-                                                    <div style="display: flex; align-items: center; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 4px;">
-                                                        <input type="number" id="inputSettingsChildMath" min="0" max="100" value="80" style="width: 32px; border: none; outline: none; font-size: 11px; font-weight: bold; text-align: right; -moz-appearance: textfield; padding: 0;">
-                                                        <span style="font-size: 10px; color: #475569; margin-left: 1px;">점</span>
-                                                    </div>
-                                                    <strong id="valSettingsChildMath" style="display: none;">80점</strong>
-                                                </div>
-                                                <input type="range" id="settingsChildMath" min="0" max="100" value="80" style="width: 110px;">
-                                            </div>
-                                            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px;">
-                                                <div style="display: flex; align-items: center; gap: 4px;">
-                                                    <span>사회:</span>
-                                                    <div style="display: flex; align-items: center; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 4px;">
-                                                        <input type="number" id="inputSettingsChildSoc" min="0" max="100" value="80" style="width: 32px; border: none; outline: none; font-size: 11px; font-weight: bold; text-align: right; -moz-appearance: textfield; padding: 0;">
-                                                        <span style="font-size: 10px; color: #475569; margin-left: 1px;">점</span>
-                                                    </div>
-                                                    <strong id="valSettingsChildSoc" style="display: none;">80점</strong>
-                                                </div>
-                                                <input type="range" id="settingsChildSoc" min="0" max="100" value="80" style="width: 110px;">
-                                            </div>
-                                            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px;">
-                                                <div style="display: flex; align-items: center; gap: 4px;">
-                                                    <span>과학:</span>
-                                                    <div style="display: flex; align-items: center; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 4px;">
-                                                        <input type="number" id="inputSettingsChildSci" min="0" max="100" value="80" style="width: 32px; border: none; outline: none; font-size: 11px; font-weight: bold; text-align: right; -moz-appearance: textfield; padding: 0;">
-                                                        <span style="font-size: 10px; color: #475569; margin-left: 1px;">점</span>
-                                                    </div>
-                                                    <strong id="valSettingsChildSci" style="display: none;">80점</strong>
-                                                </div>
-                                                <input type="range" id="settingsChildSci" min="0" max="100" value="80" style="width: 110px;">
-                                            </div>
+                                            <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #64748b; font-size: 10px;">▼</span>
                                         </div>
                                     </div>
-                                    <button class="btn-primary" id="btnSaveSettingsScores" style="padding: 8px; font-size: 11px; border-radius: 6px; width: 100%; font-weight: bold; cursor: pointer;">💾 성적 저장 및 동기화</button>
                                 </div>
+
+                                <!-- 희망 계열 & 알레르기 인풋 (2열 그리드) -->
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                                    <div>
+                                        <label style="display: block; font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 4px;">희망 지망 계열</label>
+                                        <input type="text" id="settingsChildTargetMajor" placeholder="예: 컴공, 의약학" style="width: 100%; height: 36px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 10px; font-size: 12px; color: #1e293b; background: #ffffff; box-sizing: border-box; outline: none;">
+                                    </div>
+                                    <div>
+                                        <label style="display: block; font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 4px;">알레르기 식단</label>
+                                        <input type="text" id="settingsChildAllergies" placeholder="예: 대두, 우유" style="width: 100%; height: 36px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 10px; font-size: 12px; color: #1e293b; background: #ffffff; box-sizing: border-box; outline: none;">
+                                    </div>
+                                </div>
+
+                                <!-- 배정/목표 학교 카드 -->
+                                <div style="background: #f0f7ff; border: 1px solid #dbeafe; border-radius: 10px; padding: 9px 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                    <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
+                                        <span style="font-size: 12px;">📍</span>
+                                        <span style="font-size: 11px; font-weight: 700; color: #2563eb; white-space: nowrap;">목표 학교</span>
+                                        <span id="targetSchoolNameDisplayMobile" style="font-size: 11.5px; font-weight: 700; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">서운중학교</span>
+                                    </div>
+                                    <button type="button" id="btnChangeTargetSchoolMobile" onclick="if(window.handleChangeSchoolClick) window.handleChangeSchoolClick();" style="background: none; border: none; color: #2563eb; font-size: 11px; font-weight: 600; cursor: pointer; text-decoration: underline; white-space: nowrap; padding: 0 0 0 6px;">변경</button>
+                                </div>
+
+                                <!-- 교과목 성적 입력 헤더 -->
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 11.5px; font-weight: 600; color: #64748b;">교과목 성적 입력 (내신 지필/수행)</span>
+                                    <span style="font-size: 10.5px; font-weight: 600; color: #2563eb;">6개 과목 (국·영·수·사·역·과)</span>
+                                </div>
+
+                                <!-- 과목 슬라이더 1: 국어 -->
+                                <div class="score-card-item" style="background: #ffffff; border: 1px solid #edf2f7; border-radius: 10px; padding: 10px 12px; margin-bottom: 6px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #3b82f6; display: inline-block;"></span>
+                                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">국어 점수</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span id="badgeKorGradeMobile" style="background: #eff6ff; color: #2563eb; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px; border: 1px solid #dbeafe;">A 등급</span>
+                                            <div style="display: flex; align-items: center; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 1px 5px;">
+                                                <input type="number" id="inputSettingsChildKor" min="0" max="100" value="80" style="width: 32px; border: none; outline: none; font-size: 12.5px; font-weight: 800; color: #1e293b; text-align: right; background: transparent; -moz-appearance: textfield; padding: 0;">
+                                                <span style="font-size: 11px; font-weight: 700; color: #475569; margin-left: 1px;">점</span>
+                                            </div>
+                                            <span id="valSettingsChildKor" style="display: none;">80</span>
+                                        </div>
+                                    </div>
+                                    <div class="custom-range-slider-wrap">
+                                        <input type="range" id="settingsChildKor" min="0" max="100" value="80" class="custom-score-range">
+                                    </div>
+                                </div>
+
+                                <!-- 과목 슬라이더 2: 영어 -->
+                                <div class="score-card-item" style="background: #ffffff; border: 1px solid #edf2f7; border-radius: 10px; padding: 10px 12px; margin-bottom: 6px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #8b5cf6; display: inline-block;"></span>
+                                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">영어 점수</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span id="badgeEngGradeMobile" style="background: #f3e8ff; color: #7c3aed; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px; border: 1px solid #e9d5ff;">B+ 등급</span>
+                                            <div style="display: flex; align-items: center; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 1px 5px;">
+                                                <input type="number" id="inputSettingsChildEng" min="0" max="100" value="80" style="width: 32px; border: none; outline: none; font-size: 12.5px; font-weight: 800; color: #1e293b; text-align: right; background: transparent; -moz-appearance: textfield; padding: 0;">
+                                                <span style="font-size: 11px; font-weight: 700; color: #475569; margin-left: 1px;">점</span>
+                                            </div>
+                                            <span id="valSettingsChildEng" style="display: none;">80</span>
+                                        </div>
+                                    </div>
+                                    <div class="custom-range-slider-wrap">
+                                        <input type="range" id="settingsChildEng" min="0" max="100" value="80" class="custom-score-range">
+                                    </div>
+                                </div>
+
+                                <!-- 과목 슬라이더 3: 수학 -->
+                                <div class="score-card-item" style="background: #ffffff; border: 1px solid #edf2f7; border-radius: 10px; padding: 10px 12px; margin-bottom: 6px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+                                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">수학 점수</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span id="badgeMathGradeMobile" style="background: #ecfdf5; color: #059669; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px; border: 1px solid #a7f3d0;">A 등급</span>
+                                            <div style="display: flex; align-items: center; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 1px 5px;">
+                                                <input type="number" id="inputSettingsChildMath" min="0" max="100" value="80" style="width: 32px; border: none; outline: none; font-size: 12.5px; font-weight: 800; color: #1e293b; text-align: right; background: transparent; -moz-appearance: textfield; padding: 0;">
+                                                <span style="font-size: 11px; font-weight: 700; color: #475569; margin-left: 1px;">점</span>
+                                            </div>
+                                            <span id="valSettingsChildMath" style="display: none;">80</span>
+                                        </div>
+                                    </div>
+                                    <div class="custom-range-slider-wrap">
+                                        <input type="range" id="settingsChildMath" min="0" max="100" value="80" class="custom-score-range">
+                                    </div>
+                                </div>
+
+                                <!-- 과목 슬라이더 4: 사회 -->
+                                <div class="score-card-item" style="background: #ffffff; border: 1px solid #edf2f7; border-radius: 10px; padding: 10px 12px; margin-bottom: 6px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span>
+                                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">사회 점수</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span id="badgeSocGradeMobile" style="background: #fffbeb; color: #d97706; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px; border: 1px solid #fde68a;">B+ 등급</span>
+                                            <div style="display: flex; align-items: center; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 1px 5px;">
+                                                <input type="number" id="inputSettingsChildSoc" min="0" max="100" value="80" style="width: 32px; border: none; outline: none; font-size: 12.5px; font-weight: 800; color: #1e293b; text-align: right; background: transparent; -moz-appearance: textfield; padding: 0;">
+                                                <span style="font-size: 11px; font-weight: 700; color: #475569; margin-left: 1px;">점</span>
+                                            </div>
+                                            <span id="valSettingsChildSoc" style="display: none;">80</span>
+                                        </div>
+                                    </div>
+                                    <div class="custom-range-slider-wrap">
+                                        <input type="range" id="settingsChildSoc" min="0" max="100" value="80" class="custom-score-range">
+                                    </div>
+                                </div>
+
+                                <!-- 과목 슬라이더 5: 역사 -->
+                                <div class="score-card-item" style="background: #ffffff; border: 1px solid #edf2f7; border-radius: 10px; padding: 10px 12px; margin-bottom: 6px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #d97706; display: inline-block;"></span>
+                                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">역사 점수</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span id="badgeHisGradeMobile" style="background: #fffbeb; color: #d97706; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px; border: 1px solid #fde68a;">B+ 등급</span>
+                                            <div style="display: flex; align-items: center; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 1px 5px;">
+                                                <input type="number" id="inputSettingsChildHis" min="0" max="100" value="80" style="width: 32px; border: none; outline: none; font-size: 12.5px; font-weight: 800; color: #1e293b; text-align: right; background: transparent; -moz-appearance: textfield; padding: 0;">
+                                                <span style="font-size: 11px; font-weight: 700; color: #475569; margin-left: 1px;">점</span>
+                                            </div>
+                                            <span id="valSettingsChildHis" style="display: none;">80</span>
+                                        </div>
+                                    </div>
+                                    <div class="custom-range-slider-wrap">
+                                        <input type="range" id="settingsChildHis" min="0" max="100" value="80" class="custom-score-range">
+                                    </div>
+                                </div>
+
+                                <!-- 과목 슬라이더 6: 과학 -->
+                                <div class="score-card-item" style="background: #ffffff; border: 1px solid #edf2f7; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #06b6d4; display: inline-block;"></span>
+                                            <span style="font-size: 12px; font-weight: 700; color: #1e293b;">과학 점수</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span id="badgeSciGradeMobile" style="background: #ecfeff; color: #0891b2; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px; border: 1px solid #a5f3fc;">A 등급</span>
+                                            <div style="display: flex; align-items: center; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 1px 5px;">
+                                                <input type="number" id="inputSettingsChildSci" min="0" max="100" value="80" style="width: 32px; border: none; outline: none; font-size: 12.5px; font-weight: 800; color: #1e293b; text-align: right; background: transparent; -moz-appearance: textfield; padding: 0;">
+                                                <span style="font-size: 11px; font-weight: 700; color: #475569; margin-left: 1px;">점</span>
+                                            </div>
+                                            <span id="valSettingsChildSci" style="display: none;">80</span>
+                                        </div>
+                                    </div>
+                                    <div class="custom-range-slider-wrap">
+                                        <input type="range" id="settingsChildSci" min="0" max="100" value="80" class="custom-score-range">
+                                    </div>
+                                </div>
+
+                                <!-- 6과목 평균 분석 요약 박스 -->
+                                <div style="background: #f0f7ff; border: 1px solid #dbeafe; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-size: 10.5px; color: #64748b; font-weight: 500; margin-bottom: 2px;">6과목 평균 분석</div>
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span style="font-size: 13.5px; font-weight: 800; color: #1e293b;"><strong id="avgScoreDisplayMobile">80.0</strong>점</span>
+                                            <span style="color: #94a3b8; font-size: 11px;">·</span>
+                                            <span id="schoolRankEstimateDisplayMobile" style="font-size: 11.5px; font-weight: 700; color: #2563eb;">서운중 상위 38% 예상</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button class="btn-primary" id="btnSaveSettingsScores" style="padding: 10px; font-size: 12px; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer; background: var(--primary-blue, #2563eb); color: white; border: none;">💾 성적 저장 및 동기화</button>
                             </div>
                         </div>
 
@@ -3220,7 +3382,7 @@
         <div style="background: var(--bg-card, #ffffff); width: 100%; height: 100%; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
                 <h3 style="font-size: 17px; font-weight: 800; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
-                    <span>💬 런맵 교육 이야기</span>
+                    <span>💬 학업여지도 교육 이야기</span>
                 </h3>
                 <button onclick="const mapTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*=\'map\']'); window.onMobileNavClick('map', mapTabBtn);" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1;">&times;</button>
             </div>
