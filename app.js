@@ -3,7 +3,7 @@ import { Orchestrator } from './src/agents/orchestrator.js';
 import { NEISAgent } from './src/agents/neis_agent.js';
 import { isLocalEnvironment } from './src/services/neis_service.js';
 import { authService } from './src/services/auth_service.js';
-import defaultDistrictData from './src/data/korea-administrative-district.json';
+let defaultDistrictData = null;
 let orchestrator;
 let currentLoadedSchools = [];
 window.customCommuteStart = null;
@@ -8529,6 +8529,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const resultPanel = document.getElementById('simulationResultPanel');
         resultPanel.style.display = 'block';
         resultPanel.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px 0; font-size: 13px;">두 지역의 학교 데이터를 수집하여 학군 분석 중입니다...</div>';
+        if (typeof scrollSimulationToResult === 'function') scrollSimulationToResult();
 
         const simSchoolTypeVal = document.getElementById('simSchoolType') ? document.getElementById('simSchoolType').value : 'all';
 
@@ -8543,11 +8544,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     return getDistance(coordsA.lat, coordsA.lng, s.lat, s.lng) <= 1.8;
                 });
             } else {
-                // 카카오 API 좌표 실패 시 폴백 (도로명 매치)
-                const term = regionA.split(' ').pop();
+                // 카카오 API 좌표 실패 시 폴백 (구군/동 매치)
+                const partsA = regionA.split(' ');
+                const dongTermA = partsA.length > 2 ? partsA[2] : '';
+                const gugunTermA = partsA.length > 1 ? partsA[1] : '';
                 schoolsA = schoolsDatabase.filter(s => {
                     if (simSchoolTypeVal !== 'all' && s.school_type !== simSchoolTypeVal) return false;
-                    return s.address && s.address.toLowerCase().includes(term.toLowerCase());
+                    const addr = s.address || '';
+                    if (dongTermA && addr.includes(dongTermA)) return true;
+                    if (gugunTermA && addr.includes(gugunTermA)) return true;
+                    return false;
                 });
             }
 
@@ -8558,10 +8564,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     return getDistance(coordsB.lat, coordsB.lng, s.lat, s.lng) <= 1.8;
                 });
             } else {
-                const term = regionB.split(' ').pop();
+                const partsB = regionB.split(' ');
+                const dongTermB = partsB.length > 2 ? partsB[2] : '';
+                const gugunTermB = partsB.length > 1 ? partsB[1] : '';
                 schoolsB = schoolsDatabase.filter(s => {
                     if (simSchoolTypeVal !== 'all' && s.school_type !== simSchoolTypeVal) return false;
-                    return s.address && s.address.toLowerCase().includes(term.toLowerCase());
+                    const addr = s.address || '';
+                    if (dongTermB && addr.includes(dongTermB)) return true;
+                    if (gugunTermB && addr.includes(gugunTermB)) return true;
+                    return false;
                 });
             }
 
@@ -8635,6 +8646,28 @@ document.addEventListener('DOMContentLoaded', () => {
             const priceDiff = Math.max(0, Math.round((priceNumA - priceNumB) * 10) / 10);
             const priceSavePercent = priceNumA > 0 ? Math.round((priceDiff / priceNumA) * 100) : 49;
             const priceSaveText = priceSavePercent > 0 ? `${priceSavePercent}% 절감` : '유사 수준';
+
+            // 카카오 카드 공유 및 리포트용 시뮬레이션 결과 데이터 보존
+            window.lastSimulationData = {
+                regionA,
+                regionB,
+                nameA,
+                nameB,
+                schoolType: simSchoolTypeVal,
+                statsA,
+                statsB,
+                percentileA,
+                percentileB,
+                priceTextA,
+                priceTextB,
+                priceSaveText,
+                sidoA: sidoAVal,
+                gugunA: gugunAVal,
+                dongA: dongAVal,
+                sidoB: sidoBVal,
+                gugunB: gugunBVal,
+                dongB: dongBVal
+            };
 
             resultPanel.innerHTML = `
                 <!-- 1. Top Dark Banner Box -->
@@ -8801,15 +8834,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
 
-                <!-- 4. Bottom Action Buttons Group -->
-                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                    <button onclick="alert('학군 이사 시뮬레이션 PDF 리포트를 생성하였습니다.');"
+                <!-- 4. Bottom Action Buttons Group (PDF 생성 시 제외) -->
+                <div id="simResultActionButtons" data-html2canvas-ignore="true" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <button onclick="window.downloadSimulationPdfReport(this);"
                         style="flex: 1; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 700; font-size: 13.5px; padding: 13px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;"
                         onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                         PDF 리포트 저장
                     </button>
-                    <button onclick="if(navigator.share){navigator.share({title:'학군 이사 시뮬레이션 결과',url:location.href});}else{navigator.clipboard.writeText(location.href);alert('링크가 복사되었습니다!');}"
+                    <button onclick="window.shareSimulationResultKakao(this);"
                         style="flex: 1; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 700; font-size: 13.5px; padding: 13px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;"
                         onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
@@ -8817,14 +8850,329 @@ document.addEventListener('DOMContentLoaded', () => {
                     </button>
                 </div>
 
-                <button onclick="window.resetSimulationResultView()"
+                <button id="simResultResetButton" data-html2canvas-ignore="true" onclick="window.resetSimulationResultView()"
                     style="width: 100%; background: #0f172a; color: #ffffff; font-weight: 800; font-size: 14.5px; padding: 15px; border-radius: 14px; border: none; cursor: pointer; transition: background 0.2s; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.2);"
                     onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='#0f172a'">
                     새로운 학군 조건으로 다시 비교하기
                 </button>
             `;
+            if (typeof scrollSimulationToResult === 'function') scrollSimulationToResult();
         });
     }
+
+    // 학군 이사 시뮬레이션 공식 PDF 리포트 다운로드 및 인쇄 핸들러
+    window.downloadSimulationPdfReport = async function(btnEl) {
+        const resultPanel = document.getElementById('simulationResultPanel');
+        if (!resultPanel || !resultPanel.children.length) {
+            alert('먼저 학군 비교 시뮬레이션을 실행해 주세요.');
+            return;
+        }
+
+        const origHtml = btnEl ? btnEl.innerHTML : '';
+        if (btnEl) {
+            btnEl.disabled = true;
+            btnEl.style.opacity = '0.7';
+            btnEl.innerHTML = `
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a10 10 0 0 1 10 10"></path></svg>
+                PDF 생성 중...
+            `;
+        }
+
+        const sidoAVal = document.getElementById('simSidoA')?.value || '';
+        const gugunAVal = document.getElementById('simGugunA')?.value || '';
+        const dongAVal = document.getElementById('simDongA')?.value || '';
+        const regionA = `${sidoAVal} ${gugunAVal} ${dongAVal}`.trim() || '후보지역 A';
+
+        const sidoBVal = document.getElementById('simSidoB')?.value || '';
+        const gugunBVal = document.getElementById('simGugunB')?.value || '';
+        const dongBVal = document.getElementById('simDongB')?.value || '';
+        const regionB = `${sidoBVal} ${gugunBVal} ${dongBVal}`.trim() || '후보지역 B';
+
+        const schoolType = document.getElementById('simSchoolType')?.value || '중학교';
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+        const fileDateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+        const safeNameA = (dongAVal || gugunAVal || '지역A').replace(/\s+/g, '_');
+        const safeNameB = (dongBVal || gugunBVal || '지역B').replace(/\s+/g, '_');
+        const fileName = `학군_이사_시뮬레이션_리포트_${safeNameA}_vs_${safeNameB}_${fileDateStr}.pdf`;
+
+        // 캡처 전: 임시 공식 헤더 및 푸터 삽입, 액션 버튼 숨김, 스크롤 높이 제한 해제
+        const tempHeader = document.createElement('div');
+        tempHeader.id = 'tempPdfHeader';
+        tempHeader.style.cssText = 'border-bottom: 2.5px solid #2563eb; padding-bottom: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; background: #ffffff;';
+        tempHeader.innerHTML = `
+            <div>
+                <div style="font-size: 13px; font-weight: 800; color: #2563eb; margin-bottom: 6px; letter-spacing: -0.2px;">
+                    🗺️ 학업여지도 · 학군 이사 시뮬레이션 공식 리포트
+                </div>
+                <div style="font-size: 20px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
+                    ${regionA} vs ${regionB}
+                </div>
+            </div>
+            <div style="text-align: right; font-size: 11.5px; color: #64748b; line-height: 1.6;">
+                <div><strong>발행 일자:</strong> ${dateStr}</div>
+                <div><strong>비교 학교급:</strong> <span style="color: #2563eb; font-weight: 700;">${schoolType}</span></div>
+            </div>
+        `;
+        resultPanel.insertBefore(tempHeader, resultPanel.firstChild);
+
+        const tempFooter = document.createElement('div');
+        tempFooter.id = 'tempPdfFooter';
+        tempFooter.style.cssText = 'border-top: 1px solid #e2e8f0; margin-top: 24px; padding-top: 14px; font-size: 11px; color: #94a3b8; text-align: center; line-height: 1.6; background: #ffffff;';
+        tempFooter.innerHTML = `
+            ⓘ 본 리포트는 학교알리미 공시 지표, 국토교통부 아파트 실거래가 및 학업여지도 맞춤형 학군 AI 분석 엔진을 통해 생성되었습니다.<br>
+            Copyright © 학업여지도. All rights reserved.
+        `;
+        resultPanel.appendChild(tempFooter);
+
+        const actionBtnsGroup = document.getElementById('simResultActionButtons') || (btnEl ? btnEl.closest('div') : resultPanel.querySelector('div[style*="display: flex; gap: 10px;"]'));
+        const resetBtn = document.getElementById('simResultResetButton') || resultPanel.querySelector('button[onclick*="resetSimulationResultView"]');
+        if (actionBtnsGroup) actionBtnsGroup.style.display = 'none';
+        if (resetBtn) resetBtn.style.display = 'none';
+
+        const origMaxHeight = resultPanel.style.maxHeight;
+        const origOverflow = resultPanel.style.overflow;
+        resultPanel.style.maxHeight = 'none';
+        resultPanel.style.overflow = 'visible';
+
+        const openPrintWindow = (contentHtml, title) => {
+            const printWindow = window.open('', '_blank', 'width=800,height=900');
+            if (printWindow) {
+                printWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html lang="ko">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>${title.replace('.pdf', '')}</title>
+                        <style>
+                            @page { size: A4; margin: 12mm; }
+                            body { margin: 0; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Segoe UI", sans-serif; background: #ffffff; color: #1e293b; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                            [data-html2canvas-ignore="true"], #simResultActionButtons, #simResultResetButton { display: none !important; }
+                            @media print { body { padding: 0; } [data-html2canvas-ignore="true"], #simResultActionButtons, #simResultResetButton { display: none !important; } }
+                        </style>
+                    </head>
+                    <body>
+                        ${contentHtml}
+                        <script>
+                            window.onload = function() {
+                                window.focus();
+                                window.print();
+                                setTimeout(function() { window.close(); }, 1000);
+                            };
+                        </script>
+                    </body>
+                    </html>
+                `);
+                printWindow.document.close();
+            } else {
+                alert('팝업 차단이 감지되었습니다. 팝업을 허용해 주시면 PDF 리포트를 인쇄 및 저장하실 수 있습니다.');
+            }
+        };
+
+        try {
+            let pdfLib = window.html2pdf;
+            if (!pdfLib) {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+                    script.onload = () => resolve(window.html2pdf);
+                    script.onerror = () => reject(new Error('CDN Load Failed'));
+                    document.head.appendChild(script);
+                }).catch(() => null);
+                pdfLib = window.html2pdf;
+            }
+
+            if (pdfLib) {
+                const opt = {
+                    margin: [10, 8, 10, 8],
+                    filename: fileName,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: {
+                        scale: 2,
+                        useCORS: true,
+                        letterRendering: true,
+                        logging: false,
+                        scrollY: 0,
+                        scrollX: 0,
+                        backgroundColor: '#ffffff',
+                        ignoreElements: (el) => {
+                            if (!el) return false;
+                            if (el.getAttribute && el.getAttribute('data-html2canvas-ignore') === 'true') return true;
+                            if (el.id === 'simResultActionButtons' || el.id === 'simResultResetButton') return true;
+                            if (typeof el.closest === 'function' && el.closest('#simResultActionButtons')) return true;
+                            return false;
+                        }
+                    },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+                };
+
+                await pdfLib().set(opt).from(resultPanel).save();
+            } else {
+                openPrintWindow(resultPanel.innerHTML, fileName);
+            }
+        } catch (err) {
+            console.warn('html2pdf 생성 중 오류 발생, 인쇄 Fallback 실행:', err);
+            openPrintWindow(resultPanel.innerHTML, fileName);
+        } finally {
+            // 원복 처리
+            if (tempHeader.parentNode) tempHeader.remove();
+            if (tempFooter.parentNode) tempFooter.remove();
+            if (actionBtnsGroup) actionBtnsGroup.style.display = 'flex';
+            if (resetBtn) resetBtn.style.display = 'block';
+            resultPanel.style.maxHeight = origMaxHeight;
+            resultPanel.style.overflow = origOverflow;
+
+            if (btnEl) {
+                btnEl.disabled = false;
+                btnEl.style.opacity = '1';
+                btnEl.innerHTML = origHtml;
+            }
+        }
+    };
+
+    // 학군 이사 시뮬레이션 결과 카카오톡 카드 공유 핸들러
+    window.shareSimulationResultKakao = async function(btnEl) {
+        const simData = window.lastSimulationData || {};
+        const sidoAVal = simData.sidoA || document.getElementById('simSidoA')?.value || '';
+        const gugunAVal = simData.gugunA || document.getElementById('simGugunA')?.value || '';
+        const dongAVal = simData.dongA || document.getElementById('simDongA')?.value || '';
+        const regionA = simData.regionA || `${sidoAVal} ${gugunAVal} ${dongAVal}`.trim() || '후보지역 A';
+        const nameA = simData.nameA || dongAVal || gugunAVal || '지역A';
+
+        const sidoBVal = simData.sidoB || document.getElementById('simSidoB')?.value || '';
+        const gugunBVal = simData.gugunB || document.getElementById('simGugunB')?.value || '';
+        const dongBVal = simData.dongB || document.getElementById('simDongB')?.value || '';
+        const regionB = simData.regionB || `${sidoBVal} ${gugunBVal} ${dongBVal}`.trim() || '후보지역 B';
+        const nameB = simData.nameB || dongBVal || gugunBVal || '지역B';
+
+        const schoolType = simData.schoolType || document.getElementById('simSchoolType')?.value || '중학교';
+        const priceTextA = simData.priceTextA || '26.8억';
+        const priceTextB = simData.priceTextB || '16.5억';
+        const priceSaveText = simData.priceSaveText || '유사 수준';
+
+        const statsAAvg = simData.statsA ? `${simData.statsA.avg}점` : '우수';
+        const statsBAvg = simData.statsB ? `${simData.statsB.avg}점` : '우수';
+        const pctA = simData.percentileA !== undefined ? `상위 ${simData.percentileA.toFixed(1)}%` : '상위권';
+        const pctB = simData.percentileB !== undefined ? `상위 ${simData.percentileB.toFixed(1)}%` : '상위권';
+
+        // 학업여지도 딥링크 URL 구성
+        const baseUrl = 'https://leamap.vercel.app/';
+        const params = new URLSearchParams({
+            sim: '1',
+            sidoA: sidoAVal,
+            gugunA: gugunAVal,
+            dongA: dongAVal,
+            sidoB: sidoBVal,
+            gugunB: gugunBVal,
+            dongB: dongBVal,
+            type: schoolType
+        });
+        const shareUrl = `${baseUrl}?${params.toString()}`;
+
+        // 카카오톡 카드 규격 텍스트 메시지 구성
+        const cardMessageText = `🗺️ [학업여지도] 학군 이사 시뮬레이션 비교 분석
+
+📍 비교 대상
+• 후보 A: ${regionA}
+• 후보 B: ${regionB}
+🏫 비교 학교급: ${schoolType}
+
+📊 핵심 분석 결과
+• 학업성취도: ${nameA} ${statsAAvg} vs ${nameB} ${statsBAvg}
+• 자녀 예상위치: ${nameA} ${pctA} vs ${nameB} ${pctB}
+• 전용84㎡ 시세: ${priceTextA} vs ${priceTextB} (${priceSaveText})
+
+💡 AI 분석 결론
+두 지역의 상세 학업성취도, 특목·자사고 진학률, 학원가 인프라 1:1 비교를 학업여지도에서 직접 확인해 보세요!`;
+
+        let sdkLoaded = false;
+        if (typeof loadKakaoShareSDK === 'function') {
+            sdkLoaded = await loadKakaoShareSDK();
+        }
+
+        if (sdkLoaded && window.Kakao && window.Kakao.isInitialized() && window.Kakao.Share) {
+            try {
+                window.Kakao.Share.sendDefault({
+                    objectType: 'text',
+                    text: cardMessageText,
+                    link: {
+                        mobileWebUrl: shareUrl,
+                        webUrl: shareUrl,
+                    },
+                    buttons: [
+                        {
+                            title: '학군 비교 분석 보기',
+                            link: {
+                                mobileWebUrl: shareUrl,
+                                webUrl: shareUrl,
+                            },
+                        },
+                    ],
+                });
+                if (typeof showToastNoticeMsg === 'function') {
+                    showToastNoticeMsg(`💬 [${nameA} vs ${nameB}] 카카오톡 학군 비교 카드가 발송되었습니다.`);
+                }
+                return;
+            } catch (err) {
+                console.warn('[Kakao Share] 시뮬레이션 결과 공유 실패, 웹공유/클립보드 전환:', err);
+            }
+        }
+
+        // 웹 공유 API Fallback
+        const fallbackText = `${cardMessageText}\n\n🔗 학업여지도에서 결과 확인하기:\n${shareUrl}`;
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: `[학업여지도] ${nameA} vs ${nameB} 학군 비교 분석`,
+                    text: fallbackText,
+                    url: shareUrl
+                });
+                return;
+            } catch (err) {
+                if (err.name === 'AbortError') return;
+            }
+        }
+
+        // 클립보드 복사 Fallback
+        if (navigator.clipboard) {
+            try {
+                await navigator.clipboard.writeText(fallbackText);
+                if (typeof showToastNoticeMsg === 'function') {
+                    showToastNoticeMsg('🔗 학군 시뮬레이션 비교 카드 내용이 클립보드에 복사되었습니다.');
+                } else {
+                    alert('학군 시뮬레이션 비교 카드 내용이 클립보드에 복사되었습니다.');
+                }
+                return;
+            } catch (clipErr) {}
+        }
+        alert('링크가 복사되었습니다:\n' + shareUrl);
+    };
+
+    function scrollSimulationToResult() {
+        setTimeout(() => {
+            const resultPanel = document.getElementById('simulationResultPanel');
+            if (!resultPanel) return;
+
+            const modalContainer = document.querySelector('#simulationModal > div');
+            if (modalContainer && (modalContainer.scrollHeight > modalContainer.clientHeight || window.innerWidth <= 1024)) {
+                const headerOffset = window.innerWidth <= 1024 ? 65 : 20;
+                const containerRect = modalContainer.getBoundingClientRect();
+                const targetRect = resultPanel.getBoundingClientRect();
+                const scrollOffset = targetRect.top - containerRect.top + modalContainer.scrollTop - headerOffset;
+
+                modalContainer.scrollTo({
+                    top: Math.max(0, scrollOffset),
+                    behavior: 'smooth'
+                });
+            } else {
+                try {
+                    resultPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } catch (e) {}
+            }
+        }, 100);
+    }
+    window.scrollSimulationToResult = scrollSimulationToResult;
 
     window.resetSimulationResultView = function() {
         const resultPanel = document.getElementById('simulationResultPanel');
@@ -14878,6 +15226,7 @@ function loadKakaoShareSDK() {
         document.head.appendChild(script);
     });
 }
+window.loadKakaoShareSDK = loadKakaoShareSDK;
 
 window.shareSchoolDetail = async function() {
     const selected = (window.orchestrator && window.orchestrator.state) ? window.orchestrator.state.selectedSchool : null;
