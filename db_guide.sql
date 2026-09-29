@@ -98,3 +98,38 @@ CREATE TABLE IF NOT EXISTS public.users (
 
 -- RLS 비활성화 (익명 회원가입 및 로그인 저장 즉시 허용)
 ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;
+
+
+-- 7. 학군 이사 시뮬레이션 보관함 테이블 (simulation_scraps)
+-- 사용자가 '시뮬레이션 담기'를 실행한 학군 비교 분석 결과를 저장/동기화합니다.
+CREATE TABLE IF NOT EXISTS public.simulation_scraps (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    region_a TEXT NOT NULL,
+    region_b TEXT NOT NULL,
+    name_a TEXT,
+    name_b TEXT,
+    sido_a TEXT,
+    gugun_a TEXT,
+    dong_a TEXT,
+    sido_b TEXT,
+    gugun_b TEXT,
+    dong_b TEXT,
+    school_type TEXT NOT NULL DEFAULT '중학교',
+    price_a TEXT,
+    price_b TEXT,
+    price_save_text TEXT,
+    score_a NUMERIC,
+    score_b NUMERIC,
+    percentile_a NUMERIC,
+    percentile_b NUMERIC,
+    memo TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.simulation_scraps ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read access" ON public.simulation_scraps FOR SELECT USING (true);
+CREATE POLICY "Allow public insert access" ON public.simulation_scraps FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update access" ON public.simulation_scraps FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete access" ON public.simulation_scraps FOR DELETE USING (true);
+

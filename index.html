@@ -1793,6 +1793,31 @@
                             </button>
                         </div>
 
+                        <!-- [카드: 학군 이사 시뮬레이션 보관함] -->
+                        <div id="settingsSimulationSection-pc" class="settings-card-item card"
+                            style="margin-bottom: 16px; box-sizing: border-box;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 16px;">🏠</span>
+                                    <div>
+                                        <h3
+                                            style="font-size: 15px; font-weight: 800; color: #1e293b; margin: 0; letter-spacing: -0.3px;">
+                                            학군 이사 시뮬레이션 보관함</h3>
+                                        <div style="font-size: 11.5px; color: #64748b; margin-top: 1px;">담아둔 학군 비교 결과를 다시 확인하고 실행할 수 있습니다</div>
+                                    </div>
+                                </div>
+                                <button type="button"
+                                    onclick="if(typeof window.clearAllSimulationScraps === 'function') window.clearAllSimulationScraps();"
+                                    style="background: none; border: none; font-size: 11px; color: #ef4444; font-weight: 600; cursor: pointer; padding: 4px 6px;">전체
+                                    삭제</button>
+                            </div>
+                            <div id="mypageSimulationListPC"
+                                style="display: flex; flex-direction: column; gap: 8px;">
+                                <!-- 동적 렌더링 -->
+                            </div>
+                        </div>
+
                         <!-- [카드 3] 플로팅 창 알파값(투명도) 조정 카드 -->
                         <div id="settingsOpacitySection-pc" class="settings-card-item card"
                             style="display: none; margin-bottom: 16px; box-sizing: border-box;">
@@ -2191,6 +2216,37 @@
                                     </div>
                                     <button id="btnMypageCompNext"
                                         style="position: absolute; right: -6px; z-index: 10; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border-color); background: rgba(255,255,255,0.95); box-shadow: 0 2px 6px rgba(0,0,0,0.15); display: none; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; color: var(--text-main); font-weight: bold; line-height: 1; user-select: none;">&gt;</button>
+                                </div>
+                            </div>
+
+                            <!-- Divider -->
+                            <div style="height: 1px; background: var(--border-color); margin: 0 16px;"></div>
+
+                            <!-- Menu Item: 학군 이사 시뮬레이션 보관함 -->
+                            <div onclick="if(typeof window.toggleMypageAccordion === 'function') window.toggleMypageAccordion('simulation');"
+                                style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; cursor: pointer; transition: background 0.2s; background: white;"
+                                onmouseover="this.style.background='#f8f9fa'"
+                                onmouseout="this.style.background='white'">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 16px;">🏠</span>
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">학군 이사 시뮬레이션 보관함</span>
+                                </div>
+                                <span style="font-size: 12px; color: var(--text-muted);"
+                                    id="mypageAccordionArrow-simulation">▼</span>
+                            </div>
+                            <!-- Accordion Content: 시뮬레이션 보관함 리스트 -->
+                            <div id="mypageAccordionContent-simulation"
+                                style="display: none; padding: 12px 16px; border-top: 1px dashed var(--border-color); background: #fcfcfc;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 11px; color: var(--text-muted);">담아둔 학군 비교 시뮬레이션 목록</span>
+                                    <button
+                                        onclick="if(typeof window.clearAllSimulationScraps === 'function') window.clearAllSimulationScraps();"
+                                        style="background: none; border: none; font-size: 10px; color: var(--danger-red, #ff3b30); cursor: pointer; padding: 2px 4px; font-weight: 600;">전체
+                                        삭제</button>
+                                </div>
+                                <div id="mypageSimulationListMobile"
+                                    style="display: flex; flex-direction: column; gap: 8px;">
                                 </div>
                             </div>
 

@@ -2069,6 +2069,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof updateMypageComparisonUI === 'function') {
                 updateMypageComparisonUI();
             }
+            if (typeof updateMypageSimulationUI === 'function') {
+                updateMypageSimulationUI();
+            }
         });
     }
 
@@ -8835,18 +8838,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
 
                 <!-- 4. Bottom Action Buttons Group (PDF 생성 시 제외) -->
-                <div id="simResultActionButtons" data-html2canvas-ignore="true" style="display: flex; gap: 10px; margin-bottom: 10px;">
-                    <button onclick="window.downloadSimulationPdfReport(this);"
-                        style="flex: 1; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 700; font-size: 13.5px; padding: 13px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;"
+                <div id="simResultActionButtons" data-html2canvas-ignore="true" style="display: flex; gap: 8px; margin-bottom: 10px;">
+                    <button id="btnSaveSimulationMypage" onclick="window.saveSimulationToMypage(this);"
+                        style="flex: 1; border: 1px solid #cbd5e1; background: #ffffff; color: #1e293b; font-weight: 700; font-size: 13px; padding: 12px 6px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.2s; white-space: nowrap;"
                         onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                        PDF 리포트 저장
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                        담기
+                    </button>
+                    <button onclick="window.downloadSimulationPdfReport(this);"
+                        style="flex: 1; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 700; font-size: 13px; padding: 12px 6px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.2s; white-space: nowrap;"
+                        onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        PDF 저장
                     </button>
                     <button onclick="window.shareSimulationResultKakao(this);"
-                        style="flex: 1; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 700; font-size: 13.5px; padding: 13px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;"
+                        style="flex: 1; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 700; font-size: 13px; padding: 12px 6px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.2s; white-space: nowrap;"
                         onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-                        결과 공유하기
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                        공유하기
                     </button>
                 </div>
 
@@ -9056,7 +9065,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const pctA = simData.percentileA !== undefined ? `상위 ${simData.percentileA.toFixed(1)}%` : '상위권';
         const pctB = simData.percentileB !== undefined ? `상위 ${simData.percentileB.toFixed(1)}%` : '상위권';
 
-        // 학업여지도 딥링크 URL 구성
+        // 학업여지도 딥링크 URL — 시뮬레이션 결과 전체 파라미터 인코딩
         const baseUrl = 'https://leamap.vercel.app/';
         const params = new URLSearchParams({
             sim: '1',
@@ -9066,7 +9075,14 @@ document.addEventListener('DOMContentLoaded', () => {
             sidoB: sidoBVal,
             gugunB: gugunBVal,
             dongB: dongBVal,
-            type: schoolType
+            type: schoolType,
+            scoreA: simData.statsA?.avg !== undefined ? String(simData.statsA.avg) : '',
+            scoreB: simData.statsB?.avg !== undefined ? String(simData.statsB.avg) : '',
+            pctA: simData.percentileA !== undefined ? simData.percentileA.toFixed(1) : '',
+            pctB: simData.percentileB !== undefined ? simData.percentileB.toFixed(1) : '',
+            priceA: priceTextA,
+            priceB: priceTextB,
+            saveTxt: priceSaveText
         });
         const shareUrl = `${baseUrl}?${params.toString()}`;
 
@@ -9093,16 +9109,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (sdkLoaded && window.Kakao && window.Kakao.isInitialized() && window.Kakao.Share) {
             try {
+                // Feed Card: 링크 클릭 시 딥링크(shareUrl)로 이동 → 앱에서 해당 시뮬레이션 결과 자동 복원
                 window.Kakao.Share.sendDefault({
-                    objectType: 'text',
-                    text: cardMessageText,
-                    link: {
-                        mobileWebUrl: shareUrl,
-                        webUrl: shareUrl,
+                    objectType: 'feed',
+                    content: {
+                        title: `🏫 ${nameA} vs ${nameB} 학군 비교 결과`,
+                        description: `학업성취도: ${statsAAvg} vs ${statsBAvg}  |  자녀 위치: ${pctA} vs ${pctB}\n시세: ${priceTextA} vs ${priceTextB} (${priceSaveText})`,
+                        imageUrl: 'https://leamap.vercel.app/og-image.png',
+                        link: {
+                            mobileWebUrl: shareUrl,
+                            webUrl: shareUrl,
+                        },
                     },
                     buttons: [
                         {
-                            title: '학군 비교 분석 보기',
+                            title: '📊 비교 결과 바로보기',
                             link: {
                                 mobileWebUrl: shareUrl,
                                 webUrl: shareUrl,
@@ -9147,6 +9168,322 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (clipErr) {}
         }
         alert('링크가 복사되었습니다:\n' + shareUrl);
+    };
+
+    // ==========================================
+    // 학군 이사 시뮬레이션 마이페이지 보관함 (담기/조회/삭제) 로직
+    // ==========================================
+    function getStoredSimulationScraps() {
+        try {
+            return JSON.parse(localStorage.getItem('learnmap_simulation_scraps') || '[]');
+        } catch (e) {
+            return [];
+        }
+    }
+
+    window.saveSimulationToMypage = async function(btnEl) {
+        const data = window.lastSimulationData;
+        if (!data) {
+            alert('먼저 학군 비교 시뮬레이션을 실행해 주세요.');
+            return;
+        }
+
+        const scraps = getStoredSimulationScraps();
+        const existingIndex = scraps.findIndex(s => 
+            ((s.region_a === data.regionA && s.region_b === data.regionB) ||
+             (s.name_a === data.nameA && s.name_b === data.nameB)) &&
+            s.school_type === (data.schoolType || '중학교')
+        );
+
+        const newScrap = {
+            id: 'sim_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+            region_a: data.regionA || data.nameA,
+            region_b: data.regionB || data.nameB,
+            name_a: data.nameA,
+            name_b: data.nameB,
+            sido_a: data.sidoA || '',
+            gugun_a: data.gugunA || '',
+            dong_a: data.dongA || '',
+            sido_b: data.sidoB || '',
+            gugun_b: data.gugunB || '',
+            dong_b: data.dongB || '',
+            school_type: data.schoolType || '중학교',
+            price_a: parseFloat(data.priceTextA) || 0,
+            price_b: parseFloat(data.priceTextB) || 0,
+            price_save_text: data.priceSaveText || '',
+            score_a: data.statsA?.avg || 0,
+            score_b: data.statsB?.avg || 0,
+            percentile_a: Math.round((data.percentileA || 0) * 10) / 10,
+            percentile_b: Math.round((data.percentileB || 0) * 10) / 10,
+            created_at: new Date().toISOString()
+        };
+
+        if (existingIndex > -1) {
+            scraps.splice(existingIndex, 1);
+        }
+        scraps.unshift(newScrap);
+
+        if (scraps.length > 20) scraps.length = 20;
+
+        try {
+            localStorage.setItem('learnmap_simulation_scraps', JSON.stringify(scraps));
+        } catch (e) {
+            console.warn('localStorage 저장 실패:', e);
+        }
+
+        // Supabase DB 비동기 동기화
+        try {
+            const client = window.supabaseClient || (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
+            const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+            if (client && user && user.id) {
+                client.from('simulation_scraps').insert([{
+                    user_id: user.id,
+                    region_a: newScrap.region_a,
+                    region_b: newScrap.region_b,
+                    name_a: newScrap.name_a,
+                    name_b: newScrap.name_b,
+                    sido_a: newScrap.sido_a,
+                    gugun_a: newScrap.gugun_a,
+                    dong_a: newScrap.dong_a,
+                    sido_b: newScrap.sido_b,
+                    gugun_b: newScrap.gugun_b,
+                    dong_b: newScrap.dong_b,
+                    school_type: newScrap.school_type,
+                    price_a: newScrap.price_a,
+                    price_b: newScrap.price_b,
+                    price_save_text: newScrap.price_save_text,
+                    score_a: newScrap.score_a,
+                    score_b: newScrap.score_b,
+                    percentile_a: newScrap.percentile_a,
+                    percentile_b: newScrap.percentile_b
+                }]).then(({ error }) => {
+                    if (error) console.warn('[Supabase] simulation_scraps insert error:', error);
+                });
+            }
+        } catch (dbErr) {
+            console.warn('Supabase simulation sync exception:', dbErr);
+        }
+
+        // 버튼 피드백 애니메이션
+        if (btnEl) {
+            const originalHtml = btnEl.innerHTML;
+            btnEl.innerHTML = `
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span style="color: #059669; font-weight: 800;">담기 완료!</span>
+            `;
+            btnEl.style.borderColor = '#10b981';
+            btnEl.style.background = '#ecfdf5';
+
+            setTimeout(() => {
+                btnEl.innerHTML = originalHtml;
+                btnEl.style.borderColor = '#cbd5e1';
+                btnEl.style.background = '#ffffff';
+            }, 2200);
+        }
+
+        // 마이페이지 UI 실시간 갱신
+        if (typeof window.updateMypageSimulationUI === 'function') {
+            window.updateMypageSimulationUI();
+        }
+
+        if (typeof showToastNoticeMsg === 'function') {
+            showToastNoticeMsg(`📁 [${newScrap.name_a} vs ${newScrap.name_b}] 시뮬레이션 결과가 마이페이지에 담겼습니다.`);
+        } else {
+            alert(`[${newScrap.name_a} vs ${newScrap.name_b}] 시뮬레이션 결과가 마이페이지 보관함에 담겼습니다.\n마이페이지에서 언제든지 다시 확인하실 수 있습니다.`);
+        }
+    };
+
+    window.removeSimulationScrap = function(id) {
+        if (!confirm('이 시뮬레이션 저장 내역을 삭제하시겠습니까?')) return;
+        let scraps = getStoredSimulationScraps();
+        scraps = scraps.filter(s => s.id !== id);
+        try {
+            localStorage.setItem('learnmap_simulation_scraps', JSON.stringify(scraps));
+        } catch (e) {}
+
+        try {
+            const client = window.supabaseClient || (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
+            const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+            if (client && user && user.id) {
+                client.from('simulation_scraps').delete().match({ user_id: user.id, id: id }).then();
+            }
+        } catch (e) {}
+
+        window.updateMypageSimulationUI();
+    };
+
+    window.clearAllSimulationScraps = function() {
+        const scraps = getStoredSimulationScraps();
+        if (scraps.length === 0) return;
+        if (!confirm('보관함의 모든 시뮬레이션 내역을 비우시겠습니까?')) return;
+        try {
+            localStorage.removeItem('learnmap_simulation_scraps');
+        } catch (e) {}
+
+        try {
+            const client = window.supabaseClient || (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
+            const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+            if (client && user && user.id) {
+                client.from('simulation_scraps').delete().match({ user_id: user.id }).then();
+            }
+        } catch (e) {}
+
+        window.updateMypageSimulationUI();
+    };
+
+    window.openSavedSimulation = async function(id) {
+        const scraps = getStoredSimulationScraps();
+        const item = scraps.find(s => s.id === id);
+        if (!item) return;
+
+        // 1. 설정/마이페이지 모달 닫기
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) settingsModal.style.display = 'none';
+
+        // 2. 시뮬레이션 모달 열기
+        const btnOpenSim = document.getElementById('btnOpenSimulation');
+        if (btnOpenSim) {
+            btnOpenSim.click();
+        } else {
+            const simModal = document.getElementById('simulationModal');
+            if (simModal) simModal.style.display = 'flex';
+        }
+
+        // 3. 학교급 동기화
+        if (item.school_type && typeof window.setSimSchoolType === 'function') {
+            window.setSimSchoolType(item.school_type);
+        }
+
+        // 4. 드롭다운 값 복원
+        const sidoA = document.getElementById('simSidoA');
+        const gugunA = document.getElementById('simGugunA');
+        const dongA = document.getElementById('simDongA');
+        const sidoB = document.getElementById('simSidoB');
+        const gugunB = document.getElementById('simGugunB');
+        const dongB = document.getElementById('simDongB');
+
+        if (item.sido_a && sidoA) {
+            sidoA.value = item.sido_a;
+            sidoA.dispatchEvent(new Event('change'));
+        }
+        if (item.sido_b && sidoB) {
+            sidoB.value = item.sido_b;
+            sidoB.dispatchEvent(new Event('change'));
+        }
+
+        await new Promise(r => setTimeout(r, 120));
+
+        if (item.gugun_a && gugunA) {
+            gugunA.value = item.gugun_a;
+            gugunA.dispatchEvent(new Event('change'));
+            if (item.dong_a && dongA && typeof updateDongDropdown === 'function') {
+                await updateDongDropdown(item.sido_a, item.gugun_a, dongA, item.dong_a);
+            }
+        }
+
+        if (item.gugun_b && gugunB) {
+            gugunB.value = item.gugun_b;
+            gugunB.dispatchEvent(new Event('change'));
+            if (item.dong_b && dongB && typeof updateDongDropdown === 'function') {
+                await updateDongDropdown(item.sido_b, item.gugun_b, dongB, item.dong_b);
+            }
+        }
+
+        if (item.dong_a && dongA) dongA.value = item.dong_a;
+        if (item.dong_b && dongB) dongB.value = item.dong_b;
+
+        if (typeof updateSimRegionSubInfo === 'function') {
+            updateSimRegionSubInfo();
+        }
+
+        // 5. 시뮬레이션 자동 재실행
+        await new Promise(r => setTimeout(r, 150));
+        const regA = `${item.sido_a || ''} ${item.gugun_a || ''} ${item.dong_a || ''}`.trim() || item.name_a;
+        const regB = `${item.sido_b || ''} ${item.gugun_b || ''} ${item.dong_b || ''}`.trim() || item.name_b;
+
+        if (typeof runMovingSimulation === 'function') {
+            runMovingSimulation(regA, regB, item.name_a, item.name_b);
+        }
+    };
+
+    window.updateMypageSimulationUI = function() {
+        const listPC = document.getElementById('mypageSimulationListPC');
+        const listMobile = document.getElementById('mypageSimulationListMobile');
+        if (!listPC && !listMobile) return;
+
+        const scraps = getStoredSimulationScraps();
+
+        const renderCard = (s) => {
+            const dateStr = s.created_at ? s.created_at.slice(0, 10).replace(/-/g, '.') : '';
+            const priceSaveBadge = s.price_save_text ? `<span style="background: #fef3c7; color: #b45309; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px;">💰 ${s.price_save_text}</span>` : '';
+            
+            return `
+                <div class="simulation-scrap-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Header: Type, Date, Delete -->
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="background: #eff6ff; color: #2563eb; font-size: 11px; font-weight: 800; padding: 2.5px 8px; border-radius: 6px; border: 1px solid #dbeafe;">${s.school_type || '중학교'}</span>
+                            ${priceSaveBadge}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">${dateStr}</span>
+                            <button onclick="window.removeSimulationScrap('${s.id}')" title="삭제"
+                                style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 2px 4px; font-size: 13px; line-height: 1; border-radius: 4px;"
+                                onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#94a3b8'">✕</button>
+                        </div>
+                    </div>
+
+                    <!-- Regions Comparison Header -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border-radius: 10px; padding: 10px 12px; border: 1px solid #f1f5f9;">
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-size: 11px; color: #2563eb; font-weight: 700; margin-bottom: 2px;">현재 거주</div>
+                            <div style="font-size: 13.5px; font-weight: 800; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${s.name_a}</div>
+                        </div>
+                        <div style="font-size: 12px; font-weight: 800; color: #94a3b8; padding: 0 10px;">VS</div>
+                        <div style="flex: 1; min-width: 0; text-align: right;">
+                            <div style="font-size: 11px; color: #059669; font-weight: 700; margin-bottom: 2px;">이사 희망</div>
+                            <div style="font-size: 13.5px; font-weight: 800; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${s.name_b}</div>
+                        </div>
+                    </div>
+
+                    <!-- Key Metrics Grid -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 12px;">
+                        <div style="background: #f8fafc; padding: 8px 10px; border-radius: 8px; border: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: #64748b; font-weight: 600;">🎯 예상 백분위</span>
+                            <span style="font-weight: 700; color: #1e293b;">${s.percentile_a}% vs ${s.percentile_b}%</span>
+                        </div>
+                        <div style="background: #f8fafc; padding: 8px 10px; border-radius: 8px; border: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: #64748b; font-weight: 600;">📈 학업성취도</span>
+                            <span style="font-weight: 700; color: #1e293b;">${s.score_a}점 vs ${s.score_b}점</span>
+                        </div>
+                        <div style="grid-column: span 2; background: #f8fafc; padding: 8px 10px; border-radius: 8px; border: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: #64748b; font-weight: 600;">🏠 84㎡ 기준 시세</span>
+                            <span style="font-weight: 700; color: #1e293b;">${s.price_a}억 vs ${s.price_b}억</span>
+                        </div>
+                    </div>
+
+                    <!-- Footer Action Button -->
+                    <button onclick="window.openSavedSimulation('${s.id}')"
+                        style="width: 100%; padding: 10px; background: #0f172a; color: #ffffff; border: none; border-radius: 10px; font-size: 12.5px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.15s; margin-top: 2px;"
+                        onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='#0f172a'">
+                        <span>📊</span> 결과 바로보기 &gt;
+                    </button>
+                </div>
+            `;
+        };
+
+        const emptyHtml = `
+            <div style="padding: 26px 16px; text-align: center; color: var(--text-muted); font-size: 12.5px; background: #f8fafc; border-radius: 14px; border: 1px dashed #cbd5e1;">
+                <div style="font-size: 24px; margin-bottom: 6px;">🚚</div>
+                <div style="font-weight: 700; color: #475569; margin-bottom: 4px;">보관된 시뮬레이션 결과가 없습니다.</div>
+                <div style="font-size: 11.5px; color: #94a3b8; line-height: 1.5;">'학군 이사 시뮬레이터'에서 후보 지역을 비교한 후<br><strong style="color: #2563eb;">[담기]</strong> 버튼을 눌러 저장해보세요.</div>
+            </div>
+        `;
+
+        const contentHtml = scraps.length > 0 ? scraps.map(renderCard).join('') : emptyHtml;
+
+        if (listPC) listPC.innerHTML = contentHtml;
+        if (listMobile) listMobile.innerHTML = contentHtml;
     };
 
     function scrollSimulationToResult() {
@@ -12695,6 +13032,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateFavUI();
     updateMypageComparisonUI();
+    if (typeof updateMypageSimulationUI === 'function') updateMypageSimulationUI();
 });
 
 // --- 모바일 하단 내비게이션 클릭 이벤트 처리 ---
@@ -12843,6 +13181,9 @@ window.onMobileNavClick = function(menu, btnEl) {
             if (typeof updateMypageComparisonUI === 'function') {
                 updateMypageComparisonUI();
             }
+            if (typeof updateMypageSimulationUI === 'function') {
+                updateMypageSimulationUI();
+            }
         }
     } else if (menu === 'story') {
         // 이야기 보기: 이야기 모달 노출 및 기본 학교 탭 로드
@@ -12868,6 +13209,10 @@ window.toggleMypageAccordion = function(sectionName) {
         if (sectionName === 'comparison' && typeof updateMypageComparisonUI === 'function') {
             updateMypageComparisonUI();
         }
+        // 시뮬레이션 보관함 아코디언 개방 시 최신 저장 데이터 렌더링 강제 매핑
+        if (sectionName === 'simulation' && typeof updateMypageSimulationUI === 'function') {
+            updateMypageSimulationUI();
+        }
     } else {
         content.style.display = 'none';
         if (arrow) arrow.textContent = '▼';
@@ -12875,7 +13220,7 @@ window.toggleMypageAccordion = function(sectionName) {
 };
 
 window.switchMypageTab = function(tabName) {
-    const accordions = ['neis', 'child', 'favorites', 'comparison', 'display', 'help'];
+    const accordions = ['neis', 'child', 'favorites', 'comparison', 'simulation', 'display', 'help'];
     accordions.forEach(name => {
         const content = document.getElementById('mypageAccordionContent-' + name);
         const arrow = document.getElementById('mypageAccordionArrow-' + name);
@@ -12883,6 +13228,9 @@ window.switchMypageTab = function(tabName) {
             if (name === tabName) {
                 content.style.display = 'block';
                 if (arrow) arrow.textContent = '▲';
+                if (name === 'simulation' && typeof updateMypageSimulationUI === 'function') {
+                    updateMypageSimulationUI();
+                }
             } else {
                 content.style.display = 'none';
                 if (arrow) arrow.textContent = '▼';
@@ -15386,7 +15734,105 @@ window.checkAndOpenDeepLinkFromURL = function checkAndOpenDeepLinkFromURL() {
         const schoolParam = urlParams.get('school') || urlParams.get('school_id');
         const academyParam = urlParams.get('academy') || urlParams.get('academy_id');
 
-        if (schoolParam) {
+        const simParam = urlParams.get('sim');
+
+        if (simParam === '1') {
+            // =====================================================
+            // 학군 이사 시뮬레이션 딥링크: ?sim=1&sidoA=...&dongA=...
+            // 카카오 공유 링크 클릭 시 해당 시뮬레이션 결과 자동 복원
+            // =====================================================
+            const sidoA  = urlParams.get('sidoA')  || '';
+            const gugunA = urlParams.get('gugunA') || '';
+            const dongA  = urlParams.get('dongA')  || '';
+            const sidoB  = urlParams.get('sidoB')  || '';
+            const gugunB = urlParams.get('gugunB') || '';
+            const dongB  = urlParams.get('dongB')  || '';
+            const simType = urlParams.get('type') || '중학교';
+
+            let attempts = 0;
+            const simInterval = setInterval(async () => {
+                attempts++;
+
+                // 시뮬레이션 모달 열기 함수와 드롭다운 초기화 함수가 준비될 때까지 대기
+                const btnOpenSim = document.getElementById('btnOpenSimulation');
+                const simModal = document.getElementById('simulationModal');
+                const isDomReady = !!simModal;
+                const isFnReady = typeof window.initSimulationDropdowns === 'function'
+                    && typeof window.runMovingSimulation === 'function';
+
+                if (isDomReady && isFnReady) {
+                    clearInterval(simInterval);
+
+                    // 1. 시뮬레이션 모달 열기
+                    if (btnOpenSim) {
+                        btnOpenSim.click();
+                    } else if (simModal) {
+                        simModal.style.display = 'flex';
+                    }
+
+                    // 2. 학교급 탭 설정
+                    if (simType && typeof window.setSimSchoolType === 'function') {
+                        window.setSimSchoolType(simType);
+                    }
+
+                    // 3. 드롭다운 초기화 (모달 오픈 후 약간 지연)
+                    await new Promise(r => setTimeout(r, 200));
+
+                    const selSidoA  = document.getElementById('simSidoA');
+                    const selGugunA = document.getElementById('simGugunA');
+                    const selDongA  = document.getElementById('simDongA');
+                    const selSidoB  = document.getElementById('simSidoB');
+                    const selGugunB = document.getElementById('simGugunB');
+                    const selDongB  = document.getElementById('simDongB');
+
+                    if (sidoA && selSidoA) {
+                        selSidoA.value = sidoA;
+                        selSidoA.dispatchEvent(new Event('change'));
+                    }
+                    if (sidoB && selSidoB) {
+                        selSidoB.value = sidoB;
+                        selSidoB.dispatchEvent(new Event('change'));
+                    }
+
+                    await new Promise(r => setTimeout(r, 150));
+
+                    if (gugunA && selGugunA) {
+                        selGugunA.value = gugunA;
+                        selGugunA.dispatchEvent(new Event('change'));
+                        if (dongA && selDongA && typeof updateDongDropdown === 'function') {
+                            await updateDongDropdown(sidoA, gugunA, selDongA, dongA);
+                        }
+                    }
+                    if (gugunB && selGugunB) {
+                        selGugunB.value = gugunB;
+                        selGugunB.dispatchEvent(new Event('change'));
+                        if (dongB && selDongB && typeof updateDongDropdown === 'function') {
+                            await updateDongDropdown(sidoB, gugunB, selDongB, dongB);
+                        }
+                    }
+                    if (dongA && selDongA) selDongA.value = dongA;
+                    if (dongB && selDongB) selDongB.value = dongB;
+
+                    if (typeof updateSimRegionSubInfo === 'function') updateSimRegionSubInfo();
+
+                    // 4. 시뮬레이션 자동 실행
+                    await new Promise(r => setTimeout(r, 200));
+                    const regA = `${sidoA} ${gugunA} ${dongA}`.trim() || '후보지역 A';
+                    const regB = `${sidoB} ${gugunB} ${dongB}`.trim() || '후보지역 B';
+                    const labelA = dongA || gugunA || '지역A';
+                    const labelB = dongB || gugunB || '지역B';
+
+                    if (typeof runMovingSimulation === 'function') {
+                        runMovingSimulation(regA, regB, labelA, labelB);
+                    }
+
+                    return;
+                }
+
+                if (attempts > 80) clearInterval(simInterval);
+            }, 200);
+
+        } else if (schoolParam) {
             let attempts = 0;
             const checkInterval = setInterval(() => {
                 attempts++;
