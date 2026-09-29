@@ -1592,7 +1592,7 @@ body {
     #btnCloseParentsFilter,
     #academySidebar button[onclick*="toggleAcademySidebar"],
     #communityPanel button[onclick*="clearAcademyMarker"],
-    #simulationModal button[onclick*="simulationModal"],
+    #simulationModal > div:first-child > div:first-child > button,
     #storyModal button[onclick*="mapTabBtn"],
     #topicStatsModal button[onclick*="topicStatsModal"] {
         display: flex !important;
@@ -1622,7 +1622,7 @@ body {
     #btnDeselectSchool:hover,
     #academySidebar button[onclick*="toggleAcademySidebar"]:hover,
     #communityPanel button[onclick*="clearAcademyMarker"]:hover,
-    #simulationModal button[onclick*="simulationModal"]:hover,
+    #simulationModal > div:first-child > div:first-child > button:hover,
     #storyModal button[onclick*="mapTabBtn"]:hover,
     #topicStatsModal button[onclick*="topicStatsModal"]:hover {
         background: #e9ecef !important;

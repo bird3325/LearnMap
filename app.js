@@ -7770,7 +7770,187 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     const simDongCache = {}; // 구군별 동 목록 캐시
 
-    function initSimulationDropdowns() {
+    // 현재 활성화된 자녀 및 자녀 학교 객체 탐색 헬퍼
+    function getActiveChildSchoolInfo() {
+        let curChildId = (typeof selectedChildId !== 'undefined' && selectedChildId) 
+            ? selectedChildId 
+            : (window.selectedChildId || localStorage.getItem('learnmap_default_child_id'));
+        let profiles = (typeof childProfiles !== 'undefined' && Array.isArray(childProfiles) && childProfiles.length > 0)
+            ? childProfiles 
+            : (window.childProfiles || []);
+        if (profiles.length === 0) {
+            try {
+                profiles = JSON.parse(localStorage.getItem('learnmap_child_profiles') || '[]');
+            } catch(e) {}
+        }
+        let activeChild = profiles.find(c => c.id === curChildId) || profiles[0] || null;
+        if (!activeChild && typeof orchestrator !== 'undefined' && orchestrator.state?.childProfile) {
+            activeChild = orchestrator.state.childProfile;
+        }
+
+        const db = window.schoolsDatabase || (typeof schoolsDatabase !== 'undefined' ? schoolsDatabase : []) || (window.allSchoolsCache || []) || [];
+        let school = null;
+
+        if (activeChild) {
+            if (activeChild.schoolId && db.length > 0) {
+                school = db.find(s => String(s.school_id || s.id) === String(activeChild.schoolId));
+            }
+            if (!school && activeChild.schoolRegion && activeChild.schoolName && db.length > 0) {
+                school = db.find(s => 
+                    s.school_name === activeChild.schoolName && 
+                    ((s.region || '').includes(activeChild.schoolRegion) || 
+                     (s.district || '').includes(activeChild.schoolRegion) || 
+                     (s.address || '').includes(activeChild.schoolRegion) || 
+                     activeChild.schoolRegion.includes(s.region || ''))
+                );
+            }
+            if (!school && activeChild.schoolName && db.length > 0) {
+                school = db.find(s => s.school_name === activeChild.schoolName);
+            }
+        }
+
+        if (!school && window.selectedTargetSchool) {
+            school = window.selectedTargetSchool;
+        }
+
+        if (!school && activeChild?.schoolName && db.length > 0) {
+            school = db.find(s => s.school_name.includes(activeChild.schoolName) || activeChild.schoolName.includes(s.school_name));
+        }
+
+        // 기본 서운중학교 폴백 (등록된 학교가 없을 경우)
+        if (!school && db.length > 0) {
+            school = db.find(s => s.school_name === '서운중학교') || null;
+        }
+
+        return { activeChild, school };
+    }
+
+    // 학교 객체로부터 시도, 구군, 동, 학교급 자동 분석 헬퍼
+    async function resolveSchoolRegionData(school) {
+        if (!school) {
+            return {
+                sido: '서울특별시',
+                gugun: '서초구',
+                dong: '서초동',
+                schoolType: '중학교',
+                schoolName: '서운중학교'
+            };
+        }
+
+        const addr = school.address || '';
+        const reg = school.region || '';
+        const dist = school.district || '';
+        const sidos = districtData.map(item => Object.keys(item)[0]);
+
+        // 1. 시도 판별
+        let targetSido = '';
+        for (const sido of sidos) {
+            const short = sido.slice(0, 2);
+            if (reg.includes(short) || addr.startsWith(sido) || addr.startsWith(short)) {
+                targetSido = sido;
+                break;
+            }
+        }
+        if (!targetSido && addr) {
+            for (const sido of sidos) {
+                const short = sido.slice(0, 2);
+                if (addr.includes(short)) {
+                    targetSido = sido;
+                    break;
+                }
+            }
+        }
+        if (!targetSido) targetSido = '서울특별시';
+
+        // 2. 구군 판별
+        let targetGugun = '';
+        const sidoItem = districtData.find(item => Object.keys(item)[0] === targetSido);
+        if (sidoItem) {
+            const guguns = sidoItem[targetSido];
+            // SUB_DISTRICT_MAP 세부구 우선 매칭
+            for (const gugun of guguns) {
+                if (SUB_DISTRICT_MAP[gugun]) {
+                    for (const subG of SUB_DISTRICT_MAP[gugun]) {
+                        if (addr.includes(subG) || dist.includes(subG)) {
+                            targetGugun = subG;
+                            break;
+                        }
+                    }
+                }
+                if (targetGugun) break;
+            }
+            // 일반 구군 매칭
+            if (!targetGugun) {
+                for (const gugun of guguns) {
+                    if (addr.includes(gugun) || dist.includes(gugun) || reg.includes(gugun)) {
+                        targetGugun = gugun;
+                        break;
+                    }
+                }
+            }
+        }
+        if (!targetGugun) targetGugun = '서초구';
+
+        // 3. 학교급 (초등학교, 중학교, 고등학교)
+        let schoolType = school.school_type || '중학교';
+        if (!['초등학교', '중학교', '고등학교'].includes(schoolType)) {
+            if (school.school_name?.endsWith('초등학교') || school.school_name?.endsWith('초')) schoolType = '초등학교';
+            else if (school.school_name?.endsWith('고등학교') || school.school_name?.endsWith('고')) schoolType = '고등학교';
+            else schoolType = '중학교';
+        }
+
+        // 4. 동 판별
+        let targetDong = '';
+        // 1순위: 카카오 Geocoder 비동기 역지오코딩
+        if (school.lat && school.lng && typeof kakao !== 'undefined' && kakao.maps && kakao.maps.services) {
+            try {
+                const geocoderInstance = window.geocoder || (typeof geocoder !== 'undefined' ? geocoder : new kakao.maps.services.Geocoder());
+                targetDong = await new Promise((resolve) => {
+                    const timer = setTimeout(() => resolve(''), 800);
+                    geocoderInstance.coord2RegionCode(school.lng, school.lat, (result, status) => {
+                        clearTimeout(timer);
+                        if (status === kakao.maps.services.Status.OK) {
+                            const bRegion = result.find(r => r.region_type === 'B');
+                            if (bRegion && bRegion.region_3depth_name) {
+                                resolve(bRegion.region_3depth_name);
+                                return;
+                            }
+                        }
+                        resolve('');
+                    });
+                });
+            } catch (e) {
+                console.warn('카카오 지오코더 역지오코딩 예외:', e);
+            }
+        }
+
+        // 2순위: 주소 내 동 텍스트 파싱
+        if (!targetDong && addr) {
+            const match = addr.match(/([가-힣\d]+(?:동|가|읍|면))(?:\s|[0-9,\(]|$)/);
+            if (match && !match[1].endsWith('도') && !match[1].endsWith('시') && !match[1].endsWith('구')) {
+                targetDong = match[1];
+            }
+        }
+
+        // 3순위: 학교명 기반 대표 법정동 보정
+        if (!targetDong) {
+            if (school.school_name === '서운중학교' || school.school_name?.includes('서운중') || school.school_name?.includes('서일중')) targetDong = '서초동';
+            else if (school.school_name?.includes('대치중') || school.school_name?.includes('대치')) targetDong = '대치동';
+            else if (school.school_name?.includes('목운중') || school.school_name?.includes('목동')) targetDong = '목동';
+            else if (school.school_name?.includes('수내중') || school.school_name?.includes('수내')) targetDong = '수내동';
+            else if (targetGugun === '서초구') targetDong = '서초동';
+        }
+
+        return {
+            sido: targetSido,
+            gugun: targetGugun,
+            dong: targetDong,
+            schoolType: schoolType,
+            schoolName: school.school_name || ''
+        };
+    }
+
+    async function initSimulationDropdowns() {
         console.log('initSimulationDropdowns starting...');
         const sidoA = document.getElementById('simSidoA');
         const sidoB = document.getElementById('simSidoB');
@@ -7848,10 +8028,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     const selectedGugun = gugunEl.value;
                     if (!selectedSido || !selectedGugun) {
                         dongEl.innerHTML = '<option value="">동 선택</option>';
+                        updateSimRegionSubInfo();
                     } else {
                         updateDongDropdown(selectedSido, selectedGugun, dongEl);
                     }
-                    updateSimRegionSubInfo();
                 });
             };
 
@@ -7890,42 +8070,56 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            // 기본 서초동/수내동 디폴트 프리셋 세팅
-            if (!sidoA.value) {
-                sidoA.value = '서울특별시';
-                sidoA.dispatchEvent(new Event('change'));
-                setTimeout(() => {
-                    if (gugunA) {
-                        gugunA.value = '서초구';
-                        gugunA.dispatchEvent(new Event('change'));
-                        setTimeout(() => {
-                            if (dongA && dongA.querySelector('option[value="서초동"]')) {
-                                dongA.value = '서초동';
-                            }
-                            updateSimRegionSubInfo();
-                        }, 120);
-                    }
-                }, 60);
+            // 1. 활성화된 자녀 학교 정보 조회 및 행정구역 분석 (학교 데이터베이스 로딩 대기)
+            if (schoolsDatabase.length === 0 && schoolsLoadPromise) {
+                await schoolsLoadPromise;
             }
 
+            const { activeChild, school: childSchool } = getActiveChildSchoolInfo();
+            const childRegion = await resolveSchoolRegionData(childSchool);
+
+            // 2. 자녀 학교의 학교급(초/중/고)으로 비교 대상 탭 자동 동기화
+            if (childRegion.schoolType && typeof window.setSimSchoolType === 'function') {
+                window.setSimSchoolType(childRegion.schoolType);
+            }
+
+            // 3. 후보지역 A (현재 거주): 자녀 학교의 시도/구군/동 자동 선택
+            sidoA.value = childRegion.sido;
+            sidoA.dispatchEvent(new Event('change'));
+
+            if (gugunA) {
+                const gugunOpts = Array.from(gugunA.options).map(o => o.value);
+                let matchedGugun = gugunOpts.find(v => v === childRegion.gugun) ||
+                                  gugunOpts.find(v => v && childRegion.gugun && (v.includes(childRegion.gugun) || childRegion.gugun.includes(v))) ||
+                                  (gugunOpts.length > 1 ? gugunOpts[1] : '');
+                if (matchedGugun) {
+                    gugunA.value = matchedGugun;
+                    gugunA.dispatchEvent(new Event('change'));
+                }
+
+                // 자녀 학교의 동을 정확히 선택
+                await updateDongDropdown(sidoA.value, gugunA.value, dongA, childRegion.dong);
+            }
+
+            // 4. 후보지역 B (이사 희망): 기본 분당권(경기도 성남시 분당구 수내동) 세팅
             if (!sidoB.value) {
                 sidoB.value = '경기도';
                 sidoB.dispatchEvent(new Event('change'));
-                setTimeout(() => {
-                    if (gugunB) {
-                        gugunB.value = '성남시 분당구';
-                        gugunB.dispatchEvent(new Event('change'));
-                        setTimeout(() => {
-                            if (dongB && dongB.querySelector('option[value="수내동"]')) {
-                                dongB.value = '수내동';
-                            }
-                            updateSimRegionSubInfo();
-                        }, 120);
+                if (gugunB) {
+                    const bdOpt = gugunB.querySelector('option[value="분당구"]');
+                    if (bdOpt) {
+                        gugunB.value = '분당구';
+                    } else {
+                        const snOpt = gugunB.querySelector('option[value="성남시"]');
+                        if (snOpt) gugunB.value = '성남시';
                     }
-                }, 60);
+                    gugunB.dispatchEvent(new Event('change'));
+                    await updateDongDropdown(sidoB.value, gugunB.value, dongB, '수내동');
+                }
             }
 
-            console.log('initSimulationDropdowns populated successfully.');
+            updateSimRegionSubInfo();
+            console.log('initSimulationDropdowns populated successfully with child school:', childSchool ? childSchool.school_name : 'default');
         } catch (e) {
             console.error('행정구역 데이터 초기화 에러:', e);
         }
@@ -7947,6 +8141,9 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.style.boxShadow = 'none';
             btn.innerText = btn.getAttribute('data-val') || btn.innerText.replace(' ●', '');
         });
+        if (!btnEl && type) {
+            btnEl = document.querySelector(`.sim-school-tab[data-val="${type}"]`);
+        }
         if (btnEl) {
             btnEl.classList.add('active');
             btnEl.style.background = '#eff6ff';
@@ -8025,8 +8222,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         let schoolsText = '';
+        if (typeLabel === '현재 거주' && typeof getActiveChildSchoolInfo === 'function') {
+            const { school: activeSchool } = getActiveChildSchoolInfo();
+            if (activeSchool && activeSchool.school_name) {
+                const foundIdx = matchedSchools.findIndex(s => s.school_name === activeSchool.school_name);
+                if (foundIdx > -1) {
+                    const [picked] = matchedSchools.splice(foundIdx, 1);
+                    matchedSchools.unshift(picked);
+                } else {
+                    const activeShortSido = (sido || '').substring(0, 2);
+                    const matchSido = !sido || (activeSchool.address && activeSchool.address.includes(activeShortSido)) || (activeSchool.region && activeSchool.region.includes(activeShortSido));
+                    const matchGugun = !gugun || checkGugunMatch(activeSchool.address, gugun);
+                    if (matchSido && matchGugun) {
+                        matchedSchools.unshift(activeSchool);
+                    }
+                }
+            }
+        }
+
         if (matchedSchools.length >= 2) {
-            matchedSchools.sort((a, b) => (b.achievement_a_ratio || b.students_count || 0) - (a.achievement_a_ratio || a.students_count || 0));
+            matchedSchools.sort((a, b) => {
+                if (typeLabel === '현재 거주' && typeof getActiveChildSchoolInfo === 'function') {
+                    const { school: activeSchool } = getActiveChildSchoolInfo();
+                    if (activeSchool) {
+                        if (a.school_name === activeSchool.school_name) return -1;
+                        if (b.school_name === activeSchool.school_name) return 1;
+                    }
+                }
+                return (b.achievement_a_ratio || b.students_count || 0) - (a.achievement_a_ratio || a.students_count || 0);
+            });
             const name1 = matchedSchools[0].school_name.replace(/(초등|중|고등)?학교$/, '');
             const name2 = matchedSchools[1].school_name.replace(/(초등|중|고등)?학교$/, '');
             const suffix = simType.includes('초') ? '초' : (simType.includes('고') ? '고' : '중');
@@ -8034,13 +8258,21 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (matchedSchools.length === 1) {
             schoolsText = matchedSchools[0].school_name;
         } else {
-            if (gugun.includes('서초')) schoolsText = '서운중·서일중';
-            else if (gugun.includes('분당')) schoolsText = '수내중·내정중';
-            else if (gugun.includes('강남')) schoolsText = '대치중·휘문중';
-            else if (gugun.includes('양천')) schoolsText = '목운중·신목중';
-            else if (gugun.includes('송파')) schoolsText = '잠실중·신천중';
-            else if (gugun.includes('수성')) schoolsText = '경신중·정화중';
-            else schoolsText = `${dong || gugun || '해당'} 주요 학군`;
+            if (typeLabel === '현재 거주' && typeof getActiveChildSchoolInfo === 'function') {
+                const { school: activeSchool } = getActiveChildSchoolInfo();
+                if (activeSchool && activeSchool.school_name) {
+                    schoolsText = activeSchool.school_name;
+                }
+            }
+            if (!schoolsText) {
+                if (gugun.includes('서초')) schoolsText = '서운중·서일중';
+                else if (gugun.includes('분당')) schoolsText = '수내중·내정중';
+                else if (gugun.includes('강남')) schoolsText = '대치중·휘문중';
+                else if (gugun.includes('양천')) schoolsText = '목운중·신목중';
+                else if (gugun.includes('송파')) schoolsText = '잠실중·신천중';
+                else if (gugun.includes('수성')) schoolsText = '경신중·정화중';
+                else schoolsText = `${dong || gugun || '해당'} 주요 학군`;
+            }
         }
 
         // 3. 동적 평균 아파트 매매 시세 테이블 및 추정
@@ -8135,7 +8367,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.updateSimRegionSubInfo = updateSimRegionSubInfo;
 
-    async function updateDongDropdown(sido, gugun, dongSelectEl) {
+    async function updateDongDropdown(sido, gugun, dongSelectEl, targetDongToSelect = null) {
         if (schoolsDatabase.length === 0 && schoolsLoadPromise) {
             await schoolsLoadPromise;
         }
@@ -8151,6 +8383,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 opt.innerText = dong;
                 dongSelectEl.appendChild(opt);
             });
+            if (targetDongToSelect) {
+                if (dongSelectEl.querySelector(`option[value="${targetDongToSelect}"]`)) {
+                    dongSelectEl.value = targetDongToSelect;
+                } else {
+                    const opt = document.createElement('option');
+                    opt.value = targetDongToSelect;
+                    opt.innerText = targetDongToSelect;
+                    dongSelectEl.appendChild(opt);
+                    dongSelectEl.value = targetDongToSelect;
+                }
+            }
             updateSimRegionSubInfo();
             return;
         }
@@ -8172,6 +8415,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (filteredSchools.length === 0) {
             dongSelectEl.innerHTML = '<option value="">학교 없음</option>';
+            if (targetDongToSelect) {
+                const opt = document.createElement('option');
+                opt.value = targetDongToSelect;
+                opt.innerText = targetDongToSelect;
+                dongSelectEl.appendChild(opt);
+                dongSelectEl.value = targetDongToSelect;
+            }
             updateSimRegionSubInfo();
             return;
         }
@@ -8203,6 +8453,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (sortedDongs.length === 0) {
             dongSelectEl.innerHTML = '<option value="all">전체</option>';
+            if (targetDongToSelect) {
+                const opt = document.createElement('option');
+                opt.value = targetDongToSelect;
+                opt.innerText = targetDongToSelect;
+                dongSelectEl.appendChild(opt);
+                dongSelectEl.value = targetDongToSelect;
+            }
         } else {
             // 캐시 데이터 저장
             simDongCache[cacheKey] = sortedDongs;
@@ -8214,6 +8471,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 opt.innerText = dong;
                 dongSelectEl.appendChild(opt);
             });
+
+            if (targetDongToSelect) {
+                if (dongSelectEl.querySelector(`option[value="${targetDongToSelect}"]`)) {
+                    dongSelectEl.value = targetDongToSelect;
+                } else {
+                    const opt = document.createElement('option');
+                    opt.value = targetDongToSelect;
+                    opt.innerText = targetDongToSelect;
+                    dongSelectEl.appendChild(opt);
+                    dongSelectEl.value = targetDongToSelect;
+                }
+            }
         }
         updateSimRegionSubInfo();
     }
@@ -8548,7 +8817,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </button>
                 </div>
 
-                <button onclick="document.getElementById('simulationResultPanel').style.display='none'; const modalDiv = document.querySelector('#simulationModal > div'); if(modalDiv) modalDiv.scrollTo({top: 0, behavior: 'smooth'});"
+                <button onclick="window.resetSimulationResultView()"
                     style="width: 100%; background: #0f172a; color: #ffffff; font-weight: 800; font-size: 14.5px; padding: 15px; border-radius: 14px; border: none; cursor: pointer; transition: background 0.2s; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.2);"
                     onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='#0f172a'">
                     새로운 학군 조건으로 다시 비교하기
@@ -8556,6 +8825,13 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         });
     }
+
+    window.resetSimulationResultView = function() {
+        const resultPanel = document.getElementById('simulationResultPanel');
+        if (resultPanel) resultPanel.style.display = 'none';
+        const modalDiv = document.querySelector('#simulationModal > div');
+        if (modalDiv) modalDiv.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     window.handleResetFilters = (showAlert = true) => {
         const defaults = {
