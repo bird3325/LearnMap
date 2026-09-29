@@ -9184,11 +9184,46 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.saveSimulationToMypage = async function(btnEl, options = {}) {
+        // ★ 로그인 체크 (silent 모드 제외 — 공유하기 자동 담기는 로그인 없이도 localStorage만 저장)
+        if (!options.silent) {
+            const loggedOut = localStorage.getItem('learnmap_logged_out');
+            const loginUser = (typeof authService !== 'undefined' && authService.getCurrentUser)
+                ? authService.getCurrentUser()
+                : JSON.parse(localStorage.getItem('learnmap_current_user') || 'null');
+            const isLoggedIn = !!loginUser && !loggedOut;
+
+            if (!isLoggedIn) {
+                const confirmed = await confirm('시뮬레이션 담기는 로그인 후 이용하실 수 있습니다.\n로그인 페이지로 이동하시겠습니까?');
+                if (confirmed) {
+                    // 현재 열려있는 시뮬레이션 모달 닫기
+                    const simModal = document.getElementById('simulationModal');
+                    if (simModal) simModal.style.display = 'none';
+
+                    // 설정 모달 → 로그인 탭 열기
+                    const settingsModal = document.getElementById('settingsModal');
+                    if (settingsModal) settingsModal.style.display = 'block';
+                    if (typeof window.switchSettingsAuthTab === 'function') {
+                        window.switchSettingsAuthTab('login');
+                    }
+                    const authSection = document.getElementById('settingsAuthSection');
+                    if (authSection) {
+                        authSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    setTimeout(() => {
+                        const emailInput = document.getElementById('settingsEmail');
+                        if (emailInput) emailInput.focus();
+                    }, 300);
+                }
+                return null;
+            }
+        }
+
         const data = window.lastSimulationData;
         if (!data) {
             if (!options.silent) alert('먼저 학군 비교 시뮬레이션을 실행해 주세요.');
             return null;
         }
+
 
         const scraps = getStoredSimulationScraps();
         const existingIndex = scraps.findIndex(s => 
@@ -9235,13 +9270,17 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn('localStorage 저장 실패:', e);
         }
 
-        // Supabase DB 비동기 동기화
+        // Supabase DB 동기화 (upsert — 중복 저장 방지)
         try {
-            const client = window.supabaseClient || (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
-            const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
-            if (client && user && user.id) {
-                client.from('simulation_scraps').insert([{
-                    user_id: user.id,
+            const client = window.supabaseInstance || (typeof supabase !== 'undefined' ? supabase : null);
+            const rawUser = (typeof authService !== 'undefined' && authService.getCurrentUser)
+                ? authService.getCurrentUser()
+                : JSON.parse(localStorage.getItem('learnmap_current_user') || 'null');
+            const userId = rawUser?.id || rawUser?.email || null;
+            if (client && userId) {
+                const dbRow = {
+                    local_id: newScrap.id,
+                    user_id: userId,
                     region_a: newScrap.region_a,
                     region_b: newScrap.region_b,
                     name_a: newScrap.name_a,
@@ -9260,12 +9299,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     score_b: newScrap.score_b,
                     percentile_a: newScrap.percentile_a,
                     percentile_b: newScrap.percentile_b
-                }]).then(({ error }) => {
-                    if (error) console.warn('[Supabase] simulation_scraps insert error:', error);
-                });
+                };
+                client.from('simulation_scraps')
+                    .upsert([dbRow], { onConflict: 'local_id' })
+                    .then(({ error }) => {
+                        if (error) {
+                            console.warn('[Supabase] simulation_scraps upsert 실패:', error);
+                            // local_id 컬럼 없는 경우 insert로 fallback
+                            if (error.code === '42703' || error.message?.includes('local_id')) {
+                                client.from('simulation_scraps').insert([{ ...dbRow }])
+                                    .then(({ error: e2 }) => { if (e2) console.warn('[Supabase] insert fallback 실패:', e2); });
+                            }
+                        } else {
+                            console.log('[Supabase] simulation_scraps 저장 완료:', newScrap.id);
+                        }
+                    });
+            } else {
+                console.warn('[Supabase] 저장 스킵 — client:', !!client, '| userId:', userId);
             }
         } catch (dbErr) {
-            console.warn('Supabase simulation sync exception:', dbErr);
+            console.warn('[Supabase] simulation_scraps 예외:', dbErr);
         }
 
         // 버튼 피드백 애니메이션
@@ -9311,12 +9364,18 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {}
 
         try {
-            const client = window.supabaseClient || (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
-            const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
-            if (client && user && user.id) {
-                client.from('simulation_scraps').delete().match({ user_id: user.id, id: id }).then();
+            const client = window.supabaseInstance || (typeof supabase !== 'undefined' ? supabase : null);
+            const rawUser = (typeof authService !== 'undefined' && authService.getCurrentUser)
+                ? authService.getCurrentUser()
+                : JSON.parse(localStorage.getItem('learnmap_current_user') || 'null');
+            const userId = rawUser?.id || rawUser?.email || null;
+            if (client && userId) {
+                client.from('simulation_scraps').delete()
+                    .or(`local_id.eq.${id},id.eq.${id}`)
+                    .eq('user_id', userId)
+                    .then(({ error }) => { if (error) console.warn('[Supabase] delete 실패:', error); });
             }
-        } catch (e) {}
+        } catch (e) { console.warn('[Supabase] delete 예외:', e); }
 
         window.updateMypageSimulationUI();
     };
@@ -9330,12 +9389,16 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {}
 
         try {
-            const client = window.supabaseClient || (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
-            const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
-            if (client && user && user.id) {
-                client.from('simulation_scraps').delete().match({ user_id: user.id }).then();
+            const client = window.supabaseInstance || (typeof supabase !== 'undefined' ? supabase : null);
+            const rawUser = (typeof authService !== 'undefined' && authService.getCurrentUser)
+                ? authService.getCurrentUser()
+                : JSON.parse(localStorage.getItem('learnmap_current_user') || 'null');
+            const userId = rawUser?.id || rawUser?.email || null;
+            if (client && userId) {
+                client.from('simulation_scraps').delete().eq('user_id', userId)
+                    .then(({ error }) => { if (error) console.warn('[Supabase] clearAll 실패:', error); });
             }
-        } catch (e) {}
+        } catch (e) { console.warn('[Supabase] clearAll 예외:', e); }
 
         window.updateMypageSimulationUI();
     };
