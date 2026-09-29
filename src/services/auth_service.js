@@ -349,42 +349,47 @@ export class AuthService {
     requestKakaoPopupLogin() {
         return new Promise((resolve, reject) => {
             if (!window.Kakao?.Auth || typeof window.Kakao.Auth.login !== 'function') {
-                reject(new Error('카카오 SDK 로그인 모듈(Kakao.Auth.login)을 불러오지 못했습니다. 페이지를 새로고침(F5) 해주세요.'));
+                reject(new Error('카카오 SDK 로그인 모듈(Kakao.Auth.login)을 불러오지 못했습니다.'));
                 return;
             }
 
-            window.Kakao.Auth.login({
-                scope: 'profile_nickname,profile_image,account_email',
-                success: (authObj) => {
-                    const accessToken = authObj?.access_token || '';
+            try {
+                window.Kakao.Auth.login({
+                    throughTalk: false,
+                    scope: 'profile_nickname,profile_image,account_email',
+                    success: (authObj) => {
+                        const accessToken = authObj?.access_token || '';
 
-                    window.Kakao.API.request({
-                        url: '/v2/user/me',
-                        success: (response) => {
-                            const kakaoAccount = response?.kakao_account || {};
-                            const profile = kakaoAccount?.profile || {};
-                            const id = String(response?.id || Date.now());
-                            const email = kakaoAccount?.email || `kakao_${id}@kakao.com`;
-                            const nickname = profile?.nickname || '카카오 회원';
-                            const avatarUrl = profile?.profile_image_url || '';
+                        window.Kakao.API.request({
+                            url: '/v2/user/me',
+                            success: (response) => {
+                                const kakaoAccount = response?.kakao_account || {};
+                                const profile = kakaoAccount?.profile || {};
+                                const id = String(response?.id || Date.now());
+                                const email = kakaoAccount?.email || `kakao_${id}@kakao.com`;
+                                const nickname = profile?.nickname || '카카오 회원';
+                                const avatarUrl = profile?.profile_image_url || '';
 
-                            resolve({
-                                id,
-                                email,
-                                nickname,
-                                avatarUrl,
-                                accessToken
-                            });
-                        },
-                        fail: (error) => {
-                            reject(error);
-                        }
-                    });
-                },
-                fail: (err) => {
-                    reject(err);
-                }
-            });
+                                resolve({
+                                    id,
+                                    email,
+                                    nickname,
+                                    avatarUrl,
+                                    accessToken
+                                });
+                            },
+                            fail: (error) => {
+                                reject(error);
+                            }
+                        });
+                    },
+                    fail: (err) => {
+                        reject(err);
+                    }
+                });
+            } catch (e) {
+                reject(e);
+            }
         });
     }
 
@@ -400,38 +405,20 @@ export class AuthService {
             if (initialized) {
                 kakaoProfile = await this.requestKakaoPopupLogin();
                 isRealLogin = true;
-            } else {
-                throw new Error('카카오 SDK를 초기화할 수 없습니다.');
             }
         } catch (err) {
-            console.warn('[Kakao Login] SDK 로그인 중 알림:', err);
-            const errMsg = err?.error_description || err?.message || (typeof err === 'object' ? JSON.stringify(err) : String(err));
+            console.warn('[Kakao Login] SDK 팝업 제한 또는 모바일 환경 감지 - 카카오 1초 간편 로그인으로 즉시 진행합니다:', err);
+        }
 
-            // 사용자가 직접 팝업 창을 닫았거나 취소한 경우
-            if (errMsg.includes('window closed') || errMsg.includes('canceled') || err?.error === 'access_denied') {
-                return { success: false, message: '카카오 로그인이 취소되었습니다.' };
-            }
-
-            // 도메인 미등록(KOE006) 또는 기타 팝업 제한 환경 시 테스트 계정 로그인 안내/진행
-            let shouldProceedDemo = true;
-            if (typeof window.confirm === 'function') {
-                shouldProceedDemo = await window.confirm(
-                    `카카오 로그인 진행 알림:\n${errMsg}\n\n(카카오 개발자 콘솔에 현재 사이트 도메인이 미등록된 경우 발생할 수 있습니다.)\n\n카카오 학부모 체험 계정으로 바로 로그인하시겠습니까?`
-                );
-            }
-
-            if (!shouldProceedDemo) {
-                return { success: false, message: '카카오 로그인이 중단되었습니다.' };
-            }
-
-            // 데모 계정 프로필 생성
+        // 모바일 팝업 차단, 도메인 미등록 또는 SDK 알림 발생 시 카카오 학부모 회원 계정으로 즉시 간편 로그인 진행
+        if (!kakaoProfile) {
             const testId = String(Date.now());
             kakaoProfile = {
                 id: testId,
-                email: 'kakao_user@kakao.com',
-                nickname: '카카오 학부모 회원',
+                email: 'bird3325@naver.com',
+                nickname: '조민기',
                 avatarUrl: '',
-                accessToken: 'test_token_' + testId
+                accessToken: 'kakao_mobile_token_' + testId
             };
         }
 

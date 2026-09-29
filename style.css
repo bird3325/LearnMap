@@ -721,12 +721,6 @@ body {
     .parents-filter-accordion #btnToggleParentsFilter {
         justify-content: space-between !important;
     }
-    /* PC 헤더 밑 구분선 제공 */
-    .parents-filter-accordion .filter-header-bar {
-        border-bottom: 1px solid var(--border-color) !important;
-        background: rgba(255, 255, 255, 0.98) !important;
-        backdrop-filter: blur(10px) !important;
-    }
 }
 
 /* Parents Advanced Analytics Custom Styles */
@@ -942,29 +936,7 @@ body {
         height: calc(100% - 57px) !important;
     }
 
-    /* 모바일에서 학부모 필터 설정창을 전체 화면으로 표시 */
-    .parents-filter-accordion {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: calc(100% - 60px) !important;
-        max-height: none !important;
-        margin: 0 !important;
-        z-index: 10090 !important;
-        border-radius: 0 !important;
-        border: none !important;
-        box-sizing: border-box !important;
-        display: none;
-    }
-
-    #parentsFilterIndicator {
-        display: none !important;
-    }
-
-    #btnCloseParentsFilter {
-        display: block !important;
-    }
+    /* 모바일 학부모 필터 페이지 전체화면 스타일은 하단 1381행 통합 섹션에서 일괄 관리 */
 
     /* 모바일 상단 floating 버튼 숨김 */
     #btnToggleSidebarTop,
@@ -1384,11 +1356,13 @@ body {
         overflow-y: visible !important;
     }
 
-    /* 모바일에서 학부모 필터 설정창 전체 페이지화 및 여백 통일 */
+    /* 모바일에서 학부모 필터 설정창 전체 페이지화 (이사 시뮬레이션/마이페이지와 100% 일치하는 독립 전체화면 페이지) */
     .parents-filter-accordion {
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
+        right: 0 !important;
+        bottom: 60px !important;
         width: 100% !important;
         height: calc(100% - 60px) !important;
         max-width: none !important;
@@ -1396,20 +1370,89 @@ body {
         border-radius: 0 !important;
         border: none !important;
         box-shadow: none !important;
-        padding: 20px !important;
+        padding: 0 !important;
+        margin: 0 !important;
         box-sizing: border-box !important;
-        background: var(--bg-card, #ffffff) !important;
-        z-index: 10080 !important;
+        background: #ffffff !important;
+        z-index: 10095 !important;
+        overflow: hidden !important;
+        display: none;
+        flex-direction: column !important;
     }
 
-    /* 모바일에서 필터 헤더 바 레이아웃 통일 (구형 오버라이드 제거) */
+    /* 모바일 전체화면에서는 불필요한 상단 드래그 핸들 숨김 */
+    .parents-filter-accordion > div:first-child:not(.filter-header-bar),
+    .parents-filter-accordion .mobile-drag-handle-bar {
+        display: none !important;
+    }
+
+    .parents-filter-subtitle {
+        display: block !important;
+        font-size: 13.5px !important;
+        color: #64748b !important;
+        margin: 0 0 4px 0 !important;
+        line-height: 1.4 !important;
+        letter-spacing: -0.2px !important;
+    }
+
+    /* 모바일 필터 상단 고정 헤더 바: 다른 페이지와 100% 동일한 56px 화이트 헤더 */
+    .parents-filter-accordion > .filter-header-bar {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        height: 56px !important;
+        min-height: 56px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        padding: 0 48px 0 16px !important;
+        margin: 0 !important;
+        position: relative !important;
+        box-sizing: border-box !important;
+        background: #ffffff !important;
+        flex-shrink: 0 !important;
+        border-radius: 0 !important;
+    }
+
+    .parents-filter-accordion h3 {
+        font-size: 19px !important;
+        font-weight: 800 !important;
+        color: #111827 !important;
+        letter-spacing: -0.4px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
 
     #parentsFilterIndicator {
         display: none !important;
     }
     
     #btnCloseParentsFilter {
-        display: block !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: #f1f3f5 !important;
+        border: none !important;
+        width: 32px !important;
+        height: 32px !important;
+        border-radius: 50% !important;
+        font-size: 20px !important;
+        line-height: 1 !important;
+        color: #94a3b8 !important;
+        cursor: pointer !important;
+        position: absolute !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        right: 16px !important;
+        padding: 0 !important;
+        z-index: 10 !important;
+        transition: background 0.2s, color 0.2s !important;
+    }
+
+    #btnCloseParentsFilter:hover {
+        background: #e9ecef !important;
+        color: #1e293b !important;
     }
 
     /* 모바일에서 중복되는 필터 항목 숨김 */
@@ -1417,19 +1460,52 @@ body {
         display: none !important;
     }
 
-    /* 모바일에서 필터 설정창 상단 보더라인 제거 */
-    #parentsFilterContent {
+    /* 모바일에서 필터 설정창 본문 스크롤 영역: 다른 페이지와 동일한 화이트 독립 페이지 스크롤 본문 */
+    .parents-filter-accordion #parentsFilterContent {
+        display: flex !important;
+        flex-direction: column !important;
         border-top: none !important;
+        flex: 1 !important;
+        overflow-y: auto !important;
+        max-height: none !important;
+        padding: 16px 16px 40px 16px !important;
+        background: #ffffff !important;
+        box-sizing: border-box !important;
+        gap: 16px !important;
     }
 
-    /* 모바일에서 헤더 클릭/토글 링크 스타일 비활성화 (커서 기본값) */
+    /* 모바일 필터 내부 카드 아이템 디자인: 다른 페이지 카드와 100% 동일 */
+    .parents-filter-accordion .filter-card-item {
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 16px !important;
+        padding: 16px 18px !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02) !important;
+        box-sizing: border-box !important;
+    }
+
+    /* 모바일에서 헤더 클릭/토글 링크 스타일 비활성화 (아코디언 토글이 아닌 고정 페이지 타이틀로 작동) */
     #btnToggleParentsFilter {
         cursor: default !important;
+        pointer-events: none !important;
     }
 
-    /* 모바일에서 필터 적용 버튼 표시 */
+    /* 모바일에서 필터 적용 버튼 스타일 통일 */
     #btnApplyFilters {
-        display: block !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100% !important;
+        height: 48px !important;
+        background: #2563eb !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 12px !important;
+        font-size: 15px !important;
+        font-weight: 700 !important;
+        cursor: pointer !important;
+        margin-top: 10px !important;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
     }
 
     /* 모바일에서 개별 학원 상세 커뮤니티 패널을 전체화면으로 덮음 */
@@ -1459,7 +1535,6 @@ body {
     #academySidebar > div:first-child,
     #communityPanel > div:first-child,
     #storyModal > div:first-child > div:first-child,
-    .filter-header-bar,
     #settingsModal > div:first-child > div:first-child,
     #simulationModal > div:first-child > div:first-child,
     #topicStatsModal > div > div:first-child {
@@ -2826,3 +2901,438 @@ body.is-resizing-sidebar .academy-sidebar-section {
         max-width: 100% !important;
     }
 }
+
+/* ==========================================================================
+   📱 모바일 고객지원 및 문의 카드 프리미엄 디딤 테마 (첨부 시안 100% 매칭)
+   ========================================================================== */
+.inquiry-card {
+    background: #ffffff !important;
+    border-radius: 24px !important;
+    padding: 20px 20px 24px 20px !important;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08) !important;
+    border: 1px solid #e2e8f0 !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+    transition: all 0.25s ease !important;
+    margin-bottom: 20px !important;
+}
+
+.inquiry-pill {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid transparent;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    letter-spacing: -0.2px;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.inquiry-pill:hover:not(.active) {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+.inquiry-pill.active {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    box-shadow: 0 3px 10px rgba(37, 99, 235, 0.3) !important;
+}
+
+.inquiry-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    letter-spacing: -0.2px;
+}
+
+.inquiry-input {
+    width: 100%;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #0f172a;
+    outline: none;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    font-family: inherit;
+    letter-spacing: -0.2px;
+}
+.inquiry-input:focus {
+    background: #ffffff;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.inquiry-input::placeholder {
+    color: #94a3b8;
+    font-weight: 400;
+}
+
+.service-inquiry-row {
+    transition: opacity 0.2s ease;
+}
+.service-inquiry-row:hover {
+    opacity: 0.85;
+}
+
+/* 이사 시뮬레이션 커스텀 셀렉트 및 체크박스 카트 */
+.sim-select-style {
+    padding: 10px 28px 10px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #0f172a;
+    outline: none;
+    background: #ffffff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="%2364748b" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>') no-repeat right 10px center;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    font-family: inherit;
+    letter-spacing: -0.2px;
+}
+.sim-select-style:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.sim-check-card {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+    letter-spacing: -0.2px;
+}
+.sim-check-card:hover {
+    background: #dbeafe;
+    border-color: #93c5fd;
+}
+.sim-check-input {
+    width: 17px;
+    height: 17px;
+    accent-color: #2563eb;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* PC Left Side Search & Filter Redesign */
+.map-search-container {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 10100;
+    width: 360px;
+    max-width: 92%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.search-bar-wrapper {
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 24px;
+    padding: 6px 14px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.2s ease;
+}
+
+.search-bar-wrapper:focus-within {
+    border-color: #2563eb;
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.15);
+}
+
+.search-bar-wrapper input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 8px 10px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: #0f172a;
+    outline: none;
+    font-family: inherit;
+}
+
+.search-bar-wrapper input::placeholder {
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+.search-btn {
+    border: none;
+    background: transparent;
+    color: #2563eb;
+    padding: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.filter-bar {
+    display: flex;
+    gap: 8px;
+}
+
+.filter-select {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 12px;
+    border: 1.5px solid #e2e8f0;
+    background: #ffffff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="%2364748b" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>') no-repeat right 10px center;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #1e293b;
+    outline: none;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.filter-select:hover, .filter-select:focus {
+    border-color: #2563eb;
+    color: #2563eb;
+}
+
+/* Accordion Container Styling (PC 환경 전용 아코디언 카드 드롭다운) */
+@media (min-width: 1025px) {
+    .parents-filter-accordion {
+        background: #ffffff !important;
+        border-radius: 20px !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+        overflow: hidden;
+        max-height: calc(100vh - 150px) !important;
+    }
+}
+
+.filter-card-item {
+    background: #ffffff;
+    border: 1px solid #f1f5f9;
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.filter-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.filter-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: #475569;
+}
+
+.filter-row label {
+    font-weight: 500;
+}
+
+@media (min-width: 1025px) {
+    /* PC 환경에서 학부모 맞춤 분석 & 필터 설정 영역 상단의 위라인 제거 (헤더 높이 내 수직 가운데 정렬을 위해 숨김) */
+    .parents-filter-accordion .mobile-drag-handle-bar {
+        display: none !important;
+    }
+
+    /* PC 환경 헤더 바: 기존 전체 높이(52px)를 유지하면서 텍스트를 위아래 수직 정중앙(가운데)으로 완벽 배치 */
+    .parents-filter-accordion .filter-header-bar {
+        height: 52px !important;
+        min-height: 52px !important;
+        margin: 0 !important;
+        padding: 0 16px !important;
+        border-bottom: none !important;
+        background: transparent !important;
+        position: relative !important;
+        box-sizing: border-box !important;
+        flex-shrink: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+    }
+
+    .parents-filter-accordion #btnToggleParentsFilter {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    .parents-filter-accordion h3 {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        line-height: 1 !important;
+        font-size: 15px !important;
+        font-weight: 800 !important;
+    }
+
+    .parents-filter-accordion #parentsFilterIndicator {
+        display: inline-flex !important;
+        align-items: center !important;
+        line-height: 1 !important;
+        margin: 0 !important;
+    }
+}
+
+.preset-pill-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 32px !important;
+    padding: 0 14px !important;
+    border-radius: 16px !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    color: #475569 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    white-space: nowrap !important;
+    outline: none !important;
+    user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    line-height: 1 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+    margin: 2px 0 !important;
+    vertical-align: middle !important;
+}
+
+.preset-pill-btn:focus,
+.preset-pill-btn:active,
+.preset-pill-btn:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.preset-pill-btn:hover {
+    background: #f8fafc !important;
+    border-color: #94a3b8 !important;
+    color: #1e293b !important;
+}
+
+.preset-pill-btn.active {
+    background: #eff6ff !important;
+    color: #2563eb !important;
+    border: 1.5px solid #2563eb !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.12) !important;
+}
+
+/* Range input customization inside accordion */
+.parents-filter-accordion input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 3px;
+    outline: none;
+}
+
+.parents-filter-accordion input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2.5px solid #2563eb;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.parents-filter-accordion input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    border-color: #1d4ed8;
+}
+
+/* Custom switch styling */
+.custom-switch-toggle {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.custom-switch-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.custom-switch-toggle .slider-track {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #cbd5e1;
+    transition: .25s ease;
+    border-radius: 24px;
+}
+
+.custom-switch-toggle .slider-track:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .25s ease;
+    border-radius: 50%;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.custom-switch-toggle input:checked + .slider-track {
+    background-color: #2563eb;
+}
+
+.custom-switch-toggle input:checked + .slider-track:before {
+    transform: translateX(20px);
+}
+
+
+

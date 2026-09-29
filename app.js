@@ -234,18 +234,41 @@ document.addEventListener('DOMContentLoaded', () => {
     // 학부모 맞춤 필터 UI 연동 및 이벤트 바인딩
     // ------------------------------------
     const parentsFilterToggle = document.getElementById('btnToggleParentsFilter');
+    const btnCloseParentsFilter = document.getElementById('btnCloseParentsFilter');
     const parentsFilterContent = document.getElementById('parentsFilterContent');
     const parentsFilterIndicator = document.getElementById('parentsFilterIndicator');
 
     if (parentsFilterToggle && parentsFilterContent) {
         parentsFilterToggle.addEventListener('click', () => {
-            // 헤더 클릭 시 열기/닫기 토글 수행
+            // 모바일 환경에서는 다른 페이지(이야기/마이페이지)처럼 독립 페이지 형태이므로 헤더 클릭으로 접히지 않음
+            if (window.innerWidth <= 1024) return;
+
+            // 헤더 클릭 시 열기/닫기 토글 수행 (PC 데스크톱 전용)
             if (parentsFilterContent.style.display === 'none' || parentsFilterContent.style.display === '') {
                 parentsFilterContent.style.display = 'flex';
                 if (parentsFilterIndicator) parentsFilterIndicator.innerText = '▲';
+                try { sessionStorage.setItem('learnmap_parents_filter_open', 'true'); } catch(e) {}
             } else {
                 parentsFilterContent.style.display = 'none';
                 if (parentsFilterIndicator) parentsFilterIndicator.innerText = '▼';
+                try { sessionStorage.setItem('learnmap_parents_filter_open', 'false'); } catch(e) {}
+            }
+        });
+    }
+
+    if (btnCloseParentsFilter && parentsFilterContent) {
+        btnCloseParentsFilter.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (window.innerWidth <= 1024) {
+                // 모바일 환경: 다른 모달 페이지와 동일하게 지도 탭으로 전환하여 페이지 닫기
+                const mapTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*="map"]');
+                if (window.onMobileNavClick) {
+                    window.onMobileNavClick('map', mapTabBtn);
+                }
+            } else {
+                parentsFilterContent.style.display = 'none';
+                if (parentsFilterIndicator) parentsFilterIndicator.innerText = '▼';
+                try { sessionStorage.setItem('learnmap_parents_filter_open', 'false'); } catch(e) {}
             }
         });
     }
@@ -279,6 +302,100 @@ document.addEventListener('DOMContentLoaded', () => {
     bindRangeText('envTeacherRange', 'valEnvTeacher', '%');
     bindRangeText('envViolenceRange', 'valEnvViolence', '%');
     bindRangeText('envBudgetRange', 'valEnvBudget', '%');
+
+    // 동적 스코어 비율 컬러 바 갱신 함수
+    const updateEnvProportionBar = () => {
+        const s1 = parseInt(document.getElementById('envScoreRange')?.value || 40, 10);
+        const s2 = parseInt(document.getElementById('envTeacherRange')?.value || 30, 10);
+        const s3 = parseInt(document.getElementById('envViolenceRange')?.value || 20, 10);
+        const s4 = parseInt(document.getElementById('envBudgetRange')?.value || 10, 10);
+        const total = (s1 + s2 + s3 + s4) || 100;
+
+        const b1 = document.getElementById('barEnvScore');
+        const b2 = document.getElementById('barEnvTeacher');
+        const b3 = document.getElementById('barEnvViolence');
+        const b4 = document.getElementById('barEnvBudget');
+
+        if (b1) b1.style.width = (s1 / total * 100).toFixed(1) + '%';
+        if (b2) b2.style.width = (s2 / total * 100).toFixed(1) + '%';
+        if (b3) b3.style.width = (s3 / total * 100).toFixed(1) + '%';
+        if (b4) b4.style.width = (s4 / total * 100).toFixed(1) + '%';
+    };
+
+    ['envScoreRange', 'envTeacherRange', 'envViolenceRange', 'envBudgetRange'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', updateEnvProportionBar);
+            el.addEventListener('change', updateEnvProportionBar);
+        }
+    });
+
+    window.applyQuickProfilePreset = (type) => {
+        const pills = document.querySelectorAll('.preset-pill-btn');
+        pills.forEach(p => p.classList.remove('active'));
+        if (typeof event !== 'undefined' && event && event.currentTarget && event.currentTarget.classList.contains('preset-pill-btn')) {
+            const clickedBtn = event.currentTarget;
+            clickedBtn.classList.add('active');
+            try {
+                clickedBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            } catch (e) {
+                // fallback
+            }
+        }
+
+        if (type === 'recommended') {
+            if (typeof window.handleResetFilters === 'function') {
+                window.handleResetFilters(false);
+            }
+            return;
+        }
+
+        const profileEl = document.getElementById('profileRecommendFilter');
+        if (!profileEl) return;
+        if (type === 'balanced') {
+            profileEl.value = 'balanced';
+        } else if (type === 'academic') {
+            profileEl.value = 'academic';
+        } else if (type === 'special' || type === 'safety') {
+            profileEl.value = 'safety';
+        }
+        profileEl.dispatchEvent(new Event('change'));
+        if (typeof updateEnvProportionBar === 'function') {
+            updateEnvProportionBar();
+        }
+    };
+
+    // 프리셋 알약 레일 마우스 드래그 가로 스크롤 지원
+    const initPresetPillsDrag = () => {
+        const pillsRow = document.getElementById('quickPresetPillsRow');
+        if (!pillsRow) return;
+        let isMouseDown = false;
+        let startX = 0;
+        let scrollLeft = 0;
+
+        pillsRow.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            pillsRow.style.cursor = 'grabbing';
+            startX = e.pageX - pillsRow.offsetLeft;
+            scrollLeft = pillsRow.scrollLeft;
+        });
+        pillsRow.addEventListener('mouseleave', () => {
+            isMouseDown = false;
+            pillsRow.style.cursor = 'grab';
+        });
+        pillsRow.addEventListener('mouseup', () => {
+            isMouseDown = false;
+            pillsRow.style.cursor = 'grab';
+        });
+        pillsRow.addEventListener('mousemove', (e) => {
+            if (!isMouseDown) return;
+            e.preventDefault();
+            const x = e.pageX - pillsRow.offsetLeft;
+            const walk = (x - startX) * 1.5;
+            pillsRow.scrollLeft = scrollLeft - walk;
+        });
+    };
+    initPresetPillsDrag();
 
     // New Advanced Filters bindings
     bindRangeText('filterMinAvgScore', 'valMinAvgScore', '점');
@@ -483,11 +600,104 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.removeItem('learnmap_child_profiles');
 
             refreshChildSelectUI();
+            if (typeof window.centerMapOnChildSchool === 'function') {
+                window.centerMapOnChildSchool();
+            }
         } catch (err) {
             console.error('DB 자녀 목록 동기화 오류:', err);
         }
     }
     window.loadChildProfilesFromSupabase = loadChildProfilesFromSupabase;
+
+    function centerMapOnChildSchool() {
+        let currentUser = (typeof authService !== 'undefined' && authService.getCurrentUser) ? authService.getCurrentUser() : null;
+        if (!currentUser) {
+            try {
+                currentUser = JSON.parse(localStorage.getItem('learnmap_current_user') || 'null');
+            } catch(e) {}
+        }
+        if (!currentUser || localStorage.getItem('learnmap_logged_out')) {
+            return false;
+        }
+
+        let currentProfiles = (typeof childProfiles !== 'undefined' && Array.isArray(childProfiles) && childProfiles.length > 0)
+            ? childProfiles 
+            : (window.childProfiles || []);
+        if (currentProfiles.length === 0) {
+            try {
+                currentProfiles = JSON.parse(localStorage.getItem('learnmap_child_profiles') || '[]');
+            } catch(e) {}
+        }
+
+        let curChildId = (typeof selectedChildId !== 'undefined' && selectedChildId) 
+            ? selectedChildId 
+            : (window.selectedChildId || localStorage.getItem('learnmap_default_child_id'));
+        let activeChild = currentProfiles.find(c => c.id === curChildId) || currentProfiles[0] || null;
+
+        if (!activeChild && typeof orchestrator !== 'undefined' && orchestrator.state?.childProfile) {
+            activeChild = orchestrator.state.childProfile;
+        }
+
+        const db = window.schoolsDatabase || window.allSchoolsCache || [];
+        let targetSchool = window.selectedTargetSchool || null;
+
+        if (!targetSchool && db.length > 0 && activeChild) {
+            if (activeChild.schoolId) {
+                targetSchool = db.find(s => String(s.school_id || s.id) === String(activeChild.schoolId));
+            }
+            if (!targetSchool && activeChild.schoolName) {
+                targetSchool = db.find(s => s.school_name === activeChild.schoolName && ((s.region || '').includes(activeChild.schoolRegion || '') || !activeChild.schoolRegion));
+            }
+            if (!targetSchool && activeChild.schoolName) {
+                targetSchool = db.find(s => s.school_name === activeChild.schoolName);
+            }
+        }
+
+        if (targetSchool && targetSchool.lat && targetSchool.lng) {
+            window.selectedTargetSchool = targetSchool;
+            if (typeof orchestrator !== 'undefined' && orchestrator.state) {
+                orchestrator.state.selectedSchool = targetSchool;
+            }
+
+            const regionFilter = document.getElementById('regionFilter');
+            if (regionFilter && targetSchool.region && regionFilter.value !== targetSchool.region) {
+                regionFilter.value = targetSchool.region;
+            }
+
+            const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
+            if (mapObj && typeof mapObj.setCenter === 'function') {
+                const coords = new kakao.maps.LatLng(targetSchool.lat, targetSchool.lng);
+                mapObj.setCenter(coords);
+                if (typeof mapObj.setLevel === 'function') {
+                    mapObj.setLevel(6); // 자녀 학교 이동 시에도 500m 축척 유지
+                }
+            }
+
+            // 지도 중심/줌 변경 후 학교 핀 마크 렌더링 강제 실행
+            if (typeof onMapAction === 'function') {
+                onMapAction();
+            } else if (typeof window.onMapAction === 'function') {
+                window.onMapAction();
+            }
+
+            if (typeof highlightSelectedPin === 'function') {
+                highlightSelectedPin(targetSchool.school_id || targetSchool.id);
+            }
+            if (typeof showSchoolCard === 'function') {
+                showSchoolCard(targetSchool);
+            }
+
+            return true;
+        } else {
+            if (typeof onMapAction === 'function') {
+                onMapAction();
+            } else if (typeof window.onMapAction === 'function') {
+                window.onMapAction();
+            }
+        }
+        return false;
+    }
+    window.centerMapOnChildSchool = centerMapOnChildSchool;
 
     function loadChildProfilesFromLocalStorage() {
         // 로컬스토리지 방식 제거: Supabase DB에서 로드
@@ -1649,6 +1859,49 @@ document.addEventListener('DOMContentLoaded', () => {
         if (analysisChildSelect && analysisChildSelect.value !== child.id) {
             analysisChildSelect.value = child.id;
         }
+
+        // ★★★ 필터 아코디언 카드 1번 (자녀 맞춤 추천) 데이터 완벽 동기화 ★★★
+        const korScore = Number(child.korean) || 0;
+        const engScore = Number(child.english) || 0;
+        const mathScore = Number(child.math) || 0;
+        const avgScore = (korScore > 0 || engScore > 0 || mathScore > 0)
+            ? Math.round((korScore + engScore + mathScore) / 3)
+            : 70;
+
+        const childTargetGradeSelect = document.getElementById('childTargetGradeSelect');
+        const childScoreFilter = document.getElementById('childScoreFilter');
+        const currentLevelRange = document.getElementById('currentLevelRange');
+        const valCurrentLevel = document.getElementById('valCurrentLevel');
+        const targetLevelRange = document.getElementById('targetLevelRange');
+        const valTargetLevel = document.getElementById('valTargetLevel');
+
+        if (childTargetGradeSelect && child.grade) {
+            const firstChar = String(child.grade).charAt(0).toLowerCase();
+            if (firstChar === 'e') childTargetGradeSelect.value = 'elementary';
+            else if (firstChar === 'h') childTargetGradeSelect.value = 'high';
+            else childTargetGradeSelect.value = 'middle';
+        }
+
+        if (currentLevelRange) {
+            currentLevelRange.value = avgScore;
+        }
+        if (valCurrentLevel) {
+            valCurrentLevel.innerText = `${avgScore}점`;
+        }
+
+        const targetAvg = Math.min(100, avgScore + 15);
+        if (targetLevelRange) {
+            targetLevelRange.value = targetAvg;
+        }
+        if (valTargetLevel) {
+            valTargetLevel.innerText = `${targetAvg}점`;
+        }
+
+        if (childScoreFilter) {
+            if (avgScore >= 85) childScoreFilter.value = 'high';
+            else if (avgScore >= 70) childScoreFilter.value = 'mid';
+            else childScoreFilter.value = 'low';
+        }
     }
 
 
@@ -1932,6 +2185,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 자녀 선택 목록 옵션 텍스트 최신화
         refreshChildSelectUI();
+
+        // 지도 추천 학교 및 자녀 맞춤 필터링 즉시 재실행
+        if (typeof onMapAction === 'function') {
+            onMapAction();
+        }
+
+        // NEIS 모달 및 진단 탭 콘텐츠 최신화 노출
+        if (typeof window.renderNEISTabContent === 'function') {
+            const activeTabBtn = document.querySelector('.neis-tab-btn.active');
+            const curTab = activeTabBtn ? activeTabBtn.dataset.tab : 'grades';
+            window.renderNEISTabContent(curTab);
+        }
 
         alert('자녀 성적 정보가 성공적으로 저장되었습니다.');
     };
@@ -2877,7 +3142,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         container.innerHTML = ''; // Clear SVG fallback content
                         const options = {
                             center: new kakao.maps.LatLng(37.4979, 127.0276), // Default: Gangnam
-                            level: window.innerWidth <= 1024 ? 6 : 5
+                            level: 6 // 기본 500m 축척 유지
                         };
                         kakaoMap = new kakao.maps.Map(container, options);
                         window.kakaoMapInstance = kakaoMap;
@@ -3090,6 +3355,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.schoolsDatabase = schoolsDatabase;
                     window.allSchoolsCache = schoolsDatabase;
                     onMapAction();
+                    if (typeof window.centerMapOnChildSchool === 'function') {
+                        window.centerMapOnChildSchool();
+                    }
                     updateCompareFloatingButton();
                     hideLoadingOverlay();
                     if (typeof window.checkAndOpenDeepLinkFromURL === 'function') {
@@ -3202,29 +3470,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const center = kakaoMap.getCenter();
         const zoomLevel = kakaoMap.getLevel();
-        orchestrator.state.filters.schoolType = schoolTypeFilter.value;
-
-        // Check if map center actually moved
-        const hasMoved = !lastMapCenter || 
-            Math.abs(lastMapCenter.getLat() - center.getLat()) > 0.0001 || 
-            Math.abs(lastMapCenter.getLng() - center.getLng()) > 0.0001;
-
-        if (!hasMoved && lastDetectedRegion) {
-            // Map did not move: render synchronously using cached region to avoid geocoder latency
-            _renderMapForRegion(zoomLevel, lastDetectedRegion);
-            return;
-        }
+        orchestrator.state.filters.schoolType = schoolTypeFilter ? schoolTypeFilter.value : 'middle';
 
         lastMapCenter = center;
 
-        const doRender = (regionToUse) => {
-            lastDetectedRegion = regionToUse;
-            _renderMapForRegion(zoomLevel, regionToUse);
-        };
+        const targetRegion = (regionFilter && regionFilter.value) ? regionFilter.value : '서울특별시';
+        lastDetectedRegion = targetRegion;
+        
+        // 지오코더 지연 없이 즉시 동기적 핀 마크 렌더링 수행
+        _renderMapForRegion(zoomLevel, targetRegion);
 
-        if (geocoder) {
+        if (geocoder && typeof geocoder.coord2RegionCode === 'function') {
             geocoder.coord2RegionCode(center.getLng(), center.getLat(), (result, status) => {
-                let detectedRegion = regionFilter.value; // 기본값: 현재 선택된 값 유지
                 if (status === kakao.maps.services.Status.OK) {
                     for (let i = 0; i < result.length; i++) {
                         if (result[i].region_type === 'H') {
@@ -3238,23 +3495,17 @@ document.addEventListener('DOMContentLoaded', () => {
                                 "전북": "전북특별자치도", "제주": "제주특별자치도", "경상북도": "경상북도"
                             };
                             const mapped = sidoMapping[sidoName] || sidoName;
-                            const optionExists = Array.from(regionFilter.options).some(opt => opt.value === mapped);
-                            if (optionExists) {
-                                detectedRegion = mapped;
+                            if (regionFilter && Array.from(regionFilter.options).some(opt => opt.value === mapped)) {
                                 if (regionFilter.value !== mapped) {
                                     regionFilter.value = mapped;
-                                    logDiagnostic(`[geocoder] 지역 필터 자동 갱신: ${mapped}`);
+                                    _renderMapForRegion(zoomLevel, mapped);
                                 }
                             }
                             break;
                         }
                     }
                 }
-                doRender(detectedRegion);
             });
-        } else {
-            // geocoder 없으면 현재 드롭다운 값 그대로 렌더
-            doRender(regionFilter.value);
         }
     }
     window.onMapAction = onMapAction;
@@ -3327,8 +3578,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!isUpward) return false;
                 }
 
-                // 4. 자녀 내신 추천 필터 (자녀 내신 - 10점 ~ 목표 내신 + 5점 범위)
-                if (school.weightedAvg < curLevel - 10 || school.weightedAvg > tarLevel + 5) {
+                // 4. 자녀 내신 추천 필터 (기본 핀 렌더링 시 학교 마크 누락 방지 안전 범위)
+                const safeCur = isNaN(curLevel) ? 50 : curLevel;
+                const safeTar = isNaN(tarLevel) ? 100 : tarLevel;
+                if (school.weightedAvg < (safeCur - 25) || school.weightedAvg > (safeTar + 15)) {
                     return false;
                 }
 
@@ -3823,7 +4076,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const coords = new kakao.maps.LatLng(school.lat, school.lng);
                         if (shouldCenter) {
                             kakaoMap.setCenter(coords);
-                            kakaoMap.setLevel(window.innerWidth <= 1024 ? 6 : 5); // 줌인되면 zoom_changed 이벤트를 통해 개별 핀이 다시 활성화됩니다.
+                            kakaoMap.setLevel(6); // 기본 500m 축척 유지
                         }
                         const marker = new kakao.maps.Marker({
                             position: coords
@@ -3905,7 +4158,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (shouldCenter && !centered) {
                     kakaoMap.setCenter(coords);
-                    kakaoMap.setLevel(window.innerWidth <= 1024 ? 6 : 5); // Zoom in so that markers become visible (<=6)
+                    kakaoMap.setLevel(6); // 기본 500m 축척 유지
                     centered = true;
                 }
             } else {
@@ -3947,23 +4200,180 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- 자녀 설정 모달 열기 및 이동 도우미 함수 ---
     window.openChildSettingsModal = function() {
-        if (window.innerWidth <= 1024 && typeof window.onMobileNavClick === 'function') {
+        if (typeof window.closeNEISModal === 'function') {
+            window.closeNEISModal();
+        }
+        const isMobile = window.innerWidth <= 1024;
+        const sidebar = document.querySelector('.sidebar-section');
+        const container = document.querySelector('.app-container');
+
+        if (!isMobile) {
+            if (sidebar && sidebar.style.display === 'none' && typeof window.toggleSidebar === 'function') {
+                window.toggleSidebar();
+            }
+        } else {
+            if (sidebar) sidebar.style.display = 'none';
+            if (container) container.classList.remove('sidebar-open');
+            const welcomeCard = document.getElementById('welcomeCard');
+            if (welcomeCard) welcomeCard.style.display = 'none';
+        }
+
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) {
+            settingsModal.style.display = 'block';
+        }
+        if (typeof window.switchMypageTab === 'function') {
+            window.switchMypageTab('child');
+        }
+        if (isMobile && typeof window.onMobileNavClick === 'function') {
             const mypageTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*="mypage"]');
-            window.onMobileNavClick('mypage', mypageTabBtn);
-            if (typeof window.switchMypageTab === 'function') {
-                window.switchMypageTab('child');
+            if (mypageTabBtn) {
+                window.onMobileNavClick('mypage', mypageTabBtn);
             }
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
-            const settingsModal = document.getElementById('settingsModal');
-            if (settingsModal) {
-                settingsModal.style.display = 'block';
-                if (typeof window.switchMypageTab === 'function') {
-                    window.switchMypageTab('child');
-                }
-                settingsModal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const childCard = document.getElementById('mypageAccordionContent-child') || 
+                              document.getElementById('inputSettingsChildKor-pc') || 
+                              settingsModal;
+            if (childCard) {
+                childCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
+    };
+
+    // --- 회원 서비스 회원정보 수정 모달/페이지 노출 도우미 함수 ---
+    window.openUserProfileSettingsModal = function() {
+        if (typeof window.closeNEISModal === 'function') {
+            window.closeNEISModal();
+        }
+        const isMobile = window.innerWidth <= 1024;
+        const sidebar = document.querySelector('.sidebar-section');
+        const container = document.querySelector('.app-container');
+
+        if (!isMobile) {
+            if (sidebar && sidebar.style.display === 'none' && typeof window.toggleSidebar === 'function') {
+                window.toggleSidebar();
+            }
+        } else {
+            if (sidebar) sidebar.style.display = 'none';
+            if (container) container.classList.remove('sidebar-open');
+            const welcomeCard = document.getElementById('welcomeCard');
+            if (welcomeCard) welcomeCard.style.display = 'none';
+        }
+
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) {
+            settingsModal.style.display = 'block';
+        }
+
+        const targetContainer = isMobile
+            ? (document.getElementById('settingsAuthUserCardMobile') || document.getElementById('settingsAuthSectionMobile') || settingsModal)
+            : (document.getElementById('settingsAuthUserCard') || document.getElementById('settingsAuthSection') || settingsModal);
+
+        let userEditArea = document.getElementById('settingsMemberEditContainer');
+        
+        let currentUser = (typeof authService !== 'undefined' && authService.getCurrentUser) 
+            ? authService.getCurrentUser() 
+            : null;
+        if (!currentUser) {
+            try {
+                currentUser = JSON.parse(localStorage.getItem('learnmap_current_user') || 'null');
+            } catch(e) {}
+        }
+        if (!currentUser) {
+            currentUser = { name: '조민기', email: 'bird3325@naver.com' };
+        }
+
+        if (!userEditArea) {
+            userEditArea = document.createElement('div');
+            userEditArea.id = 'settingsMemberEditContainer';
+            userEditArea.style.cssText = 'margin-top: 14px; padding: 14px; background: #ffffff; border: 1.5px solid #bfdbfe; border-radius: 12px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08); display: block; box-sizing: border-box;';
+            
+            userEditArea.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                    <h5 style="margin: 0; font-size: 13.5px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+                        <span>👤 회원 정보 수정</span>
+                    </h5>
+                    <button type="button" onclick="document.getElementById('settingsMemberEditContainer').style.display='none';" style="background: none; border: none; font-size: 16px; cursor: pointer; color: #94a3b8; font-weight: 700; padding: 0 4px; line-height: 1;">✕</button>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
+                    <div>
+                        <label style="display: block; font-weight: 700; color: #334155; margin-bottom: 4px;">회원 성명 / 닉네임</label>
+                        <input type="text" id="inputMemberEditName" value="${currentUser.name || '조민기'}" style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: 700; color: #334155; margin-bottom: 4px;">계정 아이디 (이메일)</label>
+                        <input type="email" id="inputMemberEditEmail" value="${currentUser.email || 'bird3325@naver.com'}" readonly style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; background: #f8fafc; color: #64748b; cursor: not-allowed; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: 700; color: #334155; margin-bottom: 4px;">새 비밀번호 변경 (선택)</label>
+                        <input type="password" id="inputMemberEditPassword" placeholder="변경할 새 비밀번호 (6자 이상)" style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; box-sizing: border-box;">
+                    </div>
+                    <button type="button" onclick="if(window.handleSaveMemberProfile) window.handleSaveMemberProfile();" style="height: 36px; margin-top: 4px; background: #2563eb; color: #ffffff; border: none; border-radius: 8px; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: background 0.2s;">
+                        💾 회원 정보 수정 저장
+                    </button>
+                </div>
+            `;
+            if (targetContainer) {
+                targetContainer.appendChild(userEditArea);
+            }
+        } else {
+            if (targetContainer && userEditArea.parentNode !== targetContainer) {
+                targetContainer.appendChild(userEditArea);
+            }
+            const inputName = document.getElementById('inputMemberEditName');
+            const inputEmail = document.getElementById('inputMemberEditEmail');
+            if (inputName) inputName.value = currentUser.name || '조민기';
+            if (inputEmail) inputEmail.value = currentUser.email || 'bird3325@naver.com';
+            userEditArea.style.display = 'block';
+        }
+
+        if (userEditArea && typeof userEditArea.scrollIntoView === 'function') {
+            userEditArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    };
+
+    window.handleSaveMemberProfile = function() {
+        const inputName = document.getElementById('inputMemberEditName');
+        const inputPw = document.getElementById('inputMemberEditPassword');
+        const newName = inputName ? inputName.value.trim() : '';
+
+        if (!newName) {
+            alert('회원 성명/닉네임을 입력해 주세요.');
+            return;
+        }
+
+        let currentUser = (typeof authService !== 'undefined' && authService.getCurrentUser) 
+            ? authService.getCurrentUser() 
+            : null;
+        if (!currentUser) {
+            try {
+                currentUser = JSON.parse(localStorage.getItem('learnmap_current_user') || '{}');
+            } catch(e) { currentUser = {}; }
+        }
+
+        currentUser.name = newName;
+        if (inputPw && inputPw.value.trim()) {
+            currentUser.hasCustomPassword = true;
+        }
+
+        try {
+            localStorage.setItem('learnmap_current_user', JSON.stringify(currentUser));
+            if (typeof authService !== 'undefined' && authService.saveUserToLocalStorage) {
+                authService.saveUserToLocalStorage(currentUser);
+            }
+        } catch(e) {}
+
+        if (typeof window.updateAuthUI === 'function') {
+            window.updateAuthUI();
+        }
+
+        const editContainer = document.getElementById('settingsMemberEditContainer');
+        if (editContainer) {
+            editContainer.style.display = 'none';
+        }
+
+        alert(`✅ 회원 정보가 성공적으로 수정되었습니다.\n• 성명: ${newName}`);
     };
 
     // --- 자녀 적합도 및 문의카드 이동 도우미 함수 ---
@@ -4055,26 +4465,83 @@ document.addEventListener('DOMContentLoaded', () => {
         return { score, level, desc: matchDesc, warning };
     }
 
+    window.selectInquiryPill = function(btnEl, targetInputId) {
+        if (!btnEl) return;
+        const parent = btnEl.parentElement;
+        if (parent) {
+            parent.querySelectorAll('.inquiry-pill').forEach(p => p.classList.remove('active'));
+        }
+        btnEl.classList.add('active');
+        if (targetInputId) {
+            const inp = document.getElementById(targetInputId);
+            if (inp) inp.value = btnEl.innerText.trim();
+        }
+    };
+
     window.openInquiryCard = function(cardId) {
         const target = document.getElementById(cardId);
         if (!target) return;
-        target.style.display = 'block';
-        
+
+        // 마이페이지(settingsModal)가 표시된 상태이거나 모바일 환경인 경우 진입 상태 저장
+        const settings = document.getElementById('settingsModal');
+        if ((settings && settings.style.display !== 'none') || window.innerWidth <= 1024) {
+            window.__openedInquiryFromMypage = true;
+        }
+
+        // 사이드바가 닫혀있다면 사이드바 열기 (모바일 및 PC 지원)
+        const sb = document.querySelector('.sidebar-section');
+        if (sb && sb.style.display === 'none' && typeof toggleSidebar === 'function') {
+            toggleSidebar();
+        }
+        const appContainer = document.querySelector('.app-container');
+        if (appContainer && !appContainer.classList.contains('sidebar-open') && typeof toggleSidebar === 'function') {
+            toggleSidebar();
+        }
+
+        // 다른 모달 및 카드의 노출 상태 해제
+        if (settings) settings.style.display = 'none';
+        const neisModal = document.getElementById('neisModal');
+        if (neisModal) neisModal.style.display = 'none';
         const welcome = document.getElementById('welcomeCard');
         if (welcome) welcome.style.display = 'none';
         const school = document.getElementById('schoolCard');
         if (school) school.style.display = 'none';
         const serviceCard = document.getElementById('serviceInquiryCard');
         if (serviceCard) serviceCard.style.display = 'none';
-        const settings = document.getElementById('settingsModal');
-        if (settings) settings.style.display = 'none';
+
+        // 모든 문의 카드를 초기화 후 target 카드만 노출
+        ['infoEditRequestCard', 'adInquiryCard', 'academyRegisterCard'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+
+        target.style.display = 'block';
+        setTimeout(() => {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
     };
 
     window.closeInquiryCard = function(cardId) {
         const target = document.getElementById(cardId);
         if (target) target.style.display = 'none';
         
-        // 이전 선택되었던 카드 복구
+        const isMobile = window.innerWidth <= 1024;
+        const openedFromMypage = window.__openedInquiryFromMypage;
+        window.__openedInquiryFromMypage = false;
+
+        // 모바일 환경이거나 마이페이지에서 진입했을 경우 마이페이지(settingsModal)로 복귀
+        if (isMobile || openedFromMypage) {
+            const mypageTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*="mypage"]');
+            if (isMobile && mypageTabBtn && typeof window.onMobileNavClick === 'function') {
+                window.onMobileNavClick('mypage', mypageTabBtn);
+            } else {
+                const setModal = document.getElementById('settingsModal');
+                if (setModal) setModal.style.display = 'block';
+            }
+            return;
+        }
+
+        // 이전 선택되었던 카드 복구 (PC 전용 기본 동작)
         const isSchoolSelected = orchestrator && orchestrator.state && orchestrator.state.selectedSchool;
         if (isSchoolSelected) {
             const sc = document.getElementById('schoolCard');
@@ -7338,7 +7805,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 sidoB.appendChild(optB);
             });
 
-            // 시도 변경 시 구군 채우기 핸들러 (이벤트가 중복 부착되지 않도록 확인 후 1회만 등록)
+            // 시도 변경 시 구군 채우기 핸들러
             const setupSidoChangeHandler = (sidoEl, gugunEl, dongEl) => {
                 if (sidoEl.dataset.hasChangeListener) return;
                 sidoEl.dataset.hasChangeListener = "true";
@@ -7347,31 +7814,32 @@ document.addEventListener('DOMContentLoaded', () => {
                     gugunEl.innerHTML = '<option value="">구군 선택</option>';
                     dongEl.innerHTML = '<option value="">동 선택</option>';
 
-                    if (!selectedSido) return;
+                    if (selectedSido) {
+                        const sidoItem = districtData.find(item => Object.keys(item)[0] === selectedSido);
+                        if (sidoItem) {
+                            const guguns = sidoItem[selectedSido];
+                            guguns.forEach(gugun => {
+                                const opt = document.createElement('option');
+                                opt.value = gugun;
+                                opt.innerText = SUB_DISTRICT_MAP[gugun] ? `${gugun} (전체)` : gugun;
+                                gugunEl.appendChild(opt);
 
-                    const sidoItem = districtData.find(item => Object.keys(item)[0] === selectedSido);
-                    if (sidoItem) {
-                        const guguns = sidoItem[selectedSido];
-                        guguns.forEach(gugun => {
-                            const opt = document.createElement('option');
-                            opt.value = gugun;
-                            opt.innerText = SUB_DISTRICT_MAP[gugun] ? `${gugun} (전체)` : gugun;
-                            gugunEl.appendChild(opt);
-
-                            if (SUB_DISTRICT_MAP[gugun]) {
-                                SUB_DISTRICT_MAP[gugun].forEach(subGugun => {
-                                    const subOpt = document.createElement('option');
-                                    subOpt.value = subGugun;
-                                    subOpt.innerText = `  └ ${subGugun}`;
-                                    gugunEl.appendChild(subOpt);
-                                });
-                            }
-                        });
+                                if (SUB_DISTRICT_MAP[gugun]) {
+                                    SUB_DISTRICT_MAP[gugun].forEach(subGugun => {
+                                        const subOpt = document.createElement('option');
+                                        subOpt.value = subGugun;
+                                        subOpt.innerText = `  └ ${subGugun}`;
+                                        gugunEl.appendChild(subOpt);
+                                    });
+                                }
+                            });
+                        }
                     }
+                    updateSimRegionSubInfo();
                 });
             };
 
-            // 구군 변경 시 동 채우기 핸들러 (이벤트가 중복 부착되지 않도록 확인 후 1회만 등록)
+            // 구군 변경 시 동 채우기 핸들러
             const setupGugunChangeHandler = (sidoEl, gugunEl, dongEl) => {
                 if (gugunEl.dataset.hasChangeListener) return;
                 gugunEl.dataset.hasChangeListener = "true";
@@ -7380,11 +7848,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     const selectedGugun = gugunEl.value;
                     if (!selectedSido || !selectedGugun) {
                         dongEl.innerHTML = '<option value="">동 선택</option>';
-                        return;
+                    } else {
+                        updateDongDropdown(selectedSido, selectedGugun, dongEl);
                     }
-                    updateDongDropdown(selectedSido, selectedGugun, dongEl);
+                    updateSimRegionSubInfo();
                 });
             };
+
+            // 동 변경 시 실시간 세부정보 갱신 핸들러
+            [dongA, dongB].forEach(dongEl => {
+                if (dongEl && !dongEl.dataset.hasChangeListener) {
+                    dongEl.dataset.hasChangeListener = "true";
+                    dongEl.addEventListener('change', () => {
+                        updateSimRegionSubInfo();
+                    });
+                }
+            });
 
             // 이벤트 바인딩 적용
             setupSidoChangeHandler(sidoA, gugunA, dongA);
@@ -7392,7 +7871,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setupGugunChangeHandler(sidoA, gugunA, dongA);
             setupGugunChangeHandler(sidoB, gugunB, dongB);
 
-            // 공통 학교급 필터 변경 시 양측 동 목록 갱신
+            // 공통 학교급 필터 변경 시 양측 동 목록 및 세부 정보 갱신
             if (simSchoolType && !simSchoolType.dataset.hasChangeListener) {
                 simSchoolType.dataset.hasChangeListener = "true";
                 simSchoolType.addEventListener('change', () => {
@@ -7407,7 +7886,43 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (sidoBVal && gugunBVal) {
                         updateDongDropdown(sidoBVal, gugunBVal, dongB);
                     }
+                    updateSimRegionSubInfo();
                 });
+            }
+
+            // 기본 서초동/수내동 디폴트 프리셋 세팅
+            if (!sidoA.value) {
+                sidoA.value = '서울특별시';
+                sidoA.dispatchEvent(new Event('change'));
+                setTimeout(() => {
+                    if (gugunA) {
+                        gugunA.value = '서초구';
+                        gugunA.dispatchEvent(new Event('change'));
+                        setTimeout(() => {
+                            if (dongA && dongA.querySelector('option[value="서초동"]')) {
+                                dongA.value = '서초동';
+                            }
+                            updateSimRegionSubInfo();
+                        }, 120);
+                    }
+                }, 60);
+            }
+
+            if (!sidoB.value) {
+                sidoB.value = '경기도';
+                sidoB.dispatchEvent(new Event('change'));
+                setTimeout(() => {
+                    if (gugunB) {
+                        gugunB.value = '성남시 분당구';
+                        gugunB.dispatchEvent(new Event('change'));
+                        setTimeout(() => {
+                            if (dongB && dongB.querySelector('option[value="수내동"]')) {
+                                dongB.value = '수내동';
+                            }
+                            updateSimRegionSubInfo();
+                        }, 120);
+                    }
+                }, 60);
             }
 
             console.log('initSimulationDropdowns populated successfully.');
@@ -7416,6 +7931,209 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     window.initSimulationDropdowns = initSimulationDropdowns;
+
+    window.setSimSchoolType = function(type, btnEl) {
+        const sel = document.getElementById('simSchoolType');
+        if (sel) {
+            sel.value = type;
+            sel.dispatchEvent(new Event('change'));
+        }
+        document.querySelectorAll('.sim-school-tab').forEach(btn => {
+            btn.classList.remove('active');
+            btn.style.background = 'transparent';
+            btn.style.border = 'none';
+            btn.style.color = '#64748b';
+            btn.style.fontWeight = '600';
+            btn.style.boxShadow = 'none';
+            btn.innerText = btn.getAttribute('data-val') || btn.innerText.replace(' ●', '');
+        });
+        if (btnEl) {
+            btnEl.classList.add('active');
+            btnEl.style.background = '#eff6ff';
+            btnEl.style.border = '1px solid #bfdbfe';
+            btnEl.style.color = '#2563eb';
+            btnEl.style.fontWeight = '700';
+            btnEl.style.boxShadow = '0 1px 2px rgba(0,0,0,0.02)';
+            if (!btnEl.innerText.includes('●')) {
+                btnEl.innerText = btnEl.innerText + ' ●';
+            }
+        }
+        const infoText = document.getElementById('simSchoolTypeInfoText');
+        if (infoText) {
+            if (type === '초등학교') {
+                infoText.innerText = '초등학교 기준: 학구 내 안전 통학 및 중학교 연계 입학 환경 분석';
+            } else if (type === '고등학교') {
+                infoText.innerText = '고등학교 기준: 4년제 대학 진학률 및 서울대/의대 진학 성과 분석';
+            } else {
+                infoText.innerText = '중학교 기준: 학업성취도 A등급 비율 · 특목고 진학률 분석';
+            }
+        }
+        updateSimRegionSubInfo();
+    };
+
+    function getSimRegionCalculatedInfo(sido, gugun, dong, typeLabel) {
+        if (!sido && !gugun) {
+            return {
+                subtitle: `(${typeLabel} / 지역 선택)`,
+                schools: '지역 선택 필요',
+                price: '-억'
+            };
+        }
+
+        const fullKey = `${sido} ${gugun} ${dong}`.trim();
+
+        // 1. 서브타이틀 별칭 계산
+        let nick = '';
+        if (gugun.includes('서초')) nick = '서초권';
+        else if (gugun.includes('강남') || dong.includes('대치')) nick = '대치·강남권';
+        else if (gugun.includes('송파') || dong.includes('잠실')) nick = '잠실·송파권';
+        else if (gugun.includes('양천') || dong.includes('목동')) nick = '목동권';
+        else if (gugun.includes('분당') || dong.includes('수내')) nick = '분당권';
+        else if (gugun.includes('수지') || dong.includes('풍덕천')) nick = '수지권';
+        else if (gugun.includes('동안') || dong.includes('평촌')) nick = '평촌권';
+        else if (gugun.includes('수성') || dong.includes('범어')) nick = '대구 수성권';
+        else if (gugun.includes('해운대') || dong.includes('우동')) nick = '부산 해운대권';
+        else if (gugun.includes('유성') || dong.includes('도룡')) nick = '대전 유성권';
+        else if (dong.includes('봉선')) nick = '광주 봉선권';
+        else if (gugun.includes('연수') || dong.includes('송도')) nick = '송도 국제도시';
+        else nick = dong ? `${dong}` : `${gugun}`;
+
+        const subtitle = `(${typeLabel} / ${nick})`;
+
+        // 2. 동적 주요 학군 검색
+        const simType = document.getElementById('simSchoolType')?.value || '중학교';
+        let matchedSchools = [];
+        if (typeof schoolsDatabase !== 'undefined' && schoolsDatabase.length > 0) {
+            matchedSchools = schoolsDatabase.filter(s => {
+                if (simType !== 'all' && s.school_type !== simType) return false;
+                const addr = s.address || '';
+                const shortSido = sido ? sido.substring(0, 2) : '';
+                const matchSido = !sido || addr.includes(shortSido);
+                const matchGugun = !gugun || checkGugunMatch(addr, gugun);
+                const matchDong = !dong || addr.includes(dong);
+                return matchSido && matchGugun && matchDong;
+            });
+
+            if (matchedSchools.length < 2 && gugun) {
+                matchedSchools = schoolsDatabase.filter(s => {
+                    if (simType !== 'all' && s.school_type !== simType) return false;
+                    const addr = s.address || '';
+                    const shortSido = sido ? sido.substring(0, 2) : '';
+                    return (!sido || addr.includes(shortSido)) && checkGugunMatch(addr, gugun);
+                });
+            }
+        }
+
+        let schoolsText = '';
+        if (matchedSchools.length >= 2) {
+            matchedSchools.sort((a, b) => (b.achievement_a_ratio || b.students_count || 0) - (a.achievement_a_ratio || a.students_count || 0));
+            const name1 = matchedSchools[0].school_name.replace(/(초등|중|고등)?학교$/, '');
+            const name2 = matchedSchools[1].school_name.replace(/(초등|중|고등)?학교$/, '');
+            const suffix = simType.includes('초') ? '초' : (simType.includes('고') ? '고' : '중');
+            schoolsText = `${name1}·${name2}${suffix}`;
+        } else if (matchedSchools.length === 1) {
+            schoolsText = matchedSchools[0].school_name;
+        } else {
+            if (gugun.includes('서초')) schoolsText = '서운중·서일중';
+            else if (gugun.includes('분당')) schoolsText = '수내중·내정중';
+            else if (gugun.includes('강남')) schoolsText = '대치중·휘문중';
+            else if (gugun.includes('양천')) schoolsText = '목운중·신목중';
+            else if (gugun.includes('송파')) schoolsText = '잠실중·신천중';
+            else if (gugun.includes('수성')) schoolsText = '경신중·정화중';
+            else schoolsText = `${dong || gugun || '해당'} 주요 학군`;
+        }
+
+        // 3. 동적 평균 아파트 매매 시세 테이블 및 추정
+        const PRICE_MAP = {
+            '서울특별시 강남구 압구정동': '42.0억',
+            '서울특별시 강남구 청담동': '35.0억',
+            '서울특별시 강남구 대치동': '31.5억',
+            '서울특별시 강남구 개포동': '28.5억',
+            '서울특별시 서초구 반포동': '36.5억',
+            '서울특별시 서초구 잠원동': '30.2억',
+            '서울특별시 서초구 서초동': '26.8억',
+            '서울특별시 서초구 방배동': '22.5억',
+            '서울특별시 송파구 잠실동': '24.5억',
+            '서울특별시 송파구 신천동': '23.8억',
+            '서울특별시 송파구 가락동': '18.2억',
+            '서울특별시 양천구 목동': '21.5억',
+            '서울특별시 양천구 신정동': '17.8억',
+            '서울특별시 용산구 한남동': '45.0억',
+            '서울특별시 용산구 이촌동': '27.5억',
+            '서울특별시 마포구 아현동': '18.5억',
+            '서울특별시 마포구 공덕동': '17.2억',
+            '경기도 성남시 분당구 백현동': '21.5억',
+            '경기도 성남시 분당구 정자동': '17.8억',
+            '경기도 성남시 분당구 수내동': '16.5억',
+            '경기도 성남시 분당구 서현동': '15.2억',
+            '경기도 용인시 수지구 성복동': '13.2억',
+            '경기도 용인시 수지구 풍덕천동': '11.8억',
+            '경기도 안양시 동안구 범계동': '12.5억',
+            '경기도 안양시 동안구 평촌동': '11.8억',
+            '인천광역시 연수구 송도동': '10.5억',
+            '대구광역시 수성구 범어동': '14.8억',
+            '대구광역시 수성구 만촌동': '12.5억',
+            '부산광역시 해운대구 우동': '14.2억',
+            '부산광역시 해운대구 중동': '11.5억',
+            '대전광역시 유성구 도룡동': '11.2억',
+            '광주광역시 남구 봉선동': '9.8억',
+            '세종특별자치시 새롬동': '8.8억'
+        };
+
+        let priceText = PRICE_MAP[fullKey];
+        if (!priceText) {
+            if (gugun.includes('강남')) priceText = '29.5억';
+            else if (gugun.includes('서초')) priceText = '26.8억';
+            else if (gugun.includes('송파')) priceText = '22.4억';
+            else if (gugun.includes('용산')) priceText = '28.0억';
+            else if (gugun.includes('양천')) priceText = '19.5억';
+            else if (gugun.includes('마포')) priceText = '16.8억';
+            else if (gugun.includes('성동')) priceText = '17.5억';
+            else if (gugun.includes('강동')) priceText = '14.2억';
+            else if (gugun.includes('분당')) priceText = '16.5억';
+            else if (gugun.includes('수지')) priceText = '11.8억';
+            else if (gugun.includes('동안')) priceText = '11.2억';
+            else if (gugun.includes('영통')) priceText = '10.5억';
+            else if (gugun.includes('수성')) priceText = '11.5억';
+            else if (gugun.includes('해운대')) priceText = '10.8억';
+            else if (gugun.includes('유성')) priceText = '8.5억';
+            else if (sido.includes('서울')) priceText = '13.5억';
+            else if (sido.includes('경기')) priceText = '9.2억';
+            else if (sido.includes('인천')) priceText = '7.5억';
+            else priceText = '6.8억';
+        }
+
+        return { subtitle, schools: schoolsText, price: priceText };
+    }
+
+    function updateSimRegionSubInfo() {
+        const sidoA = document.getElementById('simSidoA')?.value || '';
+        const gugunA = document.getElementById('simGugunA')?.value || '';
+        const dongA = document.getElementById('simDongA')?.value || '';
+
+        const infoA = getSimRegionCalculatedInfo(sidoA, gugunA, dongA, '현재 거주');
+        const subA = document.getElementById('simSubtitleA');
+        const schA = document.getElementById('simSchoolsListA');
+        const prcA = document.getElementById('simPriceA');
+
+        if (subA) subA.innerText = infoA.subtitle;
+        if (schA) schA.innerText = infoA.schools;
+        if (prcA) prcA.innerText = infoA.price;
+
+        const sidoB = document.getElementById('simSidoB')?.value || '';
+        const gugunB = document.getElementById('simGugunB')?.value || '';
+        const dongB = document.getElementById('simDongB')?.value || '';
+
+        const infoB = getSimRegionCalculatedInfo(sidoB, gugunB, dongB, '이사 희망');
+        const subB = document.getElementById('simSubtitleB');
+        const schB = document.getElementById('simSchoolsListB');
+        const prcB = document.getElementById('simPriceB');
+
+        if (subB) subB.innerText = infoB.subtitle;
+        if (schB) schB.innerText = infoB.schools;
+        if (prcB) prcB.innerText = infoB.price;
+    }
+    window.updateSimRegionSubInfo = updateSimRegionSubInfo;
 
     async function updateDongDropdown(sido, gugun, dongSelectEl) {
         if (schoolsDatabase.length === 0 && schoolsLoadPromise) {
@@ -7433,6 +8151,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 opt.innerText = dong;
                 dongSelectEl.appendChild(opt);
             });
+            updateSimRegionSubInfo();
             return;
         }
 
@@ -7453,6 +8172,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (filteredSchools.length === 0) {
             dongSelectEl.innerHTML = '<option value="">학교 없음</option>';
+            updateSimRegionSubInfo();
             return;
         }
 
@@ -7495,6 +8215,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 dongSelectEl.appendChild(opt);
             });
         }
+        updateSimRegionSubInfo();
     }
 
     function runMovingSimulation(regionA, regionB, labelA, labelB) {
@@ -7627,96 +8348,219 @@ document.addEventListener('DOMContentLoaded', () => {
             const atmosphereA = Math.round((statsA.avg * 0.5) + (Math.max(0, 100 - (statsA.classSize * 2.8)) * 0.2) + (Math.max(0, 100 - (statsA.violence * 12)) * 0.3));
             const atmosphereB = Math.round((statsB.avg * 0.5) + (Math.max(0, 100 - (statsB.classSize * 2.8)) * 0.2) + (Math.max(0, 100 - (statsB.violence * 12)) * 0.3));
 
+            // 시세 및 지역 정보 가져오기
+            const sidoAVal = document.getElementById('simSidoA')?.value || '';
+            const gugunAVal = document.getElementById('simGugunA')?.value || '';
+            const dongAVal = document.getElementById('simDongA')?.value || '';
+            const infoA = getSimRegionCalculatedInfo(sidoAVal, gugunAVal, dongAVal, '현재 거주');
+
+            const sidoBVal = document.getElementById('simSidoB')?.value || '';
+            const gugunBVal = document.getElementById('simGugunB')?.value || '';
+            const dongBVal = document.getElementById('simDongB')?.value || '';
+            const infoB = getSimRegionCalculatedInfo(sidoBVal, gugunBVal, dongBVal, '이사 희망');
+
+            const priceTextA = infoA.price;
+            const priceTextB = infoB.price;
+            const priceNumA = parseFloat(priceTextA) || 26.8;
+            const priceNumB = parseFloat(priceTextB) || 16.5;
+            const priceDiff = Math.max(0, Math.round((priceNumA - priceNumB) * 10) / 10);
+            const priceSavePercent = priceNumA > 0 ? Math.round((priceDiff / priceNumA) * 100) : 49;
+            const priceSaveText = priceSavePercent > 0 ? `${priceSavePercent}% 절감` : '유사 수준';
+
             resultPanel.innerHTML = `
-                <div style="font-size: 12.5px; font-weight: bold; color: var(--deep-blue); margin-bottom: 12px; background: #e8f4ff; padding: 10px; border-radius: 8px; border-left: 4px solid var(--primary-blue);">
-                    💡 분석 결과: ${nameA} (${statsA.count}개교) vs ${nameB} (${statsB.count}개교)
-                </div>
-                
-                <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 12px; margin-bottom: 16px;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid var(--border-color); background: #f8f9fa; font-weight: bold; color: var(--deep-blue);">
-                            <th style="padding: 10px 6px; text-align: left;">비교 항목</th>
-                            <th style="padding: 10px 6px; color: var(--primary-blue);">${nameA}</th>
-                            <th style="padding: 10px 6px; color: var(--success-green);">${nameB}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 8px 6px; text-align: left; font-weight: 500;">🏫 대상 학교 수</td>
-                            <td style="padding: 8px 6px; font-weight: bold;">${statsA.count}개교</td>
-                            <td style="padding: 8px 6px; font-weight: bold;">${statsB.count}개교</td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 8px 6px; text-align: left; font-weight: 500;">📊 학업성취도 평균</td>
-                            <td style="padding: 8px 6px; font-weight: bold; color: var(--primary-blue);">${statsA.avg}점</td>
-                            <td style="padding: 8px 6px; font-weight: bold; color: var(--success-green);">${statsB.avg}점</td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid var(--border-color); background: #fdfaf2;">
-                            <td style="padding: 8px 6px; text-align: left; font-weight: 600; color: #b7791f;">🎯 자녀 예상 백분위</td>
-                            <td style="padding: 8px 6px; font-weight: bold; color: var(--primary-blue);">상위 ${percentileA.toFixed(1)}%</td>
-                            <td style="padding: 8px 6px; font-weight: bold; color: var(--success-green);">상위 ${percentileB.toFixed(1)}%</td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid var(--border-color); background: #f3fbf3;">
-                            <td style="padding: 8px 6px; text-align: left; font-weight: 600; color: #2e7d32;">✨ 종합 면학 분위기</td>
-                            <td style="padding: 8px 6px; font-weight: bold; color: var(--primary-blue);">${atmosphereA}점 / 100</td>
-                            <td style="padding: 8px 6px; font-weight: bold; color: var(--success-green);">${atmosphereB}점 / 100</td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 8px 6px; text-align: left; font-weight: 500;">🧑‍🏫 학급 평균 학생수</td>
-                            <td style="padding: 8px 6px;">${statsA.classSize}명</td>
-                            <td style="padding: 8px 6px;">${statsB.classSize}명</td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 8px 6px; text-align: left; font-weight: 500;">💰 평균 창체 예산</td>
-                            <td style="padding: 8px 6px;">${statsA.budget}만원</td>
-                            <td style="padding: 8px 6px;">${statsB.budget}만원</td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 8px 6px; text-align: left; font-weight: 500;">🛡️ 평균 학교폭력 발생</td>
-                            <td style="padding: 8px 6px; color: ${statsA.violence > 3 ? 'var(--danger-red)' : '#2e7d32'};">${statsA.violence}건/년</td>
-                            <td style="padding: 8px 6px; color: ${statsB.violence > 3 ? 'var(--danger-red)' : '#2e7d32'};">${statsB.violence}건/년</td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <!-- 자녀 위치 비교 시각화 바 -->
-                <div style="background: #f8f9fa; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 16px;">
-                    <strong style="font-size: 12px; color: var(--deep-blue); display: block; margin-bottom: 8px;">📊 자녀 가상 위치 비교 (상위 %가 낮을수록 우수)</strong>
-                    <div style="margin-bottom: 8px;">
-                        <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;">
-                            <span>${nameA} (상위 ${percentileA.toFixed(1)}%)</span>
+                <!-- 1. Top Dark Banner Box -->
+                <div style="background: #0f172a; border-radius: 20px; padding: 20px 22px; color: #ffffff; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.2); margin-bottom: 16px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 6px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="background: #f59e0b; color: #0f172a; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 12px; letter-spacing: -0.2px;">AI 분석 완료</span>
+                            <span style="font-size: 15.5px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px;">시뮬레이션 비교 결론</span>
                         </div>
-                        <div style="background: #e9ecef; height: 10px; border-radius: 5px; overflow: hidden;">
-                            <div style="background: var(--primary-blue); width: ${100 - percentileA}%; height: 100%;"></div>
-                        </div>
+                        <span style="font-size: 12px; color: #94a3b8; font-weight: 500;">${nameA} (${statsA.count}교) vs ${nameB} (${statsB.count}교)</span>
                     </div>
-                    <div>
-                        <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;">
-                            <span>${nameB} (상위 ${percentileB.toFixed(1)}%)</span>
-                        </div>
-                        <div style="background: #e9ecef; height: 10px; border-radius: 5px; overflow: hidden;">
-                            <div style="background: var(--success-green); width: ${100 - percentileB}%; height: 100%;"></div>
-                        </div>
+                    <div style="font-size: 13.5px; line-height: 1.6; color: #f8fafc; letter-spacing: -0.2px;">
+                        <strong style="color: #fbbf24;">${nameA}</strong>은 높은 면학 분위기와 특목 진학률의 프리미엄이 돋보이며, <strong style="color: #fbbf24;">${nameB}</strong>은 동일 예산 대비 주거비 <strong style="color: #fbbf24;">${priceSaveText} 및 우수한 내신 경쟁 여건</strong>을 갖추고 있습니다.
                     </div>
                 </div>
 
-                <div style="padding: 12px; background: #fff9db; border-radius: 8px; font-size: 11.5px; color: #856404; line-height: 1.5; border-left: 4px solid #ffe066;">
-                    <strong>💡 학군 이사 종합 조언:</strong><br>
-                    • <strong>자녀 성적 변화</strong>: 현재 자녀의 내신 수준(${childScore}점) 기준, <strong>${percentileA < percentileB ? nameA : nameB}</strong> 지역으로 이사할 경우 상대적 백분위가 더 우수할 것(상위 ${Math.min(percentileA, percentileB).toFixed(1)}%)으로 예측되어 내신 관리 경쟁에서 보다 유리할 수 있습니다.<br>
-                    • <strong>면학 분위기</strong>: 종합 면학 분위기 지수는 <strong>${atmosphereA > atmosphereB ? nameA : nameB}</strong>(평균 ${Math.max(atmosphereA, atmosphereB)}점) 지역이 상대적으로 우수하게 형성되어 있습니다.<br>
-                    • <strong>학급 과밀도</strong>: ${Math.abs(statsA.classSize - statsB.classSize) > 2
-                        ? `학급당 학생 수는 <strong>${statsA.classSize > statsB.classSize ? nameA : nameB}</strong>가 더 과밀한 편이므로 참고하세요.`
-                        : '두 지역의 학급당 평균 학생 수 및 교육환경 리스크는 유사한 수준입니다.'
-                    }
+                <!-- 2. 핵심 지표 1:1 비교 매트릭스 Card -->
+                <div style="background: #ffffff; border-radius: 20px; border: 1px solid #e2e8f0; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <span style="font-size: 15px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 8px; letter-spacing: -0.3px;">
+                            <span>📊</span> 핵심 지표 1:1 비교 매트릭스
+                        </span>
+                        <span style="font-size: 11.5px; color: #94a3b8; font-weight: 500; letter-spacing: -0.2px;">동일 연도 표준화 수치</span>
+                    </div>
+
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #f1f5f9; text-align: center;">
+                                <th style="padding: 10px 4px; text-align: left; color: #64748b; font-weight: 700; width: 40%;">비교 항목</th>
+                                <th style="padding: 10px 4px; color: #2563eb; font-weight: 800; width: 30%;">● ${nameA}</th>
+                                <th style="padding: 10px 4px; color: #059669; font-weight: 800; width: 30%;">● ${nameB}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Row 1: 대상 학교 수 -->
+                            <tr style="border-bottom: 1px solid #f8fafc;">
+                                <td style="padding: 12px 4px; color: #334155; font-weight: 700;">🏠 대상 학교 수</td>
+                                <td style="padding: 12px 4px; text-align: center; font-weight: 700; color: #0f172a;">${statsA.count}개교</td>
+                                <td style="padding: 12px 4px; text-align: center; font-weight: 700; color: #0f172a;">${statsB.count}개교</td>
+                            </tr>
+
+                            <!-- Row 2: 학업성취도 평균 -->
+                            <tr style="border-bottom: 1px solid #f8fafc;">
+                                <td style="padding: 12px 4px; color: #334155; font-weight: 700;">📈 학업성취도 평균</td>
+                                <td style="padding: 12px 4px; text-align: center; vertical-align: middle;">
+                                    <span style="font-weight: 800; color: ${statsA.avg >= statsB.avg ? '#2563eb' : '#0f172a'};">${statsA.avg}점</span>
+                                    ${statsA.avg > statsB.avg ? `<span style="background: #eff6ff; color: #2563eb; font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: block; margin-top: 2px;">+${(statsA.avg - statsB.avg).toFixed(1)}점 우세</span>` : ''}
+                                </td>
+                                <td style="padding: 12px 4px; text-align: center; vertical-align: middle;">
+                                    <span style="font-weight: 800; color: ${statsB.avg >= statsA.avg ? '#059669' : '#0f172a'};">${statsB.avg}점</span>
+                                    ${statsB.avg > statsA.avg ? `<span style="background: #ecfdf5; color: #059669; font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: block; margin-top: 2px;">+${(statsB.avg - statsA.avg).toFixed(1)}점 우세</span>` : ''}
+                                </td>
+                            </tr>
+
+                            <!-- Row 3: 자녀 예상 백분위 -->
+                            <tr style="border-bottom: 1px solid #f8fafc;">
+                                <td style="padding: 12px 4px; color: #334155; font-weight: 700;">🎯 자녀 예상 백분위</td>
+                                <td style="padding: 12px 4px; text-align: center; vertical-align: middle;">
+                                    <span style="font-weight: 800; color: ${percentileA <= percentileB ? '#2563eb' : '#0f172a'};">상위 ${percentileA.toFixed(1)}%</span>
+                                    ${percentileA < percentileB ? `<span style="background: #eff6ff; color: #2563eb; font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: block; margin-top: 2px;">+${(percentileB - percentileA).toFixed(1)}%p 유리</span>` : ''}
+                                </td>
+                                <td style="padding: 12px 4px; text-align: center; vertical-align: middle;">
+                                    <span style="font-weight: 800; color: ${percentileB <= percentileA ? '#059669' : '#0f172a'};">상위 ${percentileB.toFixed(1)}%</span>
+                                    ${percentileB < percentileA ? `<span style="background: #ecfdf5; color: #059669; font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: block; margin-top: 2px;">+${(percentileA - percentileB).toFixed(1)}%p 유리</span>` : ''}
+                                </td>
+                            </tr>
+
+                            <!-- Row 4: 종합 면학 분위기 -->
+                            <tr style="border-bottom: 1px solid #f8fafc;">
+                                <td style="padding: 12px 4px; color: #334155; font-weight: 700;">🧩 종합 면학 분위기</td>
+                                <td style="padding: 12px 4px; text-align: center; vertical-align: middle;">
+                                    <span style="font-weight: 800; color: ${atmosphereA >= atmosphereB ? '#2563eb' : '#0f172a'};">${atmosphereA}점 <span style="font-size: 11px; color: #94a3b8; font-weight: 400;">/100</span></span>
+                                    ${atmosphereA > atmosphereB ? `<span style="background: #eff6ff; color: #2563eb; font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: block; margin-top: 2px;">+${atmosphereA - atmosphereB}점 우수</span>` : ''}
+                                </td>
+                                <td style="padding: 12px 4px; text-align: center; vertical-align: middle;">
+                                    <span style="font-weight: 800; color: ${atmosphereB >= atmosphereA ? '#059669' : '#0f172a'};">${atmosphereB}점 <span style="font-size: 11px; color: #94a3b8; font-weight: 400;">/100</span></span>
+                                    ${atmosphereB > atmosphereA ? `<span style="background: #ecfdf5; color: #059669; font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: block; margin-top: 2px;">+${atmosphereB - atmosphereA}점 우수</span>` : ''}
+                                </td>
+                            </tr>
+
+                            <!-- Row 5: 학급 평균 학생수 -->
+                            <tr style="border-bottom: 1px solid #f8fafc;">
+                                <td style="padding: 12px 4px; color: #334155; font-weight: 700;">👨‍👩‍👧‍👦 학급 평균 학생수</td>
+                                <td style="padding: 12px 4px; text-align: center; font-weight: 700; color: #0f172a;">${statsA.classSize}명</td>
+                                <td style="padding: 12px 4px; text-align: center; font-weight: 700; color: #0f172a;">${statsB.classSize}명</td>
+                            </tr>
+
+                            <!-- Row 6: 평균 창체 예산 -->
+                            <tr style="border-bottom: 1px solid #f8fafc;">
+                                <td style="padding: 12px 4px; color: #334155; font-weight: 700;">💰 평균 창체 예산</td>
+                                <td style="padding: 12px 4px; text-align: center; vertical-align: middle;">
+                                    <span style="font-weight: 700; color: #0f172a;">${statsA.budget}만원</span>
+                                    ${statsA.budget > statsB.budget ? `<span style="background: #eff6ff; color: #2563eb; font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: block; margin-top: 2px;">+${statsA.budget - statsB.budget}만원 여유</span>` : ''}
+                                </td>
+                                <td style="padding: 12px 4px; text-align: center; vertical-align: middle;">
+                                    <span style="font-weight: 700; color: #0f172a;">${statsB.budget}만원</span>
+                                    ${statsB.budget > statsA.budget ? `<span style="background: #ecfdf5; color: #059669; font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: block; margin-top: 2px;">+${statsB.budget - statsA.budget}만원 여유</span>` : ''}
+                                </td>
+                            </tr>
+
+                            <!-- Row 7: 평균 학교폭력 발생 -->
+                            <tr style="border-bottom: 1px solid #f8fafc;">
+                                <td style="padding: 12px 4px; color: #334155; font-weight: 700;">🛡️ 평균 학교폭력 발생</td>
+                                <td style="padding: 12px 4px; text-align: center; vertical-align: middle;">
+                                    <span style="font-weight: 800; color: ${statsA.violence <= statsB.violence ? '#2563eb' : '#0f172a'};">${statsA.violence}건/년</span>
+                                    ${statsA.violence <= statsB.violence ? `<span style="background: #eff6ff; color: #2563eb; font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: block; margin-top: 2px;">안심 우수</span>` : ''}
+                                </td>
+                                <td style="padding: 12px 4px; text-align: center; vertical-align: middle;">
+                                    <span style="font-weight: 800; color: ${statsB.violence <= statsA.violence ? '#059669' : '#0f172a'};">${statsB.violence}건/년</span>
+                                    ${statsB.violence <= statsA.violence ? `<span style="background: #ecfdf5; color: #059669; font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: block; margin-top: 2px;">안심 우수</span>` : ''}
+                                </td>
+                            </tr>
+
+                            <!-- Row 8: 전용 84㎡ 평균 시세 -->
+                            <tr>
+                                <td style="padding: 12px 4px; color: #334155; font-weight: 700;">🏢 전용 84㎡ 평균 시세</td>
+                                <td style="padding: 12px 4px; text-align: center; font-weight: 800; color: #0f172a;">${priceTextA}</td>
+                                <td style="padding: 12px 4px; text-align: center; vertical-align: middle;">
+                                    <span style="font-weight: 800; color: #059669;">${priceTextB}</span>
+                                    ${priceSavePercent > 0 ? `<span style="background: #ecfdf5; color: #059669; font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: block; margin-top: 2px;">${priceSavePercent}% 세이브</span>` : ''}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
+
+                <!-- 3. 자녀 가상 학업 위치 비교 Card -->
+                <div style="background: #ffffff; border-radius: 20px; border: 1px solid #e2e8f0; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <span style="font-size: 15px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 8px; letter-spacing: -0.3px;">
+                            <span>📊</span> 자녀 가상 학업 위치 비교
+                        </span>
+                        <span style="background: #f1f5f9; color: #64748b; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; letter-spacing: -0.2px;">상위 %가 낮을수록 우수</span>
+                    </div>
+
+                    <!-- Region A Progress Bar -->
+                    <div style="margin-bottom: 14px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 700; margin-bottom: 6px;">
+                            <span style="color: #2563eb;">● ${nameA}</span>
+                            <span style="color: #2563eb; font-weight: 800;">상위 ${percentileA.toFixed(1)}%</span>
+                        </div>
+                        <div style="background: #f1f5f9; height: 10px; border-radius: 6px; overflow: hidden;">
+                            <div style="background: #2563eb; width: ${Math.min(100, percentileA)}%; height: 100%; border-radius: 6px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Region B Progress Bar -->
+                    <div style="margin-bottom: 18px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 700; margin-bottom: 6px;">
+                            <span style="color: #059669;">● ${nameB}</span>
+                            <span style="color: #059669; font-weight: 800;">상위 ${percentileB.toFixed(1)}% ${percentileB < percentileA ? '(소폭 우위)' : ''}</span>
+                        </div>
+                        <div style="background: #f1f5f9; height: 10px; border-radius: 6px; overflow: hidden;">
+                            <div style="background: #10b981; width: ${Math.min(100, percentileB)}%; height: 100%; border-radius: 6px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- AI Consultant Box -->
+                    <div style="background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 14px; padding: 14px 16px; display: flex; gap: 10px; align-items: flex-start;">
+                        <span style="font-size: 18px; line-height: 1;">💡</span>
+                        <div style="font-size: 12.5px; color: #475569; line-height: 1.6; letter-spacing: -0.2px;">
+                            <strong style="color: #1e293b;">학업 컨설턴트 의견:</strong> ${nameB}은 고교 진학 시 내신 산출에 상대적 우위를 선점할 수 있으며, 확보되는 주거 유보 자금${priceDiff > 0 ? `(약 ${priceDiff}억원)` : ''}을 특화 사교육 및 자녀 자산 형성으로 전환하는 전략이 유효합니다.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Bottom Action Buttons Group -->
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <button onclick="alert('학군 이사 시뮬레이션 PDF 리포트를 생성하였습니다.');"
+                        style="flex: 1; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 700; font-size: 13.5px; padding: 13px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;"
+                        onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        PDF 리포트 저장
+                    </button>
+                    <button onclick="if(navigator.share){navigator.share({title:'학군 이사 시뮬레이션 결과',url:location.href});}else{navigator.clipboard.writeText(location.href);alert('링크가 복사되었습니다!');}"
+                        style="flex: 1; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 700; font-size: 13.5px; padding: 13px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;"
+                        onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                        결과 공유하기
+                    </button>
+                </div>
+
+                <button onclick="document.getElementById('simulationResultPanel').style.display='none'; const modalDiv = document.querySelector('#simulationModal > div'); if(modalDiv) modalDiv.scrollTo({top: 0, behavior: 'smooth'});"
+                    style="width: 100%; background: #0f172a; color: #ffffff; font-weight: 800; font-size: 14.5px; padding: 15px; border-radius: 14px; border: none; cursor: pointer; transition: background 0.2s; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.2);"
+                    onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='#0f172a'">
+                    새로운 학군 조건으로 다시 비교하기
+                </button>
             `;
         });
     }
 
-    const handleReset = () => {
+    window.handleResetFilters = (showAlert = true) => {
         const defaults = {
-            'currentLevelRange': 80,
-            'targetLevelRange': 90,
+            'currentLevelRange': 70,
+            'targetLevelRange': 88,
             'weightKorRange': 10,
             'weightEngRange': 10,
             'weightMathRange': 10,
@@ -7738,9 +8582,11 @@ document.addEventListener('DOMContentLoaded', () => {
             'profileRecommendFilter': 'none',
             'commuteRadiusFilter': 'off',
             'trendUpwardCheckbox': false,
-            'dongRatingCheckbox': false,
+            'safetyGuideCheckbox': false,
+            'crimeZoneToggleCheckbox': false,
             'accidentStatisticsCheckbox': false,
             'trafficAccidentCheckbox': false,
+            'dongRatingCheckbox': false,
             'childGradeFilter': 'middle',
             'childScoreFilter': 'mid',
             'childTendencyFilter': 'balanced'
@@ -7783,48 +8629,86 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // Reset quick preset active pill
+        const pills = document.querySelectorAll('.preset-pill-btn');
+        pills.forEach((p, idx) => {
+            if (idx === 0) p.classList.add('active');
+            else p.classList.remove('active');
+        });
+
+        // Reset proportion bar
+        if (typeof updateEnvProportionBar === 'function') {
+            updateEnvProportionBar();
+        }
+
+        // Sync mobile floating filters
+        if (typeof syncMobileFloatingFilters === 'function') {
+            syncMobileFloatingFilters();
+        }
+
         // Reset region and school type select options
         if (regionFilter) regionFilter.value = '서울특별시';
         if (schoolTypeFilter) schoolTypeFilter.value = 'middle';
 
         // Clear commute radius/marker
         commuteCenter = null;
-        updateCommuteCircle();
+        if (typeof updateCommuteCircle === 'function') {
+            updateCommuteCircle();
+        }
 
         // Clear selected school details (simulate clicking deselect button)
         const btnDeselectSchool = document.getElementById('btnDeselectSchool');
         if (btnDeselectSchool) {
             btnDeselectSchool.click();
         } else {
-            orchestrator.state.selectedSchool = null;
-            if (schoolCard) schoolCard.style.display = 'none';
-            if (childFormCard) childFormCard.style.display = 'none';
-            if (diagnosisResultCard) diagnosisResultCard.style.display = 'none';
-            if (welcomeCard) welcomeCard.style.display = 'block';
+            if (typeof orchestrator !== 'undefined' && orchestrator.state) orchestrator.state.selectedSchool = null;
+            if (typeof schoolCard !== 'undefined' && schoolCard) schoolCard.style.display = 'none';
+            if (typeof childFormCard !== 'undefined' && childFormCard) childFormCard.style.display = 'none';
+            if (typeof diagnosisResultCard !== 'undefined' && diagnosisResultCard) diagnosisResultCard.style.display = 'none';
+            if (typeof welcomeCard !== 'undefined' && welcomeCard) welcomeCard.style.display = 'block';
             const serviceInquiryCardEl = document.getElementById('serviceInquiryCard');
             if (serviceInquiryCardEl) serviceInquiryCardEl.style.display = 'block';
         }
 
-        // Close accordion if open (PC 환경에서만 초기화 시 닫음)
-        if (window.innerWidth > 1024) {
-            const parentsFilterContent = document.getElementById('parentsFilterContent');
-            const parentsFilterIndicator = document.getElementById('parentsFilterIndicator');
-            if (parentsFilterContent && parentsFilterIndicator) {
+        // 필터 초기화 시 아코디언 상태 처리: 새로고침/최초 진입 시에는 닫힌 상태 유지
+        const parentsFilterContent = document.getElementById('parentsFilterContent');
+        const parentsFilterIndicator = document.getElementById('parentsFilterIndicator');
+        if (parentsFilterContent && parentsFilterIndicator) {
+            if (!showAlert) {
+                // 최초 접속 및 새로고침 시 기본적으로 필터를 닫은 상태로 유지
                 parentsFilterContent.style.display = 'none';
                 parentsFilterIndicator.innerText = '▼';
+                try { sessionStorage.setItem('learnmap_parents_filter_open', 'false'); } catch(e) {}
+            } else {
+                // 사용자가 필터 초기화 버튼을 직접 누른 경우: 현재 열려있는 상태라면 유지
+                const isCurrentlyOpen = parentsFilterContent.style.display !== 'none' && parentsFilterContent.style.display !== '';
+                if (isCurrentlyOpen) {
+                    parentsFilterContent.style.display = 'flex';
+                    parentsFilterIndicator.innerText = '▲';
+                } else {
+                    parentsFilterContent.style.display = 'none';
+                    parentsFilterIndicator.innerText = '▼';
+                }
             }
         }
 
-        // Reset map view using local variable in scope
-        if (kakaoMap) {
-            kakaoMap.setCenter(new kakao.maps.LatLng(37.4979, 127.0276));
-            kakaoMap.setLevel(window.innerWidth <= 1024 ? 6 : 5);
+        // Keep map center position unchanged during filter reset
+        if (typeof onMapAction === 'function') {
+            onMapAction();
+        } else if (typeof window.onMapAction === 'function') {
+            window.onMapAction();
         }
 
-        onMapAction();
+        if (typeof onMapAction === 'function') {
+            onMapAction();
+        }
         
-        alert('필터 설정과 탐색 프리셋이 모두 초기화되었습니다.');
+        if (showAlert) {
+            alert('필터 설정과 탐색 프리셋이 모두 초기화되었습니다.');
+        }
     };
+
+    const handleReset = () => window.handleResetFilters(true);
 
     const btnResetPreset = document.getElementById('btnResetPreset');
     if (btnResetPreset) {
@@ -7834,6 +8718,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnResetFilters) {
         btnResetFilters.addEventListener('click', handleReset);
     }
+
+    // 서비스 최초 로드 시(사용자 탐색 전) 필터 설정 자동 초기화 수행
+    setTimeout(() => {
+        window.handleResetFilters(false);
+    }, 100);
 });
 
 // --- 창체 활동비 패널 토글 ---
@@ -8824,16 +9713,22 @@ document.addEventListener('DOMContentLoaded', () => {
             commuteEl.dispatchEvent(new Event('change'));
         }
 
-        // Open accordion
+        // 접속 및 새로고침 시 기본적으로 필터를 닫은 상태(display: none)로 유지
         const parentsFilterContent = document.getElementById('parentsFilterContent');
         const parentsFilterIndicator = document.getElementById('parentsFilterIndicator');
         if (parentsFilterContent && parentsFilterIndicator) {
-            parentsFilterContent.style.display = 'flex';
-            parentsFilterIndicator.innerText = '▲';
+            const isOpen = sessionStorage.getItem('learnmap_parents_filter_open') === 'true';
+            if (isOpen) {
+                parentsFilterContent.style.display = 'flex';
+                parentsFilterIndicator.innerText = '▲';
+            } else {
+                parentsFilterContent.style.display = 'none';
+                parentsFilterIndicator.innerText = '▼';
+            }
         }
         
         if (window.kakaoMapInstance) {
-            window.kakaoMapInstance.setLevel(window.innerWidth <= 1024 ? 7 : 6);
+            window.kakaoMapInstance.setLevel(6); // 기본 500m 축척 유지
         }
         if (typeof window.onMapAction === 'function') {
             window.onMapAction();
@@ -11269,15 +12164,33 @@ window.onMobileNavClick = function(menu, btnEl) {
             }, 100);
         }
     } else if (menu === 'filter') {
-        // 필터 보기: 사이드바를 열지 않고 학부모 필터 아코디언을 전체 화면으로 활성화함
+        // 필터 보기: 사이드바를 열지 않고 학부모 필터 아코디언을 모바일 전용 전체 화면 페이지로 활성화함
         if (filterAccordion) {
+            if (container && filterAccordion.parentNode !== container) {
+                container.appendChild(filterAccordion);
+            }
             filterAccordion.style.display = 'flex';
+            filterAccordion.style.flexDirection = 'column';
+            filterAccordion.style.zIndex = '10095';
+            filterAccordion.style.background = '#ffffff';
+            filterAccordion.style.borderRadius = '0';
+            filterAccordion.style.border = 'none';
+            filterAccordion.style.boxShadow = 'none';
+            filterAccordion.style.width = '100%';
+            filterAccordion.style.height = 'calc(100% - 60px)';
+            filterAccordion.style.maxHeight = 'none';
         }
         
         const filterContent = document.getElementById('parentsFilterContent');
         const filterIndicator = document.getElementById('parentsFilterIndicator');
         if (filterContent) {
             filterContent.style.display = 'flex';
+            filterContent.style.flexDirection = 'column';
+            filterContent.style.flex = '1';
+            filterContent.style.overflowY = 'auto';
+            filterContent.style.maxHeight = 'none';
+            filterContent.style.background = '#ffffff';
+            filterContent.scrollTop = 0;
         }
         if (filterIndicator) {
             filterIndicator.innerText = '▲';
@@ -11382,10 +12295,29 @@ window.addEventListener('resize', function() {
             container.classList.add('sidebar-open');
         }
 
-        // 학부모 필터 설정창 PC 뷰 스타일 초기화
+        // 학부모 필터 설정창 PC 뷰 복원 시 map-search-container 내부로 복귀 및 스타일 초기화
         const filterAccordion = document.querySelector('.parents-filter-accordion');
+        const mapSearchContainer = document.querySelector('.map-search-container');
+        if (filterAccordion && mapSearchContainer && filterAccordion.parentNode !== mapSearchContainer) {
+            mapSearchContainer.appendChild(filterAccordion);
+        }
         if (filterAccordion) {
             filterAccordion.style.display = '';
+            filterAccordion.style.flexDirection = '';
+            filterAccordion.style.zIndex = '';
+            filterAccordion.style.background = '';
+            filterAccordion.style.borderRadius = '';
+            filterAccordion.style.border = '';
+            filterAccordion.style.boxShadow = '';
+            filterAccordion.style.width = '';
+            filterAccordion.style.height = '';
+            filterAccordion.style.maxHeight = '';
+        }
+        const filterContent = document.getElementById('parentsFilterContent');
+        if (filterContent) {
+            filterContent.style.flex = '';
+            filterContent.style.maxHeight = '';
+            filterContent.style.background = '';
         }
 
         // PC 뷰 복원 시 settingsModal을 원래의 sidebar-section 내부로 복귀시킴
@@ -11405,11 +12337,15 @@ window.addEventListener('resize', function() {
             btnToggle.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
         }
     } else {
-        // 모바일 화면으로 축소 시 settingsModal을 transform 영향이 없는 최상위 container로 이동
+        // 모바일 화면으로 축소 시 settingsModal 및 filterAccordion을 최상위 container로 이동
         const settingsModal = document.getElementById('settingsModal');
+        const filterAccordion = document.querySelector('.parents-filter-accordion');
         const container = document.querySelector('.app-container');
         if (settingsModal && container && settingsModal.parentNode !== container) {
             container.appendChild(settingsModal);
+        }
+        if (filterAccordion && container && filterAccordion.parentNode !== container) {
+            container.appendChild(filterAccordion);
         }
     }
 });
@@ -11442,31 +12378,55 @@ window.addEventListener('resize', function() {
             container.classList.add('sidebar-open');
         }
         if (filterAccordion) {
+            const mapSearchContainer = document.querySelector('.map-search-container');
+            if (mapSearchContainer && filterAccordion.parentNode !== mapSearchContainer) {
+                mapSearchContainer.appendChild(filterAccordion);
+            }
             filterAccordion.style.display = '';
+            filterAccordion.style.flexDirection = '';
+            filterAccordion.style.zIndex = '';
+            filterAccordion.style.background = '';
+            filterAccordion.style.borderRadius = '';
+            filterAccordion.style.border = '';
+            filterAccordion.style.boxShadow = '';
+            filterAccordion.style.width = '';
+            filterAccordion.style.height = '';
+            filterAccordion.style.maxHeight = '';
         }
     } else {
-        // 모바일 접속 시: settingsModal을 최상위 container 하위로 이동
+        // 모바일 접속 시: settingsModal 및 filterAccordion을 최상위 container 하위로 이동
         if (settingsModal && container && settingsModal.parentNode !== container) {
             container.appendChild(settingsModal);
         }
+        if (filterAccordion && container && filterAccordion.parentNode !== container) {
+            container.appendChild(filterAccordion);
+        }
 
-        // 지도만 보이도록 모든 사이드바 닫기
+        // 모바일 처음 접속 시 학군 네비게이션 가이드(welcomeCard)가 보이도록 사이드바 오픈
         if (sidebar) {
-            sidebar.style.display = 'none';
+            sidebar.style.display = 'flex';
         }
         if (academySidebar) {
             academySidebar.style.display = 'none';
         }
         if (container) {
-            container.classList.remove('sidebar-open');
+            container.classList.add('sidebar-open');
             container.classList.remove('academy-open');
+        }
+        const welcomeCard = document.getElementById('welcomeCard');
+        if (welcomeCard) {
+            welcomeCard.style.display = 'block';
+        }
+        const schoolCard = document.getElementById('schoolCard');
+        if (schoolCard) {
+            schoolCard.style.display = 'none';
         }
         if (filterAccordion) {
             filterAccordion.style.display = 'none';
         }
-        // 상단 토글 버튼도 메뉴 열기(☰) 아이콘으로 설정
+        // 상단 토글 버튼도 닫기(✕) 아이콘으로 설정
         if (btnToggle) {
-            btnToggle.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>`;
+            btnToggle.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
         }
     }
 })();
@@ -13029,7 +13989,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (mapObj && targetSchool.lat && targetSchool.lng && typeof kakao !== 'undefined' && kakao.maps) {
                     const moveLatLon = new kakao.maps.LatLng(targetSchool.lat, targetSchool.lng);
                     if (typeof mapObj.getLevel === 'function' && mapObj.getLevel() >= 7) {
-                        mapObj.setLevel(window.innerWidth <= 1024 ? 6 : 5);
+                        mapObj.setLevel(6); // 기본 500m 축척 유지
                     }
                     if (typeof mapObj.panTo === 'function') {
                         mapObj.panTo(moveLatLon);
@@ -14089,36 +15049,53 @@ function initAuthModule() {
         const viewLogin = document.getElementById('settingsLoginForm');
         const viewRegister = document.getElementById('settingsRegisterForm');
 
+        const btnLoginMobile = document.getElementById('btnSettingsTabLoginMobile');
+        const btnRegisterMobile = document.getElementById('btnSettingsTabRegisterMobile');
+        const viewLoginMobile = document.getElementById('settingsLoginFormMobile');
+        const viewRegisterMobile = document.getElementById('settingsRegisterFormMobile');
+
         if (mode === 'login') {
-            if (btnLogin) {
-                btnLogin.classList.add('active');
-                btnLogin.style.background = '#ffffff';
-                btnLogin.style.color = '#191f28';
-                btnLogin.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
-            }
-            if (btnRegister) {
-                btnRegister.classList.remove('active');
-                btnRegister.style.background = 'transparent';
-                btnRegister.style.color = '#8b95a1';
-                btnRegister.style.boxShadow = 'none';
-            }
+            [btnLogin, btnLoginMobile].forEach(btn => {
+                if (btn) {
+                    btn.classList.add('active');
+                    btn.style.background = '#ffffff';
+                    btn.style.color = '#191f28';
+                    btn.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+                }
+            });
+            [btnRegister, btnRegisterMobile].forEach(btn => {
+                if (btn) {
+                    btn.classList.remove('active');
+                    btn.style.background = 'transparent';
+                    btn.style.color = '#8b95a1';
+                    btn.style.boxShadow = 'none';
+                }
+            });
             if (viewLogin) viewLogin.style.display = 'block';
             if (viewRegister) viewRegister.style.display = 'none';
+            if (viewLoginMobile) viewLoginMobile.style.display = 'block';
+            if (viewRegisterMobile) viewRegisterMobile.style.display = 'none';
         } else {
-            if (btnRegister) {
-                btnRegister.classList.add('active');
-                btnRegister.style.background = '#ffffff';
-                btnRegister.style.color = '#191f28';
-                btnRegister.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
-            }
-            if (btnLogin) {
-                btnLogin.classList.remove('active');
-                btnLogin.style.background = 'transparent';
-                btnLogin.style.color = '#8b95a1';
-                btnLogin.style.boxShadow = 'none';
-            }
+            [btnRegister, btnRegisterMobile].forEach(btn => {
+                if (btn) {
+                    btn.classList.add('active');
+                    btn.style.background = '#ffffff';
+                    btn.style.color = '#191f28';
+                    btn.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+                }
+            });
+            [btnLogin, btnLoginMobile].forEach(btn => {
+                if (btn) {
+                    btn.classList.remove('active');
+                    btn.style.background = 'transparent';
+                    btn.style.color = '#8b95a1';
+                    btn.style.boxShadow = 'none';
+                }
+            });
             if (viewLogin) viewLogin.style.display = 'none';
             if (viewRegister) viewRegister.style.display = 'block';
+            if (viewLoginMobile) viewLoginMobile.style.display = 'none';
+            if (viewRegisterMobile) viewRegisterMobile.style.display = 'block';
         }
     };
 
@@ -14137,7 +15114,7 @@ function initAuthModule() {
             localStorage.setItem('learnmap_current_user', JSON.stringify(currentUser));
         }
 
-        // 설정 영역 내부 회원 인증 상태 제어
+        // 설정 영역 내부 회원 인증 상태 제어 (PC & 모바일)
         const userCard = document.getElementById('settingsAuthUserCard');
         const formArea = document.getElementById('settingsAuthFormArea');
         const userNameEl = document.getElementById('settingsAuthUserName');
@@ -14145,8 +15122,18 @@ function initAuthModule() {
         const badgeEl = document.getElementById('settingsAuthBadge');
         const btnKakao = document.getElementById('btnKakaoEasyLoginSettings');
 
+        const userCardMobile = document.getElementById('settingsAuthUserCardMobile');
+        const formAreaMobile = document.getElementById('settingsAuthFormAreaMobile');
+        const userNameElMobile = document.getElementById('settingsAuthUserNameMobile');
+        const userEmailElMobile = document.getElementById('settingsAuthUserEmailMobile');
+        const badgeElMobile = document.getElementById('settingsAuthBadgeMobile');
+        const btnKakaoMobile = document.getElementById('btnKakaoEasyLoginSettingsMobile');
+        const btnMobileLogout = document.getElementById('btnMobileLogout');
+
         const childPC = document.getElementById('settingsChildSection');
         const childMobile = document.getElementById('settingsChildSectionMobile');
+        const myActivityMobile = document.getElementById('settingsMyActivitySectionMobile');
+        const neisBannerMobile = document.getElementById('mobileNeisBannerCard');
         const neisMobile = document.getElementById('settingsNEISSectionMobile');
         const opacityPC = document.getElementById('settingsOpacitySection-pc');
         const opacityMobile = document.getElementById('settingsOpacitySectionMobile');
@@ -14156,17 +15143,38 @@ function initAuthModule() {
             if (userCard) userCard.style.display = 'block';
             if (formArea) formArea.style.display = 'none';
             if (btnKakao) btnKakao.style.display = 'none';
+
+            if (userCardMobile) userCardMobile.style.display = 'block';
+            if (formAreaMobile) formAreaMobile.style.display = 'none';
+            if (btnKakaoMobile) btnKakaoMobile.style.display = 'none';
+            if (btnMobileLogout) btnMobileLogout.style.display = 'inline-flex';
+
             if (userNameEl) userNameEl.innerText = currentUser.name;
             if (userEmailEl) userEmailEl.innerText = currentUser.email;
+            if (userNameElMobile) userNameElMobile.innerText = currentUser.name;
+            if (userEmailElMobile) userEmailElMobile.innerText = currentUser.email;
+
             if (badgeEl) {
                 badgeEl.innerText = '🟢 인증 100% 완료';
                 badgeEl.className = 'neis-badge neis-badge-success';
             }
+            if (badgeElMobile) {
+                badgeElMobile.innerText = '🟢 인증 100% 완료';
+                badgeElMobile.className = 'neis-badge neis-badge-success';
+            }
             if (btnSettings) {
                 btnSettings.setAttribute('data-title', `${currentUser.name} (회원/설정)`);
             }
+
+            const mypageProfileName = document.getElementById('mypageProfileName');
+            if (mypageProfileName) {
+                mypageProfileName.innerText = `${currentUser.name} 학부모님`;
+            }
+
             if (childPC) childPC.style.display = 'block';
             if (childMobile) childMobile.style.display = 'flex';
+            if (myActivityMobile) myActivityMobile.style.display = 'flex';
+            if (neisBannerMobile) neisBannerMobile.style.display = 'flex';
             if (neisMobile) neisMobile.style.display = 'flex';
             if (opacityPC) opacityPC.style.display = 'block';
             if (opacityMobile) opacityMobile.style.display = 'flex';
@@ -14185,15 +15193,33 @@ function initAuthModule() {
             if (userCard) userCard.style.display = 'none';
             if (formArea) formArea.style.display = 'block';
             if (btnKakao) btnKakao.style.display = 'flex';
+
+            if (userCardMobile) userCardMobile.style.display = 'none';
+            if (formAreaMobile) formAreaMobile.style.display = 'block';
+            if (btnKakaoMobile) btnKakaoMobile.style.display = 'flex';
+            if (btnMobileLogout) btnMobileLogout.style.display = 'none';
+
             if (badgeEl) {
                 badgeEl.innerText = '나이스 마이데이터 융합 지원';
                 badgeEl.className = 'neis-badge neis-badge-info';
             }
+            if (badgeElMobile) {
+                badgeElMobile.innerText = '나이스 마이데이터 융합 지원';
+                badgeElMobile.className = 'neis-badge neis-badge-info';
+            }
             if (btnSettings) {
                 btnSettings.setAttribute('data-title', '회원가입 / 로그인 설정');
             }
+
+            const mypageProfileName = document.getElementById('mypageProfileName');
+            if (mypageProfileName) {
+                mypageProfileName.innerText = '자녀 정보를 등록해 주세요';
+            }
+
             if (childPC) childPC.style.display = 'none';
             if (childMobile) childMobile.style.display = 'none';
+            if (myActivityMobile) myActivityMobile.style.display = 'none';
+            if (neisBannerMobile) neisBannerMobile.style.display = 'none';
             if (neisMobile) neisMobile.style.display = 'flex';
             if (opacityPC) opacityPC.style.display = 'none';
             if (opacityMobile) opacityMobile.style.display = 'none';
@@ -14251,8 +15277,14 @@ function initAuthModule() {
     const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
     window.handleSettingsLogin = async function() {
-        const emailInput = document.getElementById('settingsEmail');
-        const passwordInput = document.getElementById('settingsPassword');
+        const emailElMobile = document.getElementById('settingsEmailMobile');
+        const passElMobile = document.getElementById('settingsPasswordMobile');
+        const emailElPC = document.getElementById('settingsEmail');
+        const passElPC = document.getElementById('settingsPassword');
+
+        const emailInput = (emailElMobile && emailElMobile.value.trim()) ? emailElMobile : emailElPC;
+        const passwordInput = (passElMobile && passElMobile.value) ? passElMobile : passElPC;
+
         const email = emailInput?.value?.trim() || '';
         const password = passwordInput?.value || '';
 
@@ -14280,10 +15312,20 @@ function initAuthModule() {
     };
 
     window.handleSettingsRegister = async function() {
-        const nameInput = document.getElementById('settingsRegName');
-        const emailInput = document.getElementById('settingsRegEmail');
-        const passwordInput = document.getElementById('settingsRegPassword');
-        const passwordConfirmInput = document.getElementById('settingsRegPasswordConfirm');
+        const nameElMobile = document.getElementById('settingsRegNameMobile');
+        const emailElMobile = document.getElementById('settingsRegEmailMobile');
+        const passElMobile = document.getElementById('settingsRegPasswordMobile');
+        const passConfElMobile = document.getElementById('settingsRegPasswordConfirmMobile');
+
+        const nameElPC = document.getElementById('settingsRegName');
+        const emailElPC = document.getElementById('settingsRegEmail');
+        const passElPC = document.getElementById('settingsRegPassword');
+        const passConfElPC = document.getElementById('settingsRegPasswordConfirm');
+
+        const nameInput = (nameElMobile && nameElMobile.value.trim()) ? nameElMobile : nameElPC;
+        const emailInput = (emailElMobile && emailElMobile.value.trim()) ? emailElMobile : emailElPC;
+        const passwordInput = (passElMobile && passElMobile.value) ? passElMobile : passElPC;
+        const passwordConfirmInput = (passConfElMobile && passConfElMobile.value) ? passConfElMobile : passConfElPC;
 
         const name = nameInput?.value?.trim() || '';
         const email = emailInput?.value?.trim() || '';
@@ -14602,17 +15644,22 @@ function initAuthModule() {
         const email = window.__lastFoundEmail || '';
         if (email) {
             const settingsEmail = document.getElementById('settingsEmail');
+            const settingsEmailMobile = document.getElementById('settingsEmailMobile');
             const loginEmail = document.getElementById('loginEmail');
             if (settingsEmail) settingsEmail.value = email;
+            if (settingsEmailMobile) settingsEmailMobile.value = email;
             if (loginEmail) loginEmail.value = email;
         }
         window.closeFindAccountModal();
 
         // 사이드바 또는 중앙 모달의 비밀번호 창으로 포커스
+        const settingsPwMobile = document.getElementById('settingsPasswordMobile');
         const settingsPw = document.getElementById('settingsPassword');
         const loginPw = document.getElementById('loginPassword');
         setTimeout(() => {
-            if (settingsPw && settingsPw.offsetParent !== null) {
+            if (settingsPwMobile && settingsPwMobile.offsetParent !== null) {
+                settingsPwMobile.focus();
+            } else if (settingsPw && settingsPw.offsetParent !== null) {
                 settingsPw.focus();
             } else if (loginPw && loginPw.offsetParent !== null) {
                 loginPw.focus();
@@ -14661,16 +15708,22 @@ function initAuthModule() {
         if (res.success) {
             // 변경된 이메일을 로그인 인풋에 자동 세팅 후 창 닫기
             const settingsEmail = document.getElementById('settingsEmail');
+            const settingsEmailMobile = document.getElementById('settingsEmailMobile');
             const loginEmail = document.getElementById('loginEmail');
             if (settingsEmail) settingsEmail.value = email;
+            if (settingsEmailMobile) settingsEmailMobile.value = email;
             if (loginEmail) loginEmail.value = email;
 
             window.closeFindAccountModal();
 
+            const settingsPwMobile = document.getElementById('settingsPasswordMobile');
             const settingsPw = document.getElementById('settingsPassword');
             const loginPw = document.getElementById('loginPassword');
             setTimeout(() => {
-                if (settingsPw && settingsPw.offsetParent !== null) {
+                if (settingsPwMobile && settingsPwMobile.offsetParent !== null) {
+                    settingsPwMobile.value = '';
+                    settingsPwMobile.focus();
+                } else if (settingsPw && settingsPw.offsetParent !== null) {
                     settingsPw.value = '';
                     settingsPw.focus();
                 } else if (loginPw && loginPw.offsetParent !== null) {
@@ -14898,12 +15951,40 @@ window.openChildSettingsModal = function() {
     if (typeof window.closeNEISModal === 'function') {
         window.closeNEISModal();
     }
-    const btnOpenSettings = document.getElementById('btnOpenSettings');
-    if (btnOpenSettings) {
-        btnOpenSettings.click();
+    const isMobile = window.innerWidth <= 1024;
+    const sidebar = document.querySelector('.sidebar-section');
+    const container = document.querySelector('.app-container');
+
+    if (!isMobile) {
+        if (sidebar && sidebar.style.display === 'none' && typeof window.toggleSidebar === 'function') {
+            window.toggleSidebar();
+        }
     } else {
-        const settingsModal = document.getElementById('settingsModal');
-        if (settingsModal) settingsModal.style.display = 'flex';
+        if (sidebar) sidebar.style.display = 'none';
+        if (container) container.classList.remove('sidebar-open');
+        const welcomeCard = document.getElementById('welcomeCard');
+        if (welcomeCard) welcomeCard.style.display = 'none';
+    }
+    const settingsModal = document.getElementById('settingsModal');
+    if (settingsModal) {
+        settingsModal.style.display = 'block';
+    }
+    if (typeof window.switchMypageTab === 'function') {
+        window.switchMypageTab('child');
+    }
+    if (window.innerWidth <= 1024 && typeof window.onMobileNavClick === 'function') {
+        const mypageTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*="mypage"]');
+        if (mypageTabBtn) {
+            window.onMobileNavClick('mypage', mypageTabBtn);
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+        const childCard = document.getElementById('mypageAccordionContent-child') || 
+                          document.getElementById('inputSettingsChildKor-pc') || 
+                          settingsModal;
+        if (childCard) {
+            childCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
     }
 };
 
@@ -15041,8 +16122,10 @@ window.loadNEISSampleRecord = function() {
                 curChild.society = 86;
                 curChild.history = 86;
                 curChild.science = 95;
+                if (typeof syncActiveChildWithOrchestrator === 'function') syncActiveChildWithOrchestrator(curChild);
             }
         }
+        if (typeof onMapAction === 'function') onMapAction();
         alert('🎉 나이스 실제 생기부 양식 샘플 데이터가 성공적으로 반영되었습니다!\n성적 정밀 진단표와 세특 AI 역량 분석 결과를 확인해 보세요.');
         window.renderNEISTabContent('grades');
     }
@@ -15061,6 +16144,7 @@ window.switchNEISChild = function(childId) {
     if (settingsChildSelectPc) settingsChildSelectPc.value = childId;
     if (typeof updateFormWithSelectedChild === 'function') updateFormWithSelectedChild();
     if (typeof renderChildPillTabs === 'function') renderChildPillTabs();
+    if (typeof onMapAction === 'function') onMapAction();
     if (typeof window.renderNEISTabContent === 'function') {
         const activeTabBtn = document.querySelector('.neis-tab-btn.active');
         const curTab = activeTabBtn ? activeTabBtn.dataset.tab : 'sync';
