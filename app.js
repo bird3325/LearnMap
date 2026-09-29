@@ -9059,115 +9059,117 @@ document.addEventListener('DOMContentLoaded', () => {
         const priceTextA = simData.priceTextA || '26.8억';
         const priceTextB = simData.priceTextB || '16.5억';
         const priceSaveText = simData.priceSaveText || '유사 수준';
-
         const statsAAvg = simData.statsA ? `${simData.statsA.avg}점` : '우수';
         const statsBAvg = simData.statsB ? `${simData.statsB.avg}점` : '우수';
         const pctA = simData.percentileA !== undefined ? `상위 ${simData.percentileA.toFixed(1)}%` : '상위권';
         const pctB = simData.percentileB !== undefined ? `상위 ${simData.percentileB.toFixed(1)}%` : '상위권';
 
-        // 학업여지도 딥링크 URL — 시뮬레이션 결과 전체 파라미터 인코딩
+        // ① 공유 전 자동 담기 (silent — 알림 없이 저장만)
+        let scrapId = null;
+        try {
+            scrapId = await window.saveSimulationToMypage(null, { silent: true });
+        } catch (e) {
+            console.warn('[Share] 자동 담기 실패 (무시):', e);
+        }
+
+        // ② 공유 URL 구성 (scrapId + 지역 파라미터 모두 포함)
         const baseUrl = 'https://leamap.vercel.app/';
         const params = new URLSearchParams({
             sim: '1',
-            sidoA: sidoAVal,
-            gugunA: gugunAVal,
-            dongA: dongAVal,
-            sidoB: sidoBVal,
-            gugunB: gugunBVal,
-            dongB: dongBVal,
+            sidoA: sidoAVal, gugunA: gugunAVal, dongA: dongAVal,
+            sidoB: sidoBVal, gugunB: gugunBVal, dongB: dongBVal,
             type: schoolType,
             scoreA: simData.statsA?.avg !== undefined ? String(simData.statsA.avg) : '',
             scoreB: simData.statsB?.avg !== undefined ? String(simData.statsB.avg) : '',
             pctA: simData.percentileA !== undefined ? simData.percentileA.toFixed(1) : '',
             pctB: simData.percentileB !== undefined ? simData.percentileB.toFixed(1) : '',
-            priceA: priceTextA,
-            priceB: priceTextB,
-            saveTxt: priceSaveText
+            priceA: priceTextA, priceB: priceTextB, saveTxt: priceSaveText
         });
+        if (scrapId) params.set('scrapId', scrapId);
         const shareUrl = `${baseUrl}?${params.toString()}`;
 
-        // 카카오톡 카드 규격 텍스트 메시지 구성
-        const cardMessageText = `🗺️ [학업여지도] 학군 이사 시뮬레이션 비교 분석
-
-📍 비교 대상
-• 후보 A: ${regionA}
-• 후보 B: ${regionB}
-🏫 비교 학교급: ${schoolType}
-
-📊 핵심 분석 결과
-• 학업성취도: ${nameA} ${statsAAvg} vs ${nameB} ${statsBAvg}
-• 자녀 예상위치: ${nameA} ${pctA} vs ${nameB} ${pctB}
-• 전용84㎡ 시세: ${priceTextA} vs ${priceTextB} (${priceSaveText})
-
-💡 AI 분석 결론
-두 지역의 상세 학업성취도, 특목·자사고 진학률, 학원가 인프라 1:1 비교를 학업여지도에서 직접 확인해 보세요!`;
-
-        let sdkLoaded = false;
-        if (typeof loadKakaoShareSDK === 'function') {
-            sdkLoaded = await loadKakaoShareSDK();
+        // ③ 버튼 피드백 헬퍼 (공유 완료 후 호출)
+        function showShareFeedback() {
+            if (!btnEl) return;
+            const origHtml = btnEl.innerHTML;
+            btnEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span style="color:#059669;font-weight:800;">공유 완료!</span>`;
+            btnEl.style.borderColor = '#10b981';
+            btnEl.style.background = '#ecfdf5';
+            setTimeout(() => {
+                btnEl.innerHTML = origHtml;
+                btnEl.style.borderColor = '#cbd5e1';
+                btnEl.style.background = '#ffffff';
+            }, 2200);
         }
 
+        // ④ 카카오 SDK 로드
+        let sdkLoaded = false;
+        if (typeof loadKakaoShareSDK === 'function') {
+            try { sdkLoaded = await loadKakaoShareSDK(); } catch (e) { console.warn('[Share] SDK 로드 오류:', e); }
+        }
+
+        // ⑤ 카카오 Feed Card 공유 시도
         if (sdkLoaded && window.Kakao && window.Kakao.isInitialized() && window.Kakao.Share) {
             try {
-                // Feed Card: 링크 클릭 시 딥링크(shareUrl)로 이동 → 앱에서 해당 시뮬레이션 결과 자동 복원
                 window.Kakao.Share.sendDefault({
                     objectType: 'feed',
                     content: {
                         title: `🏫 ${nameA} vs ${nameB} 학군 비교 결과`,
                         description: `학업성취도: ${statsAAvg} vs ${statsBAvg}  |  자녀 위치: ${pctA} vs ${pctB}\n시세: ${priceTextA} vs ${priceTextB} (${priceSaveText})`,
                         imageUrl: 'https://leamap.vercel.app/og-image.png',
-                        link: {
-                            mobileWebUrl: shareUrl,
-                            webUrl: shareUrl,
-                        },
+                        link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
                     },
-                    buttons: [
-                        {
-                            title: '📊 비교 결과 바로보기',
-                            link: {
-                                mobileWebUrl: shareUrl,
-                                webUrl: shareUrl,
-                            },
-                        },
-                    ],
+                    buttons: [{
+                        title: '📊 비교 결과 바로보기',
+                        link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
+                    }],
                 });
+                showShareFeedback();
                 if (typeof showToastNoticeMsg === 'function') {
-                    showToastNoticeMsg(`💬 [${nameA} vs ${nameB}] 카카오톡 학군 비교 카드가 발송되었습니다.`);
+                    showToastNoticeMsg(`💬 [${nameA} vs ${nameB}] 카카오톡으로 공유되었습니다.`);
                 }
                 return;
             } catch (err) {
-                console.warn('[Kakao Share] 시뮬레이션 결과 공유 실패, 웹공유/클립보드 전환:', err);
+                console.warn('[Kakao Share] 카카오 공유 실패 → 폴백. 원인:', err);
             }
+        } else {
+            console.warn('[Kakao Share] SDK 미사용 → 폴백.',
+                'sdkLoaded:', sdkLoaded,
+                '| Kakao:', !!window.Kakao,
+                '| isInit:', window.Kakao?.isInitialized?.(),
+                '| Share:', !!window.Kakao?.Share);
         }
 
-        // 웹 공유 API Fallback
-        const fallbackText = `${cardMessageText}\n\n🔗 학업여지도에서 결과 확인하기:\n${shareUrl}`;
+        // ⑥ Web Share API Fallback
+        const cardText = `🗺️ [학업여지도] ${nameA} vs ${nameB} 학군 비교 분석\n학업성취도: ${statsAAvg} vs ${statsBAvg} | 자녀 위치: ${pctA} vs ${pctB}\n시세: ${priceTextA} vs ${priceTextB} (${priceSaveText})`;
         if (navigator.share) {
             try {
-                await navigator.share({
-                    title: `[학업여지도] ${nameA} vs ${nameB} 학군 비교 분석`,
-                    text: fallbackText,
-                    url: shareUrl
-                });
+                await navigator.share({ title: `[학업여지도] ${nameA} vs ${nameB} 학군 비교`, text: cardText, url: shareUrl });
+                showShareFeedback();
                 return;
             } catch (err) {
                 if (err.name === 'AbortError') return;
+                console.warn('[Web Share] 실패:', err);
             }
         }
 
-        // 클립보드 복사 Fallback
+        // ⑦ 클립보드 복사 Fallback
+        const clipText = `[학업여지도] ${nameA} vs ${nameB} 학군 비교 결과\n\n${shareUrl}`;
         if (navigator.clipboard) {
             try {
-                await navigator.clipboard.writeText(fallbackText);
+                await navigator.clipboard.writeText(clipText);
+                showShareFeedback();
                 if (typeof showToastNoticeMsg === 'function') {
-                    showToastNoticeMsg('🔗 학군 시뮬레이션 비교 카드 내용이 클립보드에 복사되었습니다.');
+                    showToastNoticeMsg('🔗 학군 비교 링크가 복사되었습니다. 카카오톡에 붙여넣기 하세요!');
                 } else {
-                    alert('학군 시뮬레이션 비교 카드 내용이 클립보드에 복사되었습니다.');
+                    alert('학군 비교 링크가 복사되었습니다.\n카카오톡에 붙여넣기 하세요!');
                 }
                 return;
-            } catch (clipErr) {}
+            } catch (clipErr) { console.warn('[Clipboard] 복사 실패:', clipErr); }
         }
-        alert('링크가 복사되었습니다:\n' + shareUrl);
+
+        showShareFeedback();
+        alert('공유 링크:\n' + shareUrl);
     };
 
     // ==========================================
@@ -9181,11 +9183,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    window.saveSimulationToMypage = async function(btnEl) {
+    window.saveSimulationToMypage = async function(btnEl, options = {}) {
         const data = window.lastSimulationData;
         if (!data) {
-            alert('먼저 학군 비교 시뮬레이션을 실행해 주세요.');
-            return;
+            if (!options.silent) alert('먼저 학군 비교 시뮬레이션을 실행해 주세요.');
+            return null;
         }
 
         const scraps = getStoredSimulationScraps();
@@ -9218,7 +9220,9 @@ document.addEventListener('DOMContentLoaded', () => {
             created_at: new Date().toISOString()
         };
 
+        // 동일 조건 기존 scrap이 있으면 기존 ID 재사용 (URL 안정성)
         if (existingIndex > -1) {
+            newScrap.id = scraps[existingIndex].id;
             scraps.splice(existingIndex, 1);
         }
         scraps.unshift(newScrap);
@@ -9286,11 +9290,16 @@ document.addEventListener('DOMContentLoaded', () => {
             window.updateMypageSimulationUI();
         }
 
-        if (typeof showToastNoticeMsg === 'function') {
-            showToastNoticeMsg(`📁 [${newScrap.name_a} vs ${newScrap.name_b}] 시뮬레이션 결과가 마이페이지에 담겼습니다.`);
-        } else {
-            alert(`[${newScrap.name_a} vs ${newScrap.name_b}] 시뮬레이션 결과가 마이페이지 보관함에 담겼습니다.\n마이페이지에서 언제든지 다시 확인하실 수 있습니다.`);
+        if (!options.silent) {
+            if (typeof showToastNoticeMsg === 'function') {
+                showToastNoticeMsg(`📁 [${newScrap.name_a} vs ${newScrap.name_b}] 시뮬레이션 결과가 마이페이지에 담겼습니다.`);
+            } else {
+                alert(`[${newScrap.name_a} vs ${newScrap.name_b}] 시뮬레이션 결과가 마이페이지 보관함에 담겼습니다.\n마이페이지에서 언제든지 다시 확인하실 수 있습니다.`);
+            }
         }
+
+        // 저장된 scrap ID 반환 (공유하기 흐름에서 URL에 포함)
+        return newScrap.id;
     };
 
     window.removeSimulationScrap = function(id) {
@@ -15740,7 +15749,11 @@ window.checkAndOpenDeepLinkFromURL = function checkAndOpenDeepLinkFromURL() {
             // =====================================================
             // 학군 이사 시뮬레이션 딥링크: ?sim=1&sidoA=...&dongA=...
             // 카카오 공유 링크 클릭 시 해당 시뮬레이션 결과 자동 복원
+            // 복원 우선순위:
+            //   1순위 — scrapId 파라미터 → localStorage에서 담긴 결과 즉시 표시
+            //   2순위 — 지역 파라미터 → 시뮬레이션 새로 실행 (다른 기기/브라우저 폴백)
             // =====================================================
+            const scrapIdParam = urlParams.get('scrapId');
             const sidoA  = urlParams.get('sidoA')  || '';
             const gugunA = urlParams.get('gugunA') || '';
             const dongA  = urlParams.get('dongA')  || '';
@@ -15770,7 +15783,23 @@ window.checkAndOpenDeepLinkFromURL = function checkAndOpenDeepLinkFromURL() {
                         simModal.style.display = 'flex';
                     }
 
-                    // 2. 학교급 탭 설정
+                    await new Promise(r => setTimeout(r, 200));
+
+                    // ★ scrapId 우선 복원: 같은 기기 localStorage에 담긴 결과가 있으면 즉시 표시
+                    if (scrapIdParam) {
+                        try {
+                            const stored = JSON.parse(localStorage.getItem('learnmap_simulation_scraps') || '[]');
+                            const found = stored.find(s => s.id === scrapIdParam);
+                            if (found && typeof window.openSavedSimulation === 'function') {
+                                window.openSavedSimulation(scrapIdParam);
+                                return; // 복원 성공 → 지역 파라미터 폴백 불필요
+                            }
+                        } catch (e) {
+                            console.warn('[DeepLink] scrapId 복원 실패, 지역 파라미터로 폴백:', e);
+                        }
+                    }
+
+                    // 2. 학교급 탭 설정 (폴백: 지역 파라미터로 시뮬레이션 새로 실행)
                     if (simType && typeof window.setSimSchoolType === 'function') {
                         window.setSimSchoolType(simType);
                     }
