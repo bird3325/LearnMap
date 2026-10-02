@@ -552,8 +552,23 @@ app.get('/api/community', async (req, res) => {
 
 // Helper to build Kakao headers with valid origin matching registered Kakao domain
 function getKakaoHeaders(req, appkey) {
-    const rawOrigin = req.headers.origin || `http://${req.headers.host || 'localhost:3000'}`;
-    const cleanOrigin = rawOrigin.startsWith('http') ? rawOrigin : `http://${rawOrigin}`;
+    let origin = req ? req.headers.origin : null;
+    if (!origin && req && req.headers.referer) {
+        try {
+            const parsed = new URL(req.headers.referer);
+            origin = parsed.origin;
+        } catch (e) {}
+    }
+    if (!origin && req && req.headers.host) {
+        origin = `http://${req.headers.host}`;
+    }
+    if (!origin) {
+        origin = 'http://localhost:3000';
+    }
+    if (origin.includes(':5000')) {
+        origin = origin.replace(':5000', ':3000');
+    }
+    const cleanOrigin = origin.startsWith('http') ? origin : `http://${origin}`;
     return {
         'Authorization': `KakaoAK ${appkey}`,
         'KA': `sdk/1.25.3 os/javascript lang/en-US device/Win32 origin/${encodeURIComponent(cleanOrigin)}`
@@ -579,7 +594,7 @@ app.get('/api/academies/count', async (req, res) => {
     }
 });
 
-// 9. GET /api/academies/list - Fetch ALL academy pages and return sorted full list
+// 9. GET /api/academies/list - Fetch ALL academy pages across multi-grid points and return sorted full list
 app.get('/api/academies/list', async (req, res) => {
     const { x, y } = req.query;
     const radius = parseInt(req.query.radius, 10) || 1000;
@@ -590,55 +605,84 @@ app.get('/api/academies/list', async (req, res) => {
     if (!appkey) return res.status(500).json({ error: '카카오 앱 키가 없습니다.' });
 
     const headers = getKakaoHeaders(req, appkey);
+    const centerX = parseFloat(x);
+    const centerY = parseFloat(y);
 
     try {
-        // 1페이지 먼저 호출해서 total_count 파악 (학원 카테고리 + 교습소 키워드)
-        const ac5Url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=AC5&x=${x}&y=${y}&radius=${radius}&size=15&page=1`;
-        const gyoUrl = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent('교습소')}&x=${x}&y=${y}&radius=${radius}&size=15&page=1`;
-        
-        const [ac5First, gyoFirst] = await Promise.all([
-            httpsGet(ac5Url, headers).catch(() => ({ meta: { total_count: 0 }, documents: [] })),
-            httpsGet(gyoUrl, headers).catch(() => ({ meta: { total_count: 0 }, documents: [] }))
-        ]);
+        // 검색 지점(Grid Points) 정의: 반경이 500m 초과일 경우 넓은 영역 전체를 커버하기 위해 5지점 멀티 그리드 탐색
+        let gridPoints = [{ x: centerX, y: centerY }];
+        if (radius > 500) {
+            const offsetRatio = 0.55;
+            const dLat = (radius * offsetRatio) / 111000;
+            const dLng = (radius * offsetRatio) / 88800;
+            gridPoints.push(
+                { x: centerX, y: centerY + dLat }, // North
+                { x: centerX, y: centerY - dLat }, // South
+                { x: centerX + dLng, y: centerY }, // East
+                { x: centerX - dLng, y: centerY }  // West
+            );
+        }
 
-        const ac5Total = ac5First.meta ? ac5First.meta.total_count : 0;
-        const gyoTotal = gyoFirst.meta ? gyoFirst.meta.total_count : 0;
-        
-        const ac5Pages = Math.min(Math.ceil(ac5Total / 15), 3); // 최대 3페이지
-        const gyoPages = Math.min(Math.ceil(gyoTotal / 15), 2); // 최대 2페이지
+        // 각 그리드 지점별로 AC5(학원) 및 교습소 1페이지 동시 수집
+        const firstRequests = [];
+        gridPoints.forEach(pt => {
+            const subRad = radius > 500 ? Math.min(radius, 1000) : radius;
+            const ac5Url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=AC5&x=${pt.x}&y=${pt.y}&radius=${subRad}&size=15&page=1`;
+            const gyoUrl = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent('교습소')}&x=${pt.x}&y=${pt.y}&radius=${subRad}&size=15&page=1`;
+            firstRequests.push(httpsGet(ac5Url, headers).catch(err => { console.error('ac5Url error:', err); return { meta: { total_count: 0 }, documents: [] }; }));
+            firstRequests.push(httpsGet(gyoUrl, headers).catch(err => { console.error('gyoUrl error:', err); return { meta: { total_count: 0 }, documents: [] }; }));
+        });
 
-        let allItems = [...(ac5First.documents || []), ...(gyoFirst.documents || [])];
-
+        const firstResults = await Promise.all(firstRequests);
+        let allItems = [];
         const pageRequests = [];
-        
-        // 학원 나머지 페이지
-        for (let page = 2; page <= ac5Pages; page++) {
-            pageRequests.push(httpsGet(`https://dapi.kakao.com/v2/local/search/category.json?category_group_code=AC5&x=${x}&y=${y}&radius=${radius}&size=15&page=${page}`, headers).catch(() => ({ documents: [] })));
-        }
-        // 교습소 나머지 페이지
-        for (let page = 2; page <= gyoPages; page++) {
-            pageRequests.push(httpsGet(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent('교습소')}&x=${x}&y=${y}&radius=${radius}&size=15&page=${page}`, headers).catch(() => ({ documents: [] })));
-        }
+
+        firstResults.forEach((resData, idx) => {
+            if (resData.documents) allItems = allItems.concat(resData.documents);
+            const total = resData.meta ? resData.meta.total_count : 0;
+            const pages = Math.min(Math.ceil(total / 15), 5); // 지점당 최대 5페이지까지 보충
+            const ptIdx = Math.floor(idx / 2);
+            const isGyo = idx % 2 === 1;
+            const pt = gridPoints[ptIdx];
+            const subRad = radius > 500 ? Math.min(radius, 1000) : radius;
+
+            for (let page = 2; page <= pages; page++) {
+                const pUrl = isGyo
+                    ? `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent('교습소')}&x=${pt.x}&y=${pt.y}&radius=${subRad}&size=15&page=${page}`
+                    : `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=AC5&x=${pt.x}&y=${pt.y}&radius=${subRad}&size=15&page=${page}`;
+                pageRequests.push(httpsGet(pUrl, headers).catch(() => ({ documents: [] })));
+            }
+        });
 
         if (pageRequests.length > 0) {
-            const results = await Promise.all(pageRequests);
-            results.forEach(result => {
-                allItems = allItems.concat(result.documents || []);
+            const pageResults = await Promise.all(pageRequests);
+            pageResults.forEach(result => {
+                if (result.documents) allItems = allItems.concat(result.documents);
             });
         }
 
-        // 중복 제거 (id 기준)
+        // 중복 제거 (id 기준) 및 원본 중심 좌표(centerX, centerY)로부터의 정확한 거리 계산
         const uniqueMap = new Map();
         allItems.forEach(item => {
-            if (!uniqueMap.has(item.id)) {
-                uniqueMap.set(item.id, item);
+            const itemX = parseFloat(item.x);
+            const itemY = parseFloat(item.y);
+            if (!isNaN(itemX) && !isNaN(itemY)) {
+                const dy = (itemY - centerY) * 111000;
+                const dx = (itemX - centerX) * 88800;
+                const distFromCenter = Math.round(Math.sqrt(dx * dx + dy * dy));
+                item.distance = String(distFromCenter);
+
+                if (distFromCenter <= radius && !uniqueMap.has(item.id)) {
+                    uniqueMap.set(item.id, item);
+                }
             }
         });
-        
-        const finalItems = Array.from(uniqueMap.values());
-        const totalCount = finalItems.length > (ac5Total + gyoTotal) ? finalItems.length : (ac5Total + gyoTotal);
 
-        res.json({ items: finalItems, total_count: totalCount });
+        const finalItems = Array.from(uniqueMap.values());
+        // 거리순 정렬
+        finalItems.sort((a, b) => parseInt(a.distance, 10) - parseInt(b.distance, 10));
+
+        res.json({ items: finalItems, total_count: finalItems.length });
     } catch (err) {
         console.error('Kakao List Fetch Error:', err);
         res.status(500).json({ error: '카카오 검색 API 호출에 실패했습니다.' });
@@ -661,7 +705,7 @@ app.get('/api/academies/search', async (req, res) => {
         const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&category_group_code=AC5&x=${x}&y=${y}&radius=${radius}&size=15&page=1`;
         const firstData = await httpsGet(url, headers).catch(() => ({ meta: { total_count: 0 }, documents: [] }));
         const totalCount = firstData.meta ? firstData.meta.total_count : 0;
-        const totalPages = Math.min(Math.ceil(totalCount / 15), 3); // 최대 3페이지 제한
+        const totalPages = Math.min(Math.ceil(totalCount / 15), 15); // 최대 15페이지 제한
 
         let allItems = [...(firstData.documents || [])];
 

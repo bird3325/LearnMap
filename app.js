@@ -638,35 +638,63 @@ document.addEventListener('DOMContentLoaded', () => {
             activeChild = orchestrator.state.childProfile;
         }
 
-        const db = window.schoolsDatabase || window.allSchoolsCache || [];
+        const dbPool = [
+            ...(typeof allSchoolsCache !== 'undefined' && Array.isArray(allSchoolsCache) ? allSchoolsCache : []),
+            ...(typeof schoolsDatabase !== 'undefined' && Array.isArray(schoolsDatabase) ? schoolsDatabase : []),
+            ...(window.allSchoolsCache && Array.isArray(window.allSchoolsCache) ? window.allSchoolsCache : []),
+            ...(window.schoolsDatabase && Array.isArray(window.schoolsDatabase) ? window.schoolsDatabase : [])
+        ];
         let targetSchool = window.selectedTargetSchool || null;
 
-        if (!targetSchool && db.length > 0 && activeChild) {
+        if (!targetSchool && dbPool.length > 0 && activeChild) {
             if (activeChild.schoolId) {
-                targetSchool = db.find(s => String(s.school_id || s.id) === String(activeChild.schoolId));
+                targetSchool = dbPool.find(s => String(s.school_id || s.id) === String(activeChild.schoolId));
             }
             if (!targetSchool && activeChild.schoolName) {
-                targetSchool = db.find(s => s.school_name === activeChild.schoolName && ((s.region || '').includes(activeChild.schoolRegion || '') || !activeChild.schoolRegion));
+                targetSchool = dbPool.find(s => s.school_name === activeChild.schoolName && ((s.region || '').includes(activeChild.schoolRegion || '') || !activeChild.schoolRegion));
             }
             if (!targetSchool && activeChild.schoolName) {
-                targetSchool = db.find(s => s.school_name === activeChild.schoolName);
+                targetSchool = dbPool.find(s => s.school_name === activeChild.schoolName);
             }
         }
 
-        if (targetSchool && targetSchool.lat && targetSchool.lng) {
+        if (targetSchool && (targetSchool.lat || targetSchool.y || targetSchool.latitude) && (targetSchool.lng || targetSchool.x || targetSchool.longitude)) {
+            const lat = parseFloat(targetSchool.lat || targetSchool.y || targetSchool.latitude);
+            const lng = parseFloat(targetSchool.lng || targetSchool.x || targetSchool.longitude);
+
             window.selectedTargetSchool = targetSchool;
             if (typeof orchestrator !== 'undefined' && orchestrator.state) {
                 orchestrator.state.selectedSchool = targetSchool;
             }
 
+            // 자녀 학교급(초/중/고) 및 지역 필터 동기화
+            const schoolTypeFilterEl = document.getElementById('schoolTypeFilter');
+            if (schoolTypeFilterEl) {
+                const rawType = targetSchool.school_type || targetSchool.type || '';
+                let mappedType = '';
+                if (rawType.includes('초') || rawType === 'elementary') mappedType = 'elementary';
+                else if (rawType.includes('중') || rawType === 'middle') mappedType = 'middle';
+                else if (rawType.includes('고') || rawType === 'high') mappedType = 'high';
+
+                if (mappedType) {
+                    schoolTypeFilterEl.value = mappedType;
+                    if (typeof orchestrator !== 'undefined' && orchestrator.state && orchestrator.state.filters) {
+                        orchestrator.state.filters.schoolType = mappedType;
+                    }
+                }
+            }
+
             const regionFilter = document.getElementById('regionFilter');
             if (regionFilter && targetSchool.region && regionFilter.value !== targetSchool.region) {
-                regionFilter.value = targetSchool.region;
+                const exists = Array.from(regionFilter.options).some(opt => opt.value === targetSchool.region);
+                if (exists) {
+                    regionFilter.value = targetSchool.region;
+                }
             }
 
             const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
-            if (mapObj && typeof mapObj.setCenter === 'function') {
-                const coords = new kakao.maps.LatLng(targetSchool.lat, targetSchool.lng);
+            if (mapObj && !isNaN(lat) && !isNaN(lng) && typeof kakao !== 'undefined' && kakao.maps) {
+                const coords = new kakao.maps.LatLng(lat, lng);
                 mapObj.setCenter(coords);
                 if (typeof mapObj.setLevel === 'function') {
                     mapObj.setLevel(6); // 자녀 학교 이동 시에도 500m 축척 유지
@@ -680,11 +708,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.onMapAction();
             }
 
-            if (typeof highlightSelectedPin === 'function') {
-                highlightSelectedPin(targetSchool.school_id || targetSchool.id);
+            const targetId = targetSchool.school_id || targetSchool.id;
+            if (typeof window.selectSchoolById === 'function') {
+                window.selectSchoolById(targetId);
+            } else if (typeof orchestrator !== 'undefined' && typeof orchestrator.selectSchool === 'function') {
+                const summary = orchestrator.selectSchool(targetSchool);
+                if (typeof showSchoolDetails === 'function') {
+                    showSchoolDetails(summary, targetSchool);
+                }
+                if (typeof highlightSelectedPin === 'function') {
+                    highlightSelectedPin(targetId);
+                }
             }
-            if (typeof showSchoolCard === 'function') {
-                showSchoolCard(targetSchool);
+
+            // 자녀 학교 주변 학원 데이터 로드 및 학원 핀/반경원 노출
+            const activeRadBtn = document.querySelector('#academyRadiusButtonGroup .academy-radius-btn.active');
+            const radInput = document.getElementById('academyMapRadiusFilter');
+            const currentRad = activeRadBtn ? parseInt(activeRadBtn.getAttribute('data-radius'), 10) : (window.currentAcademyRadius || (radInput ? (parseInt(radInput.value, 10) || 1000) : 1000));
+            if (typeof window.loadAcademiesForRadius === 'function') {
+                window.loadAcademiesForRadius(currentRad);
+            } else if (typeof window.updateAcademyMapMarkers === 'function') {
+                window.updateAcademyMapMarkers(window.allFetchedAcademies || []);
             }
 
             return true;
@@ -3561,8 +3605,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // --- 가중 평균 계산 ---
-            const schoolAvg = (school.subjects.korean.avg + school.subjects.english.avg + school.subjects.math.avg) / 3;
-            const weightedAvg = sumW > 0 ? (school.subjects.korean.avg * wKor + school.subjects.english.avg * wEng + school.subjects.math.avg * wMath) / sumW : schoolAvg;
+            const korVal = school.subjects?.korean?.avg ?? 75;
+            const engVal = school.subjects?.english?.avg ?? 75;
+            const mathVal = school.subjects?.math?.avg ?? 70;
+
+            const schoolAvg = (korVal + engVal + mathVal) / 3;
+            const weightedAvg = sumW > 0 ? (korVal * wKor + engVal * wEng + mathVal * wMath) / sumW : schoolAvg;
             school.weightedAvg = Math.round(weightedAvg * 10) / 10;
 
             // --- 3개년 트렌드 추이 시뮬레이션 ---
@@ -3590,11 +3638,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // --- 세부 학업 지표 필터 체크 ---
                 if (school.weightedAvg < minAvgScore) return false;
-                if (school.subjects.korean.avg < minSubjectScore || school.subjects.english.avg < minSubjectScore || school.subjects.math.avg < minSubjectScore) return false;
+                if (korVal < minSubjectScore || engVal < minSubjectScore || mathVal < minSubjectScore) return false;
                 
-                const distKor = school.subjects.korean.dist || [0, 0, 0, 0];
-                const distEng = school.subjects.english.dist || [0, 0, 0, 0];
-                const distMath = school.subjects.math.dist || [0, 0, 0, 0];
+                const distKor = school.subjects?.korean?.dist || [25, 25, 25, 25];
+                const distEng = school.subjects?.english?.dist || [25, 25, 25, 25];
+                const distMath = school.subjects?.math?.dist || [25, 25, 25, 25];
                 const topRatio = (distKor[0] + distEng[0] + distMath[0]) / 3;
                 if (topRatio < minTopRatio) return false;
                 
@@ -3990,6 +4038,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 sidebar.style.display = 'block';
             }
             highlightSelectedPin(schoolId);
+            if (typeof window.updateAcademyMapMarkers === 'function') {
+                window.updateAcademyMapMarkers(window.allFetchedAcademies || []);
+            }
         }
     };
 
@@ -5518,6 +5569,79 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         window.fetchAcademyRatingsFromDb = fetchAcademyRatingsFromDb;
 
+        // 학원/학교 핀 위치를 지도의 가시 영역 중앙으로 오프셋 이동시키는 헬퍼 함수 (단일 부드러운 이동)
+        window.centerAcademyPinWithSidebarOffset = function(lng, lat, name) {
+            if (!lng || !lat) return;
+            const numLng = parseFloat(lng);
+            const numLat = parseFloat(lat);
+            if (isNaN(numLng) || isNaN(numLat)) return;
+
+            const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
+            if (!mapObj || !window.kakao || !window.kakao.maps) return;
+
+            const pos = new kakao.maps.LatLng(numLat, numLng);
+
+            // 사이드바 가림 영역 계산 (PC 1024px 초과 기준)
+            let rightBlocked = 0;
+            if (window.innerWidth > 1024) {
+                const mainSidebar = document.querySelector('.sidebar-section');
+                const academySidebar = document.getElementById('academySidebar');
+                const container = document.querySelector('.app-container');
+
+                if (mainSidebar && mainSidebar.offsetWidth > 0 && window.getComputedStyle(mainSidebar).display !== 'none') {
+                    rightBlocked += mainSidebar.offsetWidth;
+                }
+                const isAcademyOpen = (academySidebar && window.getComputedStyle(academySidebar).display !== 'none') ||
+                                      (container && container.classList.contains('academy-open'));
+                if (isAcademyOpen) {
+                    rightBlocked += (academySidebar && academySidebar.offsetWidth > 0 ? academySidebar.offsetWidth : 340);
+                }
+            }
+
+            // 투영(Projection) 객체를 통해 현재 마커 위치에서 가시 영역 계산
+            if (typeof mapObj.getProjection === 'function') {
+                const proj = mapObj.getProjection();
+                const container = typeof mapObj.getContainer === 'function' ? mapObj.getContainer() : document.getElementById('mapContainer');
+                const containerWidth = container ? container.offsetWidth : window.innerWidth;
+                const containerHeight = container ? container.offsetHeight : window.innerHeight;
+
+                if (proj && typeof proj.containerPointFromCoordinate === 'function') {
+                    const curPt = proj.containerPointFromCoordinate(pos);
+                    const unblockedWidth = containerWidth - rightBlocked;
+                    const padding = 50;
+
+                    // 핀 위치가 우측 사이드바에 가려지지 않는 좌측 가시 영역 내에 이미 있다면 절대로 이동하지 않음
+                    if (curPt && curPt.x >= padding && curPt.x <= (unblockedWidth - padding) &&
+                        curPt.y >= padding && curPt.y <= (containerHeight - padding)) {
+                        return;
+                    }
+
+                    // 핀이 사이드바 뒤로 가려졌거나 화면 밖인 경우에만 가시 영역 중앙으로 오프셋 이동
+                    const targetX = Math.round(unblockedWidth / 2);
+                    const targetY = Math.round(containerHeight / 2);
+
+                    const dx = Math.round(curPt.x - targetX);
+                    const dy = Math.round(curPt.y - targetY);
+
+                    if (typeof mapObj.panBy === 'function') {
+                        mapObj.panBy(dx, dy);
+                        return;
+                    }
+                }
+            }
+
+            // Fallback: 투영 계산 실패 시 핀 위치로 단순 이동 후 우측 블록 보정
+            if (typeof mapObj.panTo === 'function') {
+                mapObj.panTo(pos);
+            } else if (typeof mapObj.setCenter === 'function') {
+                mapObj.setCenter(pos);
+            }
+
+            if (rightBlocked > 0 && typeof mapObj.panBy === 'function') {
+                mapObj.panBy(Math.round(rightBlocked / 2), 0);
+            }
+        };
+
         // 전역 지적 이동/줌 헬퍼 등록 (학원 카드에서 📍 거리/지도 버튼 클릭시 동작)
         window.focusAcademyLocationOnMap = function(lng, lat, name) {
             if (!lng || !lat) return;
@@ -6114,46 +6238,292 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } // end applyFiltersAndRender
 
+        // 지도 상 주변 학원 마커(점 형태 & 마우스 오버 플로팅 라벨 & 클릭 시 상세) 업데이트
+        window.academyMapOverlays = window.academyMapOverlays || [];
+        function updateAcademyMapMarkers(academiesList) {
+            const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
+            if (!mapObj || !window.kakao || !window.kakao.maps) return;
+
+            // 기존 학원 마커들 제거
+            if (Array.isArray(window.academyMapOverlays)) {
+                window.academyMapOverlays.forEach(ov => ov && ov.setMap(null));
+            }
+            window.academyMapOverlays = [];
+
+            // 기존 학원 반경원 제거
+            if (window.academyRadiusCircle) {
+                window.academyRadiusCircle.setMap(null);
+                window.academyRadiusCircle = null;
+            }
+
+            // 필터: '지도상 학원 노출' 체크박스 확인 (기본값 checked)
+            const chkShow = document.getElementById('showAcademyMapCheckbox');
+            if (chkShow && !chkShow.checked) return;
+
+            // 선택된 학교가 있는 경우 해당 학교 위치를 중심으로 학원 노출 반경 범위 원(Circle) 표시
+            const schoolObj = fullSchool || (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) || window.currentSelectedSchool || null;
+            let sLat = schoolObj && (schoolObj.lat || schoolObj.y || schoolObj.latitude) ? parseFloat(schoolObj.lat || schoolObj.y || schoolObj.latitude) : null;
+            let sLng = schoolObj && (schoolObj.lng || schoolObj.x || schoolObj.longitude) ? parseFloat(schoolObj.lng || schoolObj.x || schoolObj.longitude) : null;
+
+            const activeRadBtn = document.querySelector('#academyRadiusButtonGroup .academy-radius-btn.active');
+            const btnRadius = activeRadBtn ? parseInt(activeRadBtn.getAttribute('data-radius'), 10) : 0;
+            const radiusInput = document.getElementById('academyMapRadiusFilter');
+            const targetRadiusMeters = btnRadius || currentAcademyRadius || (radiusInput ? (parseFloat(radiusInput.value) || 1000) : 1000);
+
+            if (sLat && sLng && !isNaN(sLat) && !isNaN(sLng)) {
+                const schoolCenterPos = new kakao.maps.LatLng(sLat, sLng);
+
+                window.academyRadiusCircle = new kakao.maps.Circle({
+                    center: schoolCenterPos,
+                    radius: targetRadiusMeters,
+                    strokeWeight: 2,
+                    strokeColor: '#2563eb',
+                    strokeOpacity: 0.8,
+                    strokeStyle: 'dashed',
+                    fillColor: '#3b82f6',
+                    fillOpacity: 0.12
+                });
+                window.academyRadiusCircle.setMap(mapObj);
+            }
+
+            if (!Array.isArray(academiesList)) return;
+
+            academiesList.forEach(place => {
+                const lng = parseFloat(place.x);
+                const lat = parseFloat(place.y);
+                if (isNaN(lng) || isNaN(lat)) return;
+
+                // 선택된 학교가 있을 경우 설정 반경 범위 내에 있는지 정확히 거리 계산하여 필터링
+                if (sLat && sLng && !isNaN(sLat) && !isNaN(sLng)) {
+                    const distFromSchool = place._computedDistance || calculateAcademyDistance(sLat, sLng, lat, lng, place.distance);
+                    if (distFromSchool > targetRadiusMeters) return; // 반경 범위를 벗어난 학원은 마커 생성 스킵
+                }
+
+                const pos = new kakao.maps.LatLng(lat, lng);
+                const acadName = place.place_name || '학원';
+                const safeName = acadName.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+                // 메인 오버레이 랩핑 DOM (clickable)
+                const containerEl = document.createElement('div');
+                containerEl.className = 'academy-dot-container';
+                containerEl.style.cssText = 'position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; z-index: 1000;';
+
+                // 점(Dot) 형태 마커 엘리먼트
+                const dotEl = document.createElement('div');
+                dotEl.className = 'academy-dot-marker';
+                dotEl.style.cssText = 'width: 12px; height: 12px; background: #2563eb; border: 2px solid #ffffff; border-radius: 50%; box-shadow: 0 2px 6px rgba(37,99,235,0.4); transition: transform 0.15s ease, background-color 0.15s ease;';
+
+                // 마우스 오버 시 노출되는 플로팅 학원명 라벨 엘리먼트
+                const floatingLabelEl = document.createElement('div');
+                floatingLabelEl.className = 'academy-floating-label';
+                floatingLabelEl.style.cssText = 'position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #ffffff; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.15s ease, visibility 0.15s ease; z-index: 10000;';
+                floatingLabelEl.innerHTML = `🎓 ${safeName}`;
+
+                containerEl.appendChild(dotEl);
+                containerEl.appendChild(floatingLabelEl);
+
+                // Hover 애니메이션 & 플로팅 라벨 토글
+                containerEl.addEventListener('mouseenter', () => {
+                    dotEl.style.transform = 'scale(1.4)';
+                    dotEl.style.background = '#1d4ed8';
+                    floatingLabelEl.style.opacity = '1';
+                    floatingLabelEl.style.visibility = 'visible';
+                    if (overlay && typeof overlay.setZIndex === 'function') {
+                        overlay.setZIndex(99999);
+                    }
+                    containerEl.style.zIndex = '99999';
+                });
+
+                containerEl.addEventListener('mouseleave', () => {
+                    dotEl.style.transform = 'scale(1)';
+                    dotEl.style.background = '#2563eb';
+                    floatingLabelEl.style.opacity = '0';
+                    floatingLabelEl.style.visibility = 'hidden';
+                    if (overlay && typeof overlay.setZIndex === 'function') {
+                        overlay.setZIndex(1000);
+                    }
+                    containerEl.style.zIndex = '1000';
+                });
+
+                // 점 클릭 시 학원리스트 사이드바 이동 및 학원 상세 정보 팝업 오픈
+                containerEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+
+                    const academySidebar = document.getElementById('academySidebar');
+                    const isAlreadyOpen = academySidebar && (
+                        academySidebar.style.display === 'flex' ||
+                        window.getComputedStyle(academySidebar).display !== 'none'
+                    );
+
+                    // 학원 패널/사이드바가 닫혀 있는 경우 강제로 열어줍니다.
+                    if (typeof window.toggleAcademySidebar === 'function') {
+                        window.toggleAcademySidebar(true);
+                    } else {
+                        if (academySidebar) academySidebar.style.display = 'flex';
+                        const container = document.querySelector('.app-container');
+                        if (container) container.classList.add('academy-open');
+                    }
+
+                    // 학원 카드가 생성된 DOM을 찾아 스크롤 및 포커스
+                    const foundCard = Array.from(document.querySelectorAll('#sideAcademyList .academy-card, .academy-card')).find(card => {
+                        return card.innerText.includes(acadName);
+                    });
+
+                    if (foundCard) {
+                        foundCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        foundCard.click();
+                    } else {
+                        // 카드 검색 미매칭 시 직접 커뮤니티 후기, 수강료 계산기 & 타운톡 상세 팝업 오픈
+                        window.currentAcademyForCommunity = acadName;
+                        let categorySubject = '';
+                        if (place.category_name) {
+                            const parts = place.category_name.split('>').map(s => s.trim());
+                            categorySubject = parts.length > 1 ? parts[parts.length - 1] : parts[0];
+                        }
+                        let shortSubject = categorySubject.replace('학원', '').replace('교습소', '').replace('전문', '').trim();
+                        if (!shortSubject) shortSubject = categorySubject || '학원';
+
+                        const tLabel = acadName.includes('교습소') ? '교습소' : '학원';
+                        if (typeof window.fetchCommunityReviews === 'function') {
+                            window.fetchCommunityReviews(acadName, 'all', shortSubject, tLabel);
+                        }
+                        window.currentAcademyCoords = { lng: place.x, lat: place.y };
+                        if (typeof window.renderAcademyFeeCalculator === 'function') {
+                            window.renderAcademyFeeCalculator(
+                                acadName, 
+                                shortSubject, 
+                                place.road_address_name || place.address_name || '', 
+                                place.phone || '', 
+                                tLabel, 
+                                place.x, 
+                                place.y
+                            );
+                        }
+                        if (typeof window.fetchTownTalkList === 'function') {
+                            window.fetchTownTalkList(acadName, 'academyTownTalkList');
+                        }
+                    }
+
+                    // 학원 목록 사이드바가 열려있지 않았던 경우에만 지도 중심 및 시점 이동
+                    if (!isAlreadyOpen) {
+                        if (typeof window.centerAcademyPinWithSidebarOffset === 'function') {
+                            window.centerAcademyPinWithSidebarOffset(place.x, place.y, acadName);
+                        } else if (mapObj && typeof mapObj.panTo === 'function') {
+                            mapObj.panTo(pos);
+                        }
+                    }
+                });
+
+                const overlay = new kakao.maps.CustomOverlay({
+                    map: mapObj,
+                    position: pos,
+                    content: containerEl,
+                    xAnchor: 0.5,
+                    yAnchor: 0.5,
+                    zIndex: 1000,
+                    clickable: true
+                });
+
+                window.academyMapOverlays.push(overlay);
+            });
+        }
+        window.updateAcademyMapMarkers = updateAcademyMapMarkers;
+
         // 반경별 학원 데이터 호출 함수
         async function loadAcademiesForRadius(radius = 1000) {
-            currentAcademyRadius = radius;
+            const radNum = parseInt(radius, 10) || 1000;
+            currentAcademyRadius = radNum;
+            window.currentAcademyRadius = radNum;
+
+            // UI 동기화: 슬라이더 및 라벨 수치 업데이트
+            const radInput = document.getElementById('academyMapRadiusFilter');
+            if (radInput) radInput.value = String(radNum);
+
+            const textEl = document.getElementById('valAcademyMapRadius');
+            if (textEl) {
+                textEl.innerText = radNum < 1000 ? `${radNum}m` : `${(radNum / 1000).toFixed(1)}km`;
+            }
+
+            // UI 동기화: 반경 버튼 4종 활성화 상태 업데이트
+            const radiusButtonGroup = document.getElementById('academyRadiusButtonGroup');
+            if (radiusButtonGroup) {
+                radiusButtonGroup.querySelectorAll('.academy-radius-btn').forEach(b => {
+                    const r = parseInt(b.getAttribute('data-radius'), 10);
+                    if (r === radNum) {
+                        b.classList.add('active');
+                        b.style.background = '#2563eb';
+                        b.style.color = '#ffffff';
+                        b.style.borderColor = '#2563eb';
+                        b.style.fontWeight = '700';
+                        b.style.boxShadow = '0 2px 6px rgba(37,99,235,0.25)';
+                        if (r === 500) b.innerText = '반경 500m';
+                        else if (r === 1000) b.innerText = '반경 1km';
+                        else if (r === 1500) b.innerText = '반경 1.5km';
+                        else if (r === 2000) b.innerText = '반경 2.0km';
+                    } else {
+                        b.classList.remove('active');
+                        b.style.background = '#ffffff';
+                        b.style.color = '#475569';
+                        b.style.borderColor = '#e2e8f0';
+                        b.style.fontWeight = '600';
+                        b.style.boxShadow = 'none';
+                        if (r === 500) b.innerText = '500m';
+                        else if (r === 1000) b.innerText = '1.0km';
+                        else if (r === 1500) b.innerText = '1.5km';
+                        else if (r === 2000) b.innerText = '2.0km';
+                    }
+                });
+            }
+
+            const schoolObj = fullSchool || (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) || window.currentSelectedSchool || null;
+            let targetLng = schoolObj && (schoolObj.lng || schoolObj.x || schoolObj.longitude) ? parseFloat(schoolObj.lng || schoolObj.x || schoolObj.longitude) : null;
+            let targetLat = schoolObj && (schoolObj.lat || schoolObj.y || schoolObj.latitude) ? parseFloat(schoolObj.lat || schoolObj.y || schoolObj.latitude) : null;
+
+            if (!targetLng || !targetLat) return;
+
             academyListContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">실제 주변 학원 데이터를 불러오는 중입니다...</div>';
             
             const totalBadge = document.getElementById('academyTotalCountBadge');
             if (totalBadge) totalBadge.innerText = '검색 중...';
-            document.getElementById('schoolAcademies').innerText = '검색 중...';
+            const schoolAcademiesEl = document.getElementById('schoolAcademies');
+            if (schoolAcademiesEl) schoolAcademiesEl.innerText = '검색 중...';
 
             try {
-                let res = await fetch(`/api/academies/list?x=${fullSchool.lng}&y=${fullSchool.lat}&radius=${radius}`);
+                let res = await fetch(`/api/academies/list?x=${targetLng}&y=${targetLat}&radius=${radNum}`);
                 let result = res.ok ? await res.json() : null;
                 if (!result || result.error || !result.items || result.items.length === 0) {
-                    result = await fetchAcademiesClientSide(fullSchool.lat, fullSchool.lng, radius);
+                    result = await fetchAcademiesClientSide(targetLat, targetLng, radNum);
                 }
                 
                 allFetchedAcademies = [...(result.items || [])];
                 const totalCount = result.total_count || allFetchedAcademies.length;
                 
-                document.getElementById('schoolAcademies').innerText = `${totalCount}개`;
+                if (schoolAcademiesEl) schoolAcademiesEl.innerText = `${totalCount}개`;
                 if (totalBadge) totalBadge.innerText = `총 ${totalCount}개소`;
 
+                window.allFetchedAcademies = allFetchedAcademies;
                 await fetchAcademyRatingsFromDb();
                 await applyFiltersAndRender();
+                updateAcademyMapMarkers(allFetchedAcademies);
             } catch (err) {
                 console.warn('Backend academy fetch failed, using client SDK fallback:', err);
                 try {
-                    const fallbackResult = await fetchAcademiesClientSide(fullSchool.lat, fullSchool.lng, radius);
+                    const fallbackResult = await fetchAcademiesClientSide(targetLat, targetLng, radNum);
                     allFetchedAcademies = [...(fallbackResult.items || [])];
+                    window.allFetchedAcademies = allFetchedAcademies;
                     const totalCount = fallbackResult.total_count || allFetchedAcademies.length;
-                    document.getElementById('schoolAcademies').innerText = `${totalCount}개`;
+                    if (schoolAcademiesEl) schoolAcademiesEl.innerText = `${totalCount}개`;
                     if (totalBadge) totalBadge.innerText = `총 ${totalCount}개소`;
                     await fetchAcademyRatingsFromDb();
                     await applyFiltersAndRender();
+                    updateAcademyMapMarkers(allFetchedAcademies);
                 } catch (clientErr) {
                     console.error('Academy list fetch error:', clientErr);
                     academyListContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">학원 목록을 불러오는 데 실패했습니다.</div>';
                 }
             }
         }
+        window.loadAcademiesForRadius = loadAcademiesForRadius;
 
         // 반경 버튼 이벤트 리스너 바인딩
         const radiusButtonGroup = document.getElementById('academyRadiusButtonGroup');
@@ -6256,8 +6626,10 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }
 
-        // 초기 데이터 로드 (기본 반경 1km)
-        loadAcademiesForRadius(1000);
+        // 초기 데이터 로드 (현재 선택된 반경 유지)
+        const activeRadBtn = document.querySelector('#academyRadiusButtonGroup .academy-radius-btn.active');
+        const initialRadius = activeRadBtn ? parseInt(activeRadBtn.getAttribute('data-radius'), 10) : (currentAcademyRadius || 1000);
+        loadAcademiesForRadius(initialRadius);
 
         schoolKorAvg.innerText = fullSchool.subjects.korean.avg;
         schoolEngAvg.innerText = fullSchool.subjects.english.avg;
@@ -9620,6 +9992,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'accidentStatisticsCheckbox': false,
             'trafficAccidentCheckbox': false,
             'dongRatingCheckbox': false,
+            'showAcademyMapCheckbox': true,
+            'academyMapRadiusFilter': 1000,
             'childGradeFilter': 'middle',
             'childScoreFilter': 'mid',
             'childTendencyFilter': 'balanced'
@@ -9654,6 +10028,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 else if (id === 'filterMinGraduateRate') { textElId = 'valMinGraduateRate'; suffix = '%'; }
                 else if (id === 'filterMinSpecialAdmission') { textElId = 'valMinSpecialAdmission'; suffix = '%'; }
                 else if (id === 'filterMaxViolence') { textElId = 'valMaxViolence'; suffix = '건'; }
+                else if (id === 'academyMapRadiusFilter') { textElId = 'valAcademyMapRadius'; val = (val < 1000 ? val + 'm' : (val / 1000).toFixed(1) + 'km'); suffix = ''; }
 
                 if (textElId) {
                     const textEl = document.getElementById(textElId);
@@ -12333,6 +12708,41 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 updateTrafficAccidentLayers(null);
             }
+        } else if (id === 'showAcademyMapCheckbox') {
+            if (typeof window.updateAcademyMapMarkers === 'function') {
+                window.updateAcademyMapMarkers(window.allFetchedAcademies || []);
+            }
+        } else if (id === 'academyMapRadiusFilter') {
+            const rad = parseInt(e.target.value, 10) || 1000;
+            const textEl = document.getElementById('valAcademyMapRadius');
+            if (textEl) {
+                textEl.innerText = rad < 1000 ? `${rad}m` : `${(rad / 1000).toFixed(1)}km`;
+            }
+            if (typeof window.loadAcademiesForRadius === 'function') {
+                window.loadAcademiesForRadius(rad);
+            }
+        }
+    });
+
+    // 학원 반경 범위 슬라이더 실시간 드래그 수치 표시 (input 이벤트)
+    document.addEventListener('input', (e) => {
+        if (e.target && e.target.id === 'academyMapRadiusFilter') {
+            const rad = parseInt(e.target.value, 10) || 1000;
+            const textEl = document.getElementById('valAcademyMapRadius');
+            if (textEl) {
+                textEl.innerText = rad < 1000 ? `${rad}m` : `${(rad / 1000).toFixed(1)}km`;
+            }
+        }
+    });
+
+    // 학원 반경 범위 버튼 클릭 이벤트 전역 위임
+    document.addEventListener('click', (e) => {
+        const radBtn = e.target && e.target.closest ? e.target.closest('.academy-radius-btn') : null;
+        if (radBtn) {
+            const rad = parseInt(radBtn.getAttribute('data-radius'), 10);
+            if (rad && typeof window.loadAcademiesForRadius === 'function') {
+                window.loadAcademiesForRadius(rad);
+            }
         }
     });
 
@@ -14679,21 +15089,27 @@ window.addEventListener('DOMContentLoaded', () => {
                 const distAAvg = Math.round((korDistA + engDistA + mathDistA) / 3);
 
                 // 2) 학교폭력 지표
+                const isPlannedSchool = (
+                    school.status === '개교예정' || 
+                    (school.school_name && (school.school_name.includes('개교예정') || school.school_name.includes('예정'))) || 
+                    (school.establishment_status && String(school.establishment_status).includes('예정'))
+                );
                 const rawV = school.violence_stats || {};
-                const totalCases = (rawV.total_cases !== null && rawV.total_cases !== undefined) ? rawV.total_cases : (codeHash % 5);
-                const per100 = (rawV.per_100 !== null && rawV.per_100 !== undefined) ? rawV.per_100 : Math.round((totalCases / studentCount) * 100 * 10) / 10;
+                const totalCases = isPlannedSchool ? 0 : ((rawV.total_cases !== null && rawV.total_cases !== undefined) ? rawV.total_cases : (codeHash % 5));
+                const per100 = isPlannedSchool ? 0 : ((rawV.per_100 !== null && rawV.per_100 !== undefined) ? rawV.per_100 : Math.round((totalCases / studentCount) * 100 * 10) / 10);
                 const rawTypes = rawV.types || {};
-                const verbal = (rawTypes.verbal !== null && rawTypes.verbal !== undefined) ? rawTypes.verbal : Math.round(35 + (codeHash % 20));
-                const cyber = (rawTypes.cyber !== null && rawTypes.cyber !== undefined) ? rawTypes.cyber : Math.round(15 + (codeHash % 15));
-                const exclude = (rawTypes.exclude !== null && rawTypes.exclude !== undefined) ? rawTypes.exclude : Math.round(10 + (codeHash % 10));
-                const physical = (rawTypes.physical !== null && rawTypes.physical !== undefined) ? rawTypes.physical : Math.max(5, 100 - verbal - cyber - exclude);
-                const resolvedRate = (rawV.resolved_rate !== null && rawV.resolved_rate !== undefined) ? rawV.resolved_rate : Math.round(80 + (codeHash % 18));
+                const verbal = isPlannedSchool ? 0 : ((rawTypes.verbal !== null && rawTypes.verbal !== undefined) ? rawTypes.verbal : Math.round(35 + (codeHash % 20)));
+                const cyber = isPlannedSchool ? 0 : ((rawTypes.cyber !== null && rawTypes.cyber !== undefined) ? rawTypes.cyber : Math.round(15 + (codeHash % 15)));
+                const exclude = isPlannedSchool ? 0 : ((rawTypes.exclude !== null && rawTypes.exclude !== undefined) ? rawTypes.exclude : Math.round(10 + (codeHash % 10)));
+                const physical = isPlannedSchool ? 0 : ((rawTypes.physical !== null && rawTypes.physical !== undefined) ? rawTypes.physical : Math.max(5, 100 - verbal - cyber - exclude));
+                const resolvedRate = isPlannedSchool ? 100 : ((rawV.resolved_rate !== null && rawV.resolved_rate !== undefined) ? rawV.resolved_rate : Math.round(80 + (codeHash % 18)));
 
                 const vStats = {
                     total_cases: totalCases,
                     per_100: per100,
                     types: { verbal, cyber, exclude, physical },
-                    resolved_rate: resolvedRate
+                    resolved_rate: resolvedRate,
+                    isPlanned: isPlannedSchool
                 };
 
                 // 3) 전입 및 통학 지표
@@ -14771,19 +15187,38 @@ window.addEventListener('DOMContentLoaded', () => {
             // 정렬 처리
             if (currentTopic === 'violence') {
                 const vKey = sortState.violence.key;
-                const vDir = sortState.violence.dir;
+                const vDir = sortState.violence.dir || 'desc';
                 const m = vDir === 'asc' ? 1 : -1;
-                if (vKey === 'cases') {
-                    processedList.sort((a, b) => m * (a.vStats.per_100 - b.vStats.per_100) || m * (a.vStats.total_cases - b.vStats.total_cases));
-                } else if (vKey === 'verbal') {
-                    processedList.sort((a, b) => m * ((a.vStats.types?.verbal || 0) - (b.vStats.types?.verbal || 0)));
-                } else if (vKey === 'cyber') {
-                    processedList.sort((a, b) => m * ((a.vStats.types?.cyber || 0) - (b.vStats.types?.cyber || 0)));
-                } else if (vKey === 'exclude') {
-                    processedList.sort((a, b) => m * ((a.vStats.types?.exclude || 0) - (b.vStats.types?.exclude || 0)));
-                } else if (vKey === 'physical') {
-                    processedList.sort((a, b) => m * ((a.vStats.types?.physical || 0) - (b.vStats.types?.physical || 0)));
-                }
+
+                processedList.sort((a, b) => {
+                    if (vKey === 'cases') {
+                        const diffTotal = (a.vStats.total_cases || 0) - (b.vStats.total_cases || 0);
+                        if (diffTotal !== 0) return m * diffTotal;
+                        const diffPer100 = (a.vStats.per_100 || 0) - (b.vStats.per_100 || 0);
+                        if (diffPer100 !== 0) return m * diffPer100;
+                        if (a.vStats.isPlanned !== b.vStats.isPlanned) {
+                            return a.vStats.isPlanned ? 1 : -1;
+                        }
+                        return a.name.localeCompare(b.name, 'ko');
+                    } else if (vKey === 'verbal') {
+                        const diff = (a.vStats.types?.verbal || 0) - (b.vStats.types?.verbal || 0);
+                        if (diff !== 0) return m * diff;
+                        return m * ((a.vStats.total_cases || 0) - (b.vStats.total_cases || 0));
+                    } else if (vKey === 'cyber') {
+                        const diff = (a.vStats.types?.cyber || 0) - (b.vStats.types?.cyber || 0);
+                        if (diff !== 0) return m * diff;
+                        return m * ((a.vStats.total_cases || 0) - (b.vStats.total_cases || 0));
+                    } else if (vKey === 'exclude') {
+                        const diff = (a.vStats.types?.exclude || 0) - (b.vStats.types?.exclude || 0);
+                        if (diff !== 0) return m * diff;
+                        return m * ((a.vStats.total_cases || 0) - (b.vStats.total_cases || 0));
+                    } else if (vKey === 'physical') {
+                        const diff = (a.vStats.types?.physical || 0) - (b.vStats.types?.physical || 0);
+                        if (diff !== 0) return m * diff;
+                        return m * ((a.vStats.total_cases || 0) - (b.vStats.total_cases || 0));
+                    }
+                    return 0;
+                });
             } else {
                 const { key, dir } = sortState[currentTopic];
                 const m = dir === 'desc' ? -1 : 1;
@@ -14846,6 +15281,7 @@ window.addEventListener('DOMContentLoaded', () => {
             }
 
             // 리스트 UI 렌더링
+            window.lastTopicStatsProcessedList = processedList;
             renderTopicStatsUI(processedList);
         }
 
@@ -14874,9 +15310,13 @@ window.addEventListener('DOMContentLoaded', () => {
                     const v = item.vStats;
                     const types = v.types || { verbal: 40, cyber: 20, exclude: 15, physical: 25 };
                     const isSafe = v.per_100 <= 0.5;
-                    const statusTag = isSafe 
+                    let statusTag = isSafe 
                         ? `<span style="color:var(--success-green); font-weight:bold; font-size:10.5px;">🛡️ 아주 안전</span>`
                         : `<span style="color:#e11d48; font-weight:bold; font-size:10.5px;">⚠️ 주의 요망</span>`;
+
+                    if (v.isPlanned) {
+                        statusTag = `<span style="color:#64748b; font-weight:bold; font-size:10.5px;">🏫 개교예정 (신고 없음)</span>`;
+                    }
 
                     metricDetailsHTML = `
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
@@ -14993,17 +15433,27 @@ window.addEventListener('DOMContentLoaded', () => {
             }
 
             // 카카오 지도 또는 학교 핀 선택 연동
-            let targetSchool = (allSchoolsCache && Array.isArray(allSchoolsCache))
-                ? allSchoolsCache.find(s => String(s.school_id || s.id) === String(schoolId) || s.school_name === schoolId)
-                : null;
-            if (!targetSchool && typeof schoolsDatabase !== 'undefined' && Array.isArray(schoolsDatabase)) {
-                targetSchool = schoolsDatabase.find(s => String(s.school_id || s.id) === String(schoolId) || s.school_name === schoolId);
-            }
-            if (!targetSchool && typeof currentLoadedSchools !== 'undefined' && Array.isArray(currentLoadedSchools)) {
-                targetSchool = currentLoadedSchools.find(s => String(s.school_id || s.id) === String(schoolId) || s.school_name === schoolId);
+            const searchPool = [
+                ...(typeof allSchoolsCache !== 'undefined' && Array.isArray(allSchoolsCache) ? allSchoolsCache : []),
+                ...(typeof schoolsDatabase !== 'undefined' && Array.isArray(schoolsDatabase) ? schoolsDatabase : []),
+                ...(typeof currentLoadedSchools !== 'undefined' && Array.isArray(currentLoadedSchools) ? currentLoadedSchools : []),
+                ...(window.allSchoolsCache && Array.isArray(window.allSchoolsCache) ? window.allSchoolsCache : []),
+                ...(window.schoolsDatabase && Array.isArray(window.schoolsDatabase) ? window.schoolsDatabase : [])
+            ];
+
+            let targetSchool = searchPool.find(s =>
+                String(s.school_id || s.id || '') === String(schoolId) ||
+                String(s.school_name || s.name || '') === String(schoolId)
+            );
+
+            if (!targetSchool && window.lastTopicStatsProcessedList && Array.isArray(window.lastTopicStatsProcessedList)) {
+                const item = window.lastTopicStatsProcessedList.find(p => String(p.id || p.raw?.school_id || p.raw?.id) === String(schoolId) || String(p.name) === String(schoolId));
+                if (item) targetSchool = item.raw || item;
             }
 
             if (targetSchool) {
+                const targetId = targetSchool.school_id || targetSchool.id || schoolId;
+
                 // 선택된 학교의 학교급(초/중/고) 및 지역 필터 지도 컨트롤러 동기화
                 const schoolTypeFilterEl = document.getElementById('schoolTypeFilter');
                 if (schoolTypeFilterEl) {
@@ -15015,40 +15465,46 @@ window.addEventListener('DOMContentLoaded', () => {
 
                     if (mappedType) {
                         schoolTypeFilterEl.value = mappedType;
-                        if (orchestrator && orchestrator.state && orchestrator.state.filters) {
+                        if (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.filters) {
                             orchestrator.state.filters.schoolType = mappedType;
                         }
                     }
                 }
 
                 const regionFilterEl = document.getElementById('regionFilter');
-                if (targetSchool.region && regionFilterEl && regionFilterEl.value !== 'all' && regionFilterEl.value !== targetSchool.region) {
+                if (regionFilterEl && targetSchool.region) {
                     const exists = Array.from(regionFilterEl.options).some(opt => opt.value === targetSchool.region);
                     if (exists) {
                         regionFilterEl.value = targetSchool.region;
                     }
                 }
 
+                const lat = parseFloat(targetSchool.lat || targetSchool.latitude || targetSchool.y);
+                const lng = parseFloat(targetSchool.lng || targetSchool.longitude || targetSchool.x);
                 const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
-                if (mapObj && targetSchool.lat && targetSchool.lng && typeof kakao !== 'undefined' && kakao.maps) {
-                    const moveLatLon = new kakao.maps.LatLng(targetSchool.lat, targetSchool.lng);
-                    if (typeof mapObj.getLevel === 'function' && mapObj.getLevel() >= 7) {
+
+                if (mapObj && !isNaN(lat) && !isNaN(lng) && typeof kakao !== 'undefined' && kakao.maps) {
+                    const moveLatLon = new kakao.maps.LatLng(lat, lng);
+                    if (typeof mapObj.setLevel === 'function' && mapObj.getLevel() >= 7) {
                         mapObj.setLevel(6); // 기본 500m 축척 유지
+                    }
+                    if (typeof mapObj.setCenter === 'function') {
+                        mapObj.setCenter(moveLatLon);
                     }
                     if (typeof mapObj.panTo === 'function') {
                         mapObj.panTo(moveLatLon);
-                    } else if (typeof mapObj.setCenter === 'function') {
-                        mapObj.setCenter(moveLatLon);
                     }
                 }
 
                 if (typeof window.onMapAction === 'function') {
                     window.onMapAction();
+                } else if (typeof onMapAction === 'function') {
+                    onMapAction();
                 }
 
                 if (typeof window.selectSchoolById === 'function') {
-                    window.selectSchoolById(schoolId);
-                } else if (orchestrator && typeof orchestrator.selectSchool === 'function') {
+                    window.selectSchoolById(targetId);
+                } else if (typeof orchestrator !== 'undefined' && orchestrator && typeof orchestrator.selectSchool === 'function') {
                     const summary = orchestrator.selectSchool(targetSchool);
                     if (typeof showSchoolDetails === 'function') {
                         showSchoolDetails(summary, targetSchool);
@@ -15058,7 +15514,7 @@ window.addEventListener('DOMContentLoaded', () => {
                         if (typeof toggleSidebar === 'function') toggleSidebar();
                     }
                     if (typeof highlightSelectedPin === 'function') {
-                        highlightSelectedPin(targetSchool.school_id || schoolId);
+                        highlightSelectedPin(targetId);
                     }
                 }
             }

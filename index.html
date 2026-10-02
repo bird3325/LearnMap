@@ -398,6 +398,19 @@
                         // 모바일에서는 슬라이드 업 트랜지션을 위해 sidebar-open 클래스도 함께 활성화합니다.
                         if (window.innerWidth <= 1024) {
                             container.classList.add('sidebar-open');
+                        } else {
+                            // PC 화면: 학원 목록이 열릴 때 선택된 학교 핀이 실제로 사이드바에 가려지는 경우에만 지도 이동
+                            setTimeout(() => {
+                                const schoolObj = (typeof fullSchool !== 'undefined' ? fullSchool : null) ||
+                                                  (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) ||
+                                                  window.currentSelectedSchool || null;
+                                let sLat = schoolObj && (schoolObj.lat || schoolObj.y || schoolObj.latitude) ? parseFloat(schoolObj.lat || schoolObj.y || schoolObj.latitude) : null;
+                                let sLng = schoolObj && (schoolObj.lng || schoolObj.x || schoolObj.longitude) ? parseFloat(schoolObj.lng || schoolObj.x || schoolObj.longitude) : null;
+
+                                if (sLat && sLng && typeof window.centerAcademyPinWithSidebarOffset === 'function') {
+                                    window.centerAcademyPinWithSidebarOffset(sLng, sLat, schoolObj.school_name);
+                                }
+                            }, 100);
                         }
                     }
                     if (window.kakaoMapInstance) {
@@ -831,6 +844,40 @@
                                         <input type="checkbox" id="dongRatingCheckbox">
                                         <span class="slider-track"></span>
                                     </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 8: 🎓 학원 정보 및 지도 표시 설정 -->
+                        <div class="filter-card-item">
+                            <div class="filter-card-header">
+                                <span style="display: flex; align-items: center; gap: 4px;">🎓 학원 정보 및 지도 표시 설정</span>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <div class="filter-row">
+                                    <div style="display: flex; flex-direction: column; gap: 1px;">
+                                        <span>지도상 학원 노출</span>
+                                        <span style="font-size: 9.5px; color: #94a3b8;">주변 학원 위치 핀(점) 표시</span>
+                                    </div>
+                                    <label class="custom-switch-toggle">
+                                        <input type="checkbox" id="showAcademyMapCheckbox" checked>
+                                        <span class="slider-track"></span>
+                                    </label>
+                                </div>
+
+                                <div class="filter-row" style="margin-bottom: 2px;">
+                                    <span>학원 노출 반경 범위</span>
+                                    <span id="valAcademyMapRadius" style="font-weight: 700; color: #2563eb;">1.0km</span>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <input type="range" id="academyMapRadiusFilter" min="500" max="2000" step="100" value="1000" style="width: 100%; cursor: pointer;">
+                                    <div style="display: flex; justify-content: space-between; font-size: 9.5px; color: #94a3b8; padding: 0 2px;">
+                                        <span>500m</span>
+                                        <span>1.0km</span>
+                                        <span>1.5km</span>
+                                        <span>2.0km</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

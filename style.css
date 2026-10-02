@@ -1956,13 +1956,16 @@ body {
     transform: translateY(-50%) translateX(0);
 }
 
-/* 주변 학원 상세(communityPanel)가 열려있을 때 상단 우측 도움말 가이드 및 설정 버튼 강제 숨김 */
+/* 주변 학원 상세(communityPanel)가 열려있을 때 상단 우측 도움말 가이드, 설정 버튼 및 자녀 내신 정밀 진단 버튼 강제 숨김 */
 .sidebar-section.active-community ~ #btnShowTutorial,
 .sidebar-section.active-community ~ #btnOpenSettings,
+.sidebar-section.active-community ~ #btnOpenNEISModal,
 .app-container:has(#communityPanel[style*="display: flex"]) #btnShowTutorial,
 .app-container:has(#communityPanel[style*="display: flex"]) #btnOpenSettings,
+.app-container:has(#communityPanel[style*="display: flex"]) #btnOpenNEISModal,
 .app-container:has(#communityPanel[style*="display: block"]) #btnShowTutorial,
-.app-container:has(#communityPanel[style*="display: block"]) #btnOpenSettings {
+.app-container:has(#communityPanel[style*="display: block"]) #btnOpenSettings,
+.app-container:has(#communityPanel[style*="display: block"]) #btnOpenNEISModal {
     display: none !important;
 }
 
