@@ -6557,14 +6557,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 geocoder.coord2RegionCode(sLng, sLat, (result, status) => {
-                    let lawdCd = '11650'; // 서초구 기본값 fallback
+                    let lawdCd = '';
                     if (status === window.kakao.maps.services.Status.OK && Array.isArray(result)) {
                         const bcode = result.find(r => r.region_type === 'B') || result[0];
                         if (bcode && bcode.code) {
                             lawdCd = bcode.code.substring(0, 5);
                         }
                     }
-                    fetchAndRenderPins(lawdCd);
+                    if (lawdCd) {
+                        fetchAndRenderPins(lawdCd);
+                    }
                 });
             }
         }
