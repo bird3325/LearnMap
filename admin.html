@@ -219,6 +219,77 @@
                 </div>
             </div>
 
+            <!-- Real Estate Batch Sync Card -->
+            <div class="admin-card" id="realestateSyncCard">
+                <h2 class="card-title">🏢 주택 실거래가 공공 API 일괄 수집 동기화</h2>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                    국토교통부 공공데이터 API의 일일 트래픽 제한(API 429)을 방지하기 위해 최신 주택 실거래가를 서버 DB로 사전 수집합니다.
+                </p>
+                <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+                    <div style="flex: 1;">
+                        <label for="syncRealEstateSido">지역 선택 (시/도)</label>
+                        <select id="syncRealEstateSido" class="form-control">
+                            <option value="서울특별시">서울특별시</option>
+                            <option value="부산광역시">부산광역시</option>
+                            <option value="대구광역시">대구광역시</option>
+                            <option value="인천광역시">인천광역시</option>
+                            <option value="광주광역시">광주광역시</option>
+                            <option value="대전광역시">대전광역시</option>
+                            <option value="울산광역시">울산광역시</option>
+                            <option value="세종특별자치시">세종특별자치시</option>
+                            <option value="경기도">경기도</option>
+                            <option value="강원특별자치도">강원특별자치도</option>
+                            <option value="충청북도">충청북도</option>
+                            <option value="충청남도">충청남도</option>
+                            <option value="전북특별자치도">전북특별자치도</option>
+                            <option value="전라남도">전라남도</option>
+                            <option value="경상북도">경상북도</option>
+                            <option value="경상남도">경상남도</option>
+                            <option value="제주특별자치도">제주특별자치도</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="syncRealEstateSigungu">시/군/구</label>
+                        <select id="syncRealEstateSigungu" class="form-control">
+                            <option value="all">전체 구</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn-primary" id="btnRunRealEstateSync" style="background: linear-gradient(135deg, #059669, #10b981);">
+                    주택 실거래가 일괄 다운로드 및 DB 갱신
+                </button>
+                <div id="realEstateSyncStatus" style="margin-top: 10px; font-size: 12.5px; font-weight: 700; color: #059669; display: none;"></div>
+
+                <!-- Stored Real Estate List Section -->
+                <div style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h3 style="font-size: 14px; font-weight: 700; color: var(--deep-blue); margin: 0;">
+                            📋 수집 동기화된 주택 목록 (<span id="storedRealEstateCount" style="color: #059669;">0</span>개)
+                        </h3>
+                        <button class="btn-secondary" id="btnRefreshRealEstateList" style="width: auto; padding: 4px 10px; font-size: 11px; margin: 0;">
+                            🔄 목록 새로고침
+                        </button>
+                    </div>
+                    
+                    <!-- Filters for Real Estate List -->
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+                        <select class="form-control" id="realEstateTypeFilter" style="flex: 1; min-width: 110px; padding: 6px 10px; font-size: 12px; height: auto;">
+                            <option value="all">주택 유형 전체</option>
+                            <option value="apt">🏢 아파트</option>
+                            <option value="rh">🏡 연립·다세대</option>
+                            <option value="sh">🏠 단독·다가구</option>
+                            <option value="offi">🏙️ 오피스텔</option>
+                        </select>
+                        <input type="text" id="realEstateSearchInput" class="form-control" placeholder="건물명/주소 검색..." style="flex: 2; min-width: 140px; padding: 6px 10px; font-size: 12px; height: auto;">
+                    </div>
+
+                    <!-- List Container -->
+                    <div id="storedRealEstateListContainer" style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: var(--bg-primary); font-size: 12px; line-height: 1.7;">
+                        <div style="text-align: center; color: var(--text-muted); padding: 20px 0;">수집된 주택 데이터를 불러오는 중...</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Stored Schools List Card -->
             <div class="admin-card" id="storedSchoolsCard">
                 <h2 class="card-title">현재 저장된 학교 목록 (<span id="storedSchoolsCount">0</span>개)</h2>

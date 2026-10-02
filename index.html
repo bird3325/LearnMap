@@ -848,16 +848,17 @@
                             </div>
                         </div>
 
-                        <!-- Card 8: 🎓 학원 정보 및 지도 표시 설정 -->
+                        <!-- Card 8: 🎓 학원·주택 정보 및 지도 표시 설정 -->
                         <div class="filter-card-item">
                             <div class="filter-card-header">
-                                <span style="display: flex; align-items: center; gap: 4px;">🎓 학원 정보 및 지도 표시 설정</span>
+                                <span style="display: flex; align-items: center; gap: 4px;">🎓 학원·주택 정보 및 지도 표시 설정</span>
                             </div>
 
                             <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <!-- 지도상 학원 노출 -->
                                 <div class="filter-row">
                                     <div style="display: flex; flex-direction: column; gap: 1px;">
-                                        <span>지도상 학원 노출</span>
+                                        <span>학원 노출</span>
                                         <span style="font-size: 9.5px; color: #94a3b8;">주변 학원 위치 핀(점) 표시</span>
                                     </div>
                                     <label class="custom-switch-toggle">
@@ -866,8 +867,33 @@
                                     </label>
                                 </div>
 
-                                <div class="filter-row" style="margin-bottom: 2px;">
-                                    <span>학원 노출 반경 범위</span>
+                                <!-- 지도상 주택(실거래가) 노출 -->
+                                <div class="filter-row" style="border-top: 1px dashed #e2e8f0; padding-top: 8px;">
+                                    <div style="display: flex; flex-direction: column; gap: 1px;">
+                                        <span>주택 노출</span>
+                                        <span style="font-size: 9.5px; color: #059669;">주변 주택 실거래가 핀 표시</span>
+                                    </div>
+                                    <label class="custom-switch-toggle">
+                                        <input type="checkbox" id="showRealEstateMapCheckbox" checked>
+                                        <span class="slider-track"></span>
+                                    </label>
+                                </div>
+
+                                <!-- 주택 유형 선택 드롭다운 -->
+                                <div class="filter-row" style="margin-top: -2px;">
+                                    <span style="font-size: 11.5px; color: #475569; font-weight: 600;">주택 유형 선택</span>
+                                    <select id="realEstateTypeFilter" style="padding: 4px 8px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 11.5px; font-weight: 700; color: #1e293b; outline: none; background: #ffffff; cursor: pointer;">
+                                        <option value="all">전체 주택</option>
+                                        <option value="apt">아파트만</option>
+                                        <option value="rh">연립·다세대만</option>
+                                        <option value="sh">단독·다가구만</option>
+                                        <option value="offi">오피스텔만</option>
+                                    </select>
+                                </div>
+
+                                <!-- 노출 반경 범위(학원, 주택) -->
+                                <div class="filter-row" style="margin-bottom: 2px; border-top: 1px dashed #e2e8f0; padding-top: 8px;">
+                                    <span>노출 반경 범위(학원, 주택)</span>
                                     <span id="valAcademyMapRadius" style="font-weight: 700; color: #2563eb;">1.0km</span>
                                 </div>
                                 <div style="display: flex; flex-direction: column; gap: 4px;">

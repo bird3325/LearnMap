@@ -6429,6 +6429,167 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         window.updateAcademyMapMarkers = updateAcademyMapMarkers;
 
+        // 지도 상의 아파트, 연립·다세대, 단독·다가구, 오피스텔 부동산 실거래가 핀(Overlay) 렌더링 헬퍼
+        window.realEstateMapOverlays = [];
+        async function updateRealEstateMapMarkers(radius = 1000) {
+            const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
+            if (!mapObj || !window.kakao || !window.kakao.maps) return;
+
+            // 기존 부동산 마커 제거
+            if (Array.isArray(window.realEstateMapOverlays)) {
+                window.realEstateMapOverlays.forEach(ov => ov && ov.setMap(null));
+            }
+            window.realEstateMapOverlays = [];
+
+            // 부동산 토글 스위치 확인 (체크 해제 시 마커 제거 후 즉시 리턴)
+            const showCheck = document.getElementById('showRealEstateMapCheckbox');
+            if (showCheck && !showCheck.checked) {
+                return;
+            }
+
+            // 선택된 주택 유형 필터 (all, apt, rh, sh, offi)
+            const typeFilterEl = document.getElementById('realEstateTypeFilter');
+            const selectedType = typeFilterEl ? (typeFilterEl.value || 'all') : 'all';
+
+            let schoolObj = (typeof fullSchool !== 'undefined' ? fullSchool : null) || window.selectedTargetSchool || (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) || window.currentSelectedSchool || null;
+            let sLat = schoolObj && (schoolObj.lat || schoolObj.y || schoolObj.latitude) ? parseFloat(schoolObj.lat || schoolObj.y || schoolObj.latitude) : null;
+            let sLng = schoolObj && (schoolObj.lng || schoolObj.x || schoolObj.longitude) ? parseFloat(schoolObj.lng || schoolObj.x || schoolObj.longitude) : null;
+
+            if ((!sLat || !sLng) && mapObj && typeof mapObj.getCenter === 'function') {
+                const center = mapObj.getCenter();
+                if (center) {
+                    sLat = center.getLat();
+                    sLng = center.getLng();
+                }
+            }
+
+            if (!sLat || !sLng) return;
+
+            if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+                const geocoder = new window.kakao.maps.services.Geocoder();
+                const fetchAndRenderPins = async (lawdCd) => {
+                    try {
+                        const res = await fetch(`/api/realestate/pins?lawd_cd=${lawdCd}&x=${sLng}&y=${sLat}&radius=${radius}&type=${selectedType}`);
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        if (!data.items || !Array.isArray(data.items)) return;
+
+                        data.items.forEach(place => {
+                            const lng = parseFloat(place.x);
+                            const lat = parseFloat(place.y);
+                            if (isNaN(lng) || isNaN(lat)) return;
+
+                            const pos = new kakao.maps.LatLng(lat, lng);
+                            const propName = place.name || '부동산';
+                            const priceStr = place.short_price || place.price_display || '';
+                            const typeName = place.type_name || '주택';
+
+                            let iconSymbol = '🏢';
+                            let badgeBg = '#059669'; // 아파트: 초록색
+                            if (place.type === 'rh') {
+                                iconSymbol = '🏘️';
+                                badgeBg = '#7c3aed'; // 연립·다세대: 보라색
+                            } else if (place.type === 'sh') {
+                                iconSymbol = '🏠';
+                                badgeBg = '#d97706'; // 단독·다가구: 오렌지색
+                            } else if (place.type === 'offi') {
+                                iconSymbol = '🏢';
+                                badgeBg = '#2563eb'; // 오피스텔: 파란색
+                            }
+
+                            const containerEl = document.createElement('div');
+                            containerEl.className = 'realestate-marker-container';
+                            containerEl.style.cssText = 'position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 950;';
+
+                            const badgeEl = document.createElement('div');
+                            badgeEl.className = 'realestate-badge-marker';
+                            badgeEl.style.cssText = `display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: ${badgeBg}; color: #ffffff; border: 1.5px solid #ffffff; border-radius: 20px; font-size: 11px; font-weight: 800; box-shadow: 0 2px 8px rgba(0,0,0,0.25); transition: transform 0.15s ease; white-space: nowrap;`;
+                            badgeEl.innerHTML = `<span>${iconSymbol}</span><span>${priceStr}</span>`;
+
+                            const floatingLabelEl = document.createElement('div');
+                            floatingLabelEl.className = 'realestate-floating-label';
+                            floatingLabelEl.style.cssText = 'position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: #0f172a; color: #ffffff; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.2); pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.15s ease, visibility 0.15s ease; z-index: 10000;';
+                            floatingLabelEl.innerHTML = `<div><strong>${propName}</strong> <span style="color:#94a3b8; font-size:11px;">(${typeName})</span></div><div style="font-size:11px; color:#38bdf8; margin-top:2px;">최신 실거래가: ${place.price_display} (${place.deal_date})</div>`;
+
+                            containerEl.appendChild(badgeEl);
+                            containerEl.appendChild(floatingLabelEl);
+
+                            containerEl.addEventListener('mouseenter', () => {
+                                badgeEl.style.transform = 'scale(1.15)';
+                                floatingLabelEl.style.opacity = '1';
+                                floatingLabelEl.style.visibility = 'visible';
+                                containerEl.style.zIndex = '999999';
+                                if (overlay && typeof overlay.setZIndex === 'function') {
+                                    overlay.setZIndex(999999);
+                                }
+                            });
+
+                            containerEl.addEventListener('mouseleave', () => {
+                                badgeEl.style.transform = 'scale(1)';
+                                floatingLabelEl.style.opacity = '0';
+                                floatingLabelEl.style.visibility = 'hidden';
+                                containerEl.style.zIndex = '950';
+                                if (overlay && typeof overlay.setZIndex === 'function') {
+                                    overlay.setZIndex(950);
+                                }
+                            });
+
+                            containerEl.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                alert(`🏢 ${propName} (${typeName})\n📍 위치: ${place.address || '주소 정보 없음'}\n💰 최근 실거래가: ${place.price_display}\n🗓️ 거래년월: ${place.deal_date}`);
+                            });
+
+                            const overlay = new kakao.maps.CustomOverlay({
+                                map: mapObj,
+                                position: pos,
+                                content: containerEl,
+                                xAnchor: 0.5,
+                                yAnchor: 0.5,
+                                zIndex: 950,
+                                clickable: true
+                            });
+
+                            window.realEstateMapOverlays.push(overlay);
+                        });
+                    } catch (err) {
+                        console.warn('Real estate map markers fetch error:', err);
+                    }
+                };
+
+                geocoder.coord2RegionCode(sLng, sLat, (result, status) => {
+                    let lawdCd = '11650'; // 서초구 기본값 fallback
+                    if (status === window.kakao.maps.services.Status.OK && Array.isArray(result)) {
+                        const bcode = result.find(r => r.region_type === 'B') || result[0];
+                        if (bcode && bcode.code) {
+                            lawdCd = bcode.code.substring(0, 5);
+                        }
+                    }
+                    fetchAndRenderPins(lawdCd);
+                });
+            }
+        }
+        window.updateRealEstateMapMarkers = updateRealEstateMapMarkers;
+
+        // 주택 표시 토글 및 주택 유형 필터 변경 이벤트 바인딩
+        const reToggleCheck = document.getElementById('showRealEstateMapCheckbox');
+        const reTypeSelect = document.getElementById('realEstateTypeFilter');
+        const handleReFilterChange = () => {
+            const radInput = document.getElementById('academyMapRadiusFilter');
+            const radVal = window.currentAcademyRadius || (radInput ? parseInt(radInput.value, 10) : 1000) || 1000;
+            updateRealEstateMapMarkers(radVal);
+        };
+        if (reToggleCheck) reToggleCheck.addEventListener('change', handleReFilterChange);
+        if (reTypeSelect) reTypeSelect.addEventListener('change', handleReFilterChange);
+
+        // 초기 페이지 로딩 및 지도 로드 완료 후 부동산 마커 자동 최초 렌더링
+        const autoInitRealEstateMarkers = () => {
+            const radInput = document.getElementById('academyMapRadiusFilter');
+            const radVal = window.currentAcademyRadius || (radInput ? parseInt(radInput.value, 10) : 1000) || 1000;
+            updateRealEstateMapMarkers(radVal);
+        };
+        setTimeout(autoInitRealEstateMarkers, 1000);
+        setTimeout(autoInitRealEstateMarkers, 3000);
+
         // 반경별 학원 데이터 호출 함수
         async function loadAcademiesForRadius(radius = 1000) {
             const radNum = parseInt(radius, 10) || 1000;
@@ -6505,6 +6666,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await fetchAcademyRatingsFromDb();
                 await applyFiltersAndRender();
                 updateAcademyMapMarkers(allFetchedAcademies);
+                updateRealEstateMapMarkers(radNum);
             } catch (err) {
                 console.warn('Backend academy fetch failed, using client SDK fallback:', err);
                 try {
@@ -6517,6 +6679,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     await fetchAcademyRatingsFromDb();
                     await applyFiltersAndRender();
                     updateAcademyMapMarkers(allFetchedAcademies);
+                    updateRealEstateMapMarkers(radNum);
                 } catch (clientErr) {
                     console.error('Academy list fetch error:', clientErr);
                     academyListContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">학원 목록을 불러오는 데 실패했습니다.</div>';
