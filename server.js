@@ -122,6 +122,346 @@ app.get('/api/schools', (req, res) => {
     }
 });
 
+// 1-1. GET /api/realestate/stored - Serve stored real estate JSON data
+app.get('/api/realestate/stored', (req, res) => {
+    try {
+        if (fs.existsSync(REAL_ESTATE_PATH)) {
+            const data = fs.readFileSync(REAL_ESTATE_PATH, 'utf8');
+            return res.json(JSON.parse(data || '[]'));
+        }
+        return res.json([]);
+    } catch (e) {
+        console.error('Error reading real estate data:', e);
+        return res.status(500).json({ error: '주택 데이터를 읽을 수 없습니다.' });
+    }
+});
+
+// 1-2. POST /api/realestate/stored - Save/update real estate JSON data
+app.post('/api/realestate/stored', (req, res) => {
+    try {
+        const items = req.body;
+        if (!Array.isArray(items)) {
+            return res.status(400).json({ success: false, error: '배열 데이터 형식이어야 합니다.' });
+        }
+        fs.writeFileSync(REAL_ESTATE_PATH, JSON.stringify(items, null, 2), 'utf8');
+        return res.json({ success: true, count: items.length, message: '주택 데이터가 realestate_seoul.json 파일에 저장되었습니다.' });
+    } catch (e) {
+        console.error('Error saving real estate data:', e);
+        return res.status(500).json({ success: false, error: '주택 데이터 저장 중 오류가 발생했습니다.' });
+    }
+});
+
+// 서울시 구별 법정동 코드 매핑 테이블
+const SEOUL_LAWD_MAP = {
+    '종로구': '11110', '중구': '11140', '용산구': '11170', '성동구': '11200', '광진구': '11215',
+    '동대문구': '11230', '중랑구': '11260', '성북구': '11290', '강북구': '11305', '도봉구': '11320',
+    '노원구': '11350', '은평구': '11380', '서대문구': '11410', '마포구': '11440', '양천구': '11470',
+    '강서구': '11500', '구로구': '11530', '금천구': '11545', '영등포구': '11560', '동작구': '11590',
+    '관악구': '11620', '서초구': '11650', '강남구': '11680', '송파구': '11710', '강동구': '11740'
+};
+
+// 1-3. POST /api/realestate/collect-master - 실제 공공 API 및 카카오 로컬 API를 통한 주택 마스터 대량 수집
+app.post('/api/realestate/collect-master', async (req, res) => {
+    const { sido = '서울특별시', sigungu = 'all' } = req.body;
+    const config = await readConfig();
+    const serviceKey = config.data_go_kr_key;
+    const kakaoKey = config.kakao_app_key;
+
+    try {
+        const targetGus = (sigungu === 'all' || !sigungu) 
+            ? Object.keys(SEOUL_LAWD_MAP) 
+            : [sigungu];
+
+        let existingList = [];
+        if (fs.existsSync(REAL_ESTATE_PATH)) {
+            try {
+                existingList = JSON.parse(fs.readFileSync(REAL_ESTATE_PATH, 'utf8') || '[]');
+            } catch (err) {
+                existingList = [];
+            }
+        }
+
+        const estateMap = new Map();
+        existingList.forEach(item => {
+            if (item && item.name) {
+                estateMap.set(`${item.sido}_${item.sigungu}_${item.name}`, item);
+            }
+        });
+
+        let newlyAddedCount = 0;
+
+        // 1. 공공데이터포털 실거래가 API를 통해 최근 6개월간 거래된 실제 단지/주택 정보 일괄 추출
+        if (serviceKey) {
+            const months = [];
+            const now = new Date();
+            for (let i = 1; i <= 6; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                months.push(`${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`);
+            }
+
+            for (const gu of targetGus) {
+                const lawdCd = SEOUL_LAWD_MAP[gu];
+                if (!lawdCd) continue;
+
+                // 구별로 월별 아파트 및 오피스텔 데이터 수집
+                for (const ymd of months) {
+                    try {
+                        const url = `https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=${encodeURIComponent(serviceKey)}&pageNo=1&numOfRows=1000&LAWD_CD=${lawdCd}&DEAL_YMD=${ymd}`;
+                        const xmlText = await httpsGet(url);
+                        const items = xmlText.match(/<item>[\s\S]*?<\/item>/g) || [];
+
+                        items.forEach(itemXml => {
+                            const getTag = tag => {
+                                const m = itemXml.match(new RegExp(`<${tag}>(.*?)<\\/${tag}>`));
+                                return m ? m[1].trim() : '';
+                            };
+                            const aptNm = getTag('aptNm');
+                            if (!aptNm) return;
+
+                            const key = `${sido}_${gu}_${aptNm}`;
+                            if (!estateMap.has(key)) {
+                                const dong = getTag('umdNm');
+                                const jibun = getTag('jibun');
+                                const buildYear = getTag('buildYear');
+                                const amount = getTag('dealAmount');
+                                const area = getTag('excluUseAr');
+
+                                estateMap.set(key, {
+                                    id: `master-apt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                                    name: aptNm,
+                                    type: 'apt',
+                                    sido,
+                                    sigungu: gu,
+                                    address: `${sido} ${gu} ${dong} ${jibun}`.trim(),
+                                    price: amount ? `${amount.trim()}만원 (실거래)` : '실거래 대기',
+                                    tradeDate: `${getTag('dealYear')}-${String(getTag('dealMonth')).padStart(2, '0')}`,
+                                    area: area ? `${area}㎡` : '-',
+                                    buildYear: buildYear || '',
+                                    source: '국토교통부 마스터'
+                                });
+                                newlyAddedCount++;
+                            }
+                        });
+                    } catch (e) {
+                        console.warn(`[Master Sync] Failed for ${gu} ${ymd}:`, e.message);
+                    }
+                }
+            }
+        }
+
+        // 2. 카카오 장소 검색 API를 활용해 해당 지역의 아파트 및 연립/다세대/오피스텔 보강
+        if (kakaoKey) {
+            for (const gu of targetGus) {
+                const searchTypes = [
+                    { keyword: '아파트', type: 'apt' },
+                    { keyword: '연립주택', type: 'rh' },
+                    { keyword: '오피스텔', type: 'offi' }
+                ];
+
+                for (const st of searchTypes) {
+                    for (let page = 1; page <= 3; page++) {
+                        try {
+                            const query = `${sido} ${gu} ${st.keyword}`;
+                            const kakaoRes = await fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&page=${page}&size=15`, {
+                                headers: {
+                                    'Authorization': `KakaoAK ${kakaoKey}`,
+                                    'KA': 'sdk/1.0.0 os/javascript origin/http://localhost:3000'
+                                }
+                            });
+                            if (kakaoRes.ok) {
+                                const data = await kakaoRes.json();
+                                if (data && Array.isArray(data.documents)) {
+                                    data.documents.forEach(doc => {
+                                        let cleanName = doc.place_name.replace(new RegExp(`^${gu}\\s*`), '').trim();
+                                        const key = `${sido}_${gu}_${cleanName}`;
+                                        if (!estateMap.has(key)) {
+                                            estateMap.set(key, {
+                                                id: `master-kakao-${doc.id || Math.random().toString(36).substring(2, 7)}`,
+                                                name: cleanName,
+                                                type: st.type,
+                                                sido,
+                                                sigungu: gu,
+                                                address: doc.road_address_name || doc.address_name || `${sido} ${gu}`,
+                                                price: '기본 정보 구축 (실거래 대기)',
+                                                tradeDate: '-',
+                                                area: '-',
+                                                source: '단지/건축물 마스터 DB'
+                                            });
+                                            newlyAddedCount++;
+                                        }
+                                    });
+                                }
+                            }
+                        } catch (e) {
+                            console.warn(`[Kakao Master Sync] error on ${gu}:`, e.message);
+                        }
+                    }
+                }
+            }
+        }
+
+        const finalList = Array.from(estateMap.values());
+        fs.writeFileSync(REAL_ESTATE_PATH, JSON.stringify(finalList, null, 2), 'utf8');
+
+        return res.json({
+            success: true,
+            totalCount: finalList.length,
+            newlyAdded: newlyAddedCount,
+            message: `${targetGus.join(', ')} 주택 마스터 정보 총 ${finalList.length}건이 realestate_seoul.json에 구축되었습니다.`
+        });
+    } catch (err) {
+        console.error('Collect Master Error:', err);
+        return res.status(500).json({ success: false, error: '마스터 데이터 수집 중 오류가 발생했습니다: ' + err.message });
+    }
+});
+
+// 1-4. POST /api/realestate/sync-trades - 실제 공공 실거래가 API 수집 및 마스터 정보 매핑 업데이트
+app.post('/api/realestate/sync-trades', async (req, res) => {
+    const { sido = '서울특별시', sigungu = 'all', housingType = 'all' } = req.body;
+    const config = await readConfig();
+    const serviceKey = config.data_go_kr_key;
+
+    if (!serviceKey) {
+        return res.status(400).json({ success: false, error: '공공데이터포털 API 인증키(data_go_kr_key)가 설정되지 않았습니다.' });
+    }
+
+    try {
+        const targetGus = (sigungu === 'all' || !sigungu) 
+            ? Object.keys(SEOUL_LAWD_MAP) 
+            : [sigungu];
+
+        // 1. 기존 마스터/주택 목록 로드
+        let existingList = [];
+        if (fs.existsSync(REAL_ESTATE_PATH)) {
+            try {
+                existingList = JSON.parse(fs.readFileSync(REAL_ESTATE_PATH, 'utf8') || '[]');
+            } catch (err) {
+                existingList = [];
+            }
+        }
+
+        // 빠른 탐색을 위해 맵 구조로 변환
+        const estateMap = new Map();
+        existingList.forEach(item => {
+            if (item && item.name) {
+                estateMap.set(`${item.sido}_${item.sigungu}_${item.name}`, item);
+            }
+        });
+
+        // 2. 수집 대상 엔드포인트 설정
+        const apiEndpoints = [];
+        if (housingType === 'all' || housingType === 'apt') {
+            apiEndpoints.push({ type: 'apt', name: '아파트', url: 'https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev', nameTag: 'aptNm' });
+        }
+        if (housingType === 'all' || housingType === 'rh') {
+            apiEndpoints.push({ type: 'rh', name: '연립·다세대', url: 'https://apis.data.go.kr/1613000/RTMSDataSvcRHTrade/getRTMSDataSvcRHTrade', nameTag: 'mhouseNm' });
+        }
+        if (housingType === 'all' || housingType === 'offi') {
+            apiEndpoints.push({ type: 'offi', name: '오피스텔', url: 'https://apis.data.go.kr/1613000/RTMSDataSvcOffiTrade/getRTMSDataSvcOffiTrade', nameTag: 'offiNm' });
+        }
+
+        // 최근 6개월 거래월 생성
+        const months = [];
+        const now = new Date();
+        for (let i = 1; i <= 6; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            months.push(`${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`);
+        }
+
+        let updatedCount = 0;
+        let newAddedCount = 0;
+
+        // 3. 구별 / 유형별 / 거래월별 실제 API 호출 및 매핑
+        for (const gu of targetGus) {
+            const lawdCd = SEOUL_LAWD_MAP[gu];
+            if (!lawdCd) continue;
+
+            for (const ep of apiEndpoints) {
+                for (const ymd of months) {
+                    try {
+                        const fetchUrl = `${ep.url}?serviceKey=${encodeURIComponent(serviceKey)}&pageNo=1&numOfRows=1000&LAWD_CD=${lawdCd}&DEAL_YMD=${ymd}`;
+                        const xmlText = await httpsGet(fetchUrl);
+                        const items = xmlText.match(/<item>[\s\S]*?<\/item>/g) || [];
+
+                        items.forEach(itemXml => {
+                            const getTag = tag => {
+                                const m = itemXml.match(new RegExp(`<${tag}>(.*?)<\\/${tag}>`));
+                                return m ? m[1].trim() : '';
+                            };
+
+                            let name = getTag(ep.nameTag) || getTag('aptNm') || getTag('mhouseNm') || getTag('offiNm') || getTag('연립다세대') || getTag('단지');
+                            if (!name) return;
+
+                            const amount = getTag('dealAmount') || getTag('거래금액');
+                            const dealYear = getTag('dealYear') || getTag('년');
+                            const dealMonth = getTag('dealMonth') || getTag('월');
+                            const dealDay = getTag('dealDay') || getTag('일');
+                            const area = getTag('excluUseAr') || getTag('전용면적');
+                            const dong = getTag('umdNm') || getTag('법정동');
+                            const jibun = getTag('jibun') || getTag('지번');
+
+                            const tradeDateStr = dealYear && dealMonth 
+                                ? `${dealYear}-${String(dealMonth).padStart(2, '0')}${dealDay ? '-' + String(dealDay).padStart(2, '0') : ''}` 
+                                : ymd;
+                            const formattedPrice = amount ? `${amount.trim()}만원` : '실거래 확인';
+
+                            const key = `${sido}_${gu}_${name}`;
+
+                            if (estateMap.has(key)) {
+                                // 🌟 기존 마스터에 존재하는 주택 -> 실거래가 및 거래일자 '업데이트(갱신)'
+                                const existing = estateMap.get(key);
+                                // 더 최신 거래일자일 때만 가격 갱신 (또는 기존 거래일이 없는 경우)
+                                if (!existing.tradeDate || existing.tradeDate === '-' || tradeDateStr >= existing.tradeDate) {
+                                    existing.price = formattedPrice;
+                                    existing.tradeDate = tradeDateStr;
+                                    if (area && (!existing.area || existing.area === '-')) {
+                                        existing.area = `${area}㎡`;
+                                    }
+                                    existing.source = '마스터/최신실거래가 매핑';
+                                    updatedCount++;
+                                }
+                            } else {
+                                // 🌟 마스터에 없던 신규 주택인 경우에만 신규 추가
+                                estateMap.set(key, {
+                                    id: `trade-${ep.type}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                                    name,
+                                    type: ep.type,
+                                    sido,
+                                    sigungu: gu,
+                                    address: `${sido} ${gu} ${dong || ''} ${jibun || ''}`.trim(),
+                                    price: formattedPrice,
+                                    tradeDate: tradeDateStr,
+                                    area: area ? `${area}㎡` : '-',
+                                    source: '실거래가 수집'
+                                });
+                                newAddedCount++;
+                            }
+                        });
+                    } catch (e) {
+                        console.warn(`[Sync Trades] Error for ${gu} ${ep.name} ${ymd}:`, e.message);
+                    }
+                }
+            }
+        }
+
+        const finalList = Array.from(estateMap.values());
+        fs.writeFileSync(REAL_ESTATE_PATH, JSON.stringify(finalList, null, 2), 'utf8');
+
+        return res.json({
+            success: true,
+            totalCount: finalList.length,
+            updatedCount,
+            newAddedCount,
+            message: `${targetGus.join(', ')} 주택 실거래가 동기화 완료: 기존 마스터 주택 ${updatedCount}건 최신 가격 갱신, 신규 ${newAddedCount}건 추가.`
+        });
+    } catch (err) {
+        console.error('Sync Trades Error:', err);
+        return res.status(500).json({ success: false, error: '실거래가 동기화 중 오류가 발생했습니다: ' + err.message });
+    }
+});
+
+
+
 // 2. GET /api/config/map-key - Serves Kakao Map Key dynamically
 app.get('/api/config/map-key', async (req, res) => {
     const config = await readConfig();

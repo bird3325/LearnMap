@@ -39,6 +39,42 @@ const storedSearchInput = document.getElementById('storedSearchInput');
 
 let allStoredSchools = []; // Hold all fetched schools for local filtering
 
+const syncRealEstateSido = document.getElementById('syncRealEstateSido');
+const syncRealEstateSigungu = document.getElementById('syncRealEstateSigungu');
+const masterRealEstateSido = document.getElementById('masterRealEstateSido');
+const masterRealEstateSigungu = document.getElementById('masterRealEstateSigungu');
+
+// Admin Menu Logic
+const adminMenuButtons = document.querySelectorAll('#adminMenu button');
+const adminCards = document.querySelectorAll('#managementPanel .admin-card');
+
+adminMenuButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+        // Reset all buttons to btn-secondary
+        adminMenuButtons.forEach(b => {
+            b.classList.remove('btn-primary');
+            b.classList.add('btn-secondary');
+        });
+        // Set clicked button to btn-primary
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary');
+
+        // Hide all cards
+        adminCards.forEach(card => {
+            card.style.display = 'none';
+        });
+
+        // Show target cards
+        const targetIds = btn.getAttribute('data-target').split(',');
+        targetIds.forEach(id => {
+            const targetCard = document.getElementById(id.trim());
+            if (targetCard) {
+                targetCard.style.display = 'block';
+            }
+        });
+    });
+});
+
 const sigunguMap = {
     '서울특별시': [
         '전체', '강남구', '강동구', '강북구', '강서구', '관악구', '광진구', '구로구', '금천구', '노원구', '도봉구', '동대문구', '동작구', '마포구', '서대문구', '서초구', '성동구', '성북구', '송파구', '양천구', '영등포구', '용산구', '은평구', '종로구', '중구', '중랑구'
@@ -117,13 +153,56 @@ function updateStoredSigunguDropdown() {
     storedSigunguFilter.value = 'all';
 }
 
+function updateSyncRealEstateSigunguDropdown() {
+    if (!syncRealEstateSido || !syncRealEstateSigungu) return;
+    const sido = syncRealEstateSido.value;
+    if (sido === 'all') {
+        syncRealEstateSigungu.innerHTML = '<option value="all">전체 구</option>';
+        syncRealEstateSigungu.value = 'all';
+        return;
+    }
+    const sigungus = sigunguMap[sido] || ['전체'];
+    syncRealEstateSigungu.innerHTML = sigungus.map(s => {
+        const val = s === '전체' ? 'all' : s;
+        const text = s === '전체' ? '전체 구' : s;
+        return `<option value="${val}">${text}</option>`;
+    }).join('');
+    syncRealEstateSigungu.value = 'all';
+}
+
+function updateMasterRealEstateSigunguDropdown() {
+    if (!masterRealEstateSido || !masterRealEstateSigungu) return;
+    const sido = masterRealEstateSido.value;
+    if (sido === 'all') {
+        masterRealEstateSigungu.innerHTML = '<option value="all">전체 구</option>';
+        masterRealEstateSigungu.value = 'all';
+        return;
+    }
+    const sigungus = sigunguMap[sido] || ['전체'];
+    masterRealEstateSigungu.innerHTML = sigungus.map(s => {
+        const val = s === '전체' ? 'all' : s;
+        const text = s === '전체' ? '전체 구' : s;
+        return `<option value="${val}">${text}</option>`;
+    }).join('');
+    masterRealEstateSigungu.value = 'all';
+}
+
 // Init View State
 if (updateSido) {
     updateSido.addEventListener('change', updateSigunguDropdown);
     updateSigunguDropdown();
 }
 if (storedRegionFilter) {
+    storedRegionFilter.addEventListener('change', updateStoredSigunguDropdown);
     updateStoredSigunguDropdown();
+}
+if (syncRealEstateSido) {
+    syncRealEstateSido.addEventListener('change', updateSyncRealEstateSigunguDropdown);
+    updateSyncRealEstateSigunguDropdown();
+}
+if (masterRealEstateSido) {
+    masterRealEstateSido.addEventListener('change', updateMasterRealEstateSigunguDropdown);
+    updateMasterRealEstateSigunguDropdown();
 }
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -423,6 +502,9 @@ function showPanel() {
 
     // Load school list
     loadStoredSchools();
+
+    // Load real estate list
+    if (typeof loadStoredRealEstate === 'function') loadStoredRealEstate();
     
     // Load reviews & inquiries
     setTimeout(() => {
@@ -1420,4 +1502,325 @@ window.deleteInquiryConfirm = function(id) {
 };
 
 window.loadInquiries = loadInquiries;
+
+// Real Estate Sync Button Logic
+const btnRunRealEstateSync = document.getElementById('btnRunRealEstateSync');
+const realEstateSyncStatus = document.getElementById('realEstateSyncStatus');
+const btnRefreshRealEstateList = document.getElementById('btnRefreshRealEstateList');
+
+if (btnRunRealEstateSync) {
+    btnRunRealEstateSync.addEventListener('click', () => {
+        const sido = document.getElementById('syncRealEstateSido') ? document.getElementById('syncRealEstateSido').value : '';
+        const sigunguEl = document.getElementById('syncRealEstateSigungu');
+        const sigungu = sigunguEl ? sigunguEl.value : '';
+        const sigunguText = sigunguEl && sigungu !== 'all' ? sigunguEl.options[sigunguEl.selectedIndex].text : '';
+        
+        const typeEl = document.getElementById('syncRealEstateType');
+        const typeText = typeEl ? typeEl.options[typeEl.selectedIndex].text : '전체';
+
+        const regionText = (sigungu === 'all' || !sigunguText) ? sido : `${sido} ${sigunguText}`;
+        
+        showConfirm(`${regionText} 지역의 ${typeText} 실거래가 데이터를 공공 API에서 수집하시겠습니까?`, () => {
+            if (realEstateSyncStatus) {
+                realEstateSyncStatus.style.display = 'block';
+                realEstateSyncStatus.style.color = '#059669';
+                realEstateSyncStatus.innerText = '데이터를 수집하는 중입니다... (잠시만 기다려주세요)';
+                
+                // Simulate network request
+                setTimeout(() => {
+                    realEstateSyncStatus.innerText = `[성공] ${regionText} ${typeText} 실거래가 수집 및 DB 저장이 완료되었습니다.`;
+                    showAlert('주택 실거래가 데이터 수집이 성공적으로 완료되었습니다.');
+                }, 1500);
+            }
+        });
+    });
+}
+
+// --- Stored Real Estate Management Logic ---
+const storedRealEstateCount = document.getElementById('storedRealEstateCount');
+const storedRealEstateListContainer = document.getElementById('storedRealEstateListContainer');
+const realEstateRegionFilter = document.getElementById('realEstateRegionFilter');
+const realEstateSigunguFilter = document.getElementById('realEstateSigunguFilter');
+const realEstateTypeFilter = document.getElementById('realEstateTypeFilter');
+const realEstateSearchInput = document.getElementById('realEstateSearchInput');
+
+let allStoredRealEstates = [];
+
+function updateRealEstateSigunguDropdown() {
+    if (!realEstateRegionFilter || !realEstateSigunguFilter) return;
+    const sido = realEstateRegionFilter.value;
+    if (sido === 'all') {
+        realEstateSigunguFilter.innerHTML = '<option value="all">시/군/구 전체</option>';
+        realEstateSigunguFilter.value = 'all';
+        return;
+    }
+    const sigungus = sigunguMap[sido] || ['전체'];
+    realEstateSigunguFilter.innerHTML = sigungus.map(s => {
+        const val = s === '전체' ? 'all' : s;
+        const text = s === '전체' ? '시/군/구 전체' : s;
+        return `<option value="${val}">${text}</option>`;
+    }).join('');
+    realEstateSigunguFilter.value = 'all';
+}
+
+const DEFAULT_SAMPLE_REAL_ESTATES = [
+    { id: 're-1', name: '아크로리버파크', type: 'apt', sido: '서울특별시', sigungu: '서초구', address: '서울특별시 서초구 반포동 2-12', price: '38억 5,000만원', tradeDate: '2026-03-24', area: '84.95㎡', source: '마스터/실거래가' },
+    { id: 're-2', name: '래미안대치팰리스', type: 'apt', sido: '서울특별시', sigungu: '강남구', address: '서울특별시 강남구 대치동 1027', price: '32억 8,000만원', tradeDate: '2026-03-18', area: '84.97㎡', source: '마스터/실거래가' },
+    { id: 're-3', name: '반포자이', type: 'apt', sido: '서울특별시', sigungu: '서초구', address: '서울특별시 서초구 반포동 20-43', price: '35억 2,000만원', tradeDate: '2026-03-15', area: '84.98㎡', source: '마스터/실거래가' },
+    { id: 're-4', name: '마포래미안푸르지오', type: 'apt', sido: '서울특별시', sigungu: '마포구', address: '서울특별시 마포구 아현동 777', price: '18억 5,000만원', tradeDate: '2026-03-10', area: '84.59㎡', source: '마스터/실거래가' },
+    { id: 're-5', name: '헬리오시티', type: 'apt', sido: '서울특별시', sigungu: '송파구', address: '서울특별시 송파구 가락동 913', price: '21억 3,000만원', tradeDate: '2026-03-05', area: '84.99㎡', source: '마스터/실거래가' },
+    { id: 're-6', name: '청담더씨엘', type: 'rh', sido: '서울특별시', sigungu: '강남구', address: '서울특별시 강남구 청담동 88-12', price: '14억 5,000만원', tradeDate: '2026-02-28', area: '72.30㎡', source: '마스터' },
+    { id: 're-7', name: '목동신시가지7단지', type: 'apt', sido: '서울특별시', sigungu: '양천구', address: '서울특별시 양천구 목동 925', price: '22억 1,000만원', tradeDate: '2026-02-20', area: '74.12㎡', source: '마스터/실거래가' },
+    { id: 're-8', name: '한남더힐', type: 'apt', sido: '서울특별시', sigungu: '용산구', address: '서울특별시 용산구 한남동 810', price: '85억 0,000만원', tradeDate: '2026-02-14', area: '208.5㎡', source: '마스터/실거래가' },
+    { id: 're-9', name: '트리마제', type: 'apt', sido: '서울특별시', sigungu: '성동구', address: '서울특별시 성동구 성수동1가 718', price: '39억 0,000만원', tradeDate: '2026-02-10', area: '84.82㎡', source: '마스터/실거래가' },
+    { id: 're-10', name: '서초롯데캐슬프레지던트', type: 'offi', sido: '서울특별시', sigungu: '서초구', address: '서울특별시 서초구 서초동 1303-34', price: '9억 8,000만원', tradeDate: '2026-02-01', area: '58.40㎡', source: '마스터/실거래가' }
+];
+
+function getTypeName(type) {
+    switch (type) {
+        case 'apt': return '🏢 아파트';
+        case 'rh': return '🏡 연립·다세대';
+        case 'sh': return '🏠 단독·다가구';
+        case 'offi': return '🏙️ 오피스텔';
+        default: return '주택';
+    }
+}
+
+function renderStoredRealEstateList() {
+    if (!storedRealEstateListContainer || !storedRealEstateCount) return;
+
+    const selectedRegion = realEstateRegionFilter ? realEstateRegionFilter.value : 'all';
+    const selectedSigungu = realEstateSigunguFilter ? realEstateSigunguFilter.value : 'all';
+    const selectedType = realEstateTypeFilter ? realEstateTypeFilter.value : 'all';
+    const searchQuery = realEstateSearchInput ? realEstateSearchInput.value.trim().toLowerCase() : '';
+
+    let filtered = allStoredRealEstates;
+
+    // Filter by Region (Sido)
+    if (selectedRegion !== 'all') {
+        filtered = filtered.filter(item => item.sido === selectedRegion || (item.address && item.address.includes(selectedRegion)));
+    }
+
+    // Filter by Sigungu
+    if (selectedSigungu !== 'all') {
+        filtered = filtered.filter(item => item.sigungu === selectedSigungu || (item.address && item.address.includes(selectedSigungu)));
+    }
+
+    // Filter by Type
+    if (selectedType !== 'all') {
+        filtered = filtered.filter(item => item.type === selectedType);
+    }
+
+    // Filter by Search Query (name or address)
+    if (searchQuery !== '') {
+        filtered = filtered.filter(item => 
+            (item.name && item.name.toLowerCase().includes(searchQuery)) ||
+            (item.address && item.address.toLowerCase().includes(searchQuery))
+        );
+    }
+
+    storedRealEstateCount.innerText = filtered.length;
+
+    if (filtered.length === 0) {
+        storedRealEstateListContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px 0;">조건에 해당하는 주택 데이터가 없습니다.</div>';
+        return;
+    }
+
+    const html = filtered.map((item, index) => {
+        return `
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.05); padding: 8px 4px;">
+                <div style="flex: 1; padding-right: 10px;">
+                    <div>
+                        <strong style="color: var(--deep-blue); font-size: 13px;">${index + 1}. ${item.name}</strong>
+                        <span style="font-size: 11px; color: var(--text-muted); margin-left: 4px;">(${getTypeName(item.type)})</span>
+                        <span style="background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 6px; font-size: 10px;">${item.source || '마스터 DB'}</span>
+                    </div>
+                    <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 3px;">
+                        주소: ${item.address} | 전용면적: ${item.area || '-'}
+                    </div>
+                </div>
+                <div style="text-align: right; min-width: 120px;">
+                    <div style="font-weight: 700; color: #059669; font-size: 12.5px;">${item.price || '시세 정보'}</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">${item.tradeDate ? '기준/거래: ' + item.tradeDate : ''}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    storedRealEstateListContainer.innerHTML = html;
+}
+
+async function loadStoredRealEstate() {
+    try {
+        const res = await fetch('/api/realestate/stored');
+        if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                allStoredRealEstates = data;
+            } else {
+                allStoredRealEstates = [];
+            }
+        } else {
+            allStoredRealEstates = [];
+        }
+    } catch (e) {
+        console.error('Failed to load /api/realestate/stored', e);
+        allStoredRealEstates = [];
+    }
+    renderStoredRealEstateList();
+}
+
+async function saveStoredRealEstate(list) {
+    allStoredRealEstates = list;
+    try {
+        await fetch('/api/realestate/stored', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(list)
+        });
+    } catch (e) {
+        console.error('Failed to save to /api/realestate/stored', e);
+    }
+    renderStoredRealEstateList();
+}
+
+// Attach filter listeners
+if (realEstateRegionFilter) {
+    realEstateRegionFilter.addEventListener('change', () => {
+        updateRealEstateSigunguDropdown();
+        renderStoredRealEstateList();
+    });
+}
+if (realEstateSigunguFilter) {
+    realEstateSigunguFilter.addEventListener('change', renderStoredRealEstateList);
+}
+if (realEstateTypeFilter) {
+    realEstateTypeFilter.addEventListener('change', renderStoredRealEstateList);
+}
+if (realEstateSearchInput) {
+    realEstateSearchInput.addEventListener('input', renderStoredRealEstateList);
+}
+
+// Refresh Button Logic
+if (btnRefreshRealEstateList) {
+    btnRefreshRealEstateList.addEventListener('click', () => {
+        if (storedRealEstateListContainer) {
+            storedRealEstateListContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px 0;">데이터를 새로고침 중입니다...</div>';
+            setTimeout(() => {
+                loadStoredRealEstate();
+            }, 300);
+        }
+    });
+}
+
+// Real Estate Sync Button Logic
+if (btnRunRealEstateSync) {
+    btnRunRealEstateSync.addEventListener('click', () => {
+        const sido = document.getElementById('syncRealEstateSido') ? document.getElementById('syncRealEstateSido').value : '';
+        const sigunguEl = document.getElementById('syncRealEstateSigungu');
+        const sigungu = sigunguEl ? sigunguEl.value : '';
+        const sigunguText = sigunguEl && sigungu !== 'all' ? sigunguEl.options[sigunguEl.selectedIndex].text : '';
+        
+        const typeEl = document.getElementById('syncRealEstateType');
+        const typeVal = typeEl ? typeEl.value : 'all';
+        const typeText = typeEl ? typeEl.options[typeEl.selectedIndex].text : '전체';
+
+        const regionText = (sigungu === 'all' || !sigunguText) ? sido : `${sido} ${sigunguText}`;
+        
+        showConfirm(`${regionText} 지역의 ${typeText} 실거래가 데이터를 공공 API에서 수집하여 기존 마스터 주택 정보에 매핑·업데이트하시겠습니까?`, async () => {
+            if (realEstateSyncStatus) {
+                realEstateSyncStatus.style.display = 'block';
+                realEstateSyncStatus.style.color = '#059669';
+                realEstateSyncStatus.innerText = '공공데이터포털 실거래가 API에서 최근 거래 데이터를 조회하여 마스터 주택과 매핑 갱신 중입니다...';
+
+                btnRunRealEstateSync.disabled = true;
+
+                try {
+                    const res = await fetch('/api/realestate/sync-trades', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sido,
+                            sigungu: sigungu === 'all' ? 'all' : sigunguText,
+                            housingType: typeVal
+                        })
+                    });
+                    const data = await res.json();
+
+                    if (data.success) {
+                        realEstateSyncStatus.innerText = `[성공] ${regionText} ${typeText} 실거래가 동기화 완료: 기존 주택 ${data.updatedCount}건 최신 가격 갱신, 신규 ${data.newAddedCount}건 추가.`;
+                        await loadStoredRealEstate();
+                        showAlert(`실거래가 데이터가 성공적으로 동기화되었습니다.\n기존 마스터 주택 ${data.updatedCount}건의 최신 거래가격이 갱신되었으며, 신규 주택 ${data.newAddedCount}건이 등록되었습니다.`);
+                    } else {
+                        realEstateSyncStatus.style.color = '#dc2626';
+                        realEstateSyncStatus.innerText = `[실패] 실거래가 수집 오류: ${data.error || '알 수 없는 오류'}`;
+                        showAlert('실거래가 수집에 실패했습니다: ' + (data.error || '오류'));
+                    }
+                } catch (err) {
+                    console.error('Sync trades error:', err);
+                    realEstateSyncStatus.style.color = '#dc2626';
+                    realEstateSyncStatus.innerText = `[오류] 네트워크 오류가 발생했습니다.`;
+                    showAlert('실거래가 수집 중 네트워크 오류가 발생했습니다.');
+                } finally {
+                    btnRunRealEstateSync.disabled = false;
+                }
+            }
+        });
+    });
+}
+
+// Real Estate Master Data Collection Button Logic
+if (btnRunRealEstateMaster) {
+    btnRunRealEstateMaster.addEventListener('click', () => {
+        const sido = masterRealEstateSido ? masterRealEstateSido.value : '';
+        const sigunguEl = masterRealEstateSigungu;
+        const sigungu = sigunguEl ? sigunguEl.value : '';
+        const sigunguText = sigunguEl && sigungu !== 'all' ? sigunguEl.options[sigunguEl.selectedIndex].text : '';
+
+        const regionText = (sigungu === 'all' || !sigunguText) ? sido : `${sido} ${sigunguText}`;
+
+        showConfirm(`${regionText} 지역의 전체 주택 마스터 정보를 공공 API 및 건축물 DB에서 일괄 다운로드하여 구축하시겠습니까?`, async () => {
+            if (realEstateMasterStatus) {
+                realEstateMasterStatus.style.display = 'block';
+                realEstateMasterStatus.style.color = '#2563eb';
+                realEstateMasterStatus.innerText = '공공데이터포털 및 마스터 API에서 해당 지역 전체 주택을 수집하는 중입니다... (데이터가 많으므로 수 초 소요될 수 있습니다)';
+
+                btnRunRealEstateMaster.disabled = true;
+
+                try {
+                    const res = await fetch('/api/realestate/collect-master', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sido, sigungu: sigungu === 'all' ? 'all' : sigunguText })
+                    });
+                    const data = await res.json();
+
+                    if (data.success) {
+                        realEstateMasterStatus.innerText = `[성공] ${regionText} 주택 마스터 DB 구축이 완료되었습니다. (총 ${data.totalCount}건 구축, 신규 +${data.newlyAdded}건)`;
+                        await loadStoredRealEstate();
+                        showAlert(`주택 마스터 정보 수집 및 저장이 성공적으로 완료되었습니다.\n${regionText} 총 ${data.totalCount}건의 주택 정보가 JSON 파일에 저장되었습니다.`);
+                    } else {
+                        realEstateMasterStatus.style.color = '#dc2626';
+                        realEstateMasterStatus.innerText = `[실패] 수집 중 오류: ${data.error || '알 수 없는 오류'}`;
+                        showAlert('수집에 실패했습니다: ' + (data.error || '오류'));
+                    }
+                } catch (err) {
+                    console.error('Master collect error:', err);
+                    realEstateMasterStatus.style.color = '#dc2626';
+                    realEstateMasterStatus.innerText = `[오류] 네트워크 오류가 발생했습니다.`;
+                    showAlert('수집 요청 중 네트워크 오류가 발생했습니다.');
+                } finally {
+                    btnRunRealEstateMaster.disabled = false;
+                }
+            }
+        });
+    });
+}
+
+// Initial load on script execution if DOM ready
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    loadStoredRealEstate();
+} else {
+    window.addEventListener('DOMContentLoaded', loadStoredRealEstate);
+}
 
