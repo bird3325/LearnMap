@@ -5087,8 +5087,11 @@
             <div
                 style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
                 <h3
-                    style="font-size: 16px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; align-items: center; gap: 6px;">
-                    <span>🛡️ 학교폭력 현황 상세</span>
+                    style="font-size: 16px; font-weight: 700; color: var(--deep-blue); margin: 0; display: flex; flex-direction: column; gap: 2px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span>🛡️ 학교폭력 현황 상세</span>
+                    </div>
+                    <span id="statViolenceDisclosureYm" style="font-size: 11px; font-weight: 600; color: #2563eb;">2025년 04월 공시 기준</span>
                 </h3>
                 <button onclick="toggleViolenceStatsModal()"
                     style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; transition: color 0.2s;"
@@ -5227,8 +5230,11 @@
                     </div>
                 </div>
                 <div
-                    style="font-size:10px; color:var(--text-muted); padding-top:8px; border-top:1px solid var(--border-color);">
-                    ※ 출처: 학교알리미 수준 집계 데이터 · 건수 0건은 미신고 또는 집계 제외를 의미할 수 있음</div>
+                    style="font-size:10.5px; color:var(--text-muted); padding-top:10px; border-top:1px solid var(--border-color); line-height: 1.5; display: flex; flex-direction: column; gap: 4px;">
+                    <div>📌 <strong>공시년월:</strong> 학교알리미 정기 공시 (<span id="statViolenceNoticeYm" style="font-weight: 700; color: var(--deep-blue);">2025년 04월</span> 기준)</div>
+                    <div>⚠️ <strong>주의사항:</strong> 0건 표기는 미신고, 집계 제외 대상 또는 해당 학년도 심의 건수 부재를 의미합니다.</div>
+                    <div>ℹ️ <strong>안내:</strong> 교육부 나이스(NEIS) 오픈 API에는 학폭 실태 조사가 포함되지 않아 학교알리미 정기 공시 집계 수치를 참조하며, 최신 원문 및 개별 심의 결과는 하단 <strong>[학교알리미 바로가기 ↗]</strong>를 통해 실시간 조회가 가능합니다.</div>
+                </div>
             </div>
         </div>
     </div>
@@ -5896,6 +5902,18 @@
                     <span id="topicStatsCountBadge"
                         style="background: var(--primary-blue); color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">0개
                         학교</span>
+                </div>
+
+                <!-- 출처 / 공시년월 / 주의사항 안내 박스 -->
+                <div id="topicStatsNoticeBox"
+                    style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 10px; margin-bottom: 6px; font-size: 10.5px; color: #475569; line-height: 1.45; flex-shrink: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: #1e293b; margin-bottom: 2px;">
+                        <span>ℹ️ 데이터 출처 및 공시 안내</span>
+                        <span id="topicStatsNoticeYm" style="color: #2563eb; font-size: 10.5px; font-weight: 700;">2025년 04월 공시 기준</span>
+                    </div>
+                    <div>• <strong>출처:</strong> 학교알리미 정기 공시 집계 수치 기반</div>
+                    <div>• <strong>주의사항:</strong> 0건 표기는 미신고, 집계 제외 대상 또는 해당 학년도 심의 건수 부재를 의미합니다.</div>
+                    <div>• <strong>API 연동:</strong> 교육부 나이스(NEIS) 오픈 API에는 학폭 실태 데이터가 직접 포함되지 않아 학교알리미 집계 수치를 활용합니다.</div>
                 </div>
 
                 <!-- 순위 목록 컨테이너 -->

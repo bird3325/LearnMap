@@ -151,14 +151,109 @@ app.post('/api/realestate/stored', (req, res) => {
     }
 });
 
-// 서울시 구별 법정동 코드 매핑 테이블
-const SEOUL_LAWD_MAP = {
-    '종로구': '11110', '중구': '11140', '용산구': '11170', '성동구': '11200', '광진구': '11215',
-    '동대문구': '11230', '중랑구': '11260', '성북구': '11290', '강북구': '11305', '도봉구': '11320',
-    '노원구': '11350', '은평구': '11380', '서대문구': '11410', '마포구': '11440', '양천구': '11470',
-    '강서구': '11500', '구로구': '11530', '금천구': '11545', '영등포구': '11560', '동작구': '11590',
-    '관악구': '11620', '서초구': '11650', '강남구': '11680', '송파구': '11710', '강동구': '11740'
-};
+// 대한민국 전체 시/도 및 시/군/구 법정동 5자리 코드 매핑 로드
+const LAWD_JSON_PATH = path.join(__dirname, 'src', 'data', 'lawd_code_map.json');
+let NATIONWIDE_LAWD_MAP = {};
+
+try {
+    if (fs.existsSync(LAWD_JSON_PATH)) {
+        NATIONWIDE_LAWD_MAP = JSON.parse(fs.readFileSync(LAWD_JSON_PATH, 'utf8'));
+    }
+} catch (e) {
+    console.warn('[Warning] Failed to load lawd_code_map.json, using fallback');
+}
+
+if (!NATIONWIDE_LAWD_MAP['서울특별시']) {
+    NATIONWIDE_LAWD_MAP = {
+        '서울특별시': {
+            '종로구': '11110', '중구': '11140', '용산구': '11170', '성동구': '11200', '광진구': '11215',
+            '동대문구': '11230', '중랑구': '11260', '성북구': '11290', '강북구': '11305', '도봉구': '11320',
+            '노원구': '11350', '은평구': '11380', '서대문구': '11410', '마포구': '11440', '양천구': '11470',
+            '강서구': '11500', '구로구': '11530', '금천구': '11545', '영등포구': '11560', '동작구': '11590',
+            '관악구': '11620', '서초구': '11650', '강남구': '11680', '송파구': '11710', '강동구': '11740'
+        },
+        '경기도': {
+            '고양시': ['41281', '41285', '41287'],
+            '덕양구': '41281', '일산동구': '41285', '일산서구': '41287',
+            '성남시': ['41131', '41133', '41135'],
+            '수정구': '41131', '중원구': '41133', '분당구': '41135',
+            '수원시': ['41111', '41113', '41115', '41117'],
+            '장안구': '41111', '권선구': '41113', '팔달구': '41115', '영통구': '41117',
+            '용인시': ['41461', '41463', '41465'],
+            '처인구': '41461', '기흥구': '41463', '수지구': '41465',
+            '안산시': ['41271', '41273'],
+            '상록구': '41271', '단원구': '41273',
+            '안양시': ['41171', '41173'],
+            '만안구': '41171', '동안구': '41173',
+            '부천시': '41190', '광명시': '41210', '평택시': '41220', '동두천시': '41250',
+            '과천시': '41290', '구리시': '41310', '남양주시': '41360', '오산시': '41370',
+            '시흥시': '41390', '군포시': '41410', '의왕시': '41430', '하남시': '41450',
+            '파주시': '41480', '이천시': '41500', '안성시': '41550', '김포시': '41570',
+            '화성시': '41590', '광주시': '41610', '양주시': '41630', '포천시': '41650',
+            '여주시': '41670', '연천군': '41800', '가평군': '41820', '양평군': '41830', '의정부시': '41150'
+        }
+    };
+}
+
+const SEOUL_LAWD_MAP = NATIONWIDE_LAWD_MAP['서울특별시'];
+
+function getLawdTargets(sido, sigungu) {
+    const sidoMap = NATIONWIDE_LAWD_MAP[sido] || NATIONWIDE_LAWD_MAP['서울특별시'];
+    const targets = [];
+
+    const findSubGuName = (code, defaultGu) => {
+        const entry = Object.entries(sidoMap).find(([k, v]) => v === code && !Array.isArray(v));
+        return entry ? entry[0] : defaultGu;
+    };
+
+    if (sigungu === 'all' || !sigungu || sigungu === '전체') {
+        Object.entries(sidoMap).forEach(([gName, val]) => {
+            if (Array.isArray(val)) {
+                // skip array keys to avoid duplicate LAWD code calls
+            } else {
+                targets.push({ gu: gName, code: val });
+            }
+        });
+    } else {
+        const val = sidoMap[sigungu];
+        if (val) {
+            if (Array.isArray(val)) {
+                val.forEach(c => targets.push({ gu: findSubGuName(c, sigungu), code: c }));
+            } else {
+                targets.push({ gu: sigungu, code: val });
+            }
+        } else {
+            const foundKey = Object.keys(sidoMap).find(k => k.includes(sigungu) || sigungu.includes(k));
+            if (foundKey) {
+                const fVal = sidoMap[foundKey];
+                if (Array.isArray(fVal)) {
+                    fVal.forEach(c => targets.push({ gu: findSubGuName(c, sigungu), code: c }));
+                } else {
+                    targets.push({ gu: sigungu, code: fVal });
+                }
+            } else {
+                targets.push({ gu: sigungu, code: null });
+            }
+        }
+    }
+    return targets;
+}
+
+function isMatchingSigungu(item, targetSigungu, targetSido) {
+    if (!targetSigungu || targetSigungu === 'all' || targetSigungu === '전체') return true;
+    const itemSigungu = item.sigungu || '';
+    const itemAddr = item.address || '';
+    if (itemSigungu === targetSigungu) return true;
+    if (itemAddr.includes(targetSigungu)) return true;
+
+    const lawdTargets = getLawdTargets(targetSido || item.sido || '경기도', targetSigungu);
+    const subGus = lawdTargets.map(t => t.gu);
+    if (subGus.includes(itemSigungu)) return true;
+    for (const g of subGus) {
+        if (g && itemAddr.includes(g)) return true;
+    }
+    return false;
+}
 
 // 1-3. POST /api/realestate/collect-master - 실제 공공 API 및 카카오 로컬 API를 통한 주택 마스터 대량 수집
 app.post('/api/realestate/collect-master', async (req, res) => {
@@ -168,9 +263,7 @@ app.post('/api/realestate/collect-master', async (req, res) => {
     const kakaoKey = config.kakao_app_key;
 
     try {
-        const targetGus = (sigungu === 'all' || !sigungu) 
-            ? Object.keys(SEOUL_LAWD_MAP) 
-            : [sigungu];
+        const lawdTargets = getLawdTargets(sido, sigungu);
 
         let existingList = [];
         if (fs.existsSync(REAL_ESTATE_PATH)) {
@@ -199,8 +292,9 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                 months.push(`${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`);
             }
 
-            for (const gu of targetGus) {
-                const lawdCd = SEOUL_LAWD_MAP[gu];
+            for (const target of lawdTargets) {
+                const gu = target.gu;
+                const lawdCd = target.code;
                 if (!lawdCd) continue;
 
                 // 구별로 월별 아파트 및 오피스텔 데이터 수집
@@ -223,7 +317,6 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                                 const dong = getTag('umdNm');
                                 const jibun = getTag('jibun');
                                 const buildYear = getTag('buildYear');
-                                const amount = getTag('dealAmount');
                                 const area = getTag('excluUseAr');
 
                                 estateMap.set(key, {
@@ -233,17 +326,17 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                                     sido,
                                     sigungu: gu,
                                     address: `${sido} ${gu} ${dong} ${jibun}`.trim(),
-                                    price: amount ? `${amount.trim()}만원 (실거래)` : '실거래 대기',
-                                    tradeDate: `${getTag('dealYear')}-${String(getTag('dealMonth')).padStart(2, '0')}`,
+                                    price: '기본 정보 구축 (실거래 대기)',
+                                    tradeDate: '-',
                                     area: area ? `${area}㎡` : '-',
                                     buildYear: buildYear || '',
-                                    source: '국토교통부 마스터'
+                                    source: '단지/건축물 마스터 DB'
                                 });
                                 newlyAddedCount++;
                             }
                         });
                     } catch (e) {
-                        console.warn(`[Master Sync] Failed for ${gu} ${ymd}:`, e.message);
+                        console.warn(`[Master Sync] Failed for ${gu} (${lawdCd}) ${ymd}:`, e.message);
                     }
                 }
             }
@@ -251,7 +344,15 @@ app.post('/api/realestate/collect-master', async (req, res) => {
 
         // 2. 카카오 장소 검색 API를 활용해 해당 지역의 아파트 및 연립/다세대/오피스텔 보강
         if (kakaoKey) {
-            for (const gu of targetGus) {
+            const targetGuNames = sigungu === 'all' || !sigungu || sigungu === '전체'
+                ? Object.keys(NATIONWIDE_LAWD_MAP[sido] || NATIONWIDE_LAWD_MAP['서울특별시']).filter(k => !Array.isArray(NATIONWIDE_LAWD_MAP[sido]?.[k]))
+                : lawdTargets.map(t => t.gu);
+
+            if (sigungu && sigungu !== 'all' && sigungu !== '전체' && !targetGuNames.includes(sigungu)) {
+                targetGuNames.unshift(sigungu);
+            }
+
+            for (const gu of targetGuNames) {
                 const searchTypes = [
                     { keyword: '아파트', type: 'apt' },
                     { keyword: '연립주택', type: 'rh' },
@@ -303,11 +404,20 @@ app.post('/api/realestate/collect-master', async (req, res) => {
         const finalList = Array.from(estateMap.values());
         fs.writeFileSync(REAL_ESTATE_PATH, JSON.stringify(finalList, null, 2), 'utf8');
 
+        const targetGus = [...new Set(lawdTargets.map(t => t.gu))];
+        const displayRegion = sigungu === 'all' || !sigungu || sigungu === '전체' ? sido : `${sido} ${sigungu}`;
+
+        const regionItems = finalList.filter(item => {
+            if (sido && item.sido !== sido) return false;
+            return isMatchingSigungu(item, sigungu, sido);
+        });
+
         return res.json({
             success: true,
+            regionCount: regionItems.length,
             totalCount: finalList.length,
             newlyAdded: newlyAddedCount,
-            message: `${targetGus.join(', ')} 주택 마스터 정보 총 ${finalList.length}건이 realestate_seoul.json에 구축되었습니다.`
+            message: `${displayRegion} (${targetGus.join(', ')}) 주택 마스터 정보 총 ${regionItems.length}건이 구축되었습니다. (전체 DB: ${finalList.length}건)`
         });
     } catch (err) {
         console.error('Collect Master Error:', err);
@@ -326,9 +436,7 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
     }
 
     try {
-        const targetGus = (sigungu === 'all' || !sigungu) 
-            ? Object.keys(SEOUL_LAWD_MAP) 
-            : [sigungu];
+        const lawdTargets = getLawdTargets(sido, sigungu);
 
         // 1. 기존 마스터/주택 목록 로드
         let existingList = [];
@@ -372,8 +480,9 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
         let newAddedCount = 0;
 
         // 3. 구별 / 유형별 / 거래월별 실제 API 호출 및 매핑
-        for (const gu of targetGus) {
-            const lawdCd = SEOUL_LAWD_MAP[gu];
+        for (const target of lawdTargets) {
+            const gu = target.gu;
+            const lawdCd = target.code;
             if (!lawdCd) continue;
 
             for (const ep of apiEndpoints) {
@@ -447,12 +556,21 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
         const finalList = Array.from(estateMap.values());
         fs.writeFileSync(REAL_ESTATE_PATH, JSON.stringify(finalList, null, 2), 'utf8');
 
+        const targetGus = [...new Set(lawdTargets.map(t => t.gu))];
+        const displayRegion = sigungu === 'all' || !sigungu || sigungu === '전체' ? sido : `${sido} ${sigungu}`;
+
+        const regionItems = finalList.filter(item => {
+            if (sido && item.sido !== sido) return false;
+            return isMatchingSigungu(item, sigungu, sido);
+        });
+
         return res.json({
             success: true,
+            regionCount: regionItems.length,
             totalCount: finalList.length,
             updatedCount,
             newAddedCount,
-            message: `${targetGus.join(', ')} 주택 실거래가 동기화 완료: 기존 마스터 주택 ${updatedCount}건 최신 가격 갱신, 신규 ${newAddedCount}건 추가.`
+            message: `${displayRegion} (${targetGus.join(', ')}) 주택 실거래가 동기화 완료: 기존 마스터 주택 ${updatedCount}건 최신 가격 갱신, 신규 ${newAddedCount}건 추가.`
         });
     } catch (err) {
         console.error('Sync Trades Error:', err);

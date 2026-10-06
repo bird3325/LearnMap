@@ -267,7 +267,17 @@
                 <button class="btn-primary" id="btnRunRealEstateMaster" style="background: var(--primary-blue);">
                     주택 마스터 정보 일괄 다운로드 및 구축
                 </button>
-                <div id="realEstateMasterStatus" style="margin-top: 10px; font-size: 12.5px; font-weight: 700; color: var(--primary-blue); display: none;"></div>
+                <!-- Real Estate Master Progress Indicator -->
+                <div class="progress-container" id="realEstateMasterProgressContainer">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin-bottom: 4px;">
+                        <span id="realEstateMasterProgressStatus">준비 중...</span>
+                        <span id="realEstateMasterProgressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar-fill" id="realEstateMasterProgressBarFill"></div>
+                    </div>
+                    <div class="log-box" id="realEstateMasterLog"></div>
+                </div>
             </div>
 
             <!-- Real Estate Batch Sync Card -->
@@ -319,7 +329,17 @@
                 <button class="btn-primary" id="btnRunRealEstateSync" style="background: linear-gradient(135deg, #059669, #10b981);">
                     주택 실거래가 일괄 다운로드 및 DB 갱신
                 </button>
-                <div id="realEstateSyncStatus" style="margin-top: 10px; font-size: 12.5px; font-weight: 700; color: #059669; display: none;"></div>
+                <!-- Real Estate Sync Progress Indicator -->
+                <div class="progress-container" id="realEstateSyncProgressContainer">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin-bottom: 4px;">
+                        <span id="realEstateSyncProgressStatus">준비 중...</span>
+                        <span id="realEstateSyncProgressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar-fill" id="realEstateSyncProgressBarFill"></div>
+                    </div>
+                    <div class="log-box" id="realEstateSyncLog"></div>
+                </div>
             </div>
 
             <!-- Stored Real Estate List Card -->
@@ -329,9 +349,14 @@
                         <h2 class="card-title" style="margin-bottom: 4px;">수집 동기화된 주택 목록 (<span id="storedRealEstateCount" style="color: #059669;">0</span>개)</h2>
                         <p style="font-size: 13px; color: var(--text-muted); margin: 0;">서버 DB에 수집되어 저장된 주택 실거래가 목록입니다.</p>
                     </div>
-                    <button class="btn-secondary" id="btnRefreshRealEstateList" style="width: auto; padding: 6px 12px; font-size: 12px; margin: 0;">
-                        🔄 새로고침
-                    </button>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn-secondary" id="btnDeleteFilteredRealEstate" style="width: auto; padding: 6px 12px; font-size: 12px; margin: 0; background: #dc2626; color: white; border: none; font-weight: 600;">
+                            🗑️ 삭제
+                        </button>
+                        <button class="btn-secondary" id="btnRefreshRealEstateList" style="width: auto; padding: 6px 12px; font-size: 12px; margin: 0;">
+                            🔄 새로고침
+                        </button>
+                    </div>
                 </div>
                     
                     <!-- Filters for Real Estate List -->

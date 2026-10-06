@@ -128,7 +128,7 @@ export class MapAgent {
                     address: row.ORG_RDNMA || row.ORG_ADRES,
                     student_count: Math.round(400 + (codeHash % 400)), // 400-799명
                     class_avg_size: Math.round(22 + (codeHash % 10)), // 22-31명
-                    updated_at: "2025-09-15",
+                    updated_at: new Date().toISOString().split('T')[0],
                     subjects: {
                         korean: { avg: korAvg, dist: [distA, distB, distC, distD] },
                         english: { avg: engAvg, dist: [distB, distA, distC, distD] },

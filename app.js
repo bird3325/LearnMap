@@ -3463,49 +3463,110 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4. Memory-based School Search
     async function performSearch(overrideQuery) {
         if (typeof resetSafeCommute === 'function') resetSafeCommute();
-        const query = (overrideQuery !== undefined && !(overrideQuery instanceof Event)) ? overrideQuery : searchInput.value;
+
+        // 1) 학교 데이터베이스 비동기 로딩 완료 대기
+        if ((!schoolsDatabase || schoolsDatabase.length === 0) && typeof schoolsLoadPromise !== 'undefined' && schoolsLoadPromise) {
+            await schoolsLoadPromise;
+        }
+        if ((!schoolsDatabase || schoolsDatabase.length === 0) && typeof loadSchoolsDatabase === 'function') {
+            await loadSchoolsDatabase();
+        }
+
+        const rawQuery = (overrideQuery !== undefined && !(overrideQuery instanceof Event)) ? overrideQuery : (searchInput ? searchInput.value : '');
         
-        if (typeof query === 'string' && query.trim() === '') {
+        if (typeof rawQuery !== 'string' || rawQuery.trim() === '') {
             alert("검색어를 입력해주세요.");
             return;
         }
         
+        const queryStr = rawQuery.trim();
+        const term = queryStr.toLowerCase().replace(/\s+/g, '');
+        
         // Sync Filters
-        orchestrator.state.filters.schoolType = schoolTypeFilter.value;
+        if (schoolTypeFilter && orchestrator && orchestrator.state && orchestrator.state.filters) {
+            orchestrator.state.filters.schoolType = schoolTypeFilter.value;
+        }
+
+        const allDb = (schoolsDatabase && schoolsDatabase.length > 0) 
+            ? schoolsDatabase 
+            : (window.schoolsDatabase || window.allSchoolsCache || []);
         
-        logDiagnostic(`[performSearch] 로컬 DB 검색 시작: "${JSON.stringify(query)}" (필터: ${orchestrator.state.filters.schoolType}, 지역: ${regionFilter.value})`);
-        
-        let filtered = schoolsDatabase;
+        logDiagnostic(`[performSearch] 학교 검색 시작: "${queryStr}" (총 DB ${allDb.length}개)`);
 
-        // Region Filter
-        const selectedRegion = regionFilter.value;
-        if (selectedRegion !== 'all') {
-            filtered = filtered.filter(s => s.region === selectedRegion);
+        const selectedRegion = regionFilter ? regionFilter.value : 'all';
+        const selectedType = schoolTypeFilter ? schoolTypeFilter.value : 'all';
+
+        // 2) 1차 검색: 현재 선택된 드롭다운 필터(지역, 학교급) 조건 내에서 검색
+        let filtered = allDb.filter(s => {
+            if (selectedRegion !== 'all' && s.region !== selectedRegion) {
+                return false;
+            }
+            if (selectedType !== 'all') {
+                let typeLabel = '중학교';
+                if (selectedType === 'elementary') typeLabel = '초등학교';
+                else if (selectedType === 'high') typeLabel = '고등학교';
+                if (s.school_type !== typeLabel) return false;
+            }
+            const cleanName = (s.school_name || '').toLowerCase().replace(/\s+/g, '');
+            const cleanAddr = (s.address || '').toLowerCase().replace(/\s+/g, '');
+            return cleanName.includes(term) || cleanAddr.includes(term);
+        });
+
+        // 3) 2차 검색: 필터 제약으로 인해 결과가 0건이면 전체 지역/학교급으로 확장 검색
+        if (filtered.length === 0) {
+            filtered = allDb.filter(s => {
+                const cleanName = (s.school_name || '').toLowerCase().replace(/\s+/g, '');
+                const cleanAddr = (s.address || '').toLowerCase().replace(/\s+/g, '');
+                return cleanName.includes(term) || cleanAddr.includes(term);
+            });
+
+            // 다른 지역/학교급에서 학교를 찾은 경우 필터를 '전체'로 자동 조정
+            if (filtered.length > 0) {
+                if (selectedRegion !== 'all' && regionFilter) {
+                    regionFilter.value = 'all';
+                }
+                if (selectedType !== 'all' && schoolTypeFilter) {
+                    schoolTypeFilter.value = 'all';
+                    if (orchestrator && orchestrator.state && orchestrator.state.filters) {
+                        orchestrator.state.filters.schoolType = 'all';
+                    }
+                }
+            }
         }
 
-        // School Type Filter
-        if (orchestrator.state.filters.schoolType !== 'all') {
-            let typeLabel = '중학교';
-            if (orchestrator.state.filters.schoolType === 'elementary') typeLabel = '초등학교';
-            else if (orchestrator.state.filters.schoolType === 'high') typeLabel = '고등학교';
-            filtered = filtered.filter(s => s.school_type === typeLabel);
+        if (filtered.length === 0) {
+            alert(`"${queryStr}"에 해당하는 학교를 찾을 수 없습니다.\n학교명이나 주소를 정확히 입력하셨는지 확인해 보세요.`);
+            return;
         }
 
-        // Search Term Match (Name or Address)
-        if (typeof query === 'string' && query.trim() !== '') {
-            const term = query.trim().toLowerCase();
-            filtered = filtered.filter(s => 
-                s.school_name.toLowerCase().includes(term) || 
-                (s.address && s.address.toLowerCase().includes(term))
-            );
-        }
+        // 일치도 정렬 (완전 일치 / 접두어 일치 우선)
+        filtered.sort((a, b) => {
+            const aName = (a.school_name || '').toLowerCase().replace(/\s+/g, '');
+            const bName = (b.school_name || '').toLowerCase().replace(/\s+/g, '');
+            const aScore = aName === term ? 0 : (aName.startsWith(term) ? 1 : 2);
+            const bScore = bName === term ? 0 : (bName.startsWith(term) ? 1 : 2);
+            return aScore - bScore;
+        });
 
-        // Cap to 25 results
+        // 최대 25개 결과 제한
         filtered = filtered.slice(0, 25);
         currentLoadedSchools = filtered;
         
-        const isManualSearch = typeof query === 'string' && query.trim() !== '';
-        renderPins(filtered, isManualSearch);
+        const topSchool = filtered[0];
+
+        // 4) 지도 중심 이동 (500m 축척 / Level 5 이하)
+        if (kakaoMap && topSchool && topSchool.lat && topSchool.lng) {
+            const coords = new kakao.maps.LatLng(topSchool.lat, topSchool.lng);
+            kakaoMap.setCenter(coords);
+            kakaoMap.setLevel(5);
+        }
+
+        renderPins(filtered, false);
+
+        // 5) 최우선 검색 학교 자동 선택 및 사이드바 상세정보 카드 오픈
+        if (topSchool && typeof window.selectSchoolById === 'function') {
+            window.selectSchoolById(topSchool.school_id || topSchool.id);
+        }
     }
 
     // 5. Memory-based Bounding Box filtering on Drag / Zoom
@@ -10818,23 +10879,28 @@ window.renderViolenceStats = function(school) {
         }
     };
 
-    // 인라인 요약
+    const updatedYm = school.updated_at ? `${school.updated_at.split('-')[0]}년 ${school.updated_at.split('-')[1] || '04'}월` : '2025년 04월';
+    const updatedYmShort = school.updated_at ? school.updated_at.substring(0, 7).replace('-', '.') : '2025.04';
+
+    // 인라인 요약 (공시년월 표기 추가)
     const summaryEl = document.getElementById('statViolenceSummary');
     if (summaryEl) {
         if (vs.total_cases === 0) {
-            summaryEl.innerHTML = `신고 없음 (처리율 ${vs.resolved_rate ?? '-'}%)`;
+            summaryEl.innerHTML = `신고 없음 <span style="font-weight:normal; font-size:11px; opacity:0.85;">(${updatedYmShort} 공시)</span>`;
             summaryEl.style.color = '#2e7d32';
         } else {
-            summaryEl.innerHTML = `연 ${vs.total_cases}건 · 100명당 ${vs.per_100 ?? '-'}건`;
+            summaryEl.innerHTML = `연 ${vs.total_cases}건 · 100명당 ${vs.per_100 ?? '-'}건 <span style="font-weight:normal; font-size:11px; opacity:0.85;">(${updatedYmShort} 공시)</span>`;
             summaryEl.style.color = vs.total_cases > 3 ? '#c62828' : '#e65100';
         }
     }
 
-    // 모달 내 수치
+    // 모달 내 수치 및 공시년월 정보 동적 바인딩
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
-    set('statViolenceTotal',    vs.total_cases ?? '-');
-    set('statViolencePer100',   vs.per_100 ?? '-');
-    set('statViolenceResolved', vs.resolved_rate ?? '-');
+    set('statViolenceTotal',        vs.total_cases ?? '-');
+    set('statViolencePer100',       vs.per_100 ?? '-');
+    set('statViolenceResolved',     vs.resolved_rate ?? '-');
+    set('statViolenceDisclosureYm', `${updatedYm} 공시 기준`);
+    set('statViolenceNoticeYm',     updatedYm);
 
     // 시/도 탭 버튼 명칭 동적 업데이트
     const cityTabBtn = document.querySelector('.violence-tab-btn[data-compare="city"]');
@@ -15260,14 +15326,14 @@ window.addEventListener('DOMContentLoaded', () => {
                     (school.establishment_status && String(school.establishment_status).includes('예정'))
                 );
                 const rawV = school.violence_stats || {};
-                const totalCases = isPlannedSchool ? 0 : ((rawV.total_cases !== null && rawV.total_cases !== undefined) ? rawV.total_cases : (codeHash % 5));
-                const per100 = isPlannedSchool ? 0 : ((rawV.per_100 !== null && rawV.per_100 !== undefined) ? rawV.per_100 : Math.round((totalCases / studentCount) * 100 * 10) / 10);
+                const totalCases = isPlannedSchool ? 0 : ((rawV.total_cases !== null && rawV.total_cases !== undefined) ? rawV.total_cases : 0);
+                const per100 = isPlannedSchool ? 0 : ((rawV.per_100 !== null && rawV.per_100 !== undefined) ? rawV.per_100 : (studentCount > 0 ? Math.round((totalCases / studentCount) * 100 * 10) / 10 : 0));
                 const rawTypes = rawV.types || {};
-                const verbal = isPlannedSchool ? 0 : ((rawTypes.verbal !== null && rawTypes.verbal !== undefined) ? rawTypes.verbal : Math.round(35 + (codeHash % 20)));
-                const cyber = isPlannedSchool ? 0 : ((rawTypes.cyber !== null && rawTypes.cyber !== undefined) ? rawTypes.cyber : Math.round(15 + (codeHash % 15)));
-                const exclude = isPlannedSchool ? 0 : ((rawTypes.exclude !== null && rawTypes.exclude !== undefined) ? rawTypes.exclude : Math.round(10 + (codeHash % 10)));
-                const physical = isPlannedSchool ? 0 : ((rawTypes.physical !== null && rawTypes.physical !== undefined) ? rawTypes.physical : Math.max(5, 100 - verbal - cyber - exclude));
-                const resolvedRate = isPlannedSchool ? 100 : ((rawV.resolved_rate !== null && rawV.resolved_rate !== undefined) ? rawV.resolved_rate : Math.round(80 + (codeHash % 18)));
+                const verbal = isPlannedSchool ? 0 : ((rawTypes.verbal !== null && rawTypes.verbal !== undefined) ? rawTypes.verbal : 40);
+                const cyber = isPlannedSchool ? 0 : ((rawTypes.cyber !== null && rawTypes.cyber !== undefined) ? rawTypes.cyber : 20);
+                const exclude = isPlannedSchool ? 0 : ((rawTypes.exclude !== null && rawTypes.exclude !== undefined) ? rawTypes.exclude : 15);
+                const physical = isPlannedSchool ? 0 : ((rawTypes.physical !== null && rawTypes.physical !== undefined) ? rawTypes.physical : Math.max(0, 100 - verbal - cyber - exclude));
+                const resolvedRate = isPlannedSchool ? 100 : ((rawV.resolved_rate !== null && rawV.resolved_rate !== undefined) ? rawV.resolved_rate : 100);
 
                 const vStats = {
                     total_cases: totalCases,
@@ -15443,6 +15509,13 @@ window.addEventListener('DOMContentLoaded', () => {
                 } else if (currentTopic === 'transfer') {
                     summaryText.innerHTML = `📍 <strong>${regionLabel}</strong> 평균 전입 순증감: <strong>${avgNetTransfer > 0 ? '+' : ''}${avgNetTransfer}명</strong>`;
                 }
+            }
+
+            const noticeYmEl = document.getElementById('topicStatsNoticeYm');
+            if (noticeYmEl) {
+                const sampleSchool = processedList[0]?.raw;
+                const ym = sampleSchool && sampleSchool.updated_at ? `${sampleSchool.updated_at.split('-')[0]}년 ${sampleSchool.updated_at.split('-')[1] || '04'}월` : '2025년 04월';
+                noticeYmEl.innerText = `${ym} 공시 기준`;
             }
 
             // 리스트 UI 렌더링

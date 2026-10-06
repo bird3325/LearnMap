@@ -211,9 +211,19 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+function getFormattedLogTime() {
+    const d = new Date();
+    const ampm = d.getHours() >= 12 ? '오후' : '오전';
+    let hours = d.getHours() % 12;
+    hours = hours ? hours : 12;
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${ampm} ${hours}:${minutes}:${seconds}`;
+}
+
 // Log utility
 function logMsg(msg) {
-    adminLog.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
+    adminLog.innerHTML += `[${getFormattedLogTime()}] ${msg}<br>`;
     adminLog.scrollTop = adminLog.scrollHeight;
 }
 
@@ -276,8 +286,11 @@ function renderStoredSchoolsList() {
                     <strong style="color: var(--deep-blue); font-size: 13px;">${index + 1}. ${school.school_name}</strong> 
                     <span style="font-size: 11px; color: var(--text-muted); margin-left: 4px;">(${school.school_type})</span>
                     ${(() => {
-                        const updatedDate = school.updated_at || '2025-09-15';
-                        const isOutdated = new Date(updatedDate) < new Date(new Date().setFullYear(new Date().getFullYear() - 1));
+                        const today = new Date();
+                        const updatedDateStr = school.updated_at || today.toISOString().split('T')[0];
+                        const schoolDate = new Date(updatedDateStr);
+                        const diffDays = (today - schoolDate) / (1000 * 60 * 60 * 24);
+                        const isOutdated = isNaN(diffDays) || diffDays > 365;
                         if (isOutdated) {
                             return `<span style="background: var(--danger-red); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 6px; font-size: 10px;">업데이트 필요</span>`;
                         } else {
@@ -285,7 +298,7 @@ function renderStoredSchoolsList() {
                         }
                     })()}
                     <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
-                        주소: ${school.address} | 공시 기준일: ${school.updated_at || '2025-09-15'}
+                        주소: ${school.address} | 공시 기준일: ${school.updated_at || new Date().toISOString().split('T')[0]}
                     </div>
                 </div>
                 <div style="text-align: right; font-size: 11px;">
@@ -911,7 +924,7 @@ btnRunUpdate.addEventListener('click', () => {
                                 lng: coords.lng,
                                 student_count: Math.round(400 + (codeHash % 400)),
                                 class_avg_size: Math.round(22 + (codeHash % 10)),
-                                updated_at: '2025-09-15',
+                                updated_at: new Date().toISOString().split('T')[0],
                                 subjects: {
                                     korean: { avg: korAvg, dist: [distA, distB, distC, distD] },
                                     english: { avg: engAvg, dist: [distB, distA, distC, distD] },
@@ -1586,9 +1599,21 @@ function getTypeName(type) {
     }
 }
 
-function renderStoredRealEstateList() {
-    if (!storedRealEstateListContainer || !storedRealEstateCount) return;
+const SUB_DISTRICT_MAP = {
+    '고양시': ['덕양구', '일산동구', '일산서구'],
+    '성남시': ['수정구', '중원구', '분당구'],
+    '수원시': ['장안구', '권선구', '팔달구', '영통구'],
+    '용인시': ['처인구', '기흥구', '수지구'],
+    '안산시': ['상록구', '단원구'],
+    '안양시': ['만안구', '동안구'],
+    '청주시': ['상당구', '서원구', '흥덕구', '청원구'],
+    '천안시': ['동남구', '서북구'],
+    '전주시': ['완산구', '덕진구'],
+    '포항시': ['남구', '북구'],
+    '창원시': ['의창구', '성산구', '마산합포구', '마산회원구', '진해구']
+};
 
+function getFilteredRealEstates() {
     const selectedRegion = realEstateRegionFilter ? realEstateRegionFilter.value : 'all';
     const selectedSigungu = realEstateSigunguFilter ? realEstateSigunguFilter.value : 'all';
     const selectedType = realEstateTypeFilter ? realEstateTypeFilter.value : 'all';
@@ -1603,7 +1628,16 @@ function renderStoredRealEstateList() {
 
     // Filter by Sigungu
     if (selectedSigungu !== 'all') {
-        filtered = filtered.filter(item => item.sigungu === selectedSigungu || (item.address && item.address.includes(selectedSigungu)));
+        const subGus = SUB_DISTRICT_MAP[selectedSigungu] || [];
+        filtered = filtered.filter(item => {
+            if (item.sigungu === selectedSigungu) return true;
+            if (subGus.includes(item.sigungu)) return true;
+            if (item.address && item.address.includes(selectedSigungu)) return true;
+            for (const sub of subGus) {
+                if (item.address && item.address.includes(sub)) return true;
+            }
+            return false;
+        });
     }
 
     // Filter by Type
@@ -1619,6 +1653,13 @@ function renderStoredRealEstateList() {
         );
     }
 
+    return filtered;
+}
+
+function renderStoredRealEstateList() {
+    if (!storedRealEstateListContainer || !storedRealEstateCount) return;
+
+    const filtered = getFilteredRealEstates();
     storedRealEstateCount.innerText = filtered.length;
 
     if (filtered.length === 0) {
@@ -1627,6 +1668,7 @@ function renderStoredRealEstateList() {
     }
 
     const html = filtered.map((item, index) => {
+        const itemKey = item.id ? item.id : `${item.sido || ''}_${item.sigungu || ''}_${item.name || ''}`;
         return `
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.05); padding: 8px 4px;">
                 <div style="flex: 1; padding-right: 10px;">
@@ -1639,9 +1681,10 @@ function renderStoredRealEstateList() {
                         주소: ${item.address} | 전용면적: ${item.area || '-'}
                     </div>
                 </div>
-                <div style="text-align: right; min-width: 120px;">
+                <div style="text-align: right; min-width: 140px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
                     <div style="font-weight: 700; color: #059669; font-size: 12.5px;">${item.price || '시세 정보'}</div>
                     <div style="font-size: 11px; color: var(--text-muted);">${item.tradeDate ? '기준/거래: ' + item.tradeDate : ''}</div>
+                    <button class="btn-delete-single-estate" data-key="${encodeURIComponent(itemKey)}" data-name="${encodeURIComponent(item.name || '')}" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; padding: 2px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 600; margin-top: 2px;">🗑️ 삭제</button>
                 </div>
             </div>
         `;
@@ -1701,6 +1744,62 @@ if (realEstateSearchInput) {
     realEstateSearchInput.addEventListener('input', renderStoredRealEstateList);
 }
 
+// Single item delete event handler via event delegation
+if (storedRealEstateListContainer) {
+    storedRealEstateListContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-delete-single-estate');
+        if (!btn) return;
+
+        const rawKey = decodeURIComponent(btn.getAttribute('data-key') || '');
+        const name = decodeURIComponent(btn.getAttribute('data-name') || '');
+
+        showConfirm(`"${name}" 주택 정보를 삭제하시겠습니까?`, async () => {
+            const newList = allStoredRealEstates.filter(item => {
+                const key = item.id ? item.id : `${item.sido || ''}_${item.sigungu || ''}_${item.name || ''}`;
+                return key !== rawKey;
+            });
+            await saveStoredRealEstate(newList);
+            showAlert(`"${name}" 주택 정보가 성공적으로 삭제되었습니다.`);
+        });
+    });
+}
+
+// Filtered / Searched Items Batch Delete Button Handler
+const btnDeleteFilteredRealEstate = document.getElementById('btnDeleteFilteredRealEstate');
+if (btnDeleteFilteredRealEstate) {
+    btnDeleteFilteredRealEstate.addEventListener('click', () => {
+        const filtered = getFilteredRealEstates();
+        if (filtered.length === 0) {
+            showAlert('삭제할 검색/필터 조건의 주택 데이터가 없습니다.');
+            return;
+        }
+
+        const selectedRegion = realEstateRegionFilter ? realEstateRegionFilter.value : 'all';
+        const selectedSigungu = realEstateSigunguFilter ? realEstateSigunguFilter.value : 'all';
+        const selectedType = realEstateTypeFilter ? realEstateTypeFilter.value : 'all';
+        const searchQuery = realEstateSearchInput ? realEstateSearchInput.value.trim() : '';
+
+        let descParts = [];
+        if (selectedRegion !== 'all') descParts.push(`지역: ${selectedRegion}`);
+        if (selectedSigungu !== 'all') descParts.push(`시/군/구: ${selectedSigungu}`);
+        if (selectedType !== 'all') descParts.push(`유형: ${getTypeName(selectedType)}`);
+        if (searchQuery) descParts.push(`검색어: "${searchQuery}"`);
+
+        const filterSummaryText = descParts.length > 0 ? descParts.join(', ') : '전체 수집 항목';
+
+        showConfirm(`현재 검색/필터 조건 (${filterSummaryText})에 해당하는 주택 데이터 총 ${filtered.length}건을 삭제하시겠습니까?\n이 작업은 복구할 수 없습니다.`, async () => {
+            const keysToDelete = new Set(filtered.map(item => item.id ? item.id : `${item.sido || ''}_${item.sigungu || ''}_${item.name || ''}`));
+            const newList = allStoredRealEstates.filter(item => {
+                const key = item.id ? item.id : `${item.sido || ''}_${item.sigungu || ''}_${item.name || ''}`;
+                return !keysToDelete.has(key);
+            });
+
+            await saveStoredRealEstate(newList);
+            showAlert(`검색/필터 조건에 해당하는 주택 데이터 총 ${filtered.length}건이 성공적으로 삭제되었습니다.`);
+        });
+    });
+}
+
 // Refresh Button Logic
 if (btnRefreshRealEstateList) {
     btnRefreshRealEstateList.addEventListener('click', () => {
@@ -1728,42 +1827,72 @@ if (btnRunRealEstateSync) {
         const regionText = (sigungu === 'all' || !sigunguText) ? sido : `${sido} ${sigunguText}`;
         
         showConfirm(`${regionText} 지역의 ${typeText} 실거래가 데이터를 공공 API에서 수집하여 기존 마스터 주택 정보에 매핑·업데이트하시겠습니까?`, async () => {
-            if (realEstateSyncStatus) {
-                realEstateSyncStatus.style.display = 'block';
-                realEstateSyncStatus.style.color = '#059669';
-                realEstateSyncStatus.innerText = '공공데이터포털 실거래가 API에서 최근 거래 데이터를 조회하여 마스터 주택과 매핑 갱신 중입니다...';
+            const container = document.getElementById('realEstateSyncProgressContainer');
+            const statusEl = document.getElementById('realEstateSyncProgressStatus');
+            const percentEl = document.getElementById('realEstateSyncProgressPercent');
+            const barEl = document.getElementById('realEstateSyncProgressBarFill');
+            const logEl = document.getElementById('realEstateSyncLog');
 
-                btnRunRealEstateSync.disabled = true;
+            if (container) container.style.display = 'block';
+            if (logEl) logEl.innerHTML = '';
 
-                try {
-                    const res = await fetch('/api/realestate/sync-trades', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            sido,
-                            sigungu: sigungu === 'all' ? 'all' : sigunguText,
-                            housingType: typeVal
-                        })
-                    });
-                    const data = await res.json();
+            function updateSyncProgress(statusText, percent) {
+                if (statusEl) statusEl.innerText = statusText;
+                if (percentEl) percentEl.innerText = `${percent}%`;
+                if (barEl) barEl.style.width = `${percent}%`;
+            }
 
-                    if (data.success) {
-                        realEstateSyncStatus.innerText = `[성공] ${regionText} ${typeText} 실거래가 동기화 완료: 기존 주택 ${data.updatedCount}건 최신 가격 갱신, 신규 ${data.newAddedCount}건 추가.`;
-                        await loadStoredRealEstate();
-                        showAlert(`실거래가 데이터가 성공적으로 동기화되었습니다.\n기존 마스터 주택 ${data.updatedCount}건의 최신 거래가격이 갱신되었으며, 신규 주택 ${data.newAddedCount}건이 등록되었습니다.`);
-                    } else {
-                        realEstateSyncStatus.style.color = '#dc2626';
-                        realEstateSyncStatus.innerText = `[실패] 실거래가 수집 오류: ${data.error || '알 수 없는 오류'}`;
-                        showAlert('실거래가 수집에 실패했습니다: ' + (data.error || '오류'));
-                    }
-                } catch (err) {
-                    console.error('Sync trades error:', err);
-                    realEstateSyncStatus.style.color = '#dc2626';
-                    realEstateSyncStatus.innerText = `[오류] 네트워크 오류가 발생했습니다.`;
-                    showAlert('실거래가 수집 중 네트워크 오류가 발생했습니다.');
-                } finally {
-                    btnRunRealEstateSync.disabled = false;
+            function logSyncMsg(msg) {
+                if (logEl) {
+                    logEl.innerHTML += `[${getFormattedLogTime()}] ${msg}<br>`;
+                    logEl.scrollTop = logEl.scrollHeight;
                 }
+            }
+
+            btnRunRealEstateSync.disabled = true;
+            updateSyncProgress('실거래가 수집 시작 중...', 5);
+            logSyncMsg(`[Update] 주택 실거래가 Open API 호출 시작 (지역: ${regionText}, 주택유형: ${typeText})`);
+
+            try {
+                updateSyncProgress('국토교통부 실거래가 API 호출 중...', 25);
+                logSyncMsg(`국토교통부 주택 매매 실거래가 API 데이터 요청 중 (최근 6개월)...`);
+
+                await new Promise(r => setTimeout(r, 400));
+                updateSyncProgress('구별 법정동 거래 정보 분석 중...', 50);
+                logSyncMsg(`구별 법정동 코드 조회 및 실거래 금액 데이터 파싱 중...`);
+
+                await new Promise(r => setTimeout(r, 400));
+                updateSyncProgress('서버 주택 DB 매핑 및 최신가 갱신 중...', 75);
+                logSyncMsg(`서버 주택 DB 매핑 및 최신 거래가 갱신 진행 중...`);
+
+                const res = await fetch('/api/realestate/sync-trades', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sido,
+                        sigungu: sigungu === 'all' ? 'all' : sigunguText,
+                        housingType: typeVal
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    updateSyncProgress('서버 업데이트 완료!', 100);
+                    logSyncMsg(`[성공] ${regionText} ${typeText} 실거래가 동기화 완료: 기존 주택 ${data.updatedCount}건 최신 가격 갱신, 신규 ${data.newAddedCount}건 추가.`);
+                    await loadStoredRealEstate();
+                    showAlert(`실거래가 데이터가 성공적으로 동기화되었습니다.\n기존 마스터 주택 ${data.updatedCount}건의 최신 거래가격이 갱신되었으며, 신규 주택 ${data.newAddedCount}건이 등록되었습니다.`);
+                } else {
+                    updateSyncProgress('수집 실패', 100);
+                    logSyncMsg(`[실패] 실거래가 수집 오류: ${data.error || '알 수 없는 오류'}`);
+                    showAlert('실거래가 수집에 실패했습니다: ' + (data.error || '오류'));
+                }
+            } catch (err) {
+                console.error('Sync trades error:', err);
+                updateSyncProgress('네트워크 오류 발생', 100);
+                logSyncMsg(`[오류] 네트워크 오류가 발생했습니다.`);
+                showAlert('실거래가 수집 중 네트워크 오류가 발생했습니다.');
+            } finally {
+                btnRunRealEstateSync.disabled = false;
             }
         });
     });
@@ -1780,38 +1909,70 @@ if (btnRunRealEstateMaster) {
         const regionText = (sigungu === 'all' || !sigunguText) ? sido : `${sido} ${sigunguText}`;
 
         showConfirm(`${regionText} 지역의 전체 주택 마스터 정보를 공공 API 및 건축물 DB에서 일괄 다운로드하여 구축하시겠습니까?`, async () => {
-            if (realEstateMasterStatus) {
-                realEstateMasterStatus.style.display = 'block';
-                realEstateMasterStatus.style.color = '#2563eb';
-                realEstateMasterStatus.innerText = '공공데이터포털 및 마스터 API에서 해당 지역 전체 주택을 수집하는 중입니다... (데이터가 많으므로 수 초 소요될 수 있습니다)';
+            const container = document.getElementById('realEstateMasterProgressContainer');
+            const statusEl = document.getElementById('realEstateMasterProgressStatus');
+            const percentEl = document.getElementById('realEstateMasterProgressPercent');
+            const barEl = document.getElementById('realEstateMasterProgressBarFill');
+            const logEl = document.getElementById('realEstateMasterLog');
 
-                btnRunRealEstateMaster.disabled = true;
+            if (container) container.style.display = 'block';
+            if (logEl) logEl.innerHTML = '';
 
-                try {
-                    const res = await fetch('/api/realestate/collect-master', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ sido, sigungu: sigungu === 'all' ? 'all' : sigunguText })
-                    });
-                    const data = await res.json();
+            function updateMasterProgress(statusText, percent) {
+                if (statusEl) statusEl.innerText = statusText;
+                if (percentEl) percentEl.innerText = `${percent}%`;
+                if (barEl) barEl.style.width = `${percent}%`;
+            }
 
-                    if (data.success) {
-                        realEstateMasterStatus.innerText = `[성공] ${regionText} 주택 마스터 DB 구축이 완료되었습니다. (총 ${data.totalCount}건 구축, 신규 +${data.newlyAdded}건)`;
-                        await loadStoredRealEstate();
-                        showAlert(`주택 마스터 정보 수집 및 저장이 성공적으로 완료되었습니다.\n${regionText} 총 ${data.totalCount}건의 주택 정보가 JSON 파일에 저장되었습니다.`);
-                    } else {
-                        realEstateMasterStatus.style.color = '#dc2626';
-                        realEstateMasterStatus.innerText = `[실패] 수집 중 오류: ${data.error || '알 수 없는 오류'}`;
-                        showAlert('수집에 실패했습니다: ' + (data.error || '오류'));
-                    }
-                } catch (err) {
-                    console.error('Master collect error:', err);
-                    realEstateMasterStatus.style.color = '#dc2626';
-                    realEstateMasterStatus.innerText = `[오류] 네트워크 오류가 발생했습니다.`;
-                    showAlert('수집 요청 중 네트워크 오류가 발생했습니다.');
-                } finally {
-                    btnRunRealEstateMaster.disabled = false;
+            function logMasterMsg(msg) {
+                if (logEl) {
+                    logEl.innerHTML += `[${getFormattedLogTime()}] ${msg}<br>`;
+                    logEl.scrollTop = logEl.scrollHeight;
                 }
+            }
+
+            btnRunRealEstateMaster.disabled = true;
+            updateMasterProgress('마스터 수집 준비 중...', 5);
+            logMasterMsg(`[Update] 주택 마스터 Open API 호출 시작 (지역: ${regionText})`);
+
+            try {
+                updateMasterProgress('국토교통부 공공데이터 수집 중...', 25);
+                logMasterMsg(`국토교통부 공공데이터 실거래가 마스터 데이터베이스 요청 중...`);
+
+                await new Promise(r => setTimeout(r, 400));
+                updateMasterProgress('법정동 단지 마스터 추출 중...', 50);
+                logMasterMsg(`법정동 코드별 실거래 단지/건물 마스터 추출 중...`);
+
+                await new Promise(r => setTimeout(r, 400));
+                updateMasterProgress('카카오 로컬 API 정보 보강 중...', 75);
+                logMasterMsg(`카카오 로컬 API 장소/건물 마스터 데이터베이스 보강 중...`);
+                logMasterMsg(`아파트, 연립, 다세대, 오피스텔 마스터 목록 동기화 진행 중...`);
+
+                const res = await fetch('/api/realestate/collect-master', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sido, sigungu: sigungu === 'all' ? 'all' : sigunguText })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    const rCount = data.regionCount !== undefined ? data.regionCount : data.totalCount;
+                    updateMasterProgress('서버 업데이트 완료!', 100);
+                    logMasterMsg(`[성공] ${regionText} 주택 마스터 DB 구축 완료! (해당 지역: ${rCount}건, 전체 DB: ${data.totalCount}건, 신규 +${data.newlyAdded}건)`);
+                    await loadStoredRealEstate();
+                    showAlert(`주택 마스터 정보 수집 및 저장이 성공적으로 완료되었습니다.\n${regionText} 주택 정보 ${rCount}건 (서버 전체 DB ${data.totalCount}건)이 저구축되었습니다.`);
+                } else {
+                    updateMasterProgress('수집 실패', 100);
+                    logMasterMsg(`[실패] 수집 중 오류: ${data.error || '알 수 없는 오류'}`);
+                    showAlert('수집에 실패했습니다: ' + (data.error || '오류'));
+                }
+            } catch (err) {
+                console.error('Master collect error:', err);
+                updateMasterProgress('네트워크 오류 발생', 100);
+                logMasterMsg(`[오류] 네트워크 오류가 발생했습니다.`);
+                showAlert('수집 요청 중 네트워크 오류가 발생했습니다.');
+            } finally {
+                btnRunRealEstateMaster.disabled = false;
             }
         });
     });
