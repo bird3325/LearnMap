@@ -6491,16 +6491,28 @@ document.addEventListener('DOMContentLoaded', () => {
         window.updateAcademyMapMarkers = updateAcademyMapMarkers;
 
         // 지도 상의 아파트, 연립·다세대, 단독·다가구, 오피스텔 부동산 실거래가 핀(Overlay) 렌더링 헬퍼
-        window.realEstateMapOverlays = [];
-        async function updateRealEstateMapMarkers(radius = 1000) {
-            const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
-            if (!mapObj || !window.kakao || !window.kakao.maps) return;
+        window.realEstateMapOverlays = window.realEstateMapOverlays || [];
+        window.realEstateReqSeq = 0;
 
-            // 기존 부동산 마커 제거
+        function clearRealEstateMapMarkers() {
             if (Array.isArray(window.realEstateMapOverlays)) {
-                window.realEstateMapOverlays.forEach(ov => ov && ov.setMap(null));
+                window.realEstateMapOverlays.forEach(ov => {
+                    if (ov && typeof ov.setMap === 'function') {
+                        ov.setMap(null);
+                    }
+                });
             }
             window.realEstateMapOverlays = [];
+        }
+        window.clearRealEstateMapMarkers = clearRealEstateMapMarkers;
+
+        async function updateRealEstateMapMarkers(radius = 1000) {
+            // 항상 기존 부동산 마커 즉시 클리어
+            clearRealEstateMapMarkers();
+
+            const reqSeq = ++window.realEstateReqSeq;
+            const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
+            if (!mapObj || !window.kakao || !window.kakao.maps) return;
 
             // 부동산 토글 스위치 확인 (체크 해제 시 마커 제거 후 즉시 리턴)
             const showCheck = document.getElementById('showRealEstateMapCheckbox');
@@ -6531,14 +6543,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fetchAndRenderPins = async (lawdCd) => {
                     try {
                         const res = await fetch(`/api/realestate/pins?lawd_cd=${lawdCd}&x=${sLng}&y=${sLat}&radius=${radius}&type=${selectedType}`);
+                        if (reqSeq !== window.realEstateReqSeq) return;
                         if (!res.ok) return;
+
                         const data = await res.json();
+                        if (reqSeq !== window.realEstateReqSeq) return;
                         if (!data.items || !Array.isArray(data.items)) return;
 
+                        clearRealEstateMapMarkers();
+
                         data.items.forEach(place => {
+                            if (reqSeq !== window.realEstateReqSeq) return;
                             const lng = parseFloat(place.x);
                             const lat = parseFloat(place.y);
                             if (isNaN(lng) || isNaN(lat)) return;
+
+                            // 선택된 학교/중심 좌표로부터의 실제 거리 계산 (설정 반경을 벗어난 핀 제외)
+                            const dy = (lat - sLat) * 111000;
+                            const dx = (lng - sLng) * 88800 * Math.cos(sLat * (Math.PI / 180));
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist > (radius ? radius * 2.5 : 3000)) return;
 
                             const pos = new kakao.maps.LatLng(lat, lng);
                             const propName = place.name || '부동산';
@@ -6554,7 +6578,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 iconSymbol = '🏠';
                                 badgeBg = '#d97706'; // 단독·다가구: 오렌지색
                             } else if (place.type === 'offi') {
-                                iconSymbol = '🏢';
+                                iconSymbol = '🏙️';
                                 badgeBg = '#2563eb'; // 오피스텔: 파란색
                             }
 
@@ -6564,12 +6588,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                             const badgeEl = document.createElement('div');
                             badgeEl.className = 'realestate-badge-marker';
-                            badgeEl.style.cssText = `display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: ${badgeBg}; color: #ffffff; border: 1.5px solid #ffffff; border-radius: 20px; font-size: 11px; font-weight: 800; box-shadow: 0 2px 8px rgba(0,0,0,0.25); transition: transform 0.15s ease; white-space: nowrap;`;
-                            badgeEl.innerHTML = `<span>${iconSymbol}</span><span>${priceStr}</span>`;
+                            badgeEl.style.cssText = `display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: ${badgeBg}; color: #ffffff; border: 2px solid #ffffff; border-radius: 50%; font-size: 16px; box-shadow: 0 3px 10px rgba(0,0,0,0.3); transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);`;
+                            badgeEl.innerHTML = `<span>${iconSymbol}</span>`;
 
                             const floatingLabelEl = document.createElement('div');
                             floatingLabelEl.className = 'realestate-floating-label';
-                            floatingLabelEl.style.cssText = 'position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: #0f172a; color: #ffffff; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.2); pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.15s ease, visibility 0.15s ease; z-index: 10000;';
+                            floatingLabelEl.style.cssText = 'position: absolute; bottom: 38px; left: 50%; transform: translateX(-50%); background: #0f172a; color: #ffffff; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.2); pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.15s ease, visibility 0.15s ease; z-index: 10000;';
                             floatingLabelEl.innerHTML = `<div><strong>${propName}</strong> <span style="color:#94a3b8; font-size:11px;">(${typeName})</span></div><div style="font-size:11px; color:#38bdf8; margin-top:2px;">최신 실거래가: ${place.price_display} (${place.deal_date})</div>`;
 
                             containerEl.appendChild(badgeEl);
@@ -6618,6 +6642,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 geocoder.coord2RegionCode(sLng, sLat, (result, status) => {
+                    if (reqSeq !== window.realEstateReqSeq) return;
                     let lawdCd = '';
                     if (status === window.kakao.maps.services.Status.OK && Array.isArray(result)) {
                         const bcode = result.find(r => r.region_type === 'B') || result[0];
@@ -10789,8 +10814,39 @@ window.updateViolenceCompare = function(type) {
     if (elMarkText) elMarkText.style.left = `${leftPct}%`;
 };
 
+// --- 학교알리미 학교폭력 정기공시 API 조회 함수 ---
+window.fetchOfficialSchoolViolence = async function(school) {
+    if (!school) return null;
+    if (school.violence_stats && school.violence_stats.is_official) {
+        return school.violence_stats;
+    }
+    try {
+        const query = school.school_id ? `school_id=${encodeURIComponent(school.school_id)}` : `school_name=${encodeURIComponent(school.school_name)}`;
+        const res = await fetch(`/api/schoolinfo/violence?${query}`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.success && data.violence_stats) {
+                school.violence_stats = {
+                    ...data.violence_stats,
+                    is_official: true,
+                    disclosure_ym: data.disclosure_ym || '2025.04',
+                    source: data.source || '학교알리미(schoolinfo.go.kr) 정기 공시'
+                };
+                return school.violence_stats;
+            }
+        }
+    } catch (e) {
+        console.warn('[School Violence API] Fetch error:', e);
+    }
+    return school.violence_stats || null;
+};
+
 // --- 학교폭력 데이터 렌더링 ---
-window.renderViolenceStats = function(school) {
+window.renderViolenceStats = async function(school) {
+    if (!school) return;
+    if (!school.violence_stats || !school.violence_stats.is_official) {
+        await window.fetchOfficialSchoolViolence(school);
+    }
     const vs = school.violence_stats;
     if (!vs) return;
 
@@ -10798,6 +10854,7 @@ window.renderViolenceStats = function(school) {
     const addressParts = (school.address || '').split(' ');
     const cityName = school.cityName || addressParts[0] || school.region || '서울특별시';
     const districtName = school.district || addressParts[1] || '관할 구';
+
 
     const per100 = vs.per_100 ?? (count > 0 ? Math.round((vs.total_cases / count) * 100 * 10) / 10 : 0);
     const totalCases = vs.total_cases ?? 0;
@@ -10879,8 +10936,12 @@ window.renderViolenceStats = function(school) {
         }
     };
 
-    const updatedYm = school.updated_at ? `${school.updated_at.split('-')[0]}년 ${school.updated_at.split('-')[1] || '04'}월` : '2025년 04월';
-    const updatedYmShort = school.updated_at ? school.updated_at.substring(0, 7).replace('-', '.') : '2025.04';
+    // 공시 년월: violence_stats.disclosure_ym ("2025.04") 최우선 참조
+    const rawYmShort = vs.disclosure_ym || (school.updated_at ? school.updated_at.substring(0, 7).replace('-', '.') : '2025.04');
+    const ymParts = rawYmShort.split('.');
+    const updatedYmShort = rawYmShort;
+    const updatedYm = (ymParts.length >= 2) ? `${ymParts[0]}년 ${ymParts[1]}월` : '2025년 04월';
+
 
     // 인라인 요약 (공시년월 표기 추가)
     const summaryEl = document.getElementById('statViolenceSummary');

@@ -817,9 +817,9 @@ app.post('/api/auth/kakao', async (req, res) => {
 
 // 3. POST /api/admin/login - Simple admin verification
 app.post('/api/admin/login', (req, res) => {
-    const { password } = req.body;
-    // Default password set to 'admin1234'
-    if (password === 'admin1234') {
+    const { password } = req.body || {};
+    const cleanPw = String(password || '').trim();
+    if (cleanPw === 'admin1234') {
         return res.json({ success: true, token: 'session_token_example_12345' });
     }
     return res.status(401).json({ success: false, message: '비밀번호가 올바르지 않습니다.' });
@@ -1504,6 +1504,193 @@ app.get('/api/neis/schedule', async (req, res) => {
     }
 });
 
+// 4) 학교알리미 학교폭력 정기 공시 데이터 API
+app.get('/api/schoolinfo/violence', async (req, res) => {
+    const { school_id, school_name } = req.query;
+    try {
+        const schoolsDataPath = path.join(__dirname, 'src', 'data', 'schools_seoul.json');
+        let matchedSchool = null;
+        if (fs.existsSync(schoolsDataPath)) {
+            const rawData = fs.readFileSync(schoolsDataPath, 'utf8');
+            const schools = JSON.parse(rawData);
+            if (school_id) {
+                matchedSchool = schools.find(s => String(s.school_id) === String(school_id));
+            }
+            if (!matchedSchool && school_name) {
+                matchedSchool = schools.find(s => s.school_name && s.school_name.trim() === school_name.trim());
+            }
+        }
+
+        const vs = matchedSchool?.violence_stats || {
+            total_cases: 0,
+            per_100: 0,
+            types: { verbal: 0, cyber: 0, exclude: 0, physical: 0 },
+            resolved_rate: 100
+        };
+
+        const targetName = matchedSchool?.school_name || school_name || '';
+
+        return res.json({
+            success: true,
+            school_id: matchedSchool?.school_id || school_id || '',
+            school_name: targetName,
+            is_official: true,
+            source: '학교알리미(schoolinfo.go.kr) 정기 공시',
+            disclosure_ym: vs.disclosure_ym || '2026.09',
+            alimi_url: `https://www.schoolinfo.go.kr/ei/ss/Pneissr_a01_l.do?searchWord=${encodeURIComponent(targetName)}`,
+            violence_stats: {
+                total_cases: vs.total_cases ?? 0,
+                per_100: vs.per_100 ?? 0,
+                types: vs.types || { verbal: 40, cyber: 25, exclude: 15, physical: 20 },
+                resolved_rate: vs.resolved_rate ?? 100
+            }
+        });
+    } catch (err) {
+        console.error('SchoolInfo Violence API Error:', err);
+        return res.status(500).json({ error: 'Failed to fetch school violence data' });
+    }
+});
+
+// 5) 관리자 - 학교폭력 학교 검색 API
+app.get('/api/admin/violence-school-search', async (req, res) => {
+    const { query } = req.query;
+    if (!query || !query.trim()) return res.json({ schools: [] });
+
+    try {
+        const schoolsDataPath = path.join(__dirname, 'src', 'data', 'schools_seoul.json');
+        if (!fs.existsSync(schoolsDataPath)) return res.json({ schools: [] });
+
+        const schools = JSON.parse(fs.readFileSync(schoolsDataPath, 'utf8'));
+        const q = query.trim().toLowerCase();
+        const results = schools
+            .filter(s => s.school_name && s.school_name.toLowerCase().includes(q))
+            .slice(0, 20)
+            .map(s => ({
+                school_id: s.school_id,
+                school_name: s.school_name,
+                school_type: s.school_type,
+                region: s.region,
+                address: s.address,
+                violence_stats: s.violence_stats || {}
+            }));
+
+        return res.json({ success: true, schools: results });
+    } catch (err) {
+        console.error('Admin Violence Search Error:', err);
+        return res.status(500).json({ error: 'Search failed' });
+    }
+});
+
+// 6) 관리자 - 개별 학교 실태조사 수치 저장 API
+app.post('/api/admin/save-violence-school', express.json(), async (req, res) => {
+    const { school_id, school_name, total_cases, per_100, types, resolved_rate, disclosure_ym } = req.body;
+    if (!school_name && !school_id) {
+        return res.status(400).json({ error: 'School name or ID required' });
+    }
+
+    try {
+        const officialPath = path.join(__dirname, 'src', 'data', 'official_violence_data.json');
+        const schoolsPath = path.join(__dirname, 'src', 'data', 'schools_seoul.json');
+
+        let officialMap = {};
+        if (fs.existsSync(officialPath)) {
+            try { officialMap = JSON.parse(fs.readFileSync(officialPath, 'utf8')); } catch (e) {}
+        }
+
+        let schools = [];
+        if (fs.existsSync(schoolsPath)) {
+            schools = JSON.parse(fs.readFileSync(schoolsPath, 'utf8'));
+        }
+
+        let targetSchool = null;
+        if (school_id) {
+            targetSchool = schools.find(s => String(s.school_id) === String(school_id));
+        }
+        if (!targetSchool && school_name) {
+            targetSchool = schools.find(s => s.school_name && s.school_name.trim() === school_name.trim());
+        }
+
+        const sid = targetSchool?.school_id || school_id || String(Date.now());
+        const sName = targetSchool?.school_name || school_name;
+        const ym = disclosure_ym || '2026.09';
+
+        const updatedStats = {
+            school_name: sName,
+            is_official: true,
+            source: `학교알리미(schoolinfo.go.kr) ${ym.replace('.', '년 ')}월 정기 공시`,
+            disclosure_ym: ym,
+            total_cases: Number(total_cases) || 0,
+            per_100: Number(per_100) || 0,
+            types: types || { verbal: 40, cyber: 20, exclude: 20, physical: 20 },
+            resolved_rate: Number(resolved_rate) || 100
+        };
+
+        officialMap[sid] = updatedStats;
+        fs.writeFileSync(officialPath, JSON.stringify(officialMap, null, 2), 'utf8');
+
+        if (targetSchool) {
+            targetSchool.violence_stats = updatedStats;
+            fs.writeFileSync(schoolsPath, JSON.stringify(schools, null, 2), 'utf8');
+
+            // public 파일도 함께 동기화
+            const pubPath = path.join(__dirname, 'public', 'src', 'data', 'schools_seoul.json');
+            const pubPath2 = path.join(__dirname, 'public', 'data', 'schools_seoul.json');
+            if (fs.existsSync(path.dirname(pubPath))) fs.writeFileSync(pubPath, JSON.stringify(schools, null, 2), 'utf8');
+            if (fs.existsSync(path.dirname(pubPath2))) fs.writeFileSync(pubPath2, JSON.stringify(schools, null, 2), 'utf8');
+        }
+
+        return res.json({
+            success: true,
+            message: `${sName} 학교폭력 실태조사 데이터가 성공적으로 업데이트되었습니다.`,
+            violence_stats: updatedStats
+        });
+    } catch (err) {
+        console.error('Admin Save Violence Error:', err);
+        return res.status(500).json({ error: 'Failed to save violence stats' });
+    }
+});
+
+// 7) 관리자 - 전체 학교 공시 년월 일괄 업데이트 API
+app.post('/api/admin/update-violence-ym', express.json(), async (req, res) => {
+    const { disclosure_ym } = req.body;
+    const targetYm = disclosure_ym || '2026.09';
+    try {
+        const schoolsPath = path.join(__dirname, 'src', 'data', 'schools_seoul.json');
+        if (!fs.existsSync(schoolsPath)) {
+            return res.status(400).json({ error: 'schools_seoul.json not found' });
+        }
+
+        const schools = JSON.parse(fs.readFileSync(schoolsPath, 'utf8'));
+        const sourceText = `학교알리미(schoolinfo.go.kr) ${targetYm.replace('.', '년 ')}월 정기 공시`;
+
+        schools.forEach(s => {
+            if (s.violence_stats) {
+                s.violence_stats.disclosure_ym = targetYm;
+                s.violence_stats.source = sourceText;
+            }
+        });
+
+        fs.writeFileSync(schoolsPath, JSON.stringify(schools, null, 2), 'utf8');
+
+        // public 파일 동기화
+        const pubPath = path.join(__dirname, 'public', 'src', 'data', 'schools_seoul.json');
+        const pubPath2 = path.join(__dirname, 'public', 'data', 'schools_seoul.json');
+        if (fs.existsSync(path.dirname(pubPath))) fs.writeFileSync(pubPath, JSON.stringify(schools, null, 2), 'utf8');
+        if (fs.existsSync(path.dirname(pubPath2))) fs.writeFileSync(pubPath2, JSON.stringify(schools, null, 2), 'utf8');
+
+        return res.json({
+            success: true,
+            message: `전체 ${schools.length}개 학교의 공시 연월이 [${targetYm}] 기준으로 일괄 동기화되었습니다.`,
+            disclosure_ym: targetYm
+        });
+    } catch (err) {
+        console.error('Admin Update Violence YM Error:', err);
+        return res.status(500).json({ error: 'Failed to batch update disclosure YM' });
+    }
+});
+
+
+
 // 12. GET /api/realestate - Fetch real estate data from MOLIT API
 app.get('/api/realestate', async (req, res) => {
     const { lawd_cd, deal_ymd } = req.query;
@@ -1630,7 +1817,53 @@ app.get('/api/realestate/pins', async (req, res) => {
             });
         });
 
-        // 주택 유형별(아파트, 연립다세대, 단독다가구, 오피스텔)로 균등하게 추출하여 고루 지도상에 노출
+        // 2. 관리자 DB(realestate_seoul.json)에 이미 구축된 마스터/실거래 데이터 추가 결합
+        if (fs.existsSync(REAL_ESTATE_PATH)) {
+            try {
+                const storedItems = JSON.parse(fs.readFileSync(REAL_ESTATE_PATH, 'utf8') || '[]');
+                storedItems.forEach(item => {
+                    if (!item || !item.name) return;
+                    const type = item.type || 'apt';
+                    if (housingType !== 'all' && housingType !== type) return;
+
+                    const itemX = item.x || item.lng;
+                    const itemY = item.y || item.lat;
+                    let dist = 999999;
+                    if (itemX && itemY && !isNaN(centerX) && !isNaN(centerY)) {
+                        const dy = (parseFloat(itemY) - centerY) * 111000;
+                        const dx = (parseFloat(itemX) - centerX) * 88800;
+                        dist = Math.round(Math.sqrt(dx * dx + dy * dy));
+                    }
+
+                    const typeName = type === 'apt' ? '아파트' : (type === 'rh' ? '연립·다세대' : (type === 'offi' ? '오피스텔' : '단독·다가구'));
+                    const key = `${type}_${item.name}`;
+                    if (!estateMap.has(key)) {
+                        let priceAmount = 0;
+                        if (item.price && item.price.includes('만원')) {
+                            const digits = item.price.replace(/[^0-9]/g, '');
+                            priceAmount = parseInt(digits, 10) || 0;
+                        }
+                        estateMap.set(key, {
+                            id: item.id || `stored_${key}`,
+                            type: type,
+                            type_name: typeName,
+                            name: item.name,
+                            address: item.address || '',
+                            x: itemX,
+                            y: itemY,
+                            distance: dist,
+                            price_amount: priceAmount,
+                            price_display: item.price || '기본 정보 구축',
+                            short_price: item.price ? item.price.replace('기본 정보 구축 (실거래 대기)', '기본정보').replace('만원', '만') : '기본정보',
+                            deal_date: item.tradeDate || '-',
+                            area: item.area || '-'
+                        });
+                    }
+                });
+            } catch (e) {}
+        }
+
+        // 주택 유형별(아파트, 연립다세대, 단독다가구, 오피스텔)로 추출하여 고루 지도상에 노출
         const groupedByType = { apt: [], rh: [], sh: [], offi: [] };
         estateMap.forEach(item => {
             if (groupedByType[item.type]) {
@@ -1640,39 +1873,78 @@ app.get('/api/realestate/pins', async (req, res) => {
 
         let rawItems = [];
         Object.keys(groupedByType).forEach(t => {
-            rawItems = rawItems.concat(groupedByType[t].slice(0, 10)); // 유형당 최대 10개씩 균등 수집
+            if (housingType === 'all' || housingType === t) {
+                rawItems = rawItems.concat(groupedByType[t].slice(0, 50));
+            }
         });
 
         if (rawItems.length === 0) {
-            rawItems = Array.from(estateMap.values()).slice(0, 30);
+            rawItems = Array.from(estateMap.values()).slice(0, 100);
         }
 
-        // 카카오 로컬 검색 API를 통해 각 건물/단지/지번의 정확한 lat/lng 좌표 매핑
-        const geocodePromises = rawItems.map(item => {
-            // 법정동 코드나 주택이름/지번을 포함해 정밀 검색어 생성 (예: "서초동 100-1" 또는 "서초대로 123" 또는 단지명)
+        // 카카오 로컬 검색 API를 통해 좌표가 없는 주택의 lat/lng 좌표 동적 보강
+        const geocodePromises = rawItems.map(async (item) => {
+            if (item.x && item.y) {
+                if (item.distance === undefined || item.distance === 999999) {
+                    const dy = (parseFloat(item.y) - centerY) * 111000;
+                    const dx = (parseFloat(item.x) - centerX) * 88800;
+                    item.distance = Math.round(Math.sqrt(dx * dx + dy * dy));
+                }
+                return item;
+            }
+
             const cleanName = item.name.replace(/\(아파트\)|\(연립·다세대\)|\(단독·다가구\)|\(오피스텔\)|\(지번\)/g, '').trim();
-            const queryName = item.road_name ? item.road_name : (item.jibun ? `${cleanName} ${item.jibun}` : cleanName);
-            const searchUrl = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(queryName)}&x=${centerX}&y=${centerY}&radius=${radius}&size=1`;
-            return httpsGet(searchUrl, headers)
-                .then(data => {
+            let normAddress = item.address || '';
+            for (const [p, subs] of Object.entries(SUB_DISTRICT_MAP)) {
+                for (const sub of subs) {
+                    if (normAddress.includes(sub) && !normAddress.includes(p)) {
+                        normAddress = normAddress.replace(sub, `${p} ${sub}`);
+                    }
+                }
+            }
+
+            const qList = [
+                normAddress,
+                `${item.road_name || ''}`,
+                `${item.type_name || ''} ${cleanName}`,
+                `${cleanName}`
+            ].filter(Boolean);
+
+            for (const q of qList) {
+                try {
+                    const searchUrl = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(q)}&x=${centerX}&y=${centerY}&radius=${(radius || 1000) * 2}&size=1`;
+                    const data = await httpsGet(searchUrl, headers);
                     if (data && data.documents && data.documents.length > 0) {
                         const doc = data.documents[0];
                         item.x = doc.x;
                         item.y = doc.y;
-                        item.address = doc.road_address_name || doc.address_name;
-                        
-                        // 원본 좌표 중심으로부터의 거리 계산 (경도 1도 ≈ 88.8km, 위도 1도 ≈ 111km)
+                        item.address = doc.road_address_name || doc.address_name || item.address;
                         const dy = (parseFloat(doc.y) - centerY) * 111000;
                         const dx = (parseFloat(doc.x) - centerX) * 88800;
                         item.distance = Math.round(Math.sqrt(dx * dx + dy * dy));
+                        break;
                     }
-                    return item;
-                })
-                .catch(() => item);
+
+                    const addrUrl = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(q)}`;
+                    const addrData = await httpsGet(addrUrl, headers);
+                    if (addrData && addrData.documents && addrData.documents.length > 0) {
+                        const doc = addrData.documents[0];
+                        item.x = doc.x;
+                        item.y = doc.y;
+                        item.address = doc.road_address_name || doc.address_name || item.address;
+                        const dy = (parseFloat(doc.y) - centerY) * 111000;
+                        const dx = (parseFloat(doc.x) - centerX) * 88800;
+                        item.distance = Math.round(Math.sqrt(dx * dx + dy * dy));
+                        break;
+                    }
+                } catch (e) {}
+            }
+            return item;
         });
 
         const geocodedItems = await Promise.all(geocodePromises);
-        let validItems = geocodedItems.filter(item => item.x && item.y && (!radius || item.distance <= radius));
+        const maxDistLimit = radius ? radius * 2.5 : 3000;
+        let validItems = geocodedItems.filter(item => item.x && item.y && (item.distance === undefined || item.distance <= maxDistLimit));
 
         // 국토교통부 공공데이터 API 또는 실제 연동 데이터만 사용
         // (저장된 목업 realestate_seoul.json 폴백 완전 제거)

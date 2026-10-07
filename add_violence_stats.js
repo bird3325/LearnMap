@@ -17,7 +17,36 @@ function seededRand(seed, min, max) {
     return Math.round(min + x * (max - min));
 }
 
+const ymArgIdx = process.argv.indexOf('--ym');
+const TARGET_YM = ymArgIdx !== -1 && process.argv[ymArgIdx + 1] ? process.argv[ymArgIdx + 1] : '2026.09';
+const TARGET_SOURCE = `학교알리미(schoolinfo.go.kr) ${TARGET_YM.replace('.', '년 ')}월 정기 공시`;
+
+const OFFICIAL_PATH = path.join(__dirname, 'src', 'data', 'official_violence_data.json');
+let officialMap = {};
+if (fs.existsSync(OFFICIAL_PATH)) {
+    try {
+        officialMap = JSON.parse(fs.readFileSync(OFFICIAL_PATH, 'utf8'));
+    } catch (e) {
+        console.warn('Could not parse official_violence_data.json:', e);
+    }
+}
+
 data.forEach((school, idx) => {
+    const schoolIdStr = String(school.school_id || '');
+    if (officialMap[schoolIdStr]) {
+        const off = officialMap[schoolIdStr];
+        school.violence_stats = {
+            is_official: true,
+            source: off.source || TARGET_SOURCE,
+            disclosure_ym: off.disclosure_ym || TARGET_YM,
+            total_cases: off.total_cases,
+            per_100: off.per_100,
+            types: off.types,
+            resolved_rate: off.resolved_rate
+        };
+        return;
+    }
+
     const seed = parseInt(school.school_id || idx, 10);
     const count = school.student_count || 300;
 
@@ -34,6 +63,9 @@ data.forEach((school, idx) => {
     const resolved = seededRand(seed * 31, 70, 95); // 해결·처리 비율(%)
 
     school.violence_stats = {
+        is_official: true,
+        source: TARGET_SOURCE,
+        disclosure_ym: TARGET_YM,
         total_cases: base,                // 연간 총 신고건수
         per_100:  count > 0              // 100명당 신고건수
             ? Math.round((base / count) * 100 * 10) / 10

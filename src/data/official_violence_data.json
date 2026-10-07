@@ -1,0 +1,19 @@
+{
+  "7561003": {
+    "school_name": "경민중학교",
+    "total_cases": 5,
+    "per_100": 0.8,
+    "types": {
+      "verbal": 60,
+      "cyber": 0,
+      "exclude": 0,
+      "physical": 40,
+      "coercion": 20,
+      "extortion": 0
+    },
+    "resolved_rate": 100,
+    "disclosure_ym": "2026.09",
+    "source": "학교알리미(schoolinfo.go.kr) 2026년 09월 정기 공시",
+    "is_official": true
+  }
+}

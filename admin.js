@@ -41,6 +41,7 @@ let allStoredSchools = []; // Hold all fetched schools for local filtering
 
 const syncRealEstateSido = document.getElementById('syncRealEstateSido');
 const syncRealEstateSigungu = document.getElementById('syncRealEstateSigungu');
+const syncRealEstateGu = document.getElementById('syncRealEstateGu');
 const masterRealEstateSido = document.getElementById('masterRealEstateSido');
 const masterRealEstateSigungu = document.getElementById('masterRealEstateSigungu');
 
@@ -129,6 +130,21 @@ const sigunguMap = {
     ]
 };
 
+const SUB_DISTRICT_MAP = {
+    '고양시': ['덕양구', '일산동구', '일산서구'],
+    '성남시': ['수정구', '중원구', '분당구'],
+    '수원시': ['장안구', '권선구', '팔달구', '영통구'],
+    '용인시': ['처인구', '기흥구', '수지구'],
+    '안산시': ['상록구', '단원구'],
+    '안양시': ['만안구', '동안구'],
+    '부천시': ['원미구', '소사구', '오정구'],
+    '청주시': ['상당구', '서원구', '흥덕구', '청원구'],
+    '천안시': ['동남구', '서북구'],
+    '전주시': ['완산구', '덕진구'],
+    '포항시': ['남구', '북구'],
+    '창원시': ['의창구', '성산구', '마산합포구', '마산회원구', '진해구']
+};
+
 function updateSigunguDropdown() {
     if (!updateSido || !updateSigungu) return;
     const sido = updateSido.value;
@@ -157,17 +173,36 @@ function updateSyncRealEstateSigunguDropdown() {
     if (!syncRealEstateSido || !syncRealEstateSigungu) return;
     const sido = syncRealEstateSido.value;
     if (sido === 'all') {
-        syncRealEstateSigungu.innerHTML = '<option value="all">전체 구</option>';
+        syncRealEstateSigungu.innerHTML = '<option value="all">전체 시/군</option>';
         syncRealEstateSigungu.value = 'all';
+        updateSyncRealEstateGuDropdown();
         return;
     }
     const sigungus = sigunguMap[sido] || ['전체'];
     syncRealEstateSigungu.innerHTML = sigungus.map(s => {
         const val = s === '전체' ? 'all' : s;
-        const text = s === '전체' ? '전체 구' : s;
+        const text = s === '전체' ? '전체 시/군' : s;
         return `<option value="${val}">${text}</option>`;
     }).join('');
     syncRealEstateSigungu.value = 'all';
+    updateSyncRealEstateGuDropdown();
+}
+
+function updateSyncRealEstateGuDropdown() {
+    if (!syncRealEstateGu) return;
+    const selectedSigungu = syncRealEstateSigungu ? syncRealEstateSigungu.value : 'all';
+    const subGus = SUB_DISTRICT_MAP[selectedSigungu];
+
+    if (subGus && subGus.length > 0) {
+        syncRealEstateGu.disabled = false;
+        syncRealEstateGu.innerHTML = '<option value="all">전체 구</option>' +
+            subGus.map(g => `<option value="${g}">${g}</option>`).join('');
+        syncRealEstateGu.value = 'all';
+    } else {
+        syncRealEstateGu.innerHTML = '<option value="all">전체 구</option>';
+        syncRealEstateGu.value = 'all';
+        syncRealEstateGu.disabled = true;
+    }
 }
 
 function updateMasterRealEstateSigunguDropdown() {
@@ -197,8 +232,15 @@ if (storedRegionFilter) {
     updateStoredSigunguDropdown();
 }
 if (syncRealEstateSido) {
-    syncRealEstateSido.addEventListener('change', updateSyncRealEstateSigunguDropdown);
+    syncRealEstateSido.addEventListener('change', () => {
+        updateSyncRealEstateSigunguDropdown();
+    });
     updateSyncRealEstateSigunguDropdown();
+}
+if (syncRealEstateSigungu) {
+    syncRealEstateSigungu.addEventListener('change', () => {
+        updateSyncRealEstateGuDropdown();
+    });
 }
 if (masterRealEstateSido) {
     masterRealEstateSido.addEventListener('change', updateMasterRealEstateSigunguDropdown);
@@ -507,8 +549,9 @@ function initSupabaseAdmin() {
 }
 
 function showPanel() {
-    loginCard.style.display = 'none';
-    managementPanel.style.display = 'block';
+    if (loginCard) loginCard.style.display = 'none';
+    if (managementPanel) managementPanel.style.display = 'block';
+    if (btnLogout) btnLogout.style.display = 'inline-block';
     
     // Initialize Supabase client
     initSupabaseAdmin();
@@ -584,8 +627,9 @@ function showPanel() {
 function logout() {
     localStorage.removeItem('admin_token');
     token = '';
-    loginCard.style.display = 'block';
-    managementPanel.style.display = 'none';
+    if (loginCard) loginCard.style.display = 'block';
+    if (managementPanel) managementPanel.style.display = 'none';
+    if (btnLogout) btnLogout.style.display = 'none';
 }
 
 // Dynamic Kakao SDK loader for Admin Geocoder
@@ -611,57 +655,54 @@ function loadKakaoSdkForAdmin(appkey) {
 }
 
 // 1. LOGIN Event
-btnLogin.addEventListener('click', () => {
-    const password = adminPassword.value.trim();
-    if (!password) {
-        showAlert('비밀번호를 입력해 주세요.');
-        return;
-    }
+if (btnLogin) {
+    btnLogin.addEventListener('click', async () => {
+        const password = (adminPassword ? adminPassword.value : '').trim();
+        if (!password) {
+            showAlert('비밀번호를 입력해 주세요.');
+            return;
+        }
 
-    fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
-    })
-    .then(res => {
-        const ct = res.headers.get('content-type');
-        if (res.ok && ct && ct.includes('application/json')) {
-            return res.json();
-        }
-        if (password === 'admin1234') {
-            return { success: true, token: 'session_token_example_12345' };
-        }
-        throw new Error('인증 실패. 올바른 비밀번호를 입력하세요.');
-    })
-    .then(data => {
-        if (data && data.token) {
-            token = data.token;
-            localStorage.setItem('admin_token', token);
-            showPanel();
-        } else {
-            showAlert('인증 실패. 올바른 비밀번호를 입력하세요.');
-        }
-    })
-    .catch(err => {
         if (password === 'admin1234') {
             token = 'session_token_example_12345';
             localStorage.setItem('admin_token', token);
             showPanel();
-        } else {
-            showAlert(err.message || '인증 실패. 올바른 비밀번호를 입력하세요.');
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+            const data = await res.json().catch(() => null);
+            if (res.ok && data && (data.token || data.success)) {
+                token = data.token || 'session_token_example_12345';
+                localStorage.setItem('admin_token', token);
+                showPanel();
+            } else {
+                showAlert((data && data.message) || '인증 실패. 올바른 비밀번호를 입력하세요.');
+            }
+        } catch (err) {
+            showAlert('인증 실패. 올바른 비밀번호를 입력하세요.');
         }
     });
-});
+}
 
 // 엔터 키 입력 시 로그인 처리
-adminPassword.addEventListener('keyup', (e) => {
-    if (e.key === 'Enter') {
-        btnLogin.click();
-    }
-});
+if (adminPassword) {
+    adminPassword.addEventListener('keyup', (e) => {
+        if (e.key === 'Enter' && btnLogin) {
+            btnLogin.click();
+        }
+    });
+}
 
 // 2. LOGOUT Event
-btnLogout.addEventListener('click', logout);
+if (btnLogout) {
+    btnLogout.addEventListener('click', logout);
+}
 
 // 3. SAVE CONFIG Event
 btnSaveConfig.addEventListener('click', async () => {
@@ -1554,26 +1595,154 @@ const storedRealEstateCount = document.getElementById('storedRealEstateCount');
 const storedRealEstateListContainer = document.getElementById('storedRealEstateListContainer');
 const realEstateRegionFilter = document.getElementById('realEstateRegionFilter');
 const realEstateSigunguFilter = document.getElementById('realEstateSigunguFilter');
+const realEstateGuFilter = document.getElementById('realEstateGuFilter');
+const realEstateDongFilter = document.getElementById('realEstateDongFilter');
 const realEstateTypeFilter = document.getElementById('realEstateTypeFilter');
 const realEstateSearchInput = document.getElementById('realEstateSearchInput');
 
 let allStoredRealEstates = [];
 
+function extractDongName(item) {
+    if (item && item.dong) return item.dong;
+    if (!item || !item.address) return '';
+    const match = item.address.match(/([가-힣0-9]+(?:동|읍|면|리))(?:\s|$)/);
+    return match ? match[1] : '';
+}
+
+function getParentCity(name) {
+    if (!name) return name;
+    for (const [parent, subs] of Object.entries(SUB_DISTRICT_MAP)) {
+        if (subs.includes(name)) return parent;
+    }
+    return name;
+}
+
 function updateRealEstateSigunguDropdown() {
     if (!realEstateRegionFilter || !realEstateSigunguFilter) return;
     const sido = realEstateRegionFilter.value;
+    const sigunguSet = new Set();
+
     if (sido === 'all') {
-        realEstateSigunguFilter.innerHTML = '<option value="all">시/군/구 전체</option>';
-        realEstateSigunguFilter.value = 'all';
-        return;
+        Object.keys(sigunguMap).forEach(sd => {
+            (sigunguMap[sd] || []).forEach(s => {
+                if (s !== '전체') sigunguSet.add(s);
+            });
+        });
+    } else {
+        const baseList = sigunguMap[sido] || [];
+        baseList.forEach(s => {
+            if (s !== '전체') {
+                sigunguSet.add(s);
+            }
+        });
+
+        allStoredRealEstates.forEach(item => {
+            if (item && (item.sido === sido || (item.address && item.address.includes(sido)))) {
+                if (item.sigungu) sigunguSet.add(getParentCity(item.sigungu));
+            }
+        });
     }
-    const sigungus = sigunguMap[sido] || ['전체'];
-    realEstateSigunguFilter.innerHTML = sigungus.map(s => {
-        const val = s === '전체' ? 'all' : s;
-        const text = s === '전체' ? '시/군/구 전체' : s;
-        return `<option value="${val}">${text}</option>`;
-    }).join('');
-    realEstateSigunguFilter.value = 'all';
+
+    const allSubGus = new Set(Object.values(SUB_DISTRICT_MAP).flat());
+    const sorted = Array.from(sigunguSet)
+        .filter(s => !allSubGus.has(s))
+        .sort((a, b) => a.localeCompare(b, 'ko'));
+
+    const prevVal = realEstateSigunguFilter.value;
+    realEstateSigunguFilter.innerHTML = '<option value="all">시/군 전체</option>' +
+        sorted.map(s => `<option value="${s}">${s}</option>`).join('');
+
+    if (sorted.includes(prevVal)) {
+        realEstateSigunguFilter.value = prevVal;
+    } else {
+        realEstateSigunguFilter.value = 'all';
+    }
+}
+
+function updateRealEstateGuDropdown() {
+    if (!realEstateGuFilter) return;
+    const selectedRegion = realEstateRegionFilter ? realEstateRegionFilter.value : 'all';
+    const selectedSigungu = realEstateSigunguFilter ? realEstateSigunguFilter.value : 'all';
+
+    let subGus = [];
+    if (selectedSigungu !== 'all') {
+        subGus = SUB_DISTRICT_MAP[selectedSigungu] || [];
+    } else if (selectedRegion !== 'all') {
+        const regionSigungus = sigunguMap[selectedRegion] || [];
+        regionSigungus.forEach(s => {
+            if (SUB_DISTRICT_MAP[s]) {
+                subGus.push(...SUB_DISTRICT_MAP[s]);
+            }
+        });
+    }
+
+    if (subGus.length > 0) {
+        const prevVal = realEstateGuFilter.value;
+        realEstateGuFilter.disabled = false;
+        realEstateGuFilter.innerHTML = `<option value="all">구 전체 (${subGus.join('/')})</option>` +
+            subGus.map(g => `<option value="${g}">${g}</option>`).join('');
+
+        if (subGus.includes(prevVal)) {
+            realEstateGuFilter.value = prevVal;
+        } else {
+            realEstateGuFilter.value = 'all';
+        }
+    } else {
+        realEstateGuFilter.innerHTML = '<option value="all">구 전체</option>';
+        realEstateGuFilter.value = 'all';
+        realEstateGuFilter.disabled = true;
+    }
+}
+
+function isItemMatchingLocation(item, selectedRegion, selectedSigungu, selectedGu) {
+    if (selectedRegion !== 'all') {
+        const matchesRegion = item.sido === selectedRegion || (item.address && item.address.includes(selectedRegion));
+        if (!matchesRegion) return false;
+    }
+
+    if (selectedSigungu !== 'all') {
+        const subGus = SUB_DISTRICT_MAP[selectedSigungu] || [];
+        const matchesSigungu = item.sigungu === selectedSigungu ||
+            subGus.includes(item.sigungu) ||
+            (item.address && item.address.includes(selectedSigungu)) ||
+            subGus.some(sub => item.address && item.address.includes(sub));
+        if (!matchesSigungu) return false;
+    }
+
+    if (selectedGu !== 'all') {
+        const matchesGu = item.sigungu === selectedGu || (item.address && item.address.includes(selectedGu));
+        if (!matchesGu) return false;
+    }
+
+    return true;
+}
+
+function updateRealEstateDongDropdown() {
+    if (!realEstateDongFilter) return;
+    const selectedRegion = realEstateRegionFilter ? realEstateRegionFilter.value : 'all';
+    const selectedSigungu = realEstateSigunguFilter ? realEstateSigunguFilter.value : 'all';
+    const selectedGu = realEstateGuFilter ? realEstateGuFilter.value : 'all';
+
+    const items = allStoredRealEstates.filter(item => 
+        isItemMatchingLocation(item, selectedRegion, selectedSigungu, selectedGu)
+    );
+
+    const dongSet = new Set();
+    items.forEach(item => {
+        const d = extractDongName(item);
+        if (d) dongSet.add(d);
+    });
+
+    const dongs = Array.from(dongSet).sort((a, b) => a.localeCompare(b, 'ko'));
+    const prevVal = realEstateDongFilter.value;
+    realEstateDongFilter.innerHTML = '<option value="all">읍/면/동 전체</option>' +
+        dongs.map(d => `<option value="${d}">${d}</option>`).join('');
+    
+    if (dongs.includes(prevVal)) {
+        realEstateDongFilter.value = prevVal;
+    } else {
+        realEstateDongFilter.value = 'all';
+    }
 }
 
 const DEFAULT_SAMPLE_REAL_ESTATES = [
@@ -1599,43 +1768,24 @@ function getTypeName(type) {
     }
 }
 
-const SUB_DISTRICT_MAP = {
-    '고양시': ['덕양구', '일산동구', '일산서구'],
-    '성남시': ['수정구', '중원구', '분당구'],
-    '수원시': ['장안구', '권선구', '팔달구', '영통구'],
-    '용인시': ['처인구', '기흥구', '수지구'],
-    '안산시': ['상록구', '단원구'],
-    '안양시': ['만안구', '동안구'],
-    '청주시': ['상당구', '서원구', '흥덕구', '청원구'],
-    '천안시': ['동남구', '서북구'],
-    '전주시': ['완산구', '덕진구'],
-    '포항시': ['남구', '북구'],
-    '창원시': ['의창구', '성산구', '마산합포구', '마산회원구', '진해구']
-};
-
 function getFilteredRealEstates() {
     const selectedRegion = realEstateRegionFilter ? realEstateRegionFilter.value : 'all';
     const selectedSigungu = realEstateSigunguFilter ? realEstateSigunguFilter.value : 'all';
+    const selectedGu = realEstateGuFilter ? realEstateGuFilter.value : 'all';
+    const selectedDong = realEstateDongFilter ? realEstateDongFilter.value : 'all';
     const selectedType = realEstateTypeFilter ? realEstateTypeFilter.value : 'all';
     const searchQuery = realEstateSearchInput ? realEstateSearchInput.value.trim().toLowerCase() : '';
 
-    let filtered = allStoredRealEstates;
+    let filtered = allStoredRealEstates.filter(item => 
+        isItemMatchingLocation(item, selectedRegion, selectedSigungu, selectedGu)
+    );
 
-    // Filter by Region (Sido)
-    if (selectedRegion !== 'all') {
-        filtered = filtered.filter(item => item.sido === selectedRegion || (item.address && item.address.includes(selectedRegion)));
-    }
-
-    // Filter by Sigungu
-    if (selectedSigungu !== 'all') {
-        const subGus = SUB_DISTRICT_MAP[selectedSigungu] || [];
+    // Filter by Dong (읍/면/동)
+    if (selectedDong !== 'all') {
         filtered = filtered.filter(item => {
-            if (item.sigungu === selectedSigungu) return true;
-            if (subGus.includes(item.sigungu)) return true;
-            if (item.address && item.address.includes(selectedSigungu)) return true;
-            for (const sub of subGus) {
-                if (item.address && item.address.includes(sub)) return true;
-            }
+            const d = extractDongName(item);
+            if (d === selectedDong) return true;
+            if (item.address && item.address.includes(selectedDong)) return true;
             return false;
         });
     }
@@ -1710,6 +1860,9 @@ async function loadStoredRealEstate() {
         console.error('Failed to load /api/realestate/stored', e);
         allStoredRealEstates = [];
     }
+    updateRealEstateSigunguDropdown();
+    updateRealEstateGuDropdown();
+    updateRealEstateDongDropdown();
     renderStoredRealEstateList();
 }
 
@@ -1724,6 +1877,9 @@ async function saveStoredRealEstate(list) {
     } catch (e) {
         console.error('Failed to save to /api/realestate/stored', e);
     }
+    updateRealEstateSigunguDropdown();
+    updateRealEstateGuDropdown();
+    updateRealEstateDongDropdown();
     renderStoredRealEstateList();
 }
 
@@ -1731,11 +1887,26 @@ async function saveStoredRealEstate(list) {
 if (realEstateRegionFilter) {
     realEstateRegionFilter.addEventListener('change', () => {
         updateRealEstateSigunguDropdown();
+        updateRealEstateGuDropdown();
+        updateRealEstateDongDropdown();
         renderStoredRealEstateList();
     });
 }
 if (realEstateSigunguFilter) {
-    realEstateSigunguFilter.addEventListener('change', renderStoredRealEstateList);
+    realEstateSigunguFilter.addEventListener('change', () => {
+        updateRealEstateGuDropdown();
+        updateRealEstateDongDropdown();
+        renderStoredRealEstateList();
+    });
+}
+if (realEstateGuFilter) {
+    realEstateGuFilter.addEventListener('change', () => {
+        updateRealEstateDongDropdown();
+        renderStoredRealEstateList();
+    });
+}
+if (realEstateDongFilter) {
+    realEstateDongFilter.addEventListener('change', renderStoredRealEstateList);
 }
 if (realEstateTypeFilter) {
     realEstateTypeFilter.addEventListener('change', renderStoredRealEstateList);
@@ -1820,11 +1991,16 @@ if (btnRunRealEstateSync) {
         const sigungu = sigunguEl ? sigunguEl.value : '';
         const sigunguText = sigunguEl && sigungu !== 'all' ? sigunguEl.options[sigunguEl.selectedIndex].text : '';
         
+        const guEl = document.getElementById('syncRealEstateGu');
+        const guVal = guEl ? guEl.value : 'all';
+        const guText = guEl && guVal !== 'all' ? guEl.options[guEl.selectedIndex].text : '';
+
         const typeEl = document.getElementById('syncRealEstateType');
         const typeVal = typeEl ? typeEl.value : 'all';
         const typeText = typeEl ? typeEl.options[typeEl.selectedIndex].text : '전체';
 
-        const regionText = (sigungu === 'all' || !sigunguText) ? sido : `${sido} ${sigunguText}`;
+        const targetSigungu = guVal !== 'all' ? guText : (sigungu === 'all' ? 'all' : sigunguText);
+        const regionText = (targetSigungu === 'all' || !targetSigungu) ? sido : `${sido} ${targetSigungu}`;
         
         showConfirm(`${regionText} 지역의 ${typeText} 실거래가 데이터를 공공 API에서 수집하여 기존 마스터 주택 정보에 매핑·업데이트하시겠습니까?`, async () => {
             const container = document.getElementById('realEstateSyncProgressContainer');
@@ -1870,7 +2046,7 @@ if (btnRunRealEstateSync) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         sido,
-                        sigungu: sigungu === 'all' ? 'all' : sigunguText,
+                        sigungu: targetSigungu,
                         housingType: typeVal
                     })
                 });
@@ -1978,10 +2154,216 @@ if (btnRunRealEstateMaster) {
     });
 }
 
+// Custom Confirm Modal Helper
+function showConfirmModal(message, title = '업데이트 시작 확인') {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('confirmModal');
+        const msgEl = document.getElementById('confirmModalMessage');
+        const btnCancel = document.getElementById('btnConfirmCancel');
+        const btnProceed = document.getElementById('btnConfirmProceed');
+        const titleEl = modal ? modal.querySelector('h3') : null;
+
+        if (!modal || !msgEl || !btnCancel || !btnProceed) {
+            resolve(confirm(message));
+            return;
+        }
+
+        if (titleEl) titleEl.innerText = title;
+        msgEl.innerText = message;
+        modal.style.display = 'flex';
+
+        function cleanup(result) {
+            modal.style.display = 'none';
+            btnCancel.onclick = null;
+            btnProceed.onclick = null;
+            resolve(result);
+        }
+
+        btnCancel.onclick = () => cleanup(false);
+        btnProceed.onclick = () => cleanup(true);
+    });
+}
+
+// --- School Violence Admin Management Logic ---
+function initAdminViolenceManagement() {
+    const btnBatchUpdateYm = document.getElementById('btnBatchUpdateYm');
+    const adminBatchYm = document.getElementById('adminBatchYm');
+    const adminViolenceSchoolSearch = document.getElementById('adminViolenceSchoolSearch');
+    const btnSearchAdminViolenceSchool = document.getElementById('btnSearchAdminViolenceSchool');
+    const adminViolenceSearchResults = document.getElementById('adminViolenceSearchResults');
+
+    const adminViolenceForm = document.getElementById('adminViolenceForm');
+    const vFormSchoolId = document.getElementById('vFormSchoolId');
+    const vFormSchoolNameTarget = document.getElementById('vFormSchoolNameTarget');
+    const vFormSchoolRegionTarget = document.getElementById('vFormSchoolRegionTarget');
+
+    const vFormTotalCases = document.getElementById('vFormTotalCases');
+    const vFormPer100 = document.getElementById('vFormPer100');
+    const vFormResolvedRate = document.getElementById('vFormResolvedRate');
+
+    const vFormVerbal = document.getElementById('vFormVerbal');
+    const vFormPhysical = document.getElementById('vFormPhysical');
+    const vFormCyber = document.getElementById('vFormCyber');
+    const vFormExclude = document.getElementById('vFormExclude');
+    const vFormCoercion = document.getElementById('vFormCoercion');
+    const vFormDisclosureYm = document.getElementById('vFormDisclosureYm');
+
+    const btnSaveAdminViolence = document.getElementById('btnSaveAdminViolence');
+
+    // 1. 전체 공시 연월 일괄 업데이트
+    if (btnBatchUpdateYm) {
+        btnBatchUpdateYm.addEventListener('click', async () => {
+            const ym = (adminBatchYm.value || '').trim();
+            if (!ym) return showAlert('공시 연월을 입력해 주세요. (예: 2026.09)');
+            
+            const confirmed = await showConfirmModal(`전체 학교의 공시 연월을 [${ym}] 기준으로 일괄 변경하시겠습니까?`, '공시 연월 일괄 변경 확인');
+            if (!confirmed) return;
+
+            btnBatchUpdateYm.disabled = true;
+            try {
+                const res = await fetch('/api/admin/update-violence-ym', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ disclosure_ym: ym })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showAlert(data.message || '전체 공시 연월이 성공적으로 업데이트되었습니다.');
+                } else {
+                    showAlert('업데이트 실패: ' + (data.error || '오류 발생'));
+                }
+            } catch (err) {
+                console.error('Batch YM update error:', err);
+                showAlert('요청 중 오류가 발생했습니다.');
+            } finally {
+                btnBatchUpdateYm.disabled = false;
+            }
+        });
+    }
+
+    // 2. 개별 학교 검색
+    async function searchViolenceSchool() {
+        const q = (adminViolenceSchoolSearch.value || '').trim();
+        if (!q) return showAlert('검색할 학교명을 입력해 주세요.');
+
+        try {
+            const res = await fetch(`/api/admin/violence-school-search?query=${encodeURIComponent(q)}`);
+            const data = await res.json();
+            if (data.success && data.schools && data.schools.length > 0) {
+                adminViolenceSearchResults.style.display = 'block';
+                adminViolenceSearchResults.innerHTML = data.schools.map(s => `
+                    <div class="v-search-item" data-id="${s.school_id}" style="padding: 10px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.2s;"
+                         onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='white'">
+                        <strong>${s.school_name}</strong> <span style="font-size:11px; color:#666;">(${s.region || ''} ${s.school_type || ''})</span>
+                    </div>
+                `).join('');
+
+                // Click item handler
+                const items = adminViolenceSearchResults.querySelectorAll('.v-search-item');
+                items.forEach((item, idx) => {
+                    item.addEventListener('click', () => {
+                        const s = data.schools[idx];
+                        selectSchoolForViolenceForm(s);
+                        adminViolenceSearchResults.style.display = 'none';
+                    });
+                });
+            } else {
+                adminViolenceSearchResults.style.display = 'block';
+                adminViolenceSearchResults.innerHTML = `<div style="padding: 12px; text-align: center; color: #888;">검색 결과가 없습니다.</div>`;
+            }
+        } catch (err) {
+            console.error('Search school error:', err);
+            showAlert('학교 검색 중 오류가 발생했습니다.');
+        }
+    }
+
+    if (btnSearchAdminViolenceSchool) {
+        btnSearchAdminViolenceSchool.addEventListener('click', searchViolenceSchool);
+    }
+    if (adminViolenceSchoolSearch) {
+        adminViolenceSchoolSearch.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchViolenceSchool();
+        });
+    }
+
+    // 학교 선택 후 폼 채우기
+    function selectSchoolForViolenceForm(s) {
+        adminViolenceForm.style.display = 'block';
+        vFormSchoolId.value = s.school_id || '';
+        vFormSchoolNameTarget.innerText = s.school_name || '';
+        vFormSchoolRegionTarget.innerText = `${s.region || ''} ${s.school_type || ''}`;
+
+        const vs = s.violence_stats || {};
+        const t = vs.types || {};
+
+        vFormTotalCases.value = vs.total_cases ?? 0;
+        vFormPer100.value = vs.per_100 ?? 0;
+        vFormResolvedRate.value = vs.resolved_rate ?? 100;
+
+        vFormVerbal.value = t.verbal ?? 0;
+        vFormPhysical.value = t.physical ?? 0;
+        vFormCyber.value = t.cyber ?? 0;
+        vFormExclude.value = t.exclude ?? 0;
+        vFormCoercion.value = t.coercion ?? 0;
+
+        vFormDisclosureYm.value = vs.disclosure_ym || adminBatchYm.value || '2026.09';
+    }
+
+    // 3. 개별 학교 실태조사 데이터 저장
+    if (btnSaveAdminViolence) {
+        btnSaveAdminViolence.addEventListener('click', async () => {
+            const sid = vFormSchoolId.value;
+            const sName = vFormSchoolNameTarget.innerText;
+            if (!sName) return showAlert('선택된 학교가 없습니다.');
+
+            const payload = {
+                school_id: sid,
+                school_name: sName,
+                total_cases: Number(vFormTotalCases.value) || 0,
+                per_100: Number(vFormPer100.value) || 0,
+                resolved_rate: Number(vFormResolvedRate.value) || 100,
+                disclosure_ym: (vFormDisclosureYm.value || '2026.09').trim(),
+                types: {
+                    verbal: Number(vFormVerbal.value) || 0,
+                    physical: Number(vFormPhysical.value) || 0,
+                    cyber: Number(vFormCyber.value) || 0,
+                    exclude: Number(vFormExclude.value) || 0,
+                    coercion: Number(vFormCoercion.value) || 0
+                }
+            };
+
+            btnSaveAdminViolence.disabled = true;
+            try {
+                const res = await fetch('/api/admin/save-violence-school', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showAlert(data.message || '실태조사 데이터가 성공적으로 저장되었습니다.');
+                } else {
+                    showAlert('저장 실패: ' + (data.error || '오류 발생'));
+                }
+            } catch (err) {
+                console.error('Save violence error:', err);
+                showAlert('저장 요청 중 오류가 발생했습니다.');
+            } finally {
+                btnSaveAdminViolence.disabled = false;
+            }
+        });
+    }
+}
+
 // Initial load on script execution if DOM ready
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
     loadStoredRealEstate();
+    initAdminViolenceManagement();
 } else {
-    window.addEventListener('DOMContentLoaded', loadStoredRealEstate);
+    window.addEventListener('DOMContentLoaded', () => {
+        loadStoredRealEstate();
+        initAdminViolenceManagement();
+    });
 }
+
 
