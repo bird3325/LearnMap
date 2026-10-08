@@ -1,14 +1,9 @@
 /**
- * NEIS Parent Service - Real-Time Integration & AI Record Analyzer Service Engine
+ * LearnMap Public Education Data & Decision Support Service Engine
  * 
- * 1) 나이스(NEIS) 교육정보 개방포털 실시간 공공 API 연동:
- *    - 실시간 급식 식단표 및 19종 알레르기 식품 자동 필터링
- *    - 실시간 학교 공식 학사일정 (지필/수행평가 타임라인)
- * 2) 학교알리미 실제 공시 통계 결합:
- *    - 학교별 실제 교과목 평균/표준편차/성취도 기반 Z-Score 정밀 진단
- * 3) 나이스 생기부/성적표 문서 파서 및 AI 역량 분석 엔진:
- *    - 텍스트/PDF 데이터 자동 인식 및 교과성적/출결/PAPS/세특 파싱
- *    - 학업역량, 전공적합성, 공동체 인성 역량 스코어링 및 강점/보완점 도출
+ * 1) 공공데이터포털(KERIS) 및 나이스(NEIS) 오픈 API 연동 (SD_SCHUL_CODE 고유 코드 표준 마스터 기준)
+ * 2) 학교알리미 핵심 팩트공시 통계 연계 (학급당 학생수, 교원 현황, 방과후 프로그램, 전출입 추이)
+ * 3) 학업성취도 분포 보조 분석 엔진 (하단 접기/펼치기 보조 지표)
  */
 
 export function isLocalEnvironment() {

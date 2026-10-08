@@ -415,8 +415,8 @@ export class AuthService {
             const testId = String(Date.now());
             kakaoProfile = {
                 id: testId,
-                email: 'bird3325@naver.com',
-                nickname: '조민기',
+                email: `parent_${testId.slice(-4)}@learnmap.kr`,
+                nickname: '학부모 회원',
                 avatarUrl: '',
                 accessToken: 'kakao_mobile_token_' + testId
             };

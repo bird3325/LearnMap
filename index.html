@@ -26,7 +26,8 @@
             } catch (_) { }
         }
     </script>
-    <title>학업여지도 - Academic Achievement Map</title>
+    <title>학업여지도 - 우리 아이에게 맞는 학교를 찾는 의사결정 지도</title>
+    <meta name="description" content="점수 나열 대신, 공공데이터 기반 팩트 분석으로 우리 아이에게 맞는 학교와 학군 이사를 선택하는 학군 의사결정 보조 플랫폼">
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
     <link rel="stylesheet" href="style.css">
@@ -1348,13 +1349,13 @@
                                     <div style="flex: 1; min-width: 0;">
                                         <div style="display: flex; align-items: center; gap: 8px;">
                                             <span id="settingsAuthUserName"
-                                                style="font-size: 16px; font-weight: 800; color: #1e293b;">조민기</span>
+                                                style="font-size: 16px; font-weight: 800; color: #1e293b;">학부모 회원</span>
                                             <span class="user-tier-badge"
                                                 style="display: inline-block; background: #eff6ff; color: #2563eb; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 4px; border: 1px solid #dbeafe;">정회원</span>
                                         </div>
                                         <div id="settingsAuthUserEmail"
                                             style="font-size: 12px; color: #64748b; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: -apple-system, BlinkMacSystemFont, monospace;">
-                                            bird3325@naver.com</div>
+                                            guest@learnmap.kr</div>
                                     </div>
                                 </div>
 
@@ -2023,13 +2024,13 @@
                                     <div style="flex: 1; min-width: 0;">
                                         <div style="display: flex; align-items: center; gap: 6px;">
                                             <span id="settingsAuthUserNameMobile"
-                                                style="font-size: 15px; font-weight: 800; color: #1e293b;">조민기</span>
+                                                style="font-size: 15px; font-weight: 800; color: #1e293b;">학부모 회원</span>
                                             <span class="user-tier-badge"
                                                 style="display: inline-block; background: #eff6ff; color: #2563eb; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; border: 1px solid #dbeafe;">정회원</span>
                                         </div>
                                         <div id="settingsAuthUserEmailMobile"
                                             style="font-size: 11.5px; color: #64748b; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: -apple-system, BlinkMacSystemFont, monospace;">
-                                            bird3325@naver.com</div>
+                                            guest@learnmap.kr</div>
                                         <div id="mypageProfileScores" style="display: none;">성적 기반 추천 연동 완료</div>
                                     </div>
                                 </div>
@@ -5473,46 +5474,120 @@
         </div>
     </div>
 
-    <!-- 첫 방문 온보딩 모달 -->
+    <!-- 3단계 의사결정 온보딩 모달 -->
     <div id="onboardingModal"
-        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 100005; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.45); z-index: 100005; justify-content: center; align-items: center; backdrop-filter: blur(5px);">
         <div
-            style="background: var(--bg-card); border-radius: 16px; padding: 28px; width: 90%; max-width: 480px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border: 1px solid var(--border-color); position: relative; text-align: center;">
-            <div id="onboardingStep1">
-                <div style="font-size: 40px; margin-bottom: 16px;">📍</div>
-                <h3 style="font-size: 18px; font-weight: 800; color: var(--deep-blue); margin-bottom: 12px;">Step 1. 관심
-                    지역 및 학교급 선택</h3>
-                <p style="font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 24px;">
-                    지도 상단의 검색창이나 필터를 사용하여 분석을 시작하고 싶은 시도/구군 및 학교 구분(초/중/고)을 선택해 주세요.
-                </p>
-                <button class="btn-primary" id="btnNextStep1" style="width: 100%;">다음으로 (1/3)</button>
+            style="background: #ffffff; border-radius: 20px; padding: 28px; width: 92%; max-width: 480px; box-shadow: 0 20px 40px rgba(0,0,0,0.18); border: 1px solid #e2e8f0; position: relative; text-align: left;">
+            
+            <div style="text-align: center; margin-bottom: 20px;">
+                <span style="font-size: 11.5px; font-weight: 700; color: #2563eb; background: #eff6ff; padding: 4px 10px; border-radius: 12px; border: 1px solid #dbeafe;">🎯 맞춤 학교 탐색 3단계 온보딩</span>
+                <h3 style="font-size: 18px; font-weight: 800; color: #1e293b; margin: 8px 0 4px 0;">우리 아이 맞춤 의사결정 설정</h3>
+                <p style="font-size: 12.5px; color: #64748b; margin: 0;">3가지 질문을 설정하시면 최적의 학교 매칭 리포트를 제안해 드립니다.</p>
             </div>
+
+            <!-- Step 1: 자녀 학년 선택 -->
+            <div id="onboardingStep1">
+                <label style="font-size: 13px; font-weight: 700; color: #334155; display: block; margin-bottom: 8px;">1. 자녀의 대상 학년을 선택하세요</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 24px;">
+                    <button type="button" class="onboard-grade-btn active" data-grade="elem_low" style="padding: 12px 8px; border: 2px solid #2563eb; background: #eff6ff; color: #2563eb; border-radius: 10px; font-weight: 700; font-size: 12.5px; cursor: pointer; text-align: center;">초등 저학년</button>
+                    <button type="button" class="onboard-grade-btn" data-grade="elem_high" style="padding: 12px 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #475569; border-radius: 10px; font-weight: 600; font-size: 12.5px; cursor: pointer; text-align: center;">초등 고학년</button>
+                    <button type="button" class="onboard-grade-btn" data-grade="middle" style="padding: 12px 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #475569; border-radius: 10px; font-weight: 600; font-size: 12.5px; cursor: pointer; text-align: center;">중학생</button>
+                </div>
+                <button class="btn-primary" id="btnNextStep1" style="width: 100%; height: 42px; font-size: 14px; font-weight: 700; border-radius: 10px;">다음 단계로 (1/3) →</button>
+            </div>
+
+            <!-- Step 2: 희망 지역 설정 -->
             <div id="onboardingStep2" style="display: none;">
-                <div style="font-size: 40px; margin-bottom: 16px;">🗺️</div>
-                <h3 style="font-size: 18px; font-weight: 800; color: var(--deep-blue); margin-bottom: 12px;">Step 2. 지도
-                    위의 학교 핀 클릭</h3>
-                <p style="font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 24px;">
-                    지도에서 관심 있는 학교 핀을 클릭해 보세요. 우측 사이드바에 학업 성적 분포, 주변 학원 수, 창체 활동비 등 학부모용 핵심 인사이트가 즉시 표시됩니다.
-                </p>
+                <label style="font-size: 13px; font-weight: 700; color: #334155; display: block; margin-bottom: 8px;">2. 탐색을 희망하는 지역 (법정동/시군구)을 입력하세요</label>
+                <div style="margin-bottom: 24px;">
+                    <input type="text" id="onboardTargetDistrict" placeholder="예: 대치동, 목동, 수내동, 서초구" value="강남구 대치동" style="width: 100%; height: 42px; padding: 0 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 13px; box-sizing: border-box; outline: none;">
+                </div>
                 <div style="display: flex; gap: 8px;">
-                    <button class="btn-secondary" id="btnPrevStep2" style="flex: 1; margin: 0;">이전</button>
-                    <button class="btn-primary" id="btnNextStep2" style="flex: 2; margin: 0;">다음으로 (2/3)</button>
+                    <button class="btn-secondary" id="btnPrevStep2" style="flex: 1; height: 42px; font-size: 13px; border-radius: 10px; margin: 0;">← 이전</button>
+                    <button class="btn-primary" id="btnNextStep2" style="flex: 2; height: 42px; font-size: 13.5px; font-weight: 700; border-radius: 10px; margin: 0;">다음 단계로 (2/3) →</button>
                 </div>
             </div>
+
+            <!-- Step 3: 핵심 우선순위 선택 -->
             <div id="onboardingStep3" style="display: none;">
-                <div style="font-size: 40px; margin-bottom: 16px;">⚖️</div>
-                <h3 style="font-size: 18px; font-weight: 800; color: var(--deep-blue); margin-bottom: 12px;">Step 3. 비교
-                    보드 활용 및 진단</h3>
-                <p style="font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 24px;">
-                    학교 카드 하단의 '비교 보드 추가' 버튼을 눌러 최대 5개 학교를 한눈에 나란히 비교할 수 있습니다. 자녀 성적을 입력해 맞춤 적합도를 판정해 보세요!
-                </p>
+                <label style="font-size: 13px; font-weight: 700; color: #334155; display: block; margin-bottom: 8px;">3. 가장 중요한 우선순위를 선택하세요 (최대 2개)</label>
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; font-size: 12.5px;">
+                    <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer;">
+                        <input type="checkbox" name="onboardPriority" value="safe_walk" checked style="width: 16px; height: 16px;">
+                        <span>🚶 <strong>도보 10분 이내 안전 통학</strong> (스쿨존/안전길)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer;">
+                        <input type="checkbox" name="onboardPriority" value="after_school" style="width: 16px; height: 16px;">
+                        <span>🎨 <strong>방과후 및 예체능/진로 프로그램 다양성</strong></span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer;">
+                        <input type="checkbox" name="onboardPriority" value="academy_density" checked style="width: 16px; height: 16px;">
+                        <span>📚 <strong>학원가 밀집도 및 사교육 인프라 접근성</strong></span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer;">
+                        <input type="checkbox" name="onboardPriority" value="class_size" style="width: 16px; height: 16px;">
+                        <span>🏫 <strong>과밀 없는 쾌적한 학급 규모</strong> (적정 학생수)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer;">
+                        <input type="checkbox" name="onboardPriority" value="academic_mood" style="width: 16px; height: 16px;">
+                        <span>✍️ <strong>면학 분위기</strong> (성취도 A 비율 보조 반영)</span>
+                    </label>
+                </div>
                 <div style="display: flex; gap: 8px;">
-                    <button class="btn-secondary" id="btnPrevStep3" style="flex: 1; margin: 0;">이전</button>
-                    <button class="btn-primary" id="btnFinishOnboarding" style="flex: 2; margin: 0;">시작하기</button>
+                    <button class="btn-secondary" id="btnPrevStep3" style="flex: 1; height: 42px; font-size: 13px; border-radius: 10px; margin: 0;">← 이전</button>
+                    <button class="btn-primary" id="btnFinishOnboarding" style="flex: 2; height: 42px; font-size: 13.5px; font-weight: 700; border-radius: 10px; margin: 0;">맞춤 학교 지도 보기 🚀</button>
                 </div>
             </div>
             <button id="btnCloseOnboarding"
                 style="position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted);">&times;</button>
+        </div>
+    </div>
+
+    <!-- 4단계 BM 유료 리포트 사전 예약 (Fake-door 테스트) 모달 -->
+    <div id="paidReportModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.45); z-index: 100006; justify-content: center; align-items: center; backdrop-filter: blur(5px);"
+        onclick="if(event.target === this) document.getElementById('paidReportModal').style.display='none'">
+        <div
+            style="background: #ffffff; border-radius: 20px; padding: 28px; width: 92%; max-width: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); border: 1px solid #e2e8f0; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px;">
+                <div>
+                    <span style="font-size: 11px; font-weight: 800; color: #2563eb; background: #eff6ff; padding: 3px 8px; border-radius: 6px; border: 1px solid #dbeafe;">PREMIUM REPORT</span>
+                    <h3 style="font-size: 17px; font-weight: 800; color: #1e293b; margin: 4px 0 0 0;" id="paidReportTitle">우리 아이 맞춤 분석 리포트 신청</h3>
+                </div>
+                <button onclick="document.getElementById('paidReportModal').style.display='none'" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #94a3b8; font-weight: 700; line-height: 1;">✕</button>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px;">
+                <div style="padding: 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: #1e293b;">
+                        <span>📄 Tier 1. 우리 아이 학교 추천 리포트 (PDF)</span>
+                        <span style="color: #2563eb;">9,900원</span>
+                    </div>
+                    <p style="font-size: 11.5px; color: #64748b; margin: 4px 0 0 0; line-height: 1.4;">설문 기반 1:1 맞춤형 학교 분석, 통학 리스크 요약, 주변 학원 인프라 밀집도 분석 리포트</p>
+                </div>
+                <div style="padding: 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: #1e293b;">
+                        <span>🏡 Tier 2. 학군 이사 의사결정 종합 리포트</span>
+                        <span style="color: #2563eb;">29,000원</span>
+                    </div>
+                    <p style="font-size: 11.5px; color: #64748b; margin: 4px 0 0 0; line-height: 1.4;">A지역 vs B지역 교육환경 비교, 학구도 배정 가능성 및 통학 실질 시뮬레이션 리포트</p>
+                </div>
+            </div>
+
+            <form id="paidReportForm" onsubmit="if(window.handlePaidReportSubmit) { window.handlePaidReportSubmit(event); } return false;">
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">리포트 발송 이메일 주소</label>
+                    <input type="email" id="paidReportEmail" placeholder="example@email.com" required style="width: 100%; height: 38px; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12.5px; box-sizing: border-box;">
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">관심 학교 / 학군 지역</label>
+                    <input type="text" id="paidReportTarget" placeholder="예: 대치동 부근 중학교 / 강남구" required style="width: 100%; height: 38px; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12.5px; box-sizing: border-box;">
+                </div>
+                <button type="submit" style="width: 100%; height: 44px; background: #2563eb; color: #ffffff; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.2s;">
+                    📩 오픈 할인 사전 예약 신청하기
+                </button>
+            </form>
         </div>
     </div>
 

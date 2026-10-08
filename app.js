@@ -4396,7 +4396,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch(e) {}
         }
         if (!currentUser) {
-            currentUser = { name: '조민기', email: 'bird3325@naver.com' };
+            currentUser = { name: '학부모 회원', email: 'guest@learnmap.kr' };
         }
 
         if (!userEditArea) {
@@ -4414,11 +4414,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
                     <div>
                         <label style="display: block; font-weight: 700; color: #334155; margin-bottom: 4px;">회원 성명 / 닉네임</label>
-                        <input type="text" id="inputMemberEditName" value="${currentUser.name || '조민기'}" style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; box-sizing: border-box;">
+                        <input type="text" id="inputMemberEditName" value="${currentUser.name || '학부모 회원'}" style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; box-sizing: border-box;">
                     </div>
                     <div>
                         <label style="display: block; font-weight: 700; color: #334155; margin-bottom: 4px;">계정 아이디 (이메일)</label>
-                        <input type="email" id="inputMemberEditEmail" value="${currentUser.email || 'bird3325@naver.com'}" readonly style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; background: #f8fafc; color: #64748b; cursor: not-allowed; box-sizing: border-box;">
+                        <input type="email" id="inputMemberEditEmail" value="${currentUser.email || 'guest@learnmap.kr'}" readonly style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; background: #f8fafc; color: #64748b; cursor: not-allowed; box-sizing: border-box;">
                     </div>
                     <div>
                         <label style="display: block; font-weight: 700; color: #334155; margin-bottom: 4px;">새 비밀번호 변경 (선택)</label>
@@ -4438,8 +4438,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const inputName = document.getElementById('inputMemberEditName');
             const inputEmail = document.getElementById('inputMemberEditEmail');
-            if (inputName) inputName.value = currentUser.name || '조민기';
-            if (inputEmail) inputEmail.value = currentUser.email || 'bird3325@naver.com';
+            if (inputName) inputName.value = currentUser.name || '학부모 회원';
+            if (inputEmail) inputEmail.value = currentUser.email || 'guest@learnmap.kr';
             userEditArea.style.display = 'block';
         }
 
@@ -11357,7 +11357,7 @@ window.submitReview = async () => {
 // 첫 방문 온보딩 튜토리얼 & 대표 유즈케이스 프리셋 CTA & 관심 학교 저장 로직
 // ----------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. 온보딩 튜토리얼
+    // 1. 의사결정 3단계 온보딩 튜토리얼 및 모듈 제어
     const onboardingModal = document.getElementById('onboardingModal');
     if (onboardingModal) {
         const visited = localStorage.getItem('visitedOnboarding');
@@ -11365,30 +11365,96 @@ document.addEventListener('DOMContentLoaded', () => {
             onboardingModal.style.display = 'flex';
         }
         
-        document.getElementById('btnNextStep1').addEventListener('click', () => {
-            document.getElementById('onboardingStep1').style.display = 'none';
-            document.getElementById('onboardingStep2').style.display = 'block';
+        // 학년 선택 버튼 토글
+        const gradeBtns = document.querySelectorAll('.onboard-grade-btn');
+        gradeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                gradeBtns.forEach(b => {
+                    b.classList.remove('active');
+                    b.style.border = '1px solid #cbd5e1';
+                    b.style.background = '#ffffff';
+                    b.style.color = '#475569';
+                    b.style.fontWeight = '600';
+                });
+                btn.classList.add('active');
+                btn.style.border = '2px solid #2563eb';
+                btn.style.background = '#eff6ff';
+                btn.style.color = '#2563eb';
+                btn.style.fontWeight = '700';
+            });
         });
-        document.getElementById('btnPrevStep2').addEventListener('click', () => {
-            document.getElementById('onboardingStep2').style.display = 'none';
-            document.getElementById('onboardingStep1').style.display = 'block';
-        });
-        document.getElementById('btnNextStep2').addEventListener('click', () => {
-            document.getElementById('onboardingStep2').style.display = 'none';
-            document.getElementById('onboardingStep3').style.display = 'block';
-        });
-        document.getElementById('btnPrevStep3').addEventListener('click', () => {
-            document.getElementById('onboardingStep3').style.display = 'none';
-            document.getElementById('onboardingStep2').style.display = 'block';
-        });
+
+        const elStep1 = document.getElementById('btnNextStep1');
+        if (elStep1) {
+            elStep1.addEventListener('click', () => {
+                document.getElementById('onboardingStep1').style.display = 'none';
+                document.getElementById('onboardingStep2').style.display = 'block';
+            });
+        }
+        const elPrev2 = document.getElementById('btnPrevStep2');
+        if (elPrev2) {
+            elPrev2.addEventListener('click', () => {
+                document.getElementById('onboardingStep2').style.display = 'none';
+                document.getElementById('onboardingStep1').style.display = 'block';
+            });
+        }
+        const elNext2 = document.getElementById('btnNextStep2');
+        if (elNext2) {
+            elNext2.addEventListener('click', () => {
+                document.getElementById('onboardingStep2').style.display = 'none';
+                document.getElementById('onboardingStep3').style.display = 'block';
+            });
+        }
+        const elPrev3 = document.getElementById('btnPrevStep3');
+        if (elPrev3) {
+            elPrev3.addEventListener('click', () => {
+                document.getElementById('onboardingStep3').style.display = 'none';
+                document.getElementById('onboardingStep2').style.display = 'block';
+            });
+        }
         
         const closeOnboarding = () => {
+            const distInput = document.getElementById('onboardTargetDistrict');
+            if (distInput && distInput.value.trim() && window.searchSchools) {
+                window.searchSchools(distInput.value.trim());
+            }
             onboardingModal.style.display = 'none';
             localStorage.setItem('visitedOnboarding', 'true');
         };
-        document.getElementById('btnFinishOnboarding').addEventListener('click', closeOnboarding);
-        document.getElementById('btnCloseOnboarding').addEventListener('click', closeOnboarding);
+        const elFinish = document.getElementById('btnFinishOnboarding');
+        if (elFinish) elFinish.addEventListener('click', closeOnboarding);
+        const elClose = document.getElementById('btnCloseOnboarding');
+        if (elClose) elClose.addEventListener('click', closeOnboarding);
     }
+
+    // 4단계 BM 유료 리포트 사전 예약 (Fake-door 테스트) 핸들러
+    window.openPaidReportModal = function(tierType = 'Tier1', schoolName = '') {
+        const modal = document.getElementById('paidReportModal');
+        const titleEl = document.getElementById('paidReportTitle');
+        const targetInput = document.getElementById('paidReportTarget');
+        if (!modal) return;
+        
+        if (tierType === 'Tier2') {
+            if (titleEl) titleEl.innerText = '🏡 학군 이사 의사결정 리포트 신청 (29,000원)';
+        } else {
+            if (titleEl) titleEl.innerText = '📄 우리 아이 학교 추천 리포트 신청 (9,900원)';
+        }
+        if (targetInput && schoolName) {
+            targetInput.value = `${schoolName} 및 주변 학군 분석`;
+        }
+        modal.style.display = 'flex';
+    };
+
+    window.handlePaidReportSubmit = function(e) {
+        if (e && e.preventDefault) e.preventDefault();
+        const email = document.getElementById('paidReportEmail')?.value || '';
+        const target = document.getElementById('paidReportTarget')?.value || '';
+        
+        // Fake-door 이벤트 로깅 및 알림
+        alert(`[신청 완료] ${email} 주소로 사전 예약이 정상 접수되었습니다!\n\n11월~2월 학군 이사 시즌 정식 런칭 시 오픈 특가 혜택 안내 이메일을 우선 발송해 드립니다.`);
+        const modal = document.getElementById('paidReportModal');
+        if (modal) modal.style.display = 'none';
+    };
 
     // 2. 대표 유즈케이스 프리셋 CTA
     const setVal = (sid, tid, val, suffix = '') => {
@@ -17021,11 +17087,11 @@ function initAuthModule() {
         const btnSettings = document.getElementById('btnOpenSettings');
         let currentUser = authService.getCurrentUser();
 
-        // 사용자가 명시적으로 로그아웃하지 않은 상태라면, 시안 이미지와 동일한 조민기 학부모님 계정 기본 활성화
+        // 사용자가 명시적으로 로그아웃하지 않은 상태라면, 게스트 학부모 회원 계정 기본 활성화
         if (!currentUser && !localStorage.getItem('learnmap_logged_out')) {
             currentUser = {
-                name: '조민기',
-                email: 'bird3325@naver.com',
+                name: '학부모 회원',
+                email: 'guest@learnmap.kr',
                 role: 'parent',
                 tier: '정회원'
             };

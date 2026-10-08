@@ -148,7 +148,6 @@ export class CompareAgent {
                 weightedAvg: school.weightedAvg || 0,
                 envScore: school.envScore || 0,
                 envScoresDetails: school.envScoresDetails || null,
-                violence_stats: school.violence_stats || null,
                 trendData: school.trendData || null,
                 housing_sale: saleText,
                 housing_jeonse: jeonseText,
