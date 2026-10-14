@@ -6829,42 +6829,101 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (!Array.isArray(academiesList)) return;
+            window.activeAcademyPositions = [];
 
+            // 1. 선택된 학교 및 반경 필터링 조건에 부합하는 유효 학원 추출
+            const validAcademies = [];
             academiesList.forEach(place => {
                 const lng = parseFloat(place.x);
                 const lat = parseFloat(place.y);
                 if (isNaN(lng) || isNaN(lat)) return;
 
-                // 선택된 학교가 있을 경우 설정 반경 범위 내에 있는지 정확히 거리 계산하여 필터링
                 if (sLat && sLng && !isNaN(sLat) && !isNaN(sLng)) {
                     const distFromSchool = place._computedDistance || calculateAcademyDistance(sLat, sLng, lat, lng, place.distance);
-                    if (distFromSchool > targetRadiusMeters) return; // 반경 범위를 벗어난 학원은 마커 생성 스킵
+                    if (distFromSchool > targetRadiusMeters) return;
+                }
+                validAcademies.push(place);
+            });
+
+            // 2. 한 건물(18m 이내)에 있거나 인접하여 겹치는 학원들을 클러스터링
+            const academyClusters = [];
+            validAcademies.forEach(place => {
+                const lat = parseFloat(place.y);
+                const lng = parseFloat(place.x);
+
+                let matchedCluster = null;
+                for (let i = 0; i < academyClusters.length; i++) {
+                    const cluster = academyClusters[i];
+                    const dy = (lat - cluster.lat) * 111000;
+                    const dx = (lng - cluster.lng) * 88800 * Math.cos(lat * (Math.PI / 180));
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist <= 18) { // 18m 이내 동일 건물 또는 초근접 겹침
+                        matchedCluster = cluster;
+                        break;
+                    }
                 }
 
-                const pos = new kakao.maps.LatLng(lat, lng);
-                const acadName = place.place_name || '학원';
-                const safeName = acadName.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                if (matchedCluster) {
+                    matchedCluster.items.push(place);
+                } else {
+                    academyClusters.push({
+                        lat: lat,
+                        lng: lng,
+                        items: [place]
+                    });
+                }
+            });
 
-                // 메인 오버레이 랩핑 DOM (clickable)
+            // 3. 클러스터별 마커 렌더링 (단일 학원 배지 or 겹침 클러스터 배지)
+            academyClusters.forEach(cluster => {
+                const count = cluster.items.length;
+                const pos = new kakao.maps.LatLng(cluster.lat, cluster.lng);
+
+                // 주택 마커와의 겹침 방지 오프셋 계산을 위해 학원 좌표 등록
+                if (Array.isArray(window.activeAcademyPositions)) {
+                    window.activeAcademyPositions.push({ lat: cluster.lat, lng: cluster.lng });
+                }
+
                 const containerEl = document.createElement('div');
                 containerEl.className = 'academy-dot-container';
-                containerEl.style.cssText = 'position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; z-index: 1000;';
+                containerEl.style.cssText = 'position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 1000;';
 
-                // 점(Dot) 형태 마커 엘리먼트
-                // 클린 서클 배지 학원 마커: 퍼플 #7C3AED (학사모 심볼)
                 const dotEl = document.createElement('div');
                 dotEl.className = 'academy-dot-marker academy-badge-marker';
-                dotEl.style.cssText = 'display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: #7C3AED; color: #ffffff; border: 2px solid #ffffff; border-radius: 50%; box-shadow: 0 2px 7px rgba(124,58,237,0.35); transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); flex-shrink: 0;';
-                dotEl.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="#ffffff" style="display:block;"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg>';
 
-                // 마우스 오버 시 노출되는 플로팅 학원명 라벨 엘리먼트
                 const floatingLabelEl = document.createElement('div');
                 floatingLabelEl.className = 'academy-floating-label';
-                floatingLabelEl.style.cssText = 'position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #ffffff; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.15s ease, visibility 0.15s ease; z-index: 10000;';
-                floatingLabelEl.innerHTML = `🎓 ${safeName}`;
+                floatingLabelEl.style.cssText = 'position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #ffffff; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.18); pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.15s ease, visibility 0.15s ease; z-index: 10000; text-align: left;';
+
+                if (count === 1) {
+                    // 단일 학원 마커: 24px 퍼플 서클 배지 (학사모 심볼)
+                    const place = cluster.items[0];
+                    const acadName = place.place_name || '학원';
+                    const safeName = acadName.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+                    dotEl.style.cssText = 'display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: #7C3AED; color: #ffffff; border: 2px solid #ffffff; border-radius: 50%; box-shadow: 0 2px 7px rgba(124,58,237,0.35); transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); flex-shrink: 0;';
+                    dotEl.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="#ffffff" style="display:block;"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg>';
+                    floatingLabelEl.innerHTML = `🎓 ${safeName}`;
+                } else {
+                    // 겹치는 복수 학원: 세련된 퍼플 클러스터 배지 (학사모 + 수량 표시)
+                    dotEl.style.cssText = 'display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 24px; padding: 0 6px; background: #7C3AED; color: #ffffff; border: 2px solid #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(124,58,237,0.45); transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); flex-shrink: 0; font-size: 11px; font-weight: 800; gap: 3px;';
+                    dotEl.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="#ffffff" style="display:block; flex-shrink:0;"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg><span>${count}</span>`;
+
+                    const maxShow = 5;
+                    const itemsHtml = cluster.items.slice(0, maxShow).map(p => {
+                        const sName = (p.place_name || '학원').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        return `<div style="font-size:11.5px; color:#ffffff; padding:1px 0; overflow:hidden; text-overflow:ellipsis; max-width:200px; white-space:nowrap;">• ${sName}</div>`;
+                    }).join('');
+                    const moreCount = count - maxShow;
+                    const moreText = moreCount > 0 ? `<div style="font-size:10.5px; color:#c4b5fd; margin-top:2px; font-weight:normal;">+ 외 ${moreCount}개 학원</div>` : '';
+
+                    floatingLabelEl.innerHTML = `<div style="font-size:11px; font-weight:800; color:#c4b5fd; margin-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:3px;">🎓 인접 학원 밀집 (${count}개)</div>${itemsHtml}${moreText}`;
+                }
 
                 containerEl.appendChild(dotEl);
                 containerEl.appendChild(floatingLabelEl);
+
+                let overlay = null;
 
                 // Hover 애니메이션 & 플로팅 라벨 토글
                 containerEl.addEventListener('mouseenter', () => {
@@ -6887,76 +6946,62 @@ document.addEventListener('DOMContentLoaded', () => {
                     containerEl.style.zIndex = '1000';
                 });
 
-                // 점 클릭 시 학원리스트 사이드바 이동 및 학원 상세 정보 팝업 오픈
+                // 마커 클릭 시 액션
                 containerEl.addEventListener('click', (e) => {
                     e.stopPropagation();
 
-                    const academySidebar = document.getElementById('academySidebar');
-                    const isAlreadyOpen = academySidebar && (
-                        academySidebar.style.display === 'flex' ||
-                        window.getComputedStyle(academySidebar).display !== 'none'
-                    );
-
-                    // 학원 패널/사이드바가 닫혀 있는 경우 강제로 열어줍니다.
-                    if (typeof window.toggleAcademySidebar === 'function') {
-                        window.toggleAcademySidebar(true);
-                    } else {
-                        if (academySidebar) academySidebar.style.display = 'flex';
-                        const container = document.querySelector('.app-container');
-                        if (container) container.classList.add('academy-open');
+                    // 1) 2개 이상 밀집 클러스터이고 지도가 축소된 상태(레벨 > 2)인 경우 줌인 포커싱
+                    if (count > 1 && mapObj && typeof mapObj.getLevel === 'function' && mapObj.getLevel() > 2) {
+                        mapObj.setLevel(mapObj.getLevel() - 1);
+                        if (typeof mapObj.panTo === 'function') {
+                            mapObj.panTo(pos);
+                        }
                     }
 
-                    // 학원 카드가 생성된 DOM을 찾아 스크롤 및 포커스
-                    const foundCard = Array.from(document.querySelectorAll('#sideAcademyList .academy-card, .academy-card')).find(card => {
-                        return card.innerText.includes(acadName);
-                    });
+                    // 2) 첫 번째 학원 상세 정보 열기 & 사이드바 연계
+                    const primaryPlace = cluster.items[0];
+                    const primaryName = primaryPlace.place_name || '학원';
 
-                    if (foundCard) {
-                        foundCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        foundCard.click();
-                    } else {
-                        // 카드 검색 미매칭 시 직접 커뮤니티 후기, 수강료 계산기 & 타운톡 상세 팝업 오픈
-                        window.currentAcademyForCommunity = acadName;
-                        let categorySubject = '';
-                        if (place.category_name) {
-                            const parts = place.category_name.split('>').map(s => s.trim());
-                            categorySubject = parts.length > 1 ? parts[parts.length - 1] : parts[0];
-                        }
-                        let shortSubject = categorySubject.replace('학원', '').replace('교습소', '').replace('전문', '').trim();
-                        if (!shortSubject) shortSubject = categorySubject || '학원';
+                    const isAlreadyOpen = typeof isAcademyListSidebarOpen === 'function' ? isAcademyListSidebarOpen() : false;
 
-                        const tLabel = acadName.includes('교습소') ? '교습소' : '학원';
-                        if (typeof window.fetchCommunityReviews === 'function') {
-                            window.fetchCommunityReviews(acadName, 'all', shortSubject, tLabel);
-                        }
-                        window.currentAcademyCoords = { lng: place.x, lat: place.y };
-                        if (typeof window.renderAcademyFeeCalculator === 'function') {
-                            window.renderAcademyFeeCalculator(
-                                acadName, 
-                                shortSubject, 
-                                place.road_address_name || place.address_name || '', 
-                                place.phone || '', 
-                                tLabel, 
-                                place.x, 
-                                place.y
+                    if (typeof openAcademyListSidebarWithPlace === 'function') {
+                        openAcademyListSidebarWithPlace(primaryPlace);
+                    } else if (typeof openAcademyDetailSidebar === 'function') {
+                        openAcademyDetailSidebar(primaryPlace);
+                    } else if (typeof window.openAcademyDetailModal === 'function') {
+                        window.openAcademyDetailModal(primaryPlace);
+                    } else if (typeof openAcademyDetailModal === 'function') {
+                        openAcademyDetailModal(primaryPlace);
+                    }
+
+                    if (typeof window.setActiveAcademyTab === 'function') {
+                        window.setActiveAcademyTab('talk');
+                        if (typeof window.openAcademyTownTalkSidebarWithPlace === 'function') {
+                            window.openAcademyTownTalkSidebarWithPlace(primaryPlace.x, primaryPlace.y);
+                        } else if (typeof window.openAcademyTownTalkSidebar === 'function') {
+                            window.openAcademyTownTalkSidebar(
+                                primaryPlace.id || primaryPlace.place_id || primaryName, 
+                                primaryName, 
+                                primaryPlace.address_name || primaryPlace.road_address_name, 
+                                primaryPlace.x, 
+                                primaryPlace.y
                             );
                         }
                         if (typeof window.fetchTownTalkList === 'function') {
-                            window.fetchTownTalkList(acadName, 'academyTownTalkList');
+                            window.fetchTownTalkList(primaryName, 'academyTownTalkList');
                         }
                     }
 
-                    // 학원 목록 사이드바가 열려있지 않았던 경우에만 지도 중심 및 시점 이동
                     if (!isAlreadyOpen) {
                         if (typeof window.centerAcademyPinWithSidebarOffset === 'function') {
-                            window.centerAcademyPinWithSidebarOffset(place.x, place.y, acadName);
+                            window.centerAcademyPinWithSidebarOffset(primaryPlace.x, primaryPlace.y, primaryName);
                         } else if (mapObj && typeof mapObj.panTo === 'function') {
                             mapObj.panTo(pos);
                         }
                     }
                 });
 
-                const overlay = new kakao.maps.CustomOverlay({
+                overlay = new kakao.maps.CustomOverlay({
                     map: mapObj,
                     position: pos,
                     content: containerEl,
