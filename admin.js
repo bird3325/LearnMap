@@ -2,6 +2,7 @@
 
 let token = localStorage.getItem('admin_token') || '';
 let kakaoGeocoderInstance = null;
+let supabaseAdmin = null;
 
 // DOM Elements
 const loginCard = document.getElementById('loginCard');
@@ -44,13 +45,14 @@ const syncRealEstateSigungu = document.getElementById('syncRealEstateSigungu');
 const syncRealEstateGu = document.getElementById('syncRealEstateGu');
 const masterRealEstateSido = document.getElementById('masterRealEstateSido');
 const masterRealEstateSigungu = document.getElementById('masterRealEstateSigungu');
+const masterRealEstateGu = document.getElementById('masterRealEstateGu');
 
 // Admin Menu Logic
 const adminMenuButtons = document.querySelectorAll('#adminMenu button');
 const adminCards = document.querySelectorAll('#managementPanel .admin-card');
 
 adminMenuButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.onclick = () => {
         // Reset all buttons to btn-secondary
         adminMenuButtons.forEach(b => {
             b.classList.remove('btn-primary');
@@ -65,15 +67,18 @@ adminMenuButtons.forEach(btn => {
             card.style.display = 'none';
         });
 
+        const targetAttr = btn.getAttribute('data-target') || '';
+        sessionStorage.setItem('admin_active_tab', targetAttr);
+
         // Show target cards
-        const targetIds = btn.getAttribute('data-target').split(',');
+        const targetIds = targetAttr.split(',');
         targetIds.forEach(id => {
             const targetCard = document.getElementById(id.trim());
             if (targetCard) {
                 targetCard.style.display = 'block';
             }
         });
-    });
+    };
 });
 
 const sigunguMap = {
@@ -209,17 +214,36 @@ function updateMasterRealEstateSigunguDropdown() {
     if (!masterRealEstateSido || !masterRealEstateSigungu) return;
     const sido = masterRealEstateSido.value;
     if (sido === 'all') {
-        masterRealEstateSigungu.innerHTML = '<option value="all">전체 구</option>';
+        masterRealEstateSigungu.innerHTML = '<option value="all">전체 시/군</option>';
         masterRealEstateSigungu.value = 'all';
+        updateMasterRealEstateGuDropdown();
         return;
     }
     const sigungus = sigunguMap[sido] || ['전체'];
     masterRealEstateSigungu.innerHTML = sigungus.map(s => {
         const val = s === '전체' ? 'all' : s;
-        const text = s === '전체' ? '전체 구' : s;
+        const text = s === '전체' ? '전체 시/군' : s;
         return `<option value="${val}">${text}</option>`;
     }).join('');
     masterRealEstateSigungu.value = 'all';
+    updateMasterRealEstateGuDropdown();
+}
+
+function updateMasterRealEstateGuDropdown() {
+    if (!masterRealEstateGu) return;
+    const selectedSigungu = masterRealEstateSigungu ? masterRealEstateSigungu.value : 'all';
+    const subGus = SUB_DISTRICT_MAP[selectedSigungu];
+
+    if (subGus && subGus.length > 0) {
+        masterRealEstateGu.disabled = false;
+        masterRealEstateGu.innerHTML = '<option value="all">전체 구</option>' +
+            subGus.map(g => `<option value="${g}">${g}</option>`).join('');
+        masterRealEstateGu.value = 'all';
+    } else {
+        masterRealEstateGu.innerHTML = '<option value="all">전체 구</option>';
+        masterRealEstateGu.value = 'all';
+        masterRealEstateGu.disabled = true;
+    }
 }
 
 // Init View State
@@ -243,15 +267,16 @@ if (syncRealEstateSigungu) {
     });
 }
 if (masterRealEstateSido) {
-    masterRealEstateSido.addEventListener('change', updateMasterRealEstateSigunguDropdown);
+    masterRealEstateSido.addEventListener('change', () => {
+        updateMasterRealEstateSigunguDropdown();
+    });
     updateMasterRealEstateSigunguDropdown();
 }
-
-window.addEventListener('DOMContentLoaded', () => {
-    if (token) {
-        showPanel();
-    }
-});
+if (masterRealEstateSigungu) {
+    masterRealEstateSigungu.addEventListener('change', () => {
+        updateMasterRealEstateGuDropdown();
+    });
+}
 
 function getFormattedLogTime() {
     const d = new Date();
@@ -539,7 +564,6 @@ if (storedSearchInput) {
 }
 
 // Show Panel and Load Configurations
-let supabaseAdmin = null;
 function initSupabaseAdmin() {
     if (window.supabase) {
         const SUPABASE_URL = 'https://khwzgqnwlknawggugznd.supabase.co';
@@ -552,6 +576,18 @@ function showPanel() {
     if (loginCard) loginCard.style.display = 'none';
     if (managementPanel) managementPanel.style.display = 'block';
     if (btnLogout) btnLogout.style.display = 'inline-block';
+    
+    const container = document.querySelector('.admin-container');
+    if (container) container.classList.add('logged-in');
+
+    // Restore active tab if previously saved
+    const savedTabTarget = sessionStorage.getItem('admin_active_tab');
+    if (savedTabTarget) {
+        const targetBtn = Array.from(adminMenuButtons).find(b => b.getAttribute('data-target') === savedTabTarget);
+        if (targetBtn) {
+            targetBtn.click();
+        }
+    }
     
     // Initialize Supabase client
     initSupabaseAdmin();
@@ -626,10 +662,13 @@ function showPanel() {
 
 function logout() {
     localStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_active_tab');
     token = '';
     if (loginCard) loginCard.style.display = 'block';
     if (managementPanel) managementPanel.style.display = 'none';
     if (btnLogout) btnLogout.style.display = 'none';
+    const container = document.querySelector('.admin-container');
+    if (container) container.classList.remove('logged-in');
 }
 
 // Dynamic Kakao SDK loader for Admin Geocoder
@@ -1557,38 +1596,7 @@ window.deleteInquiryConfirm = function(id) {
 
 window.loadInquiries = loadInquiries;
 
-// Real Estate Sync Button Logic
-const btnRunRealEstateSync = document.getElementById('btnRunRealEstateSync');
-const realEstateSyncStatus = document.getElementById('realEstateSyncStatus');
 const btnRefreshRealEstateList = document.getElementById('btnRefreshRealEstateList');
-
-if (btnRunRealEstateSync) {
-    btnRunRealEstateSync.addEventListener('click', () => {
-        const sido = document.getElementById('syncRealEstateSido') ? document.getElementById('syncRealEstateSido').value : '';
-        const sigunguEl = document.getElementById('syncRealEstateSigungu');
-        const sigungu = sigunguEl ? sigunguEl.value : '';
-        const sigunguText = sigunguEl && sigungu !== 'all' ? sigunguEl.options[sigunguEl.selectedIndex].text : '';
-        
-        const typeEl = document.getElementById('syncRealEstateType');
-        const typeText = typeEl ? typeEl.options[typeEl.selectedIndex].text : '전체';
-
-        const regionText = (sigungu === 'all' || !sigunguText) ? sido : `${sido} ${sigunguText}`;
-        
-        showConfirm(`${regionText} 지역의 ${typeText} 실거래가 데이터를 공공 API에서 수집하시겠습니까?`, () => {
-            if (realEstateSyncStatus) {
-                realEstateSyncStatus.style.display = 'block';
-                realEstateSyncStatus.style.color = '#059669';
-                realEstateSyncStatus.innerText = '데이터를 수집하는 중입니다... (잠시만 기다려주세요)';
-                
-                // Simulate network request
-                setTimeout(() => {
-                    realEstateSyncStatus.innerText = `[성공] ${regionText} ${typeText} 실거래가 수집 및 DB 저장이 완료되었습니다.`;
-                    showAlert('주택 실거래가 데이터 수집이 성공적으로 완료되었습니다.');
-                }, 1500);
-            }
-        });
-    });
-}
 
 // --- Stored Real Estate Management Logic ---
 const storedRealEstateCount = document.getElementById('storedRealEstateCount');
@@ -1602,11 +1610,26 @@ const realEstateSearchInput = document.getElementById('realEstateSearchInput');
 
 let allStoredRealEstates = [];
 
+function isValidBjdong(dong) {
+    if (!dong || typeof dong !== 'string') return false;
+    // 2~5글자의 순수 한글 + 동/읍/면/리 (숫자, 특수문자 절대 불가)
+    if (!/^[가-힣]{2,5}(?:동|읍|면|리)$/.test(dong)) return false;
+    const invalidList = ['가동', '나동', '다동', '라동', '마동', '바동', '극동', '동호', '동구', '마을동'];
+    if (invalidList.includes(dong)) return false;
+    if (/(?:타운|빌리|하이츠|아파트|빌라|마을|전체|총괄|단지|상가)/.test(dong)) return false;
+    return true;
+}
+
 function extractDongName(item) {
-    if (item && item.dong) return item.dong;
+    if (item && item.dong && isValidBjdong(item.dong)) return item.dong;
     if (!item || !item.address) return '';
-    const match = item.address.match(/([가-힣0-9]+(?:동|읍|면|리))(?:\s|$)/);
-    return match ? match[1] : '';
+    // 1) 주소 괄호 안의 법정동: "(신원동)" 등
+    const parenMatch = item.address.match(/\(([가-힣]{2,5}(?:동|읍|면))(?:\)|,)/);
+    if (parenMatch && isValidBjdong(parenMatch[1])) return parenMatch[1];
+    // 2) 주소 내 법정동: "경기도 고양시 덕양구 신원동 580"
+    const match = item.address.match(/([가-힣]{2,5}(?:동|읍|면))(?:\s|$|[0-9])/);
+    if (match && isValidBjdong(match[1])) return match[1];
+    return '';
 }
 
 function getParentCity(name) {
@@ -1617,31 +1640,33 @@ function getParentCity(name) {
     return name;
 }
 
-function updateRealEstateSigunguDropdown() {
+function updateRealEstateSigunguDropdown(reset = false) {
     if (!realEstateRegionFilter || !realEstateSigunguFilter) return;
     const sido = realEstateRegionFilter.value;
-    const sigunguSet = new Set();
 
+    // 상위 카테고리(시/도)가 선택되지 않은 경우('all'), 시/군 드롭다운 비활성화 및 초기화
     if (sido === 'all') {
-        Object.keys(sigunguMap).forEach(sd => {
-            (sigunguMap[sd] || []).forEach(s => {
-                if (s !== '전체') sigunguSet.add(s);
-            });
-        });
-    } else {
-        const baseList = sigunguMap[sido] || [];
-        baseList.forEach(s => {
-            if (s !== '전체') {
-                sigunguSet.add(s);
-            }
-        });
-
-        allStoredRealEstates.forEach(item => {
-            if (item && (item.sido === sido || (item.address && item.address.includes(sido)))) {
-                if (item.sigungu) sigunguSet.add(getParentCity(item.sigungu));
-            }
-        });
+        realEstateSigunguFilter.innerHTML = '<option value="all">시/군 전체</option>';
+        realEstateSigunguFilter.value = 'all';
+        realEstateSigunguFilter.disabled = true;
+        return;
     }
+
+    // 시/도가 선택된 경우에만 시/군 드롭다운 활성화
+    realEstateSigunguFilter.disabled = false;
+    const sigunguSet = new Set();
+    const baseList = sigunguMap[sido] || [];
+    baseList.forEach(s => {
+        if (s !== '전체') {
+            sigunguSet.add(s);
+        }
+    });
+
+    allStoredRealEstates.forEach(item => {
+        if (item && (item.sido === sido || (item.address && item.address.includes(sido)))) {
+            if (item.sigungu) sigunguSet.add(getParentCity(item.sigungu));
+        }
+    });
 
     const allSubGus = new Set(Object.values(SUB_DISTRICT_MAP).flat());
     const sorted = Array.from(sigunguSet)
@@ -1652,29 +1677,27 @@ function updateRealEstateSigunguDropdown() {
     realEstateSigunguFilter.innerHTML = '<option value="all">시/군 전체</option>' +
         sorted.map(s => `<option value="${s}">${s}</option>`).join('');
 
-    if (sorted.includes(prevVal)) {
+    if (!reset && sorted.includes(prevVal)) {
         realEstateSigunguFilter.value = prevVal;
     } else {
         realEstateSigunguFilter.value = 'all';
     }
 }
 
-function updateRealEstateGuDropdown() {
+function updateRealEstateGuDropdown(reset = false) {
     if (!realEstateGuFilter) return;
     const selectedRegion = realEstateRegionFilter ? realEstateRegionFilter.value : 'all';
     const selectedSigungu = realEstateSigunguFilter ? realEstateSigunguFilter.value : 'all';
 
-    let subGus = [];
-    if (selectedSigungu !== 'all') {
-        subGus = SUB_DISTRICT_MAP[selectedSigungu] || [];
-    } else if (selectedRegion !== 'all') {
-        const regionSigungus = sigunguMap[selectedRegion] || [];
-        regionSigungus.forEach(s => {
-            if (SUB_DISTRICT_MAP[s]) {
-                subGus.push(...SUB_DISTRICT_MAP[s]);
-            }
-        });
+    // 상위 카테고리(시/도 또는 시/군)가 선택되지 않은 경우 구 드롭다운 비활성화 및 초기화
+    if (selectedRegion === 'all' || selectedSigungu === 'all') {
+        realEstateGuFilter.innerHTML = '<option value="all">구 전체</option>';
+        realEstateGuFilter.value = 'all';
+        realEstateGuFilter.disabled = true;
+        return;
     }
+
+    const subGus = SUB_DISTRICT_MAP[selectedSigungu] || [];
 
     if (subGus.length > 0) {
         const prevVal = realEstateGuFilter.value;
@@ -1682,12 +1705,13 @@ function updateRealEstateGuDropdown() {
         realEstateGuFilter.innerHTML = `<option value="all">구 전체 (${subGus.join('/')})</option>` +
             subGus.map(g => `<option value="${g}">${g}</option>`).join('');
 
-        if (subGus.includes(prevVal)) {
+        if (!reset && subGus.includes(prevVal)) {
             realEstateGuFilter.value = prevVal;
         } else {
             realEstateGuFilter.value = 'all';
         }
     } else {
+        // 하위 구가 없는 시/군인 경우 비활성화
         realEstateGuFilter.innerHTML = '<option value="all">구 전체</option>';
         realEstateGuFilter.value = 'all';
         realEstateGuFilter.disabled = true;
@@ -1717,20 +1741,40 @@ function isItemMatchingLocation(item, selectedRegion, selectedSigungu, selectedG
     return true;
 }
 
-function updateRealEstateDongDropdown() {
+function updateRealEstateDongDropdown(reset = false) {
     if (!realEstateDongFilter) return;
     const selectedRegion = realEstateRegionFilter ? realEstateRegionFilter.value : 'all';
     const selectedSigungu = realEstateSigunguFilter ? realEstateSigunguFilter.value : 'all';
     const selectedGu = realEstateGuFilter ? realEstateGuFilter.value : 'all';
 
+    // 상위 카테고리(시/도 또는 시/군)가 미선택 상태이면 동 드롭다운 비활성화 및 초기화
+    if (selectedRegion === 'all' || selectedSigungu === 'all') {
+        realEstateDongFilter.innerHTML = '<option value="all">읍/면/동 전체</option>';
+        realEstateDongFilter.value = 'all';
+        realEstateDongFilter.disabled = true;
+        return;
+    }
+
+    // 하위 구가 존재하는 복합시(고양시, 수원시 등)의 경우, 구까지 선택되어야만 동 활성화
+    const subGus = SUB_DISTRICT_MAP[selectedSigungu] || [];
+    if (subGus.length > 0 && selectedGu === 'all') {
+        realEstateDongFilter.innerHTML = '<option value="all">읍/면/동 전체</option>';
+        realEstateDongFilter.value = 'all';
+        realEstateDongFilter.disabled = true;
+        return;
+    }
+
+    // 상위 조건 충족 시 활성화
+    realEstateDongFilter.disabled = false;
+
     const items = allStoredRealEstates.filter(item => 
         isItemMatchingLocation(item, selectedRegion, selectedSigungu, selectedGu)
     );
 
-    const dongSet = new Set();
+        const dongSet = new Set();
     items.forEach(item => {
         const d = extractDongName(item);
-        if (d) dongSet.add(d);
+        if (d && isValidBjdong(d)) dongSet.add(d);
     });
 
     const dongs = Array.from(dongSet).sort((a, b) => a.localeCompare(b, 'ko'));
@@ -1738,7 +1782,7 @@ function updateRealEstateDongDropdown() {
     realEstateDongFilter.innerHTML = '<option value="all">읍/면/동 전체</option>' +
         dongs.map(d => `<option value="${d}">${d}</option>`).join('');
     
-    if (dongs.includes(prevVal)) {
+    if (!reset && dongs.includes(prevVal)) {
         realEstateDongFilter.value = prevVal;
     } else {
         realEstateDongFilter.value = 'all';
@@ -1780,9 +1824,10 @@ function getFilteredRealEstates() {
         isItemMatchingLocation(item, selectedRegion, selectedSigungu, selectedGu)
     );
 
-    // Filter by Dong (읍/면/동)
+        // Filter by Dong (읍/면/동)
     if (selectedDong !== 'all') {
         filtered = filtered.filter(item => {
+            if (item.dong && item.dong === selectedDong) return true;
             const d = extractDongName(item);
             if (d === selectedDong) return true;
             if (item.address && item.address.includes(selectedDong)) return true;
@@ -1795,13 +1840,24 @@ function getFilteredRealEstates() {
         filtered = filtered.filter(item => item.type === selectedType);
     }
 
-    // Filter by Search Query (name or address)
+    // Filter by Search Query (name or address, whitespace-tolerant)
     if (searchQuery !== '') {
-        filtered = filtered.filter(item => 
-            (item.name && item.name.toLowerCase().includes(searchQuery)) ||
-            (item.address && item.address.toLowerCase().includes(searchQuery))
-        );
+        const cleanQuery = searchQuery.toLowerCase().replace(/\s+/g, '');
+        filtered = filtered.filter(item => {
+            const nameClean = (item.name || '').toLowerCase().replace(/\s+/g, '');
+            const addrClean = (item.address || '').toLowerCase().replace(/\s+/g, '');
+            return nameClean.includes(cleanQuery) || addrClean.includes(cleanQuery);
+        });
     }
+
+        // Sort: 아파트(apt) > 연립/다세대(rh) > 오피스텔(offi) > 단독/다가구(sh) 순, 그 다음 이름순
+    const TYPE_SORT_ORDER = { apt: 1, rh: 2, offi: 3, sh: 4 };
+    filtered.sort((a, b) => {
+        const orderA = TYPE_SORT_ORDER[a.type] || 99;
+        const orderB = TYPE_SORT_ORDER[b.type] || 99;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.name || '').localeCompare(b.name || '', 'ko');
+    });
 
     return filtered;
 }
@@ -1819,6 +1875,12 @@ function renderStoredRealEstateList() {
 
     const html = filtered.map((item, index) => {
         const itemKey = item.id ? item.id : `${item.sido || ''}_${item.sigungu || ''}_${item.name || ''}`;
+        const latVal = item.lat || item.y;
+        const lngVal = item.lng || item.x;
+        const coordText = (latVal && lngVal && !isNaN(parseFloat(latVal)) && !isNaN(parseFloat(lngVal)))
+            ? `좌표: (${parseFloat(latVal).toFixed(5)}, ${parseFloat(lngVal).toFixed(5)})`
+            : '좌표: 미등록';
+
         return `
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.05); padding: 8px 4px;">
                 <div style="flex: 1; padding-right: 10px;">
@@ -1828,7 +1890,7 @@ function renderStoredRealEstateList() {
                         <span style="background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 6px; font-size: 10px;">${item.source || '마스터 DB'}</span>
                     </div>
                     <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 3px;">
-                        주소: ${item.address} | 전용면적: ${item.area || '-'}
+                        주소: ${item.address} | 전용면적: ${item.area || '-'} | ${coordText}
                     </div>
                 </div>
                 <div style="text-align: right; min-width: 140px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
@@ -1883,25 +1945,37 @@ async function saveStoredRealEstate(list) {
     renderStoredRealEstateList();
 }
 
-// Attach filter listeners
+// Attach filter listeners (상위 카테고리 선택 시 하위 카테고리 초기화)
 if (realEstateRegionFilter) {
     realEstateRegionFilter.addEventListener('change', () => {
-        updateRealEstateSigunguDropdown();
-        updateRealEstateGuDropdown();
-        updateRealEstateDongDropdown();
+        // 상위 카테고리(시/도) 변경 시 하위 카테고리(시/군, 구, 읍/면/동) 모두 초기화
+        if (realEstateSigunguFilter) realEstateSigunguFilter.value = 'all';
+        if (realEstateGuFilter) realEstateGuFilter.value = 'all';
+        if (realEstateDongFilter) realEstateDongFilter.value = 'all';
+
+        updateRealEstateSigunguDropdown(true);
+        updateRealEstateGuDropdown(true);
+        updateRealEstateDongDropdown(true);
         renderStoredRealEstateList();
     });
 }
 if (realEstateSigunguFilter) {
     realEstateSigunguFilter.addEventListener('change', () => {
-        updateRealEstateGuDropdown();
-        updateRealEstateDongDropdown();
+        // 상위 카테고리(시/군) 변경 시 하위 카테고리(구, 읍/면/동) 모두 초기화
+        if (realEstateGuFilter) realEstateGuFilter.value = 'all';
+        if (realEstateDongFilter) realEstateDongFilter.value = 'all';
+
+        updateRealEstateGuDropdown(true);
+        updateRealEstateDongDropdown(true);
         renderStoredRealEstateList();
     });
 }
 if (realEstateGuFilter) {
     realEstateGuFilter.addEventListener('change', () => {
-        updateRealEstateDongDropdown();
+        // 상위 카테고리(구) 변경 시 하위 카테고리(읍/면/동) 초기화
+        if (realEstateDongFilter) realEstateDongFilter.value = 'all';
+
+        updateRealEstateDongDropdown(true);
         renderStoredRealEstateList();
     });
 }
@@ -2082,7 +2156,12 @@ if (btnRunRealEstateMaster) {
         const sigungu = sigunguEl ? sigunguEl.value : '';
         const sigunguText = sigunguEl && sigungu !== 'all' ? sigunguEl.options[sigunguEl.selectedIndex].text : '';
 
-        const regionText = (sigungu === 'all' || !sigunguText) ? sido : `${sido} ${sigunguText}`;
+        const guEl = masterRealEstateGu;
+        const guVal = guEl ? guEl.value : 'all';
+        const guText = guEl && guVal !== 'all' ? guEl.options[guEl.selectedIndex].text : '';
+
+        const targetSigungu = guVal !== 'all' ? guText : (sigungu === 'all' ? 'all' : sigunguText);
+        const regionText = (targetSigungu === 'all' || !targetSigungu) ? sido : `${sido} ${targetSigungu}`;
 
         showConfirm(`${regionText} 지역의 전체 주택 마스터 정보를 공공 API 및 건축물 DB에서 일괄 다운로드하여 구축하시겠습니까?`, async () => {
             const container = document.getElementById('realEstateMasterProgressContainer');
@@ -2127,7 +2206,7 @@ if (btnRunRealEstateMaster) {
                 const res = await fetch('/api/realestate/collect-master', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sido, sigungu: sigungu === 'all' ? 'all' : sigunguText })
+                    body: JSON.stringify({ sido, sigungu: targetSigungu })
                 });
                 const data = await res.json();
 
@@ -2355,12 +2434,20 @@ function initAdminViolenceManagement() {
     }
 }
 
+function initAdminAuth() {
+    if (token) {
+        showPanel();
+    }
+}
+
 // Initial load on script execution if DOM ready
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initAdminAuth();
     loadStoredRealEstate();
     initAdminViolenceManagement();
 } else {
     window.addEventListener('DOMContentLoaded', () => {
+        initAdminAuth();
         loadStoredRealEstate();
         initAdminViolenceManagement();
     });

@@ -2,6 +2,7 @@
 <html lang="ko">
 
 <head>
+    <meta charset="UTF-8">
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-3GMJRV3CVX"></script>
     <script>
@@ -11,7 +12,6 @@
 
       gtag('config', 'G-3GMJRV3CVX');
     </script>
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>학업여지도 - 관리자 패널</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
@@ -23,6 +23,13 @@
             max-width: 600px;
             margin: 50px auto;
             padding: 20px;
+            transition: max-width 0.25s ease;
+        }
+
+        .admin-container.logged-in {
+            max-width: 1040px;
+            width: 95%;
+            margin: 30px auto;
         }
 
         .admin-header {
@@ -331,11 +338,11 @@
                 </div>
             </div>
 
-            <!-- Real Estate Master Data Collection Card -->
+            <!-- Real Estate Master Data Collection Card (Step 1) -->
             <div class="admin-card" id="realestateMasterCard" style="display: none;">
-                <h2 class="card-title">🏢 주택 기본 정보(마스터) 수집</h2>
+                <h2 class="card-title">🏢 [1단계] 주택 기본 정보(마스터) 수집</h2>
                 <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
-                    해당 지역의 전체 주택(아파트/단독/연립 등) 기본 정보를 건축물대장 및 단지 정보 API를 통해 조회하고 마스터 DB를 구축합니다. 실거래가 데이터와 매핑하기 위한 기초 작업입니다.
+                    <strong>1단계:</strong> 해당 지역의 전체 주택(아파트/단독/연립 등) 기본 정보를 건축물대장 및 단지 정보 API를 통해 조회하고 마스터 DB를 구축합니다. 먼저 아래 <strong>[주택 마스터 정보 일괄 다운로드 및 구축]</strong> 버튼을 실행해 주세요.
                 </p>
                 <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
                     <div style="flex: 1;">
@@ -361,8 +368,14 @@
                         </select>
                     </div>
                     <div style="flex: 1;">
-                        <label for="masterRealEstateSigungu">시/군/구</label>
+                        <label for="masterRealEstateSigungu">시/군</label>
                         <select id="masterRealEstateSigungu" class="form-control">
+                            <option value="all">전체 시/군</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="masterRealEstateGu">구 (세부구)</label>
+                        <select id="masterRealEstateGu" class="form-control">
                             <option value="all">전체 구</option>
                         </select>
                     </div>
@@ -383,11 +396,11 @@
                 </div>
             </div>
 
-            <!-- Real Estate Batch Sync Card -->
+            <!-- Real Estate Batch Sync Card (Step 2) -->
             <div class="admin-card" id="realestateSyncCard" style="display: none;">
-                <h2 class="card-title">🏢 주택 실거래가 공공 API 일괄 수집 동기화</h2>
+                <h2 class="card-title">🏢 [2단계] 주택 실거래가 공공 API 일괄 수집 동기화</h2>
                 <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
-                    국토교통부 공공데이터 API의 일일 트래픽 제한(API 429)을 방지하기 위해 최신 주택 실거래가를 서버 DB로 사전 수집합니다.
+                    <strong>2단계:</strong> 1단계에서 구축된 마스터 주택 정보를 기반으로 국토교통부 실거래가 공공 API를 호출하여 최신 실거래 금액을 일괄 매핑하고 DB를 갱신합니다. 아래 <strong>[주택 실거래가 일괄 다운로드 및 DB 갱신]</strong> 버튼을 실행해 주세요.
                 </p>
                 <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
                     <div style="flex: 1;">
@@ -490,13 +503,13 @@
                             <option value="경상남도">경상남도</option>
                             <option value="제주특별자치도">제주특별자치도</option>
                         </select>
-                        <select class="form-control" id="realEstateSigunguFilter" style="flex: 1; min-width: 95px; padding: 6px 8px; font-size: 12px; height: auto;">
+                        <select class="form-control" id="realEstateSigunguFilter" style="flex: 1; min-width: 95px; padding: 6px 8px; font-size: 12px; height: auto;" disabled>
                             <option value="all">시/군 전체</option>
                         </select>
-                        <select class="form-control" id="realEstateGuFilter" style="flex: 1; min-width: 95px; padding: 6px 8px; font-size: 12px; height: auto;">
+                        <select class="form-control" id="realEstateGuFilter" style="flex: 1; min-width: 95px; padding: 6px 8px; font-size: 12px; height: auto;" disabled>
                             <option value="all">구 전체</option>
                         </select>
-                        <select class="form-control" id="realEstateDongFilter" style="flex: 1; min-width: 95px; padding: 6px 8px; font-size: 12px; height: auto;">
+                        <select class="form-control" id="realEstateDongFilter" style="flex: 1; min-width: 95px; padding: 6px 8px; font-size: 12px; height: auto;" disabled>
                             <option value="all">읍/면/동 전체</option>
                         </select>
                         <select class="form-control" id="realEstateTypeFilter" style="flex: 1; min-width: 110px; padding: 6px 10px; font-size: 12px; height: auto;">
@@ -706,7 +719,7 @@
     </div>
 
     <!-- Include Kakao SDK dynamically later in script if needed for Admin geocoding -->
-    <script type="module" src="admin.js"></script>
+    <script type="module" src="admin.js" charset="UTF-8"></script>
 </body>
 
 </html>

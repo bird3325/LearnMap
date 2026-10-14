@@ -6851,9 +6851,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 containerEl.style.cssText = 'position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; z-index: 1000;';
 
                 // 점(Dot) 형태 마커 엘리먼트
+                // 클린 서클 배지 학원 마커: 퍼플 #7C3AED (학사모 심볼)
                 const dotEl = document.createElement('div');
-                dotEl.className = 'academy-dot-marker';
-                dotEl.style.cssText = 'width: 12px; height: 12px; background: #2563eb; border: 2px solid #ffffff; border-radius: 50%; box-shadow: 0 2px 6px rgba(37,99,235,0.4); transition: transform 0.15s ease, background-color 0.15s ease;';
+                dotEl.className = 'academy-dot-marker academy-badge-marker';
+                dotEl.style.cssText = 'display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: #7C3AED; color: #ffffff; border: 2px solid #ffffff; border-radius: 50%; box-shadow: 0 2px 7px rgba(124,58,237,0.35); transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); flex-shrink: 0;';
+                dotEl.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="#ffffff" style="display:block;"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg>';
 
                 // 마우스 오버 시 노출되는 플로팅 학원명 라벨 엘리먼트
                 const floatingLabelEl = document.createElement('div');
@@ -6866,8 +6868,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Hover 애니메이션 & 플로팅 라벨 토글
                 containerEl.addEventListener('mouseenter', () => {
-                    dotEl.style.transform = 'scale(1.4)';
-                    dotEl.style.background = '#1d4ed8';
+                    dotEl.style.transform = 'scale(1.15)';
                     floatingLabelEl.style.opacity = '1';
                     floatingLabelEl.style.visibility = 'visible';
                     if (overlay && typeof overlay.setZIndex === 'function') {
@@ -6877,8 +6878,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 containerEl.addEventListener('mouseleave', () => {
-                    dotEl.style.transform = 'scale(1)';
-                    dotEl.style.background = '#2563eb';
+                    dotEl.style.transform = 'scale(1.0)';
                     floatingLabelEl.style.opacity = '0';
                     floatingLabelEl.style.visibility = 'hidden';
                     if (overlay && typeof overlay.setZIndex === 'function') {
@@ -7045,37 +7045,92 @@ document.addEventListener('DOMContentLoaded', () => {
                             const dist = Math.sqrt(dx * dx + dy * dy);
                             if (dist > (radius ? radius * 2.5 : 3000)) return;
 
+                            // 학원과 주택의 위치가 겹치는 경우, 주소 위치(좌표)는 100% 정확하게 유지하고
+                            // 화면상에서 학원 바로 옆에 1/3 노출(살짝 걸쳐진 배지)되도록 픽셀 오프셋 처리
+                            const currentAcadList = (window.activeAcademyPositions && window.activeAcademyPositions.length > 0)
+                                ? window.activeAcademyPositions
+                                : (window.allFetchedAcademies || []);
+
+                            let isNearAcademy = false;
+                            for (let i = 0; i < currentAcadList.length; i++) {
+                                const acad = currentAcadList[i];
+                                const aLat = parseFloat(acad.lat || acad.y);
+                                const aLng = parseFloat(acad.lng || acad.x);
+                                if (isNaN(aLat) || isNaN(aLng)) continue;
+
+                                const aDy = (lat - aLat) * 111000;
+                                const aDx = (lng - aLng) * 88800 * Math.cos(lat * (Math.PI / 180));
+                                if (Math.sqrt(aDx * aDx + aDy * aDy) < 18) {
+                                    isNearAcademy = true;
+                                    break;
+                                }
+                            }
+
+                            // 동일 좌표 주택 중복 카운트 (같은 건물 내 다수 주택도 1/3씩 스택 노출)
+                            if (!window.activeRealEstatePositions) {
+                                window.activeRealEstatePositions = [];
+                            }
+                            let sameCoordHousingCount = 0;
+                            window.activeRealEstatePositions.forEach(pPos => {
+                                const hDy = (lat - pPos.lat) * 111000;
+                                const hDx = (lng - pPos.lng) * 88800 * Math.cos(lat * (Math.PI / 180));
+                                if (Math.sqrt(hDx * hDx + hDy * hDy) < 8) {
+                                    sameCoordHousingCount++;
+                                }
+                            });
+                            window.activeRealEstatePositions.push({ lat, lng });
+
                             const pos = new kakao.maps.LatLng(lat, lng);
                             const propName = place.name || '부동산';
                             const priceStr = place.short_price || place.price_display || '';
                             const typeName = place.type_name || '주택';
 
-                            let iconSymbol = '🏢';
-                            let badgeBg = '#059669'; // 아파트: 초록색
+                            // 학업여지도 주택·학원 지도 마커 아이콘 시스템 (클린 서클 배지)
+                            // 1. 아파트: 블루 #2563EB (고층 단지 격자 창문 심볼)
+                            let badgeBg = '#2563EB';
+                            let iconSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="#ffffff" style="display:block;"><path d="M19 2H5a2 2 0 0 0-2 2v17a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V4a2 2 0 0 0-2-2zm-8 16H7v-2.5h4V18zm0-4.5H7V11h4v2.5zm0-4.5H7V6.5h4V9zm6 9h-4v-2.5h4V18zm0-4.5h-4V11h4v2.5zm0-4.5h-4V6.5h4V9z"/></svg>';
+
                             if (place.type === 'rh') {
-                                iconSymbol = '🏘️';
-                                badgeBg = '#7c3aed'; // 연립·다세대: 보라색
+                                // 3. 연립 / 다세대: 오렌지 #EA580C (빌라·다세대 심볼)
+                                badgeBg = '#EA580C';
+                                iconSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="#ffffff" style="display:block;"><path d="M12 2.5L2 9.5v1.5h2v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V11h2V9.5L12 2.5zm-2 16.5H6.5v-3H10v3zm0-5H6.5v-3H10v3zm7.5 5H14v-3h3.5v3zm0-5H14v-3h3.5v3z"/></svg>';
                             } else if (place.type === 'sh') {
-                                iconSymbol = '🏠';
-                                badgeBg = '#d97706'; // 단독·다가구: 오렌지색
+                                // 4. 단독 / 다가구: 에메랄드 #059669 (단독 전원주택 심볼)
+                                badgeBg = '#059669';
+                                iconSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="#ffffff" style="display:block;"><path d="M19 9.3V4h-3v2.7L12 2.5 2 11.5h3V21a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V11.5h3L19 9.3zM10 18H7v-4h3v4zm7 0h-4v-5h4v5z"/></svg>';
                             } else if (place.type === 'offi') {
-                                iconSymbol = '🏙️';
-                                badgeBg = '#2563eb'; // 오피스텔: 파란색
+                                // 2. 오피스텔: 스카이 #0284C7 (트윈 복합빌딩 심볼)
+                                badgeBg = '#0284C7';
+                                iconSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="#ffffff" style="display:block;"><path d="M11 2H3a1 1 0 0 0-1 1v18a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1zm-2 15H5v-2h4v2zm0-4H5v-2h4v2zm0-4H5V7h4v2zm0-4H5V3.5h4V5zm12 4h-7v12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V10a1 1 0 0 0-1-1zm-1 10h-4v-2h4v2zm0-3.5h-4v-2h4v2zm0-3.5h-4v-2h4v2z"/></svg>';
                             }
 
                             const containerEl = document.createElement('div');
                             containerEl.className = 'realestate-marker-container';
-                            containerEl.style.cssText = 'position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 950;';
+                            // 학원과 겹치거나 동일 주소 주택이 있을 경우, 주소 위치와 동떨어지지 않도록 바로 옆에 1/3(12px) 걸쳐서 노출
+                            let shiftX = 0;
+                            let shiftY = 0;
+                            if (isNearAcademy) {
+                                shiftX += 12; // 바로 옆 1/3 노출
+                                shiftY -= 6;
+                            }
+                            if (sameCoordHousingCount > 0) {
+                                shiftX += (sameCoordHousingCount * 8);
+                                shiftY += (sameCoordHousingCount * 4);
+                            }
+                            const shiftStyle = (shiftX !== 0 || shiftY !== 0) ? ` margin-left: ${shiftX}px; margin-top: ${shiftY}px;` : '';
+                            containerEl.style.cssText = 'position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; z-index: 950;' + shiftStyle;
 
+                            // 클린 서클 배지 마커 (24px 원형 배지 시스템)
                             const badgeEl = document.createElement('div');
                             badgeEl.className = 'realestate-badge-marker';
-                            badgeEl.style.cssText = `display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: ${badgeBg}; color: #ffffff; border: 2px solid #ffffff; border-radius: 50%; font-size: 16px; box-shadow: 0 3px 10px rgba(0,0,0,0.3); transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);`;
-                            badgeEl.innerHTML = `<span>${iconSymbol}</span>`;
+                            badgeEl.style.cssText = `display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: ${badgeBg}; color: #ffffff; border: 2px solid #ffffff; border-radius: 50%; box-shadow: 0 2px 7px rgba(0,0,0,0.3); transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); flex-shrink: 0;`;
+                            badgeEl.innerHTML = iconSvg;
 
+                            // 플로팅 라벨: 가격/면적 없이 단지명과 주택 유형만 노출
                             const floatingLabelEl = document.createElement('div');
                             floatingLabelEl.className = 'realestate-floating-label';
-                            floatingLabelEl.style.cssText = 'position: absolute; bottom: 38px; left: 50%; transform: translateX(-50%); background: #0f172a; color: #ffffff; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.2); pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.15s ease, visibility 0.15s ease; z-index: 10000;';
-                            floatingLabelEl.innerHTML = `<div><strong>${propName}</strong> <span style="color:#94a3b8; font-size:11px;">(${typeName})</span></div><div style="font-size:11px; color:#38bdf8; margin-top:2px;">최신 실거래가: ${place.price_display} (${place.deal_date})</div>`;
+                            floatingLabelEl.style.cssText = 'position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: #0f172a; color: #ffffff; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.2); pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.15s ease, visibility 0.15s ease; z-index: 10000;';
+                            floatingLabelEl.innerHTML = `<div><strong>${propName}</strong> <span style="color:#94a3b8; font-size:11px; font-weight:normal;">(${typeName})</span></div>`;
 
                             containerEl.appendChild(badgeEl);
                             containerEl.appendChild(floatingLabelEl);

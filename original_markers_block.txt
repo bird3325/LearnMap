@@ -1,0 +1,356 @@
+function updateAcademyMapMarkers(academiesList) {
+            const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
+            if (!mapObj || !window.kakao || !window.kakao.maps) return;
+
+            // 기존 학원 마커들 제거
+            if (Array.isArray(window.academyMapOverlays)) {
+                window.academyMapOverlays.forEach(ov => ov && ov.setMap(null));
+            }
+            window.academyMapOverlays = [];
+
+            // 기존 학원 반경원 제거
+            if (window.academyRadiusCircle) {
+                window.academyRadiusCircle.setMap(null);
+                window.academyRadiusCircle = null;
+            }
+
+            // 필터: '지도상 학원 노출' 체크박스 확인 (기본값 checked)
+            const chkShow = document.getElementById('showAcademyMapCheckbox');
+            if (chkShow && !chkShow.checked) return;
+
+            // 선택된 학교가 있는 경우 해당 학교 위치를 중심으로 학원 노출 반경 범위 원(Circle) 표시
+            const schoolObj = fullSchool || (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) || window.currentSelectedSchool || null;
+            let sLat = schoolObj && (schoolObj.lat || schoolObj.y || schoolObj.latitude) ? parseFloat(schoolObj.lat || schoolObj.y || schoolObj.latitude) : null;
+            let sLng = schoolObj && (schoolObj.lng || schoolObj.x || schoolObj.longitude) ? parseFloat(schoolObj.lng || schoolObj.x || schoolObj.longitude) : null;
+
+            const activeRadBtn = document.querySelector('#academyRadiusButtonGroup .academy-radius-btn.active');
+            const btnRadius = activeRadBtn ? parseInt(activeRadBtn.getAttribute('data-radius'), 10) : 0;
+            const radiusInput = document.getElementById('academyMapRadiusFilter');
+            const targetRadiusMeters = btnRadius || currentAcademyRadius || (radiusInput ? (parseFloat(radiusInput.value) || 1000) : 1000);
+
+            if (sLat && sLng && !isNaN(sLat) && !isNaN(sLng)) {
+                const schoolCenterPos = new kakao.maps.LatLng(sLat, sLng);
+
+                window.academyRadiusCircle = new kakao.maps.Circle({
+                    center: schoolCenterPos,
+                    radius: targetRadiusMeters,
+                    strokeWeight: 2,
+                    strokeColor: '#2563eb',
+                    strokeOpacity: 0.8,
+                    strokeStyle: 'dashed',
+                    fillColor: '#3b82f6',
+                    fillOpacity: 0.12
+                });
+                window.academyRadiusCircle.setMap(mapObj);
+            }
+
+            if (!Array.isArray(academiesList)) return;
+
+            academiesList.forEach(place => {
+                const lng = parseFloat(place.x);
+                const lat = parseFloat(place.y);
+                if (isNaN(lng) || isNaN(lat)) return;
+
+                // 선택된 학교가 있을 경우 설정 반경 범위 내에 있는지 정확히 거리 계산하여 필터링
+                if (sLat && sLng && !isNaN(sLat) && !isNaN(sLng)) {
+                    const distFromSchool = place._computedDistance || calculateAcademyDistance(sLat, sLng, lat, lng, place.distance);
+                    if (distFromSchool > targetRadiusMeters) return; // 반경 범위를 벗어난 학원은 마커 생성 스킵
+                }
+
+                const pos = new kakao.maps.LatLng(lat, lng);
+                const acadName = place.place_name || '학원';
+                const safeName = acadName.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+                // 메인 오버레이 랩핑 DOM (clickable)
+                const containerEl = document.createElement('div');
+                containerEl.className = 'academy-dot-container';
+                containerEl.style.cssText = 'position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; z-index: 1000;';
+
+                // 점(Dot) 형태 마커 엘리먼트
+                const dotEl = document.createElement('div');
+                dotEl.className = 'academy-dot-marker';
+                dotEl.style.cssText = 'width: 12px; height: 12px; background: #2563eb; border: 2px solid #ffffff; border-radius: 50%; box-shadow: 0 2px 6px rgba(37,99,235,0.4); transition: transform 0.15s ease, background-color 0.15s ease;';
+
+                // 마우스 오버 시 노출되는 플로팅 학원명 라벨 엘리먼트
+                const floatingLabelEl = document.createElement('div');
+                floatingLabelEl.className = 'academy-floating-label';
+                floatingLabelEl.style.cssText = 'position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #ffffff; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.15s ease, visibility 0.15s ease; z-index: 10000;';
+                floatingLabelEl.innerHTML = `🎓 ${safeName}`;
+
+                containerEl.appendChild(dotEl);
+                containerEl.appendChild(floatingLabelEl);
+
+                // Hover 애니메이션 & 플로팅 라벨 토글
+                containerEl.addEventListener('mouseenter', () => {
+                    dotEl.style.transform = 'scale(1.4)';
+                    dotEl.style.background = '#1d4ed8';
+                    floatingLabelEl.style.opacity = '1';
+                    floatingLabelEl.style.visibility = 'visible';
+                    if (overlay && typeof overlay.setZIndex === 'function') {
+                        overlay.setZIndex(99999);
+                    }
+                    containerEl.style.zIndex = '99999';
+                });
+
+                containerEl.addEventListener('mouseleave', () => {
+                    dotEl.style.transform = 'scale(1)';
+                    dotEl.style.background = '#2563eb';
+                    floatingLabelEl.style.opacity = '0';
+                    floatingLabelEl.style.visibility = 'hidden';
+                    if (overlay && typeof overlay.setZIndex === 'function') {
+                        overlay.setZIndex(1000);
+                    }
+                    containerEl.style.zIndex = '1000';
+                });
+
+                // 점 클릭 시 학원리스트 사이드바 이동 및 학원 상세 정보 팝업 오픈
+                containerEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+
+                    const academySidebar = document.getElementById('academySidebar');
+                    const isAlreadyOpen = academySidebar && (
+                        academySidebar.style.display === 'flex' ||
+                        window.getComputedStyle(academySidebar).display !== 'none'
+                    );
+
+                    // 학원 패널/사이드바가 닫혀 있는 경우 강제로 열어줍니다.
+                    if (typeof window.toggleAcademySidebar === 'function') {
+                        window.toggleAcademySidebar(true);
+                    } else {
+                        if (academySidebar) academySidebar.style.display = 'flex';
+                        const container = document.querySelector('.app-container');
+                        if (container) container.classList.add('academy-open');
+                    }
+
+                    // 학원 카드가 생성된 DOM을 찾아 스크롤 및 포커스
+                    const foundCard = Array.from(document.querySelectorAll('#sideAcademyList .academy-card, .academy-card')).find(card => {
+                        return card.innerText.includes(acadName);
+                    });
+
+                    if (foundCard) {
+                        foundCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        foundCard.click();
+                    } else {
+                        // 카드 검색 미매칭 시 직접 커뮤니티 후기, 수강료 계산기 & 타운톡 상세 팝업 오픈
+                        window.currentAcademyForCommunity = acadName;
+                        let categorySubject = '';
+                        if (place.category_name) {
+                            const parts = place.category_name.split('>').map(s => s.trim());
+                            categorySubject = parts.length > 1 ? parts[parts.length - 1] : parts[0];
+                        }
+                        let shortSubject = categorySubject.replace('학원', '').replace('교습소', '').replace('전문', '').trim();
+                        if (!shortSubject) shortSubject = categorySubject || '학원';
+
+                        const tLabel = acadName.includes('교습소') ? '교습소' : '학원';
+                        if (typeof window.fetchCommunityReviews === 'function') {
+                            window.fetchCommunityReviews(acadName, 'all', shortSubject, tLabel);
+                        }
+                        window.currentAcademyCoords = { lng: place.x, lat: place.y };
+                        if (typeof window.renderAcademyFeeCalculator === 'function') {
+                            window.renderAcademyFeeCalculator(
+                                acadName, 
+                                shortSubject, 
+                                place.road_address_name || place.address_name || '', 
+                                place.phone || '', 
+                                tLabel, 
+                                place.x, 
+                                place.y
+                            );
+                        }
+                        if (typeof window.fetchTownTalkList === 'function') {
+                            window.fetchTownTalkList(acadName, 'academyTownTalkList');
+                        }
+                    }
+
+                    // 학원 목록 사이드바가 열려있지 않았던 경우에만 지도 중심 및 시점 이동
+                    if (!isAlreadyOpen) {
+                        if (typeof window.centerAcademyPinWithSidebarOffset === 'function') {
+                            window.centerAcademyPinWithSidebarOffset(place.x, place.y, acadName);
+                        } else if (mapObj && typeof mapObj.panTo === 'function') {
+                            mapObj.panTo(pos);
+                        }
+                    }
+                });
+
+                const overlay = new kakao.maps.CustomOverlay({
+                    map: mapObj,
+                    position: pos,
+                    content: containerEl,
+                    xAnchor: 0.5,
+                    yAnchor: 0.5,
+                    zIndex: 1000,
+                    clickable: true
+                });
+
+                window.academyMapOverlays.push(overlay);
+            });
+        }
+        window.updateAcademyMapMarkers = updateAcademyMapMarkers;
+
+        // 지도 상의 아파트, 연립·다세대, 단독·다가구, 오피스텔 부동산 실거래가 핀(Overlay) 렌더링 헬퍼
+        window.realEstateMapOverlays = window.realEstateMapOverlays || [];
+        window.realEstateReqSeq = 0;
+
+        function clearRealEstateMapMarkers() {
+            if (Array.isArray(window.realEstateMapOverlays)) {
+                window.realEstateMapOverlays.forEach(ov => {
+                    if (ov && typeof ov.setMap === 'function') {
+                        ov.setMap(null);
+                    }
+                });
+            }
+            window.realEstateMapOverlays = [];
+        }
+        window.clearRealEstateMapMarkers = clearRealEstateMapMarkers;
+
+        async function updateRealEstateMapMarkers(radius = 1000) {
+            // 항상 기존 부동산 마커 즉시 클리어
+            clearRealEstateMapMarkers();
+
+            const reqSeq = ++window.realEstateReqSeq;
+            const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
+            if (!mapObj || !window.kakao || !window.kakao.maps) return;
+
+            // 부동산 토글 스위치 확인 (체크 해제 시 마커 제거 후 즉시 리턴)
+            const showCheck = document.getElementById('showRealEstateMapCheckbox');
+            if (showCheck && !showCheck.checked) {
+                return;
+            }
+
+            // 선택된 주택 유형 필터 (all, apt, rh, sh, offi)
+            const typeFilterEl = document.getElementById('realEstateTypeFilter');
+            const selectedType = typeFilterEl ? (typeFilterEl.value || 'all') : 'all';
+
+            let schoolObj = (typeof fullSchool !== 'undefined' ? fullSchool : null) || window.selectedTargetSchool || (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) || window.currentSelectedSchool || null;
+            let sLat = schoolObj && (schoolObj.lat || schoolObj.y || schoolObj.latitude) ? parseFloat(schoolObj.lat || schoolObj.y || schoolObj.latitude) : null;
+            let sLng = schoolObj && (schoolObj.lng || schoolObj.x || schoolObj.longitude) ? parseFloat(schoolObj.lng || schoolObj.x || schoolObj.longitude) : null;
+
+            if ((!sLat || !sLng) && mapObj && typeof mapObj.getCenter === 'function') {
+                const center = mapObj.getCenter();
+                if (center) {
+                    sLat = center.getLat();
+                    sLng = center.getLng();
+                }
+            }
+
+            if (!sLat || !sLng) return;
+
+            if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+                const geocoder = new window.kakao.maps.services.Geocoder();
+                const fetchAndRenderPins = async (lawdCd) => {
+                    try {
+                        const res = await fetch(`/api/realestate/pins?lawd_cd=${lawdCd}&x=${sLng}&y=${sLat}&radius=${radius}&type=${selectedType}`);
+                        if (reqSeq !== window.realEstateReqSeq) return;
+                        if (!res.ok) return;
+
+                        const data = await res.json();
+                        if (reqSeq !== window.realEstateReqSeq) return;
+                        if (!data.items || !Array.isArray(data.items)) return;
+
+                        clearRealEstateMapMarkers();
+
+                        data.items.forEach(place => {
+                            if (reqSeq !== window.realEstateReqSeq) return;
+                            const lng = parseFloat(place.x);
+                            const lat = parseFloat(place.y);
+                            if (isNaN(lng) || isNaN(lat)) return;
+
+                            // 선택된 학교/중심 좌표로부터의 실제 거리 계산 (설정 반경을 벗어난 핀 제외)
+                            const dy = (lat - sLat) * 111000;
+                            const dx = (lng - sLng) * 88800 * Math.cos(sLat * (Math.PI / 180));
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist > (radius ? radius * 2.5 : 3000)) return;
+
+                            const pos = new kakao.maps.LatLng(lat, lng);
+                            const propName = place.name || '부동산';
+                            const priceStr = place.short_price || place.price_display || '';
+                            const typeName = place.type_name || '주택';
+
+                            let iconSymbol = '🏢';
+                            let badgeBg = '#059669'; // 아파트: 초록색
+                            if (place.type === 'rh') {
+                                iconSymbol = '🏘️';
+                                badgeBg = '#7c3aed'; // 연립·다세대: 보라색
+                            } else if (place.type === 'sh') {
+                                iconSymbol = '🏠';
+                                badgeBg = '#d97706'; // 단독·다가구: 오렌지색
+                            } else if (place.type === 'offi') {
+                                iconSymbol = '🏙️';
+                                badgeBg = '#2563eb'; // 오피스텔: 파란색
+                            }
+
+                            const containerEl = document.createElement('div');
+                            containerEl.className = 'realestate-marker-container';
+                            containerEl.style.cssText = 'position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 950;';
+
+                            const badgeEl = document.createElement('div');
+                            badgeEl.className = 'realestate-badge-marker';
+                            badgeEl.style.cssText = `display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: ${badgeBg}; color: #ffffff; border: 2px solid #ffffff; border-radius: 50%; font-size: 16px; box-shadow: 0 3px 10px rgba(0,0,0,0.3); transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);`;
+                            badgeEl.innerHTML = `<span>${iconSymbol}</span>`;
+
+                            const floatingLabelEl = document.createElement('div');
+                            floatingLabelEl.className = 'realestate-floating-label';
+                            floatingLabelEl.style.cssText = 'position: absolute; bottom: 38px; left: 50%; transform: translateX(-50%); background: #0f172a; color: #ffffff; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.2); pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.15s ease, visibility 0.15s ease; z-index: 10000;';
+                            floatingLabelEl.innerHTML = `<div><strong>${propName}</strong> <span style="color:#94a3b8; font-size:11px;">(${typeName})</span></div><div style="font-size:11px; color:#38bdf8; margin-top:2px;">최신 실거래가: ${place.price_display} (${place.deal_date})</div>`;
+
+                            containerEl.appendChild(badgeEl);
+                            containerEl.appendChild(floatingLabelEl);
+
+                            containerEl.addEventListener('mouseenter', () => {
+                                badgeEl.style.transform = 'scale(1.15)';
+                                floatingLabelEl.style.opacity = '1';
+                                floatingLabelEl.style.visibility = 'visible';
+                                containerEl.style.zIndex = '999999';
+                                if (overlay && typeof overlay.setZIndex === 'function') {
+                                    overlay.setZIndex(999999);
+                                }
+                            });
+
+                            containerEl.addEventListener('mouseleave', () => {
+                                badgeEl.style.transform = 'scale(1)';
+                                floatingLabelEl.style.opacity = '0';
+                                floatingLabelEl.style.visibility = 'hidden';
+                                containerEl.style.zIndex = '950';
+                                if (overlay && typeof overlay.setZIndex === 'function') {
+                                    overlay.setZIndex(950);
+                                }
+                            });
+
+                            containerEl.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                alert(`🏢 ${propName} (${typeName})\n📍 위치: ${place.address || '주소 정보 없음'}\n💰 최근 실거래가: ${place.price_display}\n🗓️ 거래년월: ${place.deal_date}`);
+                            });
+
+                            const overlay = new kakao.maps.CustomOverlay({
+                                map: mapObj,
+                                position: pos,
+                                content: containerEl,
+                                xAnchor: 0.5,
+                                yAnchor: 0.5,
+                                zIndex: 950,
+                                clickable: true
+                            });
+
+                            window.realEstateMapOverlays.push(overlay);
+                        });
+                    } catch (err) {
+                        console.warn('Real estate map markers fetch error:', err);
+                    }
+                };
+
+                geocoder.coord2RegionCode(sLng, sLat, (result, status) => {
+                    if (reqSeq !== window.realEstateReqSeq) return;
+                    let lawdCd = '';
+                    if (status === window.kakao.maps.services.Status.OK && Array.isArray(result)) {
+                        const bcode = result.find(r => r.region_type === 'B') || result[0];
+                        if (bcode && bcode.code) {
+                            lawdCd = bcode.code.substring(0, 5);
+                        }
+                    }
+                    if (lawdCd) {
+                        fetchAndRenderPins(lawdCd);
+                    }
+                });
+            }
+        }
+        window.updateRealEstateMapMarkers = updateRealEstateMapMarkers;
