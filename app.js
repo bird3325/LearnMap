@@ -6505,49 +6505,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 학원 클릭 시 후기 모달 & 계산기 & 타운톡 연동
             card.onclick = () => {
-                window.currentAcademyForCommunity = acadName;
-                document.querySelectorAll('.community-filter-btn').forEach(btn => {
-                    btn.style.background = 'white';
-                    btn.style.color = 'var(--text-muted)';
-                    btn.style.borderColor = 'var(--border-color)';
-                });
-                const allBtn = document.querySelector('.community-filter-btn[data-type="all"]');
-                if (allBtn) {
-                    allBtn.style.background = 'var(--primary-blue)';
-                    allBtn.style.color = 'white';
-                    allBtn.style.borderColor = 'var(--primary-blue)';
-                }
-                window.fetchCommunityReviews(acadName, 'all', shortSubject, typeLabel);
-
-                const tabRev = document.getElementById('tabAcademyReviews');
-                const tabCalc = document.getElementById('tabAcademyCalculator');
-                const secRev = document.getElementById('sectionAcademyReviews');
-                const secCalc = document.getElementById('sectionAcademyCalculator');
-                if (tabRev && tabCalc && secRev && secCalc) {
-                    tabRev.style.background = '#ffffff';
-                    tabRev.style.color = 'var(--primary-blue)';
-                    tabRev.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
-                    tabCalc.style.background = 'transparent';
-                    tabCalc.style.color = 'var(--text-muted)';
-                    tabCalc.style.boxShadow = 'none';
-                    secRev.style.display = 'block';
-                    secCalc.style.display = 'none';
-                }
-
-                window.currentAcademyCoords = { lng: place.x, lat: place.y };
-                if (typeof window.renderAcademyFeeCalculator === 'function') {
-                    window.renderAcademyFeeCalculator(acadName, shortSubject, place.road_address_name || place.address_name, place.phone, typeLabel, place.x, place.y);
-                }
-                if (typeof window.fetchTownTalkList === 'function') {
-                    window.fetchTownTalkList(acadName, 'academyTownTalkList');
-                    const btnSendAcademyTalk = document.getElementById('btnSendAcademyTalk');
-                    if (btnSendAcademyTalk) {
-                        const newBtn = btnSendAcademyTalk.cloneNode(true);
-                        btnSendAcademyTalk.parentNode.replaceChild(newBtn, btnSendAcademyTalk);
-                        newBtn.addEventListener('click', () => {
-                            window.sendTownTalk(acadName, 'txtAcademyTalkNick', 'txtAcademyTalkContent', 'academyTownTalkList');
-                        });
-                    }
+                if (typeof window.openAcademyDetailModal === 'function') {
+                    window.openAcademyDetailModal(place);
                 }
             };
 
@@ -6814,9 +6773,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 지도 상 주변 학원 마커(점 형태 & 마우스 오버 플로팅 라벨 & 클릭 시 상세) 업데이트
         window.academyMapOverlays = window.academyMapOverlays || [];
+        if (!window._academyClusterPopupDocListenerAttached) {
+            window._academyClusterPopupDocListenerAttached = true;
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.academy-cluster-popup') && !e.target.closest('.academy-dot-container')) {
+                    if (typeof window.closeActiveAcademyClusterPopup === 'function') {
+                        window.closeActiveAcademyClusterPopup();
+                    }
+                }
+            });
+        }
+
         function updateAcademyMapMarkers(academiesList) {
             const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
             if (!mapObj || !window.kakao || !window.kakao.maps) return;
+
+            if (typeof window.closeActiveAcademyClusterPopup === 'function') {
+                window.closeActiveAcademyClusterPopup();
+            }
 
             // 기존 학원 마커들 제거
             if (Array.isArray(window.academyMapOverlays)) {
@@ -6923,6 +6897,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dotEl = document.createElement('div');
                 dotEl.className = 'academy-dot-marker academy-badge-marker';
 
+                let clusterPopupEl = null;
+                let isClusterPopupOpen = false;
+
                 const floatingLabelEl = document.createElement('div');
                 floatingLabelEl.className = 'academy-floating-label';
                 floatingLabelEl.style.cssText = 'position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #ffffff; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.18); pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.15s ease, visibility 0.15s ease; z-index: 10000; text-align: left;';
@@ -6940,95 +6917,209 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 겹치는 복수 학원: 세련된 퍼플 클러스터 배지 (학사모 + 수량 표시)
                     dotEl.style.cssText = 'display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 24px; padding: 0 6px; background: #7C3AED; color: #ffffff; border: 2px solid #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(124,58,237,0.45); transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); flex-shrink: 0; font-size: 11px; font-weight: 800; gap: 3px;';
                     dotEl.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="#ffffff" style="display:block; flex-shrink:0;"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg><span>${count}</span>`;
+                    floatingLabelEl.innerHTML = `🎓 인접 학원 밀집 (${count}개) <span style="font-size:10px; opacity:0.8; font-weight:normal;">클릭하여 목록 보기</span>`;
 
-                    const maxShow = 5;
-                    const itemsHtml = cluster.items.slice(0, maxShow).map(p => {
-                        const sName = (p.place_name || '학원').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                        return `<div style="font-size:11.5px; color:#ffffff; padding:1px 0; overflow:hidden; text-overflow:ellipsis; max-width:200px; white-space:nowrap;">• ${sName}</div>`;
-                    }).join('');
-                    const moreCount = count - maxShow;
-                    const moreText = moreCount > 0 ? `<div style="font-size:10.5px; color:#c4b5fd; margin-top:2px; font-weight:normal;">+ 외 ${moreCount}개 학원</div>` : '';
+                    // 클러스터 클릭 시 노출될 플로팅 바 (학원 리스트 팝업) 생성
+                    clusterPopupEl = document.createElement('div');
+                    clusterPopupEl.className = 'academy-cluster-popup';
+                    clusterPopupEl.style.cssText = 'position: absolute; bottom: 36px; left: 50%; transform: translateX(-50%); background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 14px; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22), 0 2px 6px rgba(0,0,0,0.06); min-width: 250px; max-width: 320px; width: max-content; display: none; flex-direction: column; overflow: hidden; z-index: 100000; cursor: default; pointer-events: auto; font-family: inherit;';
 
-                    floatingLabelEl.innerHTML = `<div style="font-size:11px; font-weight:800; color:#c4b5fd; margin-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:3px;">🎓 인접 학원 밀집 (${count}개)</div>${itemsHtml}${moreText}`;
+                    const popupArrow = document.createElement('div');
+                    popupArrow.style.cssText = 'position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%) rotate(45deg); width: 12px; height: 12px; background: #ffffff; border-right: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1; pointer-events: none;';
+
+                    const popupHeader = document.createElement('div');
+                    popupHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px 14px 8px 14px; background: #f8fafc; border-bottom: 1px solid #f1f5f9;';
+                    popupHeader.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 14px;">🎓</span>
+                            <strong style="font-size: 13px; font-weight: 800; color: #0f172a;">인접 학원 목록</strong>
+                            <span style="background: #ede9fe; color: #7c3aed; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 10px;">${count}개</span>
+                        </div>
+                    `;
+
+                    const btnClosePopup = document.createElement('button');
+                    btnClosePopup.type = 'button';
+                    btnClosePopup.innerHTML = '&times;';
+                    btnClosePopup.style.cssText = 'background: none; border: none; font-size: 18px; font-weight: 700; color: #94a3b8; cursor: pointer; padding: 0 4px; line-height: 1; border-radius: 4px; transition: color 0.15s ease;';
+                    btnClosePopup.onmouseover = () => btnClosePopup.style.color = '#0f172a';
+                    btnClosePopup.onmouseout = () => btnClosePopup.style.color = '#94a3b8';
+                    btnClosePopup.onclick = (e) => {
+                        e.stopPropagation();
+                        closeClusterPopup();
+                    };
+                    popupHeader.appendChild(btnClosePopup);
+
+                    const popupList = document.createElement('div');
+                    popupList.style.cssText = 'max-height: 230px; overflow-y: auto; padding: 6px 8px; display: flex; flex-direction: column; gap: 4px;';
+
+                    cluster.items.forEach(place => {
+                        const aName = place.place_name || '학원';
+                        let cSub = '';
+                        if (place.category_name) {
+                            const parts = place.category_name.split('>').map(s => s.trim());
+                            cSub = parts.length > 2 ? parts[parts.length - 1] : (parts.length === 2 ? parts[1] : parts[0]);
+                        }
+                        let shortS = cSub.replace('학원', '').replace('교습소', '').replace('전문', '').trim();
+                        if (!shortS) shortS = cSub || '학원';
+
+                        const itemRow = document.createElement('div');
+                        itemRow.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 8px; background: #ffffff; border: 1px solid #f1f5f9; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;';
+
+                        itemRow.onmouseenter = () => {
+                            itemRow.style.background = '#eff6ff';
+                            itemRow.style.borderColor = '#bfdbfe';
+                            itemRow.style.transform = 'translateX(2px)';
+                        };
+                        itemRow.onmouseleave = () => {
+                            itemRow.style.background = '#ffffff';
+                            itemRow.style.borderColor = '#f1f5f9';
+                            itemRow.style.transform = 'translateX(0)';
+                        };
+
+                        const addr = place.road_address_name || place.address_name || '';
+
+                        itemRow.innerHTML = `
+                            <div style="flex: 1; min-width: 0; text-align: left;">
+                                <div style="font-size: 12.5px; font-weight: 700; color: #1e293b; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    ${aName}
+                                </div>
+                                ${addr ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${addr}</div>` : ''}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                                <span style="font-size: 10.5px; font-weight: 600; padding: 2px 6px; border-radius: 6px; background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; white-space: nowrap;">
+                                    ${shortS}
+                                </span>
+                                <span style="color: #94a3b8; font-size: 13px; font-weight: bold;">›</span>
+                            </div>
+                        `;
+
+                        // 플로팅 바에서 개별 학원 클릭 시 -> 학원상세와 학원리스트 사이드바 동시 오픈!
+                        itemRow.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            closeClusterPopup();
+                            if (typeof window.openAcademyDetailModal === 'function') {
+                                window.openAcademyDetailModal(place);
+                            }
+                        });
+
+                        popupList.appendChild(itemRow);
+                    });
+
+                    const popupFooter = document.createElement('div');
+                    popupFooter.style.cssText = 'padding: 7px 10px; background: #f8fafc; border-top: 1px solid #f1f5f9; font-size: 11px; font-weight: 500; color: #64748b; text-align: center;';
+                    popupFooter.innerText = '학원 선택 시 상세 정보와 리스트가 열립니다';
+
+                    clusterPopupEl.appendChild(popupHeader);
+                    clusterPopupEl.appendChild(popupList);
+                    clusterPopupEl.appendChild(popupFooter);
+                    clusterPopupEl.appendChild(popupArrow);
                 }
 
                 containerEl.appendChild(dotEl);
                 containerEl.appendChild(floatingLabelEl);
+                if (clusterPopupEl) {
+                    containerEl.appendChild(clusterPopupEl);
+                }
 
                 let overlay = null;
 
-                // Hover 애니메이션 & 플로팅 라벨 토글
-                containerEl.addEventListener('mouseenter', () => {
-                    dotEl.style.transform = 'scale(1.15)';
-                    floatingLabelEl.style.opacity = '1';
-                    floatingLabelEl.style.visibility = 'visible';
-                    if (overlay && typeof overlay.setZIndex === 'function') {
-                        overlay.setZIndex(99999);
+                function openClusterPopup() {
+                    if (typeof window.closeActiveAcademyClusterPopup === 'function') {
+                        window.closeActiveAcademyClusterPopup();
                     }
-                    containerEl.style.zIndex = '99999';
-                });
-
-                containerEl.addEventListener('mouseleave', () => {
-                    dotEl.style.transform = 'scale(1.0)';
+                    if (!clusterPopupEl) return;
+                    isClusterPopupOpen = true;
+                    clusterPopupEl.style.display = 'flex';
                     floatingLabelEl.style.opacity = '0';
                     floatingLabelEl.style.visibility = 'hidden';
+                    if (overlay && typeof overlay.setZIndex === 'function') {
+                        overlay.setZIndex(999999);
+                    }
+                    containerEl.style.zIndex = '999999';
+                    window.closeActiveAcademyClusterPopup = closeClusterPopup;
+                }
+
+                function closeClusterPopup() {
+                    if (!clusterPopupEl) return;
+                    isClusterPopupOpen = false;
+                    clusterPopupEl.style.display = 'none';
                     if (overlay && typeof overlay.setZIndex === 'function') {
                         overlay.setZIndex(1000);
                     }
                     containerEl.style.zIndex = '1000';
+                    if (window.closeActiveAcademyClusterPopup === closeClusterPopup) {
+                        window.closeActiveAcademyClusterPopup = null;
+                    }
+                }
+
+                // Hover 애니메이션 & 플로팅 라벨 토글
+                containerEl.addEventListener('mouseenter', () => {
+                    dotEl.style.transform = 'scale(1.15)';
+                    if (!isClusterPopupOpen) {
+                        floatingLabelEl.style.opacity = '1';
+                        floatingLabelEl.style.visibility = 'visible';
+                        if (overlay && typeof overlay.setZIndex === 'function') {
+                            overlay.setZIndex(99999);
+                        }
+                        containerEl.style.zIndex = '99999';
+                    }
                 });
 
-                // 마커 클릭 시 액션
+                containerEl.addEventListener('mouseleave', () => {
+                    dotEl.style.transform = 'scale(1.0)';
+                    if (!isClusterPopupOpen) {
+                        floatingLabelEl.style.opacity = '0';
+                        floatingLabelEl.style.visibility = 'hidden';
+                        if (overlay && typeof overlay.setZIndex === 'function') {
+                            overlay.setZIndex(1000);
+                        }
+                        containerEl.style.zIndex = '1000';
+                    }
+                });
+
+                // 마커 클릭 시 액션:
                 containerEl.addEventListener('click', (e) => {
                     e.stopPropagation();
 
-                    // 1) 2개 이상 밀집 클러스터이고 지도가 축소된 상태(레벨 > 2)인 경우 줌인 포커싱
-                    if (count > 1 && mapObj && typeof mapObj.getLevel === 'function' && mapObj.getLevel() > 2) {
-                        mapObj.setLevel(mapObj.getLevel() - 1);
-                        if (typeof mapObj.panTo === 'function') {
-                            mapObj.panTo(pos);
+                    if (count > 1) {
+                        // 1) 클러스터로 묶여 있는 경우: 플로팅 바 토글 노출 (학원상세 직접 오픈 X)
+                        if (mapObj && typeof mapObj.getLevel === 'function' && mapObj.getLevel() > 2) {
+                            mapObj.setLevel(mapObj.getLevel() - 1);
+                            if (typeof mapObj.panTo === 'function') {
+                                mapObj.panTo(pos);
+                            }
                         }
-                    }
 
-                    // 2) 첫 번째 학원 상세 정보 열기 & 사이드바 연계
-                    const primaryPlace = cluster.items[0];
-                    const primaryName = primaryPlace.place_name || '학원';
-
-                    const isAlreadyOpen = typeof isAcademyListSidebarOpen === 'function' ? isAcademyListSidebarOpen() : false;
-
-                    if (typeof openAcademyListSidebarWithPlace === 'function') {
-                        openAcademyListSidebarWithPlace(primaryPlace);
-                    } else if (typeof openAcademyDetailSidebar === 'function') {
-                        openAcademyDetailSidebar(primaryPlace);
-                    } else if (typeof window.openAcademyDetailModal === 'function') {
-                        window.openAcademyDetailModal(primaryPlace);
-                    } else if (typeof openAcademyDetailModal === 'function') {
-                        openAcademyDetailModal(primaryPlace);
-                    }
-
-                    if (typeof window.setActiveAcademyTab === 'function') {
-                        window.setActiveAcademyTab('talk');
-                        if (typeof window.openAcademyTownTalkSidebarWithPlace === 'function') {
-                            window.openAcademyTownTalkSidebarWithPlace(primaryPlace.x, primaryPlace.y);
-                        } else if (typeof window.openAcademyTownTalkSidebar === 'function') {
-                            window.openAcademyTownTalkSidebar(
-                                primaryPlace.id || primaryPlace.place_id || primaryName, 
-                                primaryName, 
-                                primaryPlace.address_name || primaryPlace.road_address_name, 
-                                primaryPlace.x, 
-                                primaryPlace.y
-                            );
+                        if (isClusterPopupOpen) {
+                            closeClusterPopup();
+                        } else {
+                            openClusterPopup();
                         }
-                        if (typeof window.fetchTownTalkList === 'function') {
-                            window.fetchTownTalkList(primaryName, 'academyTownTalkList');
+                    } else {
+                        // 2) 단일 학원 마커인 경우: 바로 학원상세와 학원리스트 사이드바 동시 오픈
+                        if (typeof window.closeActiveAcademyClusterPopup === 'function') {
+                            window.closeActiveAcademyClusterPopup();
                         }
-                    }
 
-                    if (!isAlreadyOpen) {
-                        if (typeof window.centerAcademyPinWithSidebarOffset === 'function') {
-                            window.centerAcademyPinWithSidebarOffset(primaryPlace.x, primaryPlace.y, primaryName);
-                        } else if (mapObj && typeof mapObj.panTo === 'function') {
-                            mapObj.panTo(pos);
+                        const primaryPlace = cluster.items[0];
+                        const primaryName = primaryPlace.place_name || '학원';
+
+                        const academySidebar = document.getElementById('academySidebar');
+                        const isAlreadyOpen = academySidebar && (
+                            academySidebar.style.display === 'flex' ||
+                            (window.getComputedStyle && window.getComputedStyle(academySidebar).display !== 'none')
+                        );
+
+                        if (typeof window.openAcademyDetailModal === 'function') {
+                            window.openAcademyDetailModal(primaryPlace);
+                        }
+
+                        if (!isAlreadyOpen) {
+                            if (typeof window.centerAcademyPinWithSidebarOffset === 'function') {
+                                window.centerAcademyPinWithSidebarOffset(primaryPlace.x, primaryPlace.y, primaryName);
+                            } else if (mapObj && typeof mapObj.panTo === 'function') {
+                                mapObj.panTo(pos);
+                            }
                         }
                     }
                 });
@@ -17077,6 +17168,121 @@ window.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 // 학원 상세 모달 액션 헬퍼 및 신규 기능 함수들
 // ==========================================
+window.openAcademyDetailModal = function(placeOrName) {
+    if (!placeOrName) return;
+
+    let place = null;
+    let acadName = '';
+    if (typeof placeOrName === 'string') {
+        acadName = placeOrName;
+        if (Array.isArray(window.allFetchedAcademies)) {
+            place = window.allFetchedAcademies.find(p => (p.place_name || '').trim() === acadName.trim());
+        }
+    } else if (typeof placeOrName === 'object') {
+        place = placeOrName;
+        acadName = place.place_name || '학원';
+    }
+
+    if (!acadName) return;
+
+    // 1) 학교 상세 사이드바 & 학원 목록 사이드바 열기
+    const sidebar = document.querySelector('.sidebar-section');
+    const container = document.querySelector('.app-container');
+    if (sidebar && sidebar.style.display === 'none') {
+        sidebar.style.display = 'flex';
+    }
+    if (container) {
+        container.classList.add('sidebar-open');
+    }
+
+    if (typeof window.toggleAcademySidebar === 'function') {
+        window.toggleAcademySidebar(true);
+    } else {
+        const academySidebar = document.getElementById('academySidebar');
+        if (academySidebar) academySidebar.style.display = 'flex';
+        if (container) container.classList.add('academy-open');
+    }
+
+    // 2) 과목 및 유형 정보 추출
+    let categorySubject = '';
+    if (place && place.category_name) {
+        const parts = place.category_name.split('>').map(s => s.trim());
+        categorySubject = parts.length > 2 ? parts[parts.length - 1] : (parts.length === 2 ? parts[1] : parts[0]);
+    }
+    let shortSubject = categorySubject.replace('학원', '').replace('교습소', '').replace('전문', '').trim();
+    if (!shortSubject) shortSubject = categorySubject || '학원';
+
+    const tLabel = acadName.includes('교습소') ? '교습소' : '학원';
+    const addressStr = place ? (place.road_address_name || place.address_name || '') : '';
+    const phoneStr = place ? (place.phone || '') : '';
+    const xCoord = place ? place.x : '';
+    const yCoord = place ? place.y : '';
+
+    window.currentAcademyForCommunity = acadName;
+    window.currentAcademyCoords = { lng: xCoord, lat: yCoord };
+
+    // 3) 후기/계산기 탭 상태 초기화
+    document.querySelectorAll('.community-filter-btn').forEach(btn => {
+        btn.style.background = 'white';
+        btn.style.color = 'var(--text-muted)';
+        btn.style.borderColor = 'var(--border-color)';
+    });
+    const allBtn = document.querySelector('.community-filter-btn[data-type="all"]');
+    if (allBtn) {
+        allBtn.style.background = 'var(--primary-blue)';
+        allBtn.style.color = 'white';
+        allBtn.style.borderColor = 'var(--primary-blue)';
+    }
+
+    const tabRev = document.getElementById('tabAcademyReviews');
+    const tabCalc = document.getElementById('tabAcademyCalculator');
+    const secRev = document.getElementById('sectionAcademyReviews');
+    const secCalc = document.getElementById('sectionAcademyCalculator');
+    if (tabRev && tabCalc && secRev && secCalc) {
+        tabRev.style.background = '#ffffff';
+        tabRev.style.color = 'var(--primary-blue)';
+        tabRev.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+        tabCalc.style.background = 'transparent';
+        tabCalc.style.color = 'var(--text-muted)';
+        tabCalc.style.boxShadow = 'none';
+        secRev.style.display = 'block';
+        secCalc.style.display = 'none';
+    }
+
+    // 4) 후기 및 수강료 계산기 로드
+    if (typeof window.fetchCommunityReviews === 'function') {
+        window.fetchCommunityReviews(acadName, 'all', shortSubject, tLabel);
+    }
+    if (typeof window.renderAcademyFeeCalculator === 'function') {
+        window.renderAcademyFeeCalculator(acadName, shortSubject, addressStr, phoneStr, tLabel, xCoord, yCoord);
+    }
+    if (typeof window.fetchTownTalkList === 'function') {
+        window.fetchTownTalkList(acadName, 'academyTownTalkList');
+        const btnSendAcademyTalk = document.getElementById('btnSendAcademyTalk');
+        if (btnSendAcademyTalk) {
+            const newBtn = btnSendAcademyTalk.cloneNode(true);
+            btnSendAcademyTalk.parentNode.replaceChild(newBtn, btnSendAcademyTalk);
+            newBtn.addEventListener('click', () => {
+                window.sendTownTalk(acadName, 'txtAcademyTalkNick', 'txtAcademyTalkContent', 'academyTownTalkList');
+            });
+        }
+    }
+
+    // 5) 학원 목록 내 카드 스크롤 & 강조 표시
+    const foundCard = Array.from(document.querySelectorAll('#sideAcademyList .academy-card, .academy-card')).find(c => {
+        return c.innerText && c.innerText.includes(acadName);
+    });
+    if (foundCard) {
+        foundCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        foundCard.style.borderColor = '#2563eb';
+        foundCard.style.boxShadow = '0 0 0 2px rgba(37,99,235,0.2)';
+        setTimeout(() => {
+            foundCard.style.borderColor = '';
+            foundCard.style.boxShadow = '';
+        }, 2000);
+    }
+};
+
 window.closeAcademyDetailModal = function() {
     if (typeof window.clearAcademyMarker === 'function') window.clearAcademyMarker();
     const panel = document.getElementById('communityPanel');

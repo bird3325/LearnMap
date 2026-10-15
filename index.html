@@ -364,11 +364,11 @@
                     const academySidebar = document.getElementById('academySidebar');
                     const sidebar = document.querySelector('.sidebar-section');
 
-                    // 모바일이 아닌 PC 환경에서만 학교 정보가 닫혀있을 때 여는 것을 제한합니다.
-                    if (window.innerWidth > 1024 && sidebar.style.display === 'none') return;
+                    // 모바일이 아닌 PC 환경에서 일반 토글 버튼 클릭 시(forceOpen 아님) 학교 정보가 닫혀있으면 열지 않음
+                    if (window.innerWidth > 1024 && sidebar && sidebar.style.display === 'none' && !forceOpen) return;
 
-                    if (academySidebar.style.display === 'flex' && !forceOpen) {
-                        container.classList.remove('academy-open');
+                    if (academySidebar && academySidebar.style.display === 'flex' && !forceOpen) {
+                        if (container) container.classList.remove('academy-open');
 
                         // 학원 리스트 닫을 때 학원상세(커뮤니티 패널)도 함께 닫고 학교 상세 복구
                         const commPanel = document.getElementById('communityPanel');
@@ -380,25 +380,31 @@
                         if (btnToggle) btnToggle.style.display = 'flex';
 
                         setTimeout(() => {
-                            if (!container.classList.contains('academy-open')) {
-                                academySidebar.style.display = 'none';
+                            if (container && !container.classList.contains('academy-open')) {
+                                if (academySidebar) academySidebar.style.display = 'none';
                             }
                         }, 300);
                     } else {
-                        // 모바일일 경우 학교 정보 창이 display: none 이었다면 강제로 열어줍니다.
-                        if (window.innerWidth <= 1024 && sidebar.style.display === 'none') {
+                        // 학교 정보 창이 display: none 이었다면 함께 열어줍니다.
+                        if (sidebar && sidebar.style.display === 'none') {
                             sidebar.style.display = 'flex';
                         }
+                        if (container) {
+                            container.classList.add('sidebar-open');
+                        }
 
-                        academySidebar.style.display = 'flex';
-                        // Force a reflow to trigger transition
-                        void academySidebar.offsetWidth;
+                        if (academySidebar) {
+                            academySidebar.style.display = 'flex';
+                            void academySidebar.offsetWidth;
+                        }
 
-                        container.classList.add('academy-open');
+                        if (container) {
+                            container.classList.add('academy-open');
+                        }
 
                         // 모바일에서는 슬라이드 업 트랜지션을 위해 sidebar-open 클래스도 함께 활성화합니다.
                         if (window.innerWidth <= 1024) {
-                            container.classList.add('sidebar-open');
+                            if (container) container.classList.add('sidebar-open');
                         } else {
                             // PC 화면: 학원 목록이 열릴 때 선택된 학교 핀이 실제로 사이드바에 가려지는 경우에만 지도 이동
                             setTimeout(() => {
@@ -419,6 +425,7 @@
                         setTimeout(() => window.kakaoMapInstance.relayout(), 310);
                     }
                 }
+                window.toggleAcademySidebar = toggleAcademySidebar;
             </script>
 
             <!-- Map overlay filters and search -->
