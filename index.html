@@ -523,13 +523,18 @@
                         </div>
 
                         <!-- Card 1: 🎯 자녀 맞춤 추천 (아이 프로필) -->
-                        <div class="filter-card-item">
+                        <div class="filter-card-item collapsed">
                             <div class="filter-card-header">
                                 <div style="display: flex; align-items: center; gap: 4px;">
                                     <span>🎯 자녀 맞춤 추천</span>
                                     <span style="color: #2563eb; font-size: 11.5px; font-weight: 700;">(아이 프로필)</span>
                                 </div>
-                                <span onclick="if(window.openChildSettingsModal) window.openChildSettingsModal();" style="background: #f1f5f9; color: #64748b; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 6px; border: 1px solid #e2e8f0; cursor: pointer;">정보 수정</span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span onclick="event.stopPropagation(); if(window.openChildSettingsModal) window.openChildSettingsModal();" style="background: #f1f5f9; color: #64748b; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 6px; border: 1px solid #e2e8f0; cursor: pointer;">정보 수정</span>
+                                    <svg class="card-collapse-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #94a3b8; transition: transform 0.2s ease; transform: rotate(0deg); flex-shrink: 0;">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </div>
                             </div>
 
                             <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -576,13 +581,18 @@
                         </div>
 
                         <!-- Card 2: 📊 과목 성취도 가중치 (합산) -->
-                        <div class="filter-card-item">
+                        <div class="filter-card-item collapsed">
                             <div class="filter-card-header">
                                 <div style="display: flex; align-items: center; gap: 4px;">
                                     <span>📊 과목 성취도 가중치</span>
                                     <span style="color: #64748b; font-size: 11px; font-weight: 500;">(합산)</span>
                                 </div>
-                                <span style="background: #f8fafc; color: #64748b; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">국영수 균등</span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="background: #f8fafc; color: #64748b; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">국영수 균등</span>
+                                    <svg class="card-collapse-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #94a3b8; transition: transform 0.2s ease; transform: rotate(0deg); flex-shrink: 0;">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </div>
                             </div>
 
                             <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -607,10 +617,15 @@
                         </div>
 
                         <!-- Card 3: 🏫 교육환경 종합 스코어 비율 -->
-                        <div class="filter-card-item">
+                        <div class="filter-card-item collapsed">
                             <div class="filter-card-header">
                                 <span>🏫 교육환경 종합 스코어 비율</span>
-                                <span style="background: #eff6ff; color: #2563eb; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px; border: 1px solid #bfdbfe;">총 100%</span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="background: #eff6ff; color: #2563eb; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px; border: 1px solid #bfdbfe;">총 100%</span>
+                                    <svg class="card-collapse-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #94a3b8; transition: transform 0.2s ease; transform: rotate(0deg); flex-shrink: 0;">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </div>
                             </div>
 
                             <!-- Color Proportion Bar -->
@@ -661,10 +676,15 @@
                         </div>
 
                         <!-- Card 4: 🔍 세부 학업 지표 필터 -->
-                        <div class="filter-card-item">
+                        <div class="filter-card-item collapsed">
                             <div class="filter-card-header">
                                 <span>🔍 세부 학업 지표 필터</span>
-                                <span style="color: #94a3b8; font-size: 10px; font-weight: 500;">최근 성적 기준</span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="color: #94a3b8; font-size: 10px; font-weight: 500;">최근 성적 기준</span>
+                                    <svg class="card-collapse-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #94a3b8; transition: transform 0.2s ease; transform: rotate(0deg); flex-shrink: 0;">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </div>
                             </div>
 
                             <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -695,9 +715,12 @@
                         </div>
 
                         <!-- Card 5: 🏫 학교 특성 필터 -->
-                        <div class="filter-card-item">
+                        <div class="filter-card-item collapsed">
                             <div class="filter-card-header">
                                 <span>🏫 학교 특성 필터</span>
+                                <svg class="card-collapse-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #94a3b8; transition: transform 0.2s ease; transform: rotate(0deg); flex-shrink: 0;">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
                             </div>
 
                             <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -737,9 +760,12 @@
                         </div>
 
                         <!-- Card 6: 🛡️ 생활 · 진로 지표 필터 -->
-                        <div class="filter-card-item">
+                        <div class="filter-card-item collapsed">
                             <div class="filter-card-header">
                                 <span>🛡️ 생활 · 진로 지표 필터</span>
+                                <svg class="card-collapse-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #94a3b8; transition: transform 0.2s ease; transform: rotate(0deg); flex-shrink: 0;">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
                             </div>
 
                             <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -764,9 +790,12 @@
                         </div>
 
                         <!-- Card 7: 🔶 통학 분석 및 안심 지도 -->
-                        <div class="filter-card-item">
+                        <div class="filter-card-item collapsed">
                             <div class="filter-card-header">
                                 <span style="display: flex; align-items: center; gap: 4px;">🔶 통학 분석 및 안심 지도</span>
+                                <svg class="card-collapse-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #94a3b8; transition: transform 0.2s ease; transform: rotate(0deg); flex-shrink: 0;">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
                             </div>
 
                             <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -853,6 +882,9 @@
                         <div class="filter-card-item">
                             <div class="filter-card-header">
                                 <span style="display: flex; align-items: center; gap: 4px;">🎓 학원·주택 정보 및 지도 표시 설정</span>
+                                <svg class="card-collapse-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #94a3b8; transition: transform 0.2s ease; transform: rotate(180deg); flex-shrink: 0;">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
                             </div>
 
                             <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -880,16 +912,34 @@
                                     </label>
                                 </div>
 
-                                <!-- 주택 유형 선택 드롭다운 -->
-                                <div class="filter-row" style="margin-top: -2px;">
-                                    <span style="font-size: 11.5px; color: #475569; font-weight: 600;">주택 유형 선택</span>
-                                    <select id="realEstateTypeFilter" style="padding: 4px 8px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 11.5px; font-weight: 700; color: #1e293b; outline: none; background: #ffffff; cursor: pointer;">
-                                        <option value="all">전체 주택</option>
-                                        <option value="apt">아파트만</option>
-                                        <option value="rh">연립·다세대만</option>
-                                        <option value="sh">단독·다가구만</option>
-                                        <option value="offi">오피스텔만</option>
-                                    </select>
+                                <!-- 주택 유형 선택 체크박스 그룹 -->
+                                <div style="display: flex; flex-direction: column; gap: 6px; margin-top: -2px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-size: 11.5px; color: #475569; font-weight: 600;">주택 유형 선택</span>
+                                        <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">
+                                            <input type="checkbox" id="reTypeAllCheckbox" checked style="width: 13px; height: 13px; accent-color: #2563eb; cursor: pointer;">
+                                            전체
+                                        </label>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; background: #f8fafc; padding: 7px 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                        <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: #334155; font-weight: 500; cursor: pointer; user-select: none;">
+                                            <input type="checkbox" id="reTypeAptCheckbox" class="re-type-item-checkbox" value="apt" checked style="width: 13px; height: 13px; accent-color: #2563eb; cursor: pointer;">
+                                            아파트
+                                        </label>
+                                        <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: #334155; font-weight: 500; cursor: pointer; user-select: none;">
+                                            <input type="checkbox" id="reTypeRhCheckbox" class="re-type-item-checkbox" value="rh" checked style="width: 13px; height: 13px; accent-color: #2563eb; cursor: pointer;">
+                                            연립·다세대
+                                        </label>
+                                        <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: #334155; font-weight: 500; cursor: pointer; user-select: none;">
+                                            <input type="checkbox" id="reTypeShCheckbox" class="re-type-item-checkbox" value="sh" checked style="width: 13px; height: 13px; accent-color: #2563eb; cursor: pointer;">
+                                            단독·다가구
+                                        </label>
+                                        <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: #334155; font-weight: 500; cursor: pointer; user-select: none;">
+                                            <input type="checkbox" id="reTypeOffiCheckbox" class="re-type-item-checkbox" value="offi" checked style="width: 13px; height: 13px; accent-color: #2563eb; cursor: pointer;">
+                                            오피스텔
+                                        </label>
+                                    </div>
+                                    <input type="hidden" id="realEstateTypeFilter" value="all">
                                 </div>
 
                                 <!-- 노출 반경 범위(학원, 주택) -->
@@ -1502,7 +1552,7 @@
                                             </svg>
                                             <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none"
                                                 stroke="currentColor" stroke-width="2" style="display: none;">
-                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"></path>
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                                 <circle cx="12" cy="12" r="3"></circle>
                                             </svg>
                                         </button>

@@ -273,6 +273,38 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // 지도 필터 각 개별 카드 열기/닫기 (Accordion) 이벤트 바인딩
+    if (parentsFilterContent) {
+        parentsFilterContent.addEventListener('click', (e) => {
+            const header = e.target.closest('.filter-card-header');
+            if (!header) return;
+
+            // 버튼, 링크, 폼 입력 컨트롤 클릭 시 카드 접힘 방지
+            if (e.target.closest('button, input, select, textarea, a, [data-no-toggle]')) return;
+            // 정보 수정 버튼 등 별도 동작이 지정된 요소 클릭 시 방지
+            if (e.target.closest('[onclick]') && !e.target.classList.contains('filter-card-header')) return;
+
+            const cardItem = header.closest('.filter-card-item');
+            if (!cardItem) return;
+
+            const isCollapsed = cardItem.classList.toggle('collapsed');
+            const arrow = header.querySelector('.card-collapse-arrow');
+            if (arrow) {
+                arrow.style.transform = isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)';
+            }
+        });
+
+        parentsFilterContent.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                const header = e.target.closest('.filter-card-header');
+                if (header && !e.target.closest('button, input, select, textarea, a')) {
+                    e.preventDefault();
+                    header.click();
+                }
+            }
+        });
+    }
+
     const bindRangeText = (rangeId, textId, suffix = '') => {
         const range = document.getElementById(rangeId);
         const text = document.getElementById(textId);
@@ -7046,9 +7078,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // 선택된 주택 유형 필터 (all, apt, rh, sh, offi)
-            const typeFilterEl = document.getElementById('realEstateTypeFilter');
-            const selectedType = typeFilterEl ? (typeFilterEl.value || 'all') : 'all';
+            // 선택된 주택 유형 필터 (all, apt, rh, sh, offi, 또는 체크박스 다중선택 콤마 구분)
+            const getSelectedHousingTypes = () => {
+                const itemCheckboxes = document.querySelectorAll('.re-type-item-checkbox');
+                if (itemCheckboxes.length > 0) {
+                    const checkedBoxes = Array.from(itemCheckboxes).filter(cb => cb.checked);
+                    if (checkedBoxes.length === 0) return 'none';
+                    if (checkedBoxes.length === itemCheckboxes.length) return 'all';
+                    return checkedBoxes.map(cb => cb.value).join(',');
+                }
+                const typeFilterEl = document.getElementById('realEstateTypeFilter');
+                return typeFilterEl ? (typeFilterEl.value || 'all') : 'all';
+            };
+
+            const selectedType = getSelectedHousingTypes();
+            const hiddenTypeEl = document.getElementById('realEstateTypeFilter');
+            if (hiddenTypeEl) {
+                hiddenTypeEl.value = selectedType;
+            }
+
+            if (selectedType === 'none') {
+                return;
+            }
 
             let schoolObj = (typeof fullSchool !== 'undefined' ? fullSchool : null) || window.selectedTargetSchool || (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) || window.currentSelectedSchool || null;
             let sLat = schoolObj && (schoolObj.lat || schoolObj.y || schoolObj.latitude) ? parseFloat(schoolObj.lat || schoolObj.y || schoolObj.latitude) : null;
@@ -7241,14 +7292,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 주택 표시 토글 및 주택 유형 필터 변경 이벤트 바인딩
         const reToggleCheck = document.getElementById('showRealEstateMapCheckbox');
+        const reTypeAllCheck = document.getElementById('reTypeAllCheckbox');
+        const reTypeItemChecks = document.querySelectorAll('.re-type-item-checkbox');
         const reTypeSelect = document.getElementById('realEstateTypeFilter');
+
         const handleReFilterChange = () => {
             const radInput = document.getElementById('academyMapRadiusFilter');
             const radVal = window.currentAcademyRadius || (radInput ? parseInt(radInput.value, 10) : 1000) || 1000;
             updateRealEstateMapMarkers(radVal);
         };
         if (reToggleCheck) reToggleCheck.addEventListener('change', handleReFilterChange);
-        if (reTypeSelect) reTypeSelect.addEventListener('change', handleReFilterChange);
+
+        if (reTypeAllCheck) {
+            reTypeAllCheck.addEventListener('change', () => {
+                const isChecked = reTypeAllCheck.checked;
+                const items = document.querySelectorAll('.re-type-item-checkbox');
+                items.forEach(cb => { cb.checked = isChecked; });
+                handleReFilterChange();
+            });
+        }
+
+        if (reTypeItemChecks.length > 0) {
+            reTypeItemChecks.forEach(cb => {
+                cb.addEventListener('change', () => {
+                    const items = Array.from(document.querySelectorAll('.re-type-item-checkbox'));
+                    const allChecked = items.length > 0 && items.every(i => i.checked);
+                    if (reTypeAllCheck) {
+                        reTypeAllCheck.checked = allChecked;
+                    }
+                    handleReFilterChange();
+                });
+            });
+        }
+
+        if (reTypeSelect && reTypeSelect.tagName === 'SELECT') {
+            reTypeSelect.addEventListener('change', handleReFilterChange);
+        }
 
         // 초기 페이지 로딩 및 지도 로드 완료 후 부동산 마커 자동 최초 렌더링
         const autoInitRealEstateMarkers = () => {
@@ -10840,6 +10919,12 @@ document.addEventListener('DOMContentLoaded', () => {
             'dongRatingCheckbox': false,
             'showAcademyMapCheckbox': true,
             'academyMapRadiusFilter': 1000,
+            'showRealEstateMapCheckbox': true,
+            'reTypeAllCheckbox': true,
+            'reTypeAptCheckbox': true,
+            'reTypeRhCheckbox': true,
+            'reTypeShCheckbox': true,
+            'reTypeOffiCheckbox': true,
             'childGradeFilter': 'middle',
             'childScoreFilter': 'mid',
             'childTendencyFilter': 'balanced'

@@ -1901,7 +1901,14 @@ app.get('/api/realestate', async (req, res) => {
 app.get('/api/realestate/pins', async (req, res) => {
     const { lawd_cd, x, y } = req.query;
     const radius = parseInt(req.query.radius, 10) || 1000;
-    const housingType = req.query.type || 'all'; // 'all', 'apt', 'rh', 'sh', 'offi'
+    const housingType = req.query.type || 'all'; // 'all', 'apt', 'rh', 'sh', 'offi', 또는 콤마 구분 'apt,rh'
+    const typeList = (housingType === 'all' || !housingType)
+        ? ['all']
+        : housingType.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+    if (typeList.length === 0 || typeList.includes('none')) {
+        return res.json({ items: [], total: 0 });
+    }
 
     const centerX = parseFloat(x);
     const centerY = parseFloat(y);
@@ -1925,7 +1932,7 @@ app.get('/api/realestate/pins', async (req, res) => {
             storedItems.forEach(item => {
                 if (!item || !item.name) return;
                 const type = item.type || 'apt';
-                if (housingType !== 'all' && housingType !== type) return;
+                if (!typeList.includes('all') && !typeList.includes(type)) return;
 
                 const itemX = parseFloat(item.x || item.lng);
                 const itemY = parseFloat(item.y || item.lat);

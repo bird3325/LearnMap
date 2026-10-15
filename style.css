@@ -3154,6 +3154,24 @@ body.is-resizing-sidebar .academy-sidebar-section {
     font-size: 13px;
     font-weight: 700;
     color: #0f172a;
+    cursor: pointer;
+    user-select: none;
+}
+
+.filter-card-header:hover .card-collapse-arrow {
+    color: #2563eb !important;
+}
+
+.filter-card-item.collapsed > :not(.filter-card-header) {
+    display: none !important;
+}
+
+.filter-card-item.collapsed {
+    gap: 0 !important;
+}
+
+.filter-card-item.collapsed .card-collapse-arrow {
+    transform: rotate(0deg) !important;
 }
 
 .filter-row {
