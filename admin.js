@@ -1,3 +1,49 @@
+
+// --- Enterprise Dashboard Utilities ---
+
+
+function updateAdminKpiMetrics() {
+    const kpiSchool = document.getElementById('kpiSchoolCount');
+    const kpiHousing = document.getElementById('kpiRealEstateCount');
+    const kpiReview = document.getElementById('kpiReviewCount');
+    
+    if (kpiSchool) {
+        if (Array.isArray(allStoredSchools) && allStoredSchools.length > 0) {
+            kpiSchool.innerText = allStoredSchools.length.toLocaleString();
+        } else {
+            const storedCountEl = document.getElementById('storedSchoolsCount');
+            if (storedCountEl && storedCountEl.innerText && storedCountEl.innerText !== '0') {
+                kpiSchool.innerText = storedCountEl.innerText;
+            }
+        }
+    }
+    if (kpiHousing && Array.isArray(allStoredRealEstates)) {
+        kpiHousing.innerText = allStoredRealEstates.length.toLocaleString();
+    }
+    if (kpiReview) {
+        const revItems = document.querySelectorAll('#adminReviewsListContainer .review-item');
+        if (revItems && revItems.length > 0) {
+            kpiReview.innerText = revItems.length.toLocaleString();
+        } else if (typeof allReviews !== 'undefined' && Array.isArray(allReviews)) {
+            kpiReview.innerText = allReviews.length.toLocaleString();
+        }
+    }
+    const kpiUser = document.getElementById('kpiUserCount');
+    if (kpiUser) {
+        if (typeof allUsers !== 'undefined' && Array.isArray(allUsers) && allUsers.length > 0) {
+            kpiUser.innerText = allUsers.length.toLocaleString();
+        } else {
+            try {
+                const localUsers = JSON.parse(localStorage.getItem('learnmap_registered_users') || '[]');
+                if (localUsers.length > 0) {
+                    kpiUser.innerText = localUsers.length.toLocaleString();
+                }
+            } catch (e) {}
+        }
+    }
+}
+window.updateAdminKpiMetrics = updateAdminKpiMetrics;
+
 // Admin Dashboard logic
 
 let token = localStorage.getItem('admin_token') || '';
@@ -78,6 +124,9 @@ adminMenuButtons.forEach(btn => {
                 targetCard.style.display = 'block';
             }
         });
+        if (targetAttr.includes('usersManagementCard') && typeof loadUsers === 'function') {
+            loadUsers();
+        }
     };
 });
 
@@ -437,7 +486,7 @@ async function loadStoredSchools() {
         }
     }
 
-    if (!Array.isArray(schools) || schools.length === 0) {
+    if (!Array.isArray(schools) || schools.length < 5000) {
         const pathsToTry = [
             './src/data/schools_seoul.json',
             './data/schools_seoul.json',
@@ -468,6 +517,7 @@ async function loadStoredSchools() {
         allStoredSchools = schools;
         renderStoredSchoolsList();
         renderUnsavedRegions();
+        if (typeof updateAdminKpiMetrics === 'function') updateAdminKpiMetrics();
     } else {
         storedSchoolsListContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px 0;">저장된 학교 데이터가 없습니다.</div>';
     }
@@ -573,9 +623,30 @@ function initSupabaseAdmin() {
 }
 
 function showPanel() {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollLeft = 0;
+    document.body.scrollLeft = 0;
+    
+    // Hide login section and show 2-column management panel
+    const loginSection = document.getElementById('loginSection');
+    if (loginSection) loginSection.style.display = 'none';
     if (loginCard) loginCard.style.display = 'none';
-    if (managementPanel) managementPanel.style.display = 'block';
-    if (btnLogout) btnLogout.style.display = 'inline-block';
+    
+    if (managementPanel) {
+        managementPanel.style.display = 'flex';
+    }
+    
+    const sidebar = document.getElementById('adminSidebar');
+    if (sidebar) sidebar.style.display = 'flex';
+    
+    const topbar = document.getElementById('dashboardTopbar');
+    if (topbar) topbar.style.display = 'flex';
+
+    if (btnLogout) btnLogout.style.display = 'inline-flex';
+    const btnLogoutSidebar = document.getElementById('btnLogoutSidebar');
+    if (btnLogoutSidebar) btnLogoutSidebar.style.display = 'inline-flex';
+    
+    if (typeof updateAdminKpiMetrics === 'function') updateAdminKpiMetrics();
     
     const container = document.querySelector('.admin-container');
     if (container) container.classList.add('logged-in');
@@ -602,6 +673,7 @@ function showPanel() {
     setTimeout(() => {
         if (typeof loadReviews === 'function') loadReviews();
         if (typeof loadInquiries === 'function') loadInquiries();
+        if (typeof loadUsers === 'function') loadUsers();
     }, 300);
     
     // Fetch Configuration from server or Supabase DB directly
@@ -661,9 +733,16 @@ function showPanel() {
 }
 
 function logout() {
-    localStorage.removeItem('admin_token');
-    sessionStorage.removeItem('admin_active_tab');
+    const sidebar = document.getElementById('adminSidebar');
+    if (sidebar) sidebar.style.display = 'none';
+    
+    const topbar = document.getElementById('dashboardTopbar');
+    if (topbar) topbar.style.display = 'none';
+    
     token = '';
+    localStorage.removeItem('admin_token');
+    const loginSection = document.getElementById('loginSection');
+    if (loginSection) loginSection.style.display = 'flex';
     if (loginCard) loginCard.style.display = 'block';
     if (managementPanel) managementPanel.style.display = 'none';
     if (btnLogout) btnLogout.style.display = 'none';
@@ -742,6 +821,10 @@ if (adminPassword) {
 if (btnLogout) {
     btnLogout.addEventListener('click', logout);
 }
+const btnLogoutSidebar = document.getElementById('btnLogoutSidebar');
+if (btnLogoutSidebar) {
+    btnLogoutSidebar.addEventListener('click', logout);
+}
 
 // 3. SAVE CONFIG Event
 btnSaveConfig.addEventListener('click', async () => {
@@ -804,18 +887,20 @@ function getPinColor(school) {
 }
 
 // Custom Modal Dialog Helpers
-function showAlert(message) {
+function showAlert(message, onClose) {
     const modal = document.getElementById('alertModal');
     const msgEl = document.getElementById('alertModalMessage');
     const btnClose = document.getElementById('btnAlertClose');
     if (!modal || !msgEl || !btnClose) {
         alert(message);
+        if (typeof onClose === 'function') onClose();
         return;
     }
     msgEl.innerText = message;
     modal.style.display = 'flex';
     btnClose.onclick = () => {
         modal.style.display = 'none';
+        if (typeof onClose === 'function') onClose();
     };
 }
 
@@ -1109,6 +1194,7 @@ btnRunUpdate.addEventListener('click', () => {
                 
                 btnConfirm.onclick = () => {
                     modal.style.display = 'none';
+                    if (progressContainer) progressContainer.style.display = 'none';
                 };
             } else {
                 throw new Error(saveResult.error || '저장 중 서버 에러가 발생했습니다.');
@@ -1117,7 +1203,9 @@ btnRunUpdate.addEventListener('click', () => {
         } catch (error) {
             logMsg(`[Error] 프로세스 실패: ${error.message}`);
             updateProgress('오류 발생', 0);
-            showAlert(`업데이트 과정에서 에러가 발생했습니다: ${error.message}`);
+            showAlert(`업데이트 과정에서 에러가 발생했습니다: ${error.message}`, () => {
+                if (progressContainer) progressContainer.style.display = 'none';
+            });
         }
     });
 });
@@ -1596,6 +1684,267 @@ window.deleteInquiryConfirm = function(id) {
 
 window.loadInquiries = loadInquiries;
 
+// --- Users Admin Management Logic ---
+let allUsers = [];
+
+async function loadUsers() {
+    const listContainer = document.getElementById('adminUsersListContainer');
+    if (listContainer) {
+        listContainer.innerHTML = '<div style="text-align: center; color: var(--adm-text-muted); padding: 30px 0;">회원 데이터를 불러오는 중...</div>';
+    }
+
+    let users = [];
+
+    // 1. 서버 API 시도
+    try {
+        const res = await fetch('/api/admin/users', {
+            headers: { 'Authorization': token }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+                users = data;
+            }
+        }
+    } catch (e) {
+        console.warn('[Admin] /api/admin/users fetch error:', e);
+    }
+
+    // 2. Supabase users 테이블 직접 조회 시도
+    if (users.length === 0) {
+        try {
+            const SUPABASE_URL = 'https://khwzgqnwlknawggugznd.supabase.co';
+            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtod3pncW53bGtuYXdnZ3Vnem5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDQzNDksImV4cCI6MjA5NTc4MDM0OX0.P2g3Y_MYV_ca8ZRpfAT93pnEzP4osYWc2tfyBHKb7v4';
+            const supaRes = await fetch(`${SUPABASE_URL}/rest/v1/users?select=*&order=created_at.desc`, {
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
+            });
+            if (supaRes.ok) {
+                const supaUsers = await supaRes.json();
+                if (Array.isArray(supaUsers) && supaUsers.length > 0) {
+                    users = supaUsers;
+                }
+            }
+        } catch (e) {
+            console.warn('[Admin] Supabase users fetch error:', e);
+        }
+    }
+
+    // 3. 로컬 users.json 정적 파일 시도
+    if (users.length === 0) {
+        const localPaths = ['/src/data/users.json', './src/data/users.json'];
+        for (const lp of localPaths) {
+            try {
+                const localRes = await fetch(lp);
+                if (localRes.ok) {
+                    const localData = await localRes.json();
+                    if (Array.isArray(localData) && localData.length > 0) {
+                        users = localData;
+                        break;
+                    }
+                }
+            } catch (e) {}
+        }
+    }
+
+    // 4. localStorage(learnmap_registered_users)에 추가 가입된 회원이 있으면 병합
+    try {
+        const localRegistered = JSON.parse(localStorage.getItem('learnmap_registered_users') || '[]');
+        if (Array.isArray(localRegistered) && localRegistered.length > 0) {
+            localRegistered.forEach(lu => {
+                if (!users.some(u => (u.email || '').toLowerCase() === (lu.email || '').toLowerCase())) {
+                    users.push(lu);
+                }
+            });
+        }
+    } catch (e) {}
+
+    allUsers = users;
+    renderUsersList();
+    if (typeof updateAdminKpiMetrics === 'function') updateAdminKpiMetrics();
+}
+window.loadUsers = loadUsers;
+
+function renderUsersList() {
+    const listContainer = document.getElementById('adminUsersListContainer');
+    if (!listContainer) return;
+
+    const roleFilter = document.getElementById('userRoleFilter');
+    const searchInput = document.getElementById('userSearchInput');
+
+    const selectedRole = roleFilter ? roleFilter.value : 'all';
+    const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+    let filtered = allUsers;
+
+    if (selectedRole !== 'all') {
+        filtered = filtered.filter(u => (u.role || 'parent') === selectedRole);
+    }
+
+    if (query) {
+        filtered = filtered.filter(u => 
+            (u.name && u.name.toLowerCase().includes(query)) ||
+            (u.email && u.email.toLowerCase().includes(query))
+        );
+    }
+
+    if (filtered.length === 0) {
+        listContainer.innerHTML = '<div style="text-align: center; color: var(--adm-text-muted); padding: 30px 0;">조건에 해당하는 회원이 없습니다.</div>';
+        return;
+    }
+
+    const roleLabels = {
+        'parent': '학부모 회원',
+        'student': '학생 회원',
+        'academy': '학원 관계자',
+        'admin': '관리자'
+    };
+
+    const roleBadges = {
+        'parent': 'background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;',
+        'student': 'background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0;',
+        'academy': 'background: #faf5ff; color: #9333ea; border: 1px solid #e9d5ff;',
+        'admin': 'background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;'
+    };
+
+    let html = `
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left;">
+                <thead>
+                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569;">
+                        <th style="padding: 10px 12px; width: 40px;">#</th>
+                        <th style="padding: 10px 12px;">이름</th>
+                        <th style="padding: 10px 12px;">이메일(아이디)</th>
+                        <th style="padding: 10px 12px; width: 110px;">회원 유형</th>
+                        <th style="padding: 10px 12px; width: 90px;">가입 경로</th>
+                        <th style="padding: 10px 12px; width: 120px;">가입 일자</th>
+                        <th style="padding: 10px 12px; width: 80px; text-align: center;">계정 관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    filtered.forEach((u, idx) => {
+        const role = u.role || 'parent';
+        const roleLabel = roleLabels[role] || role;
+        const roleStyle = roleBadges[role] || 'background: #f1f5f9; color: #475569;';
+        const provider = u.provider === 'kakao' ? '🟡 카카오' : '✉️ 일반';
+        const dateStr = u.created_at || u.createdAt || '-';
+        const formattedDate = dateStr.length >= 10 ? dateStr.substring(0, 10) : dateStr;
+
+        html += `
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                <td style="padding: 11px 12px; color: var(--adm-text-muted);">${idx + 1}</td>
+                <td style="padding: 11px 12px; font-weight: 700; color: #0f172a;">${u.name || '미등록'}</td>
+                <td style="padding: 11px 12px; color: #334155;">${u.email || '-'}</td>
+                <td style="padding: 11px 12px;">
+                    <span style="font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 700; display: inline-block; ${roleStyle}">${roleLabel}</span>
+                </td>
+                <td style="padding: 11px 12px; font-size: 11.5px; color: #475569;">${provider}</td>
+                <td style="padding: 11px 12px; color: var(--adm-text-muted); font-size: 11.5px;">${formattedDate}</td>
+                <td style="padding: 11px 12px; text-align: center;">
+                    <button class="btn-delete-user" data-id="${u.id || ''}" data-email="${u.email || ''}" style="background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer;">
+                        삭제
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    listContainer.innerHTML = html;
+
+    // Attach delete button events
+    const deleteBtns = listContainer.querySelectorAll('.btn-delete-user');
+    deleteBtns.forEach(btn => {
+        btn.onclick = async () => {
+            const uid = btn.getAttribute('data-id');
+            const uemail = btn.getAttribute('data-email');
+            showConfirm(`정말 [${uemail}] 회원을 삭제(탈퇴 처리)하시겠습니까?`, async () => {
+                await deleteUser(uid, uemail);
+            });
+        };
+    });
+}
+
+async function deleteUser(id, email) {
+    try {
+        // 1. 서버 API 호출
+        try {
+            await fetch(`/api/admin/users?id=${encodeURIComponent(id || '')}&email=${encodeURIComponent(email || '')}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': token }
+            });
+        } catch (e) {}
+
+        // 2. Supabase 삭제
+        try {
+            const SUPABASE_URL = 'https://khwzgqnwlknawggugznd.supabase.co';
+            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtod3pncW53bGtuYXdnZ3Vnem5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDQzNDksImV4cCI6MjA5NTc4MDM0OX0.P2g3Y_MYV_ca8ZRpfAT93pnEzP4osYWc2tfyBHKb7v4';
+            if (id) {
+                await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(id)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+            } else if (email) {
+                await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+            }
+        } catch (e) {}
+
+        // 3. 로컬스토리지 삭제
+        try {
+            let localUsers = JSON.parse(localStorage.getItem('learnmap_registered_users') || '[]');
+            localUsers = localUsers.filter(u => u.id !== id && u.email !== email);
+            localStorage.setItem('learnmap_registered_users', JSON.stringify(localUsers));
+        } catch (e) {}
+
+        // 4. 메모리 배열 삭제 및 갱신
+        allUsers = allUsers.filter(u => u.id !== id && u.email !== email);
+        renderUsersList();
+        if (typeof updateAdminKpiMetrics === 'function') updateAdminKpiMetrics();
+        showAlert('회원이 정상적으로 삭제되었습니다.');
+    } catch (err) {
+        console.error('Delete user error:', err);
+        showAlert('회원 삭제 중 오류가 발생했습니다.');
+    }
+}
+
+// User Filter & Search Events
+const userRoleFilter = document.getElementById('userRoleFilter');
+if (userRoleFilter) {
+    userRoleFilter.addEventListener('change', renderUsersList);
+}
+const btnSearchUsers = document.getElementById('btnSearchUsers');
+if (btnSearchUsers) {
+    btnSearchUsers.addEventListener('click', renderUsersList);
+}
+const userSearchInput = document.getElementById('userSearchInput');
+if (userSearchInput) {
+    userSearchInput.addEventListener('keyup', (e) => {
+        if (e.key === 'Enter') renderUsersList();
+    });
+}
+const btnRefreshUsers = document.getElementById('btnRefreshUsers');
+if (btnRefreshUsers) {
+    btnRefreshUsers.addEventListener('click', loadUsers);
+}
+
 const btnRefreshRealEstateList = document.getElementById('btnRefreshRealEstateList');
 
 // --- Stored Real Estate Management Logic ---
@@ -1840,13 +2189,21 @@ function getFilteredRealEstates() {
         filtered = filtered.filter(item => item.type === selectedType);
     }
 
-    // Filter by Search Query (name or address, whitespace-tolerant)
+    // Filter by Search Query (name, address, area, kaptCode, or pnu, whitespace-tolerant)
     if (searchQuery !== '') {
         const cleanQuery = searchQuery.toLowerCase().replace(/\s+/g, '');
         filtered = filtered.filter(item => {
             const nameClean = (item.name || '').toLowerCase().replace(/\s+/g, '');
             const addrClean = (item.address || '').toLowerCase().replace(/\s+/g, '');
-            return nameClean.includes(cleanQuery) || addrClean.includes(cleanQuery);
+            const singleAreaClean = (item.area || '').toLowerCase().replace(/\s+/g, '');
+            const kaptClean = (item.kaptCode || '').toLowerCase().replace(/\s+/g, '');
+            const pnuClean = (item.pnu || '').replace(/\s+/g, '');
+            const areaMatches = Array.isArray(item.areaList) && item.areaList.some(a => {
+                const aClean = (a.area || '').toLowerCase().replace(/\s+/g, '');
+                const pClean = (a.pyeong || '').toLowerCase().replace(/\s+/g, '');
+                return aClean.includes(cleanQuery) || pClean.includes(cleanQuery);
+            });
+            return nameClean.includes(cleanQuery) || addrClean.includes(cleanQuery) || singleAreaClean.includes(cleanQuery) || kaptClean.includes(cleanQuery) || pnuClean.includes(cleanQuery) || areaMatches;
         });
     }
 
@@ -1860,6 +2217,17 @@ function getFilteredRealEstates() {
     });
 
     return filtered;
+}
+
+function isComplexRealEstate(item) {
+    if (!item) return false;
+    // 아파트(apt), 연립·다세대(rh), 오피스텔(offi)은 공동주택/단지형 주택
+    if (item.type === 'apt' || item.type === 'rh' || item.type === 'offi') return true;
+    // 명칭에 '단지' 또는 '아파트'가 포함된 경우
+    if (item.name && (item.name.includes('단지') || item.name.includes('아파트'))) return true;
+    // 2개 이상의 면적 타입을 보유한 경우
+    if (Array.isArray(item.areaList) && item.areaList.length > 1) return true;
+    return false;
 }
 
 function renderStoredRealEstateList() {
@@ -1881,6 +2249,51 @@ function renderStoredRealEstateList() {
             ? `좌표: (${parseFloat(latVal).toFixed(5)}, ${parseFloat(lngVal).toFixed(5)})`
             : '좌표: 미등록';
 
+        // 단지 여부 판별 및 실제 전용면적/면적리스트 바인딩
+        let areaListHtml = '';
+        if (isComplexRealEstate(item)) {
+            const rawAreas = Array.isArray(item.areaList) && item.areaList.length > 0
+                ? item.areaList
+                : (item.area && item.area !== '-' ? [{ area: item.area, price: item.price, tradeDate: item.tradeDate }] : []);
+
+            const validAreas = rawAreas.filter(a => {
+                const aVal = a ? (a.area || a.rawArea) : null;
+                return aVal && aVal !== '-';
+            });
+
+            if (validAreas.length > 0) {
+                const areaBadges = validAreas.map(a => {
+                    const areaVal = a.area || (a.rawArea ? `${a.rawArea}㎡` : (typeof a === 'string' ? a : '-'));
+                    const pyeongVal = a.pyeong || (parseFloat(String(areaVal).replace(/[^0-9.]/g, '')) ? `${(parseFloat(String(areaVal).replace(/[^0-9.]/g, '')) / 3.3058).toFixed(1)}평형` : '');
+                    
+                    const details = [];
+                    if (pyeongVal) details.push(pyeongVal);
+                    if (a.householdCount && a.householdCount > 1) details.push(`${a.householdCount}건 거래`);
+                    if (a.price && a.price !== '기본 정보 구축 (실거래 대기)' && a.price !== '-' && a.price !== '시세 정보') {
+                        details.push(`<span style="color: #059669; font-weight: 700;">${a.price}</span>`);
+                    }
+
+                    const subInfo = details.length > 0 ? ` <span style="color: var(--text-muted); font-size: 10.5px;">(${details.join(', ')})</span>` : '';
+                    const tooltip = a.tradeDate && a.tradeDate !== '-' ? ` title="기준/거래일: ${a.tradeDate}"` : '';
+
+                    return `<span${tooltip} style="display: inline-flex; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 1.5px 6px; font-size: 11px; margin-right: 4px; margin-bottom: 2px;">
+                        <strong style="color: #1e293b;">${areaVal}</strong>${subInfo}
+                    </span>`;
+                }).join('');
+
+                const badgeLabel = validAreas.length > 1 ? `📐 면적리스트 (${validAreas.length}개 타입)` : '📐 전용면적';
+
+                areaListHtml = `
+                    <div style="font-size: 11px; margin-top: 3px; display: flex; flex-wrap: wrap; align-items: center; line-height: 1.5;">
+                        <span style="font-weight: 700; color: #2563eb; background: #eff6ff; border: 1px solid #dbeafe; padding: 1px 6px; border-radius: 4px; margin-right: 6px; margin-bottom: 2px; display: inline-flex; align-items: center; gap: 3px;">
+                            ${badgeLabel}
+                        </span>
+                        ${areaBadges}
+                    </div>
+                `;
+            }
+        }
+
         return `
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.05); padding: 8px 4px;">
                 <div style="flex: 1; padding-right: 10px;">
@@ -1888,9 +2301,15 @@ function renderStoredRealEstateList() {
                         <strong style="color: var(--deep-blue); font-size: 13px;">${index + 1}. ${item.name}</strong>
                         <span style="font-size: 11px; color: var(--text-muted); margin-left: 4px;">(${getTypeName(item.type)})</span>
                         <span style="background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 6px; font-size: 10px;">${item.source || '마스터 DB'}</span>
+                        ${item.kaptCode ? `<span style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 1.5px 6px; border-radius: 4px; font-weight: bold; margin-left: 4px; font-size: 10px;" title="K-APT 표준 단지코드">🏢 K-APT: ${item.kaptCode}</span>` : ''}
+                        ${item.pnu ? `<span style="background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; padding: 1.5px 5px; border-radius: 4px; margin-left: 4px; font-size: 10px; font-family: monospace;" title="고유필지번호(PNU: ${item.pnu})">PNU</span>` : ''}
                     </div>
                     <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 3px;">
                         주소: ${item.address} | 전용면적: ${item.area || '-'} | ${coordText}
+                    </div>
+                    ${areaListHtml}
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                        📅 등록일: ${item.createdAt || '-'} | 🔄 수정일: ${item.updatedAt || item.createdAt || '-'}
                     </div>
                 </div>
                 <div style="text-align: right; min-width: 140px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
@@ -1907,7 +2326,10 @@ function renderStoredRealEstateList() {
 
 async function loadStoredRealEstate() {
     try {
-        const res = await fetch('/api/realestate/stored');
+        let res = await fetch('/api/realestate/stored');
+        if (!res.ok) {
+            res = await fetch('./src/data/realestate_seoul.json');
+        }
         if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data)) {
@@ -1919,13 +2341,23 @@ async function loadStoredRealEstate() {
             allStoredRealEstates = [];
         }
     } catch (e) {
-        console.error('Failed to load /api/realestate/stored', e);
-        allStoredRealEstates = [];
+        try {
+            const fbRes = await fetch('./src/data/realestate_seoul.json');
+            if (fbRes.ok) {
+                allStoredRealEstates = await fbRes.json();
+            } else {
+                allStoredRealEstates = [];
+            }
+        } catch (err) {
+            console.error('Failed to load /api/realestate/stored', err);
+            allStoredRealEstates = [];
+        }
     }
     updateRealEstateSigunguDropdown();
     updateRealEstateGuDropdown();
     updateRealEstateDongDropdown();
     renderStoredRealEstateList();
+    if (typeof updateAdminKpiMetrics === 'function') updateAdminKpiMetrics(); // sync realestate kpi
 }
 
 async function saveStoredRealEstate(list) {
@@ -2130,17 +2562,23 @@ if (btnRunRealEstateSync) {
                     updateSyncProgress('서버 업데이트 완료!', 100);
                     logSyncMsg(`[성공] ${regionText} ${typeText} 실거래가 동기화 완료: 기존 주택 ${data.updatedCount}건 최신 가격 갱신, 신규 ${data.newAddedCount}건 추가.`);
                     await loadStoredRealEstate();
-                    showAlert(`실거래가 데이터가 성공적으로 동기화되었습니다.\n기존 마스터 주택 ${data.updatedCount}건의 최신 거래가격이 갱신되었으며, 신규 주택 ${data.newAddedCount}건이 등록되었습니다.`);
+                    showAlert(`실거래가 데이터가 성공적으로 동기화되었습니다.\n기존 마스터 주택 ${data.updatedCount}건의 최신 거래가격이 갱신되었으며, 신규 주택 ${data.newAddedCount}건이 등록되었습니다.`, () => {
+                        if (container) container.style.display = 'none';
+                    });
                 } else {
                     updateSyncProgress('수집 실패', 100);
                     logSyncMsg(`[실패] 실거래가 수집 오류: ${data.error || '알 수 없는 오류'}`);
-                    showAlert('실거래가 수집에 실패했습니다: ' + (data.error || '오류'));
+                    showAlert('실거래가 수집에 실패했습니다: ' + (data.error || '오류'), () => {
+                        if (container) container.style.display = 'none';
+                    });
                 }
             } catch (err) {
                 console.error('Sync trades error:', err);
                 updateSyncProgress('네트워크 오류 발생', 100);
                 logSyncMsg(`[오류] 네트워크 오류가 발생했습니다.`);
-                showAlert('실거래가 수집 중 네트워크 오류가 발생했습니다.');
+                showAlert('실거래가 수집 중 네트워크 오류가 발생했습니다.', () => {
+                    if (container) container.style.display = 'none';
+                });
             } finally {
                 btnRunRealEstateSync.disabled = false;
             }
@@ -2201,7 +2639,7 @@ if (btnRunRealEstateMaster) {
                 await new Promise(r => setTimeout(r, 400));
                 updateMasterProgress('카카오 로컬 API 정보 보강 중...', 75);
                 logMasterMsg(`카카오 로컬 API 장소/건물 마스터 데이터베이스 보강 중...`);
-                logMasterMsg(`아파트, 연립, 다세대, 오피스텔 마스터 목록 동기화 진행 중...`);
+                logMasterMsg(`아파트, 연립, 다세대, 오피스텔 마스터 목록 및 K-APT 단지코드 자동 연동 진행 중...`);
 
                 const res = await fetch('/api/realestate/collect-master', {
                     method: 'POST',
@@ -2212,20 +2650,27 @@ if (btnRunRealEstateMaster) {
 
                 if (data.success) {
                     const rCount = data.regionCount !== undefined ? data.regionCount : data.totalCount;
+                    const kaptNote = data.kaptCount ? `, K-APT 단지코드 +${data.kaptCount}건 연동` : '';
                     updateMasterProgress('서버 업데이트 완료!', 100);
-                    logMasterMsg(`[성공] ${regionText} 주택 마스터 DB 구축 완료! (해당 지역: ${rCount}건, 전체 DB: ${data.totalCount}건, 신규 +${data.newlyAdded}건)`);
+                    logMasterMsg(`[성공] ${regionText} 주택 마스터 DB 구축 완료! (해당 지역: ${rCount}건, 전체 DB: ${data.totalCount}건, 신규 +${data.newlyAdded}건${kaptNote})`);
                     await loadStoredRealEstate();
-                    showAlert(`주택 마스터 정보 수집 및 저장이 성공적으로 완료되었습니다.\n${regionText} 주택 정보 ${rCount}건 (서버 전체 DB ${data.totalCount}건)이 저구축되었습니다.`);
+                    showAlert(`주택 마스터 정보 수집 및 저장이 성공적으로 완료되었습니다.\n${regionText} 주택 정보 ${rCount}건 (서버 전체 DB ${data.totalCount}건${kaptNote})이 구축되었습니다.`, () => {
+                        if (container) container.style.display = 'none';
+                    });
                 } else {
                     updateMasterProgress('수집 실패', 100);
                     logMasterMsg(`[실패] 수집 중 오류: ${data.error || '알 수 없는 오류'}`);
-                    showAlert('수집에 실패했습니다: ' + (data.error || '오류'));
+                    showAlert('수집에 실패했습니다: ' + (data.error || '오류'), () => {
+                        if (container) container.style.display = 'none';
+                    });
                 }
             } catch (err) {
                 console.error('Master collect error:', err);
                 updateMasterProgress('네트워크 오류 발생', 100);
                 logMasterMsg(`[오류] 네트워크 오류가 발생했습니다.`);
-                showAlert('수집 요청 중 네트워크 오류가 발생했습니다.');
+                showAlert('수집 요청 중 네트워크 오류가 발생했습니다.', () => {
+                    if (container) container.style.display = 'none';
+                });
             } finally {
                 btnRunRealEstateMaster.disabled = false;
             }
@@ -2265,6 +2710,7 @@ function showConfirmModal(message, title = '업데이트 시작 확인') {
 
 // --- School Violence Admin Management Logic ---
 function initAdminViolenceManagement() {
+    return;
     const btnBatchUpdateYm = document.getElementById('btnBatchUpdateYm');
     const adminBatchYm = document.getElementById('adminBatchYm');
     const adminViolenceSchoolSearch = document.getElementById('adminViolenceSchoolSearch');
@@ -2443,13 +2889,17 @@ function initAdminAuth() {
 // Initial load on script execution if DOM ready
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
     initAdminAuth();
+    loadStoredSchools();
     loadStoredRealEstate();
-    initAdminViolenceManagement();
+    loadUsers();
+
 } else {
     window.addEventListener('DOMContentLoaded', () => {
         initAdminAuth();
-        loadStoredRealEstate();
-        initAdminViolenceManagement();
+        loadStoredSchools();
+    loadStoredRealEstate();
+    loadUsers();
+    
     });
 }
 

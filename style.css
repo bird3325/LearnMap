@@ -515,7 +515,8 @@ body {
 }
 
 /* Academy Sidebar Section */
-.academy-sidebar-section {
+.academy-sidebar-section,
+.housing-sidebar-section {
     position: absolute;
     top: 0;
     right: var(--sidebar-width, 400px);
@@ -532,7 +533,8 @@ body {
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.app-container:not(.sidebar-open) .academy-sidebar-section {
+.app-container:not(.sidebar-open) .academy-sidebar-section,
+.app-container:not(.sidebar-open) .housing-sidebar-section {
     transform: translateX(calc(100% + var(--sidebar-width, 400px)));
 }
 
@@ -540,14 +542,25 @@ body {
     transform: translateX(calc(100% + var(--sidebar-width, 400px)));
 }
 
+.app-container.sidebar-open:not(.housing-open) .housing-sidebar-section {
+    transform: translateX(calc(100% + var(--sidebar-width, 400px)));
+}
+
 .app-container.sidebar-open.academy-open .academy-sidebar-section {
     transform: translateX(0);
 }
 
-/* Academy Scroll Wrapper & Filters - 스크롤바 숨김 처리 */
+.app-container.sidebar-open.housing-open .housing-sidebar-section {
+    transform: translateX(0);
+}
+
+/* Academy & Housing Scroll Wrapper & Filters - 스크롤바 숨김 처리 */
 #academyScrollWrapper::-webkit-scrollbar,
 #academySubjectChips::-webkit-scrollbar,
-#sideAcademyList::-webkit-scrollbar {
+#sideAcademyList::-webkit-scrollbar,
+#housingScrollWrapper::-webkit-scrollbar,
+#housingTypeChips::-webkit-scrollbar,
+#sideHousingList::-webkit-scrollbar {
     display: none !important;
     width: 0 !important;
     height: 0 !important;
@@ -555,7 +568,10 @@ body {
 
 #academyScrollWrapper,
 #academySubjectChips,
-#sideAcademyList {
+#sideAcademyList,
+#housingScrollWrapper,
+#housingTypeChips,
+#sideHousingList {
     -ms-overflow-style: none !important;
     scrollbar-width: none !important;
 }
@@ -656,7 +672,8 @@ body {
     .app-container.sidebar-open .sidebar-section {
         transform: translateY(0) !important;
     }
-    .academy-sidebar-section {
+    .academy-sidebar-section,
+    .housing-sidebar-section {
         position: fixed !important;
         top: 0 !important;
         bottom: auto !important;
@@ -672,13 +689,16 @@ body {
         transform: none !important;
         background: #ffffff !important;
     }
-    .app-container:not(.sidebar-open) .academy-sidebar-section {
+    .app-container:not(.sidebar-open) .academy-sidebar-section,
+    .app-container:not(.sidebar-open) .housing-sidebar-section {
         transform: none !important;
     }
-    .app-container.sidebar-open:not(.academy-open) .academy-sidebar-section {
+    .app-container.sidebar-open:not(.academy-open) .academy-sidebar-section,
+    .app-container.sidebar-open:not(.housing-open) .housing-sidebar-section {
         transform: none !important;
     }
-    .app-container.sidebar-open.academy-open .academy-sidebar-section {
+    .app-container.sidebar-open.academy-open .academy-sidebar-section,
+    .app-container.sidebar-open.housing-open .housing-sidebar-section {
         transform: none !important;
     }
     .compare-overlay {
@@ -1508,8 +1528,9 @@ body {
         box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
     }
 
-    /* 모바일에서 개별 학원 상세 커뮤니티 패널을 전체화면으로 덮음 */
-    #communityPanel {
+    /* 모바일에서 개별 학원 상세 및 주택 상세 패널을 전체화면으로 덮음 */
+    #communityPanel,
+    #housingDetailPanel {
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
@@ -1525,15 +1546,18 @@ body {
         box-sizing: border-box !important;
     }
 
-    /* 모바일에서 학원 상세 패널 활성화 시 부모의 z-index를 올려줌 */
-    .sidebar-section.active-community {
+    /* 모바일에서 학원/주택 상세 패널 활성화 시 부모의 z-index를 올려줌 */
+    .sidebar-section.active-community,
+    .sidebar-section.active-housing {
         z-index: 10105 !important;
     }
 
     /* 모바일 팝업/패널 헤더 바 스타일 공통 통일 */
     .sidebar-header,
     #academySidebar > div:first-child,
+    #housingSidebar > div:first-child,
     #communityPanel > div:first-child,
+    #housingDetailPanel > div:first-child,
     #storyModal > div:first-child > div:first-child,
     #settingsModal > div:first-child > div:first-child,
     #simulationModal > div:first-child > div:first-child,
@@ -1574,8 +1598,9 @@ body {
         border-top-right-radius: 0 !important;
     }
 
-    /* 학원 상세 헤더: 우측 패딩을 16px로 맞추어 학교 상세 닫기 버튼과 동일한 위치(16px) 유지 */
-    #communityPanel > div:first-child {
+    /* 학원/주택 상세 헤더: 우측 패딩을 16px로 맞추어 학교 상세 닫기 버튼과 동일한 위치(16px) 유지 */
+    #communityPanel > div:first-child,
+    #housingDetailPanel > div:first-child {
         padding: 0 16px !important;
     }
 
@@ -1591,7 +1616,10 @@ body {
     #btnCloseSettings,
     #btnCloseParentsFilter,
     #academySidebar button[onclick*="toggleAcademySidebar"],
+    #housingSidebar button[onclick*="toggleHousingSidebar"],
     #communityPanel button[onclick*="clearAcademyMarker"],
+    #housingDetailPanel button[onclick*="closeHousingDetailModal"],
+    #btnCloseHousingModal,
     #simulationModal > div:first-child > div:first-child > button,
     #storyModal button[onclick*="mapTabBtn"],
     #topicStatsModal button[onclick*="topicStatsModal"] {
@@ -1621,7 +1649,10 @@ body {
     #btnCloseParentsFilter:hover,
     #btnDeselectSchool:hover,
     #academySidebar button[onclick*="toggleAcademySidebar"]:hover,
+    #housingSidebar button[onclick*="toggleHousingSidebar"]:hover,
     #communityPanel button[onclick*="clearAcademyMarker"]:hover,
+    #housingDetailPanel button[onclick*="closeHousingDetailModal"]:hover,
+    #btnCloseHousingModal:hover,
     #simulationModal > div:first-child > div:first-child > button:hover,
     #storyModal button[onclick*="mapTabBtn"]:hover,
     #topicStatsModal button[onclick*="topicStatsModal"]:hover {
@@ -1632,9 +1663,11 @@ body {
     .sidebar-header h1,
     #settingsModal h3,
     #communityPanel h2,
+    #housingDetailPanel h2,
     #simulationModal h3,
     #storyModal h3,
     #academySidebar h2,
+    #housingSidebar h2,
     .parents-filter-accordion h3,
     #topicStatsModal h3 {
         font-size: 17px !important;
@@ -1834,12 +1867,13 @@ body {
 }
 
 /* 사이드바가 열려있을 때: 사이드바 바로 왼쪽 */
-.app-container.sidebar-open:not(.academy-open) .pc-floating-filters {
+.app-container.sidebar-open:not(.academy-open):not(.housing-open) .pc-floating-filters {
     right: calc(var(--sidebar-width, 400px) + 24px) !important;
 }
 
-/* 학원 사이드바까지 열려있을 때: 학원 사이드바 바로 왼쪽 */
-.app-container.sidebar-open.academy-open .pc-floating-filters {
+/* 학원 또는 주택 사이드바까지 열려있을 때: 서브 사이드바 바로 왼쪽 */
+.app-container.sidebar-open.academy-open .pc-floating-filters,
+.app-container.sidebar-open.housing-open .pc-floating-filters {
     right: calc(var(--sidebar-width, 400px) + 364px) !important;
 }
 
@@ -1956,16 +1990,25 @@ body {
     transform: translateY(-50%) translateX(0);
 }
 
-/* 주변 학원 상세(communityPanel)가 열려있을 때 상단 우측 도움말 가이드, 설정 버튼 및 자녀 내신 정밀 진단 버튼 강제 숨김 */
+/* 주변 학원 상세(communityPanel) 또는 주택 상세(housingDetailPanel)가 열려있을 때 상단 우측 도움말 가이드, 설정 버튼 및 자녀 내신 정밀 진단 버튼 강제 숨김 */
 .sidebar-section.active-community ~ #btnShowTutorial,
 .sidebar-section.active-community ~ #btnOpenSettings,
 .sidebar-section.active-community ~ #btnOpenNEISModal,
+.sidebar-section.active-housing ~ #btnShowTutorial,
+.sidebar-section.active-housing ~ #btnOpenSettings,
+.sidebar-section.active-housing ~ #btnOpenNEISModal,
 .app-container:has(#communityPanel[style*="display: flex"]) #btnShowTutorial,
 .app-container:has(#communityPanel[style*="display: flex"]) #btnOpenSettings,
 .app-container:has(#communityPanel[style*="display: flex"]) #btnOpenNEISModal,
 .app-container:has(#communityPanel[style*="display: block"]) #btnShowTutorial,
 .app-container:has(#communityPanel[style*="display: block"]) #btnOpenSettings,
-.app-container:has(#communityPanel[style*="display: block"]) #btnOpenNEISModal {
+.app-container:has(#communityPanel[style*="display: block"]) #btnOpenNEISModal,
+.app-container:has(#housingDetailPanel[style*="display: flex"]) #btnShowTutorial,
+.app-container:has(#housingDetailPanel[style*="display: flex"]) #btnOpenSettings,
+.app-container:has(#housingDetailPanel[style*="display: flex"]) #btnOpenNEISModal,
+.app-container:has(#housingDetailPanel[style*="display: block"]) #btnShowTutorial,
+.app-container:has(#housingDetailPanel[style*="display: block"]) #btnOpenSettings,
+.app-container:has(#housingDetailPanel[style*="display: block"]) #btnOpenNEISModal {
     display: none !important;
 }
 
@@ -2003,12 +2046,13 @@ body {
 }
 
 /* 사이드바가 열려있을 때: 사이드바 바로 왼쪽 정렬 */
-.app-container.sidebar-open:not(.academy-open) #mobileFilterToast {
+.app-container.sidebar-open:not(.academy-open):not(.housing-open) #mobileFilterToast {
     right: calc(var(--sidebar-width, 400px) + 24px) !important;
     top: 20px !important;
 }
 
-.app-container.sidebar-open.academy-open #mobileFilterToast {
+.app-container.sidebar-open.academy-open #mobileFilterToast,
+.app-container.sidebar-open.housing-open #mobileFilterToast {
     right: calc(var(--sidebar-width, 400px) + 364px) !important;
     top: 20px !important;
 }
@@ -2140,11 +2184,12 @@ body {
 }
 
 /* 사이드바가 열려있을 때: 사이드바 왼쪽 마진 정합선 */
-.app-container.sidebar-open:not(.academy-open) .compare-floating-btn {
+.app-container.sidebar-open:not(.academy-open):not(.housing-open) .compare-floating-btn {
     right: calc(var(--sidebar-width, 400px) + 24px) !important;
 }
 
-.app-container.sidebar-open.academy-open .compare-floating-btn {
+.app-container.sidebar-open.academy-open .compare-floating-btn,
+.app-container.sidebar-open.housing-open .compare-floating-btn {
     right: calc(var(--sidebar-width, 400px) + 364px) !important;
 }
 
@@ -2154,7 +2199,8 @@ body.is-resizing-sidebar .pc-floating-filters,
 body.is-resizing-sidebar #mobileFilterToast,
 body.is-resizing-sidebar .compare-floating-btn,
 body.is-resizing-sidebar .sidebar-section,
-body.is-resizing-sidebar .academy-sidebar-section {
+body.is-resizing-sidebar .academy-sidebar-section,
+body.is-resizing-sidebar .housing-sidebar-section {
     transition: none !important;
 }
 

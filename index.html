@@ -385,6 +385,15 @@
                             }
                         }, 300);
                     } else {
+                        // 주택 사이드바 및 주택 상세 패널이 열려있다면 닫아줍니다 (상호 배타적 단일 서브사이드바)
+                        const housingSidebar = document.getElementById('housingSidebar');
+                        if (housingSidebar && housingSidebar.style.display !== 'none') {
+                            housingSidebar.style.display = 'none';
+                        }
+                        if (container) container.classList.remove('housing-open');
+                        const hPanel = document.getElementById('housingDetailPanel');
+                        if (hPanel) hPanel.style.display = 'none';
+
                         // 학교 정보 창이 display: none 이었다면 함께 열어줍니다.
                         if (sidebar && sidebar.style.display === 'none') {
                             sidebar.style.display = 'flex';
@@ -426,6 +435,87 @@
                     }
                 }
                 window.toggleAcademySidebar = toggleAcademySidebar;
+
+                function toggleHousingSidebar(forceOpen = false) {
+                    const container = document.querySelector('.app-container');
+                    const housingSidebar = document.getElementById('housingSidebar');
+                    const academySidebar = document.getElementById('academySidebar');
+                    const sidebar = document.querySelector('.sidebar-section');
+
+                    // 모바일이 아닌 PC 환경에서 일반 토글 버튼 클릭 시(forceOpen 아님) 학교 정보가 닫혀있으면 열지 않음
+                    if (window.innerWidth > 1024 && sidebar && sidebar.style.display === 'none' && !forceOpen) return;
+
+                    if (housingSidebar && housingSidebar.style.display === 'flex' && !forceOpen) {
+                        if (container) container.classList.remove('housing-open');
+
+                        // 주택 리스트 닫을 때 주택 상세 패널도 함께 닫고 학교 상세 복구
+                        const hPanel = document.getElementById('housingDetailPanel');
+                        if (hPanel) hPanel.style.display = 'none';
+                        if (sidebar) sidebar.classList.remove('active-housing');
+                        const commPanel = document.getElementById('communityPanel');
+                        if (!commPanel || commPanel.style.display === 'none') {
+                            const sidebarContent = document.getElementById('sidebarContent');
+                            if (sidebarContent) sidebarContent.style.display = 'block';
+                            const btnToggle = document.getElementById('btnToggleSidebarTop');
+                            if (btnToggle) btnToggle.style.display = 'flex';
+                        }
+
+                        setTimeout(() => {
+                            if (container && !container.classList.contains('housing-open')) {
+                                if (housingSidebar) housingSidebar.style.display = 'none';
+                            }
+                        }, 300);
+                    } else {
+                        // 학원 사이드바 및 학원 상세 패널 닫기 (상호 배타적 단일 보조 사이드바)
+                        if (academySidebar && academySidebar.style.display !== 'none') {
+                            academySidebar.style.display = 'none';
+                        }
+                        if (container) {
+                            container.classList.remove('academy-open');
+                        }
+                        const commPanel = document.getElementById('communityPanel');
+                        if (commPanel) commPanel.style.display = 'none';
+
+                        // 학교 정보 창이 display: none 이었다면 함께 열어줍니다.
+                        if (sidebar && sidebar.style.display === 'none') {
+                            sidebar.style.display = 'flex';
+                        }
+                        if (container) {
+                            container.classList.add('sidebar-open');
+                        }
+
+                        if (housingSidebar) {
+                            housingSidebar.style.display = 'flex';
+                            void housingSidebar.offsetWidth;
+                        }
+
+                        if (container) {
+                            container.classList.add('housing-open');
+                        }
+
+                        // 모바일에서는 슬라이드 업 트랜지션을 위해 sidebar-open 클래스도 함께 활성화
+                        if (window.innerWidth <= 1024) {
+                            if (container) container.classList.add('sidebar-open');
+                        } else {
+                            setTimeout(() => {
+                                const schoolObj = (typeof fullSchool !== 'undefined' ? fullSchool : null) ||
+                                                  (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) ||
+                                                  window.currentSelectedSchool || null;
+                                let sLat = schoolObj && (schoolObj.lat || schoolObj.y || schoolObj.latitude) ? parseFloat(schoolObj.lat || schoolObj.y || schoolObj.latitude) : null;
+                                let sLng = schoolObj && (schoolObj.lng || schoolObj.x || schoolObj.longitude) ? parseFloat(schoolObj.lng || schoolObj.x || schoolObj.longitude) : null;
+
+                                if (sLat && sLng && typeof window.centerAcademyPinWithSidebarOffset === 'function') {
+                                    window.centerAcademyPinWithSidebarOffset(sLng, sLat, schoolObj.school_name);
+                                }
+                            }, 100);
+                        }
+                    }
+                    if (window.kakaoMapInstance) {
+                        setTimeout(() => window.kakaoMapInstance.relayout(), 50);
+                        setTimeout(() => window.kakaoMapInstance.relayout(), 310);
+                    }
+                }
+                window.toggleHousingSidebar = toggleHousingSidebar;
             </script>
 
             <!-- Map overlay filters and search -->
@@ -1253,6 +1343,140 @@
                 </div>
 
                 <div id="academyPaginationContainer" style="margin-top: auto; padding-top: 14px; padding-bottom: 10px;">
+                </div>
+            </div>
+        </section>
+
+        <!-- Housing Sidebar (Initially hidden) -->
+        <section class="housing-sidebar-section" id="housingSidebar" style="display: none;">
+            <!-- Housing Sidebar Top Header -->
+            <div id="housingSidebarHeader"
+                style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <h2
+                        style="font-size: 19px; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px;">
+                        주택 리스트
+                        <span id="housingTotalCountBadge"
+                            style="background: #e0f2fe; color: #0284c7; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; display: inline-flex; align-items: center; white-space: nowrap;">총
+                            0개 단지</span>
+                    </h2>
+                </div>
+                <button onclick="toggleHousingSidebar()"
+                    style="background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; color: #475569; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; padding: 0;"
+                    onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'"
+                    aria-label="닫기">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- 헤더 밑 스크롤 컨테이너 -->
+            <div id="housingScrollWrapper"
+                style="flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; scrollbar-width: none; -ms-overflow-style: none;">
+                <!-- 반경 설정 안내 카드 -->
+                <div
+                    style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 14px; padding: 13px 14px; margin-bottom: 12px; flex-shrink: 0;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 7px;">
+                            <span
+                                style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #16a34a; color: #ffffff; border-radius: 50%; font-size: 11px; font-weight: 800; font-family: sans-serif; flex-shrink: 0;">🏠</span>
+                            <span style="font-size: 13px; font-weight: 700; color: #1e293b; letter-spacing: -0.3px;">
+                                <strong id="housingSchoolName" style="color: #16a34a; font-weight: 800;">학교</strong> 기준
+                                반경 주택 목록
+                            </span>
+                        </div>
+                        <span
+                            style="font-size: 11px; font-weight: 600; color: #64748b; background: #ffffff; border: 1px solid #e2e8f0; padding: 3px 8px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">반경
+                            설정</span>
+                    </div>
+                    <!-- 반경 버튼 4종 -->
+                    <div id="housingRadiusButtonGroup"
+                        style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+                        <button type="button" class="housing-radius-btn" data-radius="500"
+                            style="padding: 8px 0; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; text-align: center; transition: all 0.15s ease;">500m</button>
+                        <button type="button" class="housing-radius-btn active" data-radius="1000"
+                            style="padding: 8px 0; border-radius: 8px; font-size: 12px; font-weight: 700; border: 1px solid #16a34a; background: #16a34a; color: #ffffff; cursor: pointer; text-align: center; box-shadow: 0 2px 6px rgba(22,163,74,0.25); transition: all 0.15s ease;">반경
+                            1km</button>
+                        <button type="button" class="housing-radius-btn" data-radius="1500"
+                            style="padding: 8px 0; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; text-align: center; transition: all 0.15s ease;">1.5km</button>
+                        <button type="button" class="housing-radius-btn" data-radius="2000"
+                            style="padding: 8px 0; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; text-align: center; transition: all 0.15s ease;">2.0km</button>
+                    </div>
+                </div>
+
+                <!-- 주택 유형 선택 및 검색 필터 -->
+                <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: center; flex-shrink: 0;">
+                    <div style="position: relative; flex-shrink: 0; min-width: 104px;">
+                        <select id="housingTypeFilter"
+                            style="width: 100%; box-sizing: border-box; appearance: none; -webkit-appearance: none; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 9px 28px 9px 12px; font-size: 13px; font-weight: 700; color: #1e293b; cursor: pointer; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+                            <option value="all">유형 전체</option>
+                            <option value="apt">아파트만</option>
+                            <option value="rh">연립·다세대</option>
+                            <option value="sh">단독·다가구</option>
+                            <option value="offi">오피스텔만</option>
+                        </select>
+                        <svg style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: #64748b; pointer-events: none;"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                    <div style="position: relative; flex: 1; display: flex; align-items: center;">
+                        <svg style="position: absolute; left: 12px; width: 15px; height: 15px; color: #94a3b8; pointer-events: none;"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" id="housingNameFilter" placeholder="단지명 또는 주소 검색"
+                            style="width: 100%; box-sizing: border-box; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 9px 30px 9px 34px; font-size: 12.5px; color: #1e293b; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.03); transition: border-color 0.15s ease;">
+                        <button id="btnHousingSearchClear" type="button"
+                            style="display: none; position: absolute; right: 9px; background: #cbd5e1; border: none; border-radius: 50%; width: 17px; height: 17px; font-size: 10px; color: #ffffff; cursor: pointer; align-items: center; justify-content: center; padding: 0;"
+                            aria-label="검색어 초기화">✕</button>
+                    </div>
+                </div>
+
+                <!-- 주택 퀵 필터 칩 & 정렬 드롭다운 (스크롤 시 상단 고정) -->
+                <div id="housingTabMenuBar"
+                    style="position: sticky; top: 0; z-index: 20; background: #ffffff; display: flex; justify-content: space-between; align-items: center; padding: 6px 0 10px 0; margin-bottom: 10px; gap: 8px; border-bottom: 1px solid #f1f5f9; flex-shrink: 0;">
+                    <div id="housingTypeChips" class="hide-scrollbar draggable-scroll-content"
+                        style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; -ms-overflow-style: none; flex: 1; align-items: center; cursor: grab; scroll-behavior: smooth; -webkit-overflow-scrolling: touch;">
+                        <button class="housing-chip active" data-type="all"
+                            style="padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid #1e293b; background: #1e293b; color: #ffffff; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">전체</button>
+                        <button class="housing-chip" data-type="apt"
+                            style="padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">아파트</button>
+                        <button class="housing-chip" data-type="rh"
+                            style="padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">연립·다세대</button>
+                        <button class="housing-chip" data-type="sh"
+                            style="padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">단독·다가구</button>
+                        <button class="housing-chip" data-type="offi"
+                            style="padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">오피스텔</button>
+                    </div>
+                    <div style="position: relative; display: inline-flex; align-items: center; flex-shrink: 0;">
+                        <select id="housingSortFilter"
+                            style="appearance: none; -webkit-appearance: none; background: transparent; border: none; font-size: 12.5px; font-weight: 700; color: #2563eb; cursor: pointer; padding-right: 14px; outline: none; text-align: right;">
+                            <option value="distance">거리순</option>
+                            <option value="price">가격순</option>
+                            <option value="name">이름순</option>
+                            <option value="recent">최신순</option>
+                        </select>
+                        <svg style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 11px; height: 11px; color: #2563eb; pointer-events: none;"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+
+                <div id="sideHousingList" style="display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
+                    <!-- Housing cards populated here -->
+                </div>
+
+                <div id="housingPaginationContainer" style="margin-top: auto; padding-top: 14px; padding-bottom: 10px;">
                 </div>
             </div>
         </section>
@@ -4761,6 +4985,100 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                </div><!-- /community-scroll-content -->
+            </div>
+
+            <!-- Floating Housing Detail Panel (주택 상세 모달) -->
+            <div id="housingDetailPanel"
+                style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #ffffff; z-index: 100; backdrop-filter: blur(5px); flex-direction: column; padding: 14px 16px 16px 16px; overflow: hidden; transition: opacity 0.3s ease;">
+
+                <!-- 상단 내비게이션 바 -->
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px; min-height: 32px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button onclick="window.closeHousingDetailModal()"
+                            style="background: none; border: none; cursor: pointer; color: #475569; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; line-height: 1;"
+                            title="뒤로가기">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                        <span id="housingDetailRegionTitle"
+                            style="font-size: 16px; font-weight: 800; color: #0f172a; letter-spacing: -0.3px; line-height: 1.2;">주택상세</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button onclick="window.shareHousingDetail()"
+                            style="background: #f1f5f9; border: none; cursor: pointer; color: #64748b; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; padding: 0; transition: background 0.2s ease;"
+                            onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'"
+                            title="공유하기">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="18" cy="5" r="3"></circle>
+                                <circle cx="6" cy="12" r="3"></circle>
+                                <circle cx="18" cy="19" r="3"></circle>
+                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                            </svg>
+                        </button>
+                        <button id="btnCloseHousingModal" onclick="window.closeHousingDetailModal()"
+                            style="background: #f1f5f9; border: none; font-size: 20px; cursor: pointer; color: #64748b; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; padding: 0; line-height: 1; transition: background 0.2s ease;"
+                            onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'"
+                            title="닫기">&times;</button>
+                    </div>
+                </div>
+
+                <!-- 주택 상세 메인 타이틀 & 뱃지 영역 -->
+                <div style="margin-bottom: 14px;">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                        <h2
+                            style="font-size: 20px; font-weight: 800; color: #0f172a; margin: 0; line-height: 1.3; word-break: break-all;">
+                            <span id="housingDetailName">단지명</span>
+                        </h2>
+                        <span
+                            style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #2563eb; color: #fff; border-radius: 50%; font-size: 11px; font-weight: bold; flex-shrink: 0;"
+                            title="국토교통부 실거래 정보 연계 완료">✓</span>
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                        <span id="housingDetailTypeBadge"
+                            style="font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 6px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;">아파트</span>
+                        <span id="housingDetailPriceBadge"
+                            style="font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 6px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;">최근 실거래가 -</span>
+                        <span id="housingDetailAreaBadge"
+                            style="font-size: 11.5px; font-weight: 500; padding: 3px 9px; border-radius: 6px; background: #f8fafc; color: #475569; border: 1px solid #e2e8f0;">전용 -㎡</span>
+                        <span id="housingDetailDealBadge"
+                            style="font-size: 11.5px; font-weight: 500; padding: 3px 9px; border-radius: 6px; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;">거래일 -</span>
+                    </div>
+                </div>
+
+                <!-- 주택 상세 하단 스크롤 가능 콘텐츠 영역 -->
+                <div class="community-scroll-content hide-scrollbar"
+                    style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 20px;">
+
+                    <!-- 주택 기본 정보 컨테이너 -->
+                    <div id="housingBasicInfoContainer" style="margin-bottom: 4px;"></div>
+
+                    <!-- 주택 상세 탭 메뉴 -->
+                    <div
+                        style="display: flex; background: #f1f5f9; padding: 4px; border-radius: 12px; gap: 4px; border: 1px solid #e2e8f0;">
+                        <button id="tabHousingMarket" class="housing-tab-btn" onclick="window.switchHousingTab('market')"
+                            style="flex: 1; padding: 9px 0; border: none; background: #ffffff; border-radius: 8px; font-weight: 700; color: #2563eb; cursor: pointer; font-size: 13px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.06); transition: all 0.2s;">📊
+                            실거래 시세 분석</button>
+                        <button id="tabHousingSchool" class="housing-tab-btn" onclick="window.switchHousingTab('school')"
+                            style="flex: 1; padding: 9px 0; border: none; background: transparent; border-radius: 8px; font-weight: 600; color: #64748b; cursor: pointer; font-size: 13px; text-align: center; transition: all 0.2s;">🏫
+                            학군·통학 안심</button>
+                    </div>
+
+                    <!-- 탭 콘텐츠 1: 실거래 시세 분석 -->
+                    <div id="sectionHousingMarket" style="display: block;">
+                        <!-- Injected dynamically in app.js -->
+                    </div>
+
+                    <!-- 탭 콘텐츠 2: 학군·통학 안심 -->
+                    <div id="sectionHousingSchool" style="display: none;">
+                        <!-- Injected dynamically in app.js -->
                     </div>
 
                 </div><!-- /community-scroll-content -->
