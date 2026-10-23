@@ -396,11 +396,24 @@
             padding-bottom: 14px;
             border-bottom: 1px solid #f1f5f9;
             text-align: left;
+            width: 100%;
+            box-sizing: border-box;
+            gap: 16px;
         }
 
         .card-header-styled > div {
             text-align: left;
+        }
+
+        .card-header-styled > div:first-child {
+            flex: 1;
+            min-width: 0;
             width: 100%;
+        }
+
+        .card-header-styled > div:not(:first-child) {
+            flex-shrink: 0;
+            width: auto;
         }
 
         .card-header-styled .card-title {
@@ -896,7 +909,7 @@
                             <h2 class="card-title">
                                 <span class="step-badge">1단계</span> 🏢 주택 기본 정보(마스터 DB) 구축
                             </h2>
-                            <p class="card-desc">건축물대장 및 건축HUB 마스터 API를 조회하여 단지명, 법정동, 도로명 주소, 건축년도 등 기본 골격 데이터베이스를 구축합니다.</p>
+                            <p class="card-desc">건축물대장 표제부 및 전유부(getBrExposPubuseAreaInfo) API를 조회하여 단지명, 법정동, 도로명 주소, 건축년도 및 호실별 전용면적/평형 목록을 일괄 수집·구축합니다.</p>
                         </div>
                     </div>
 
@@ -1055,14 +1068,17 @@
 
                 <!-- 6. Stored Real Estate List Card -->
                 <div class="admin-card" id="storedRealEstateCard" style="display: none;">
-                    <div class="card-header-styled">
-                        <div>
+                    <div class="card-header-styled" style="width: 100%; box-sizing: border-box;">
+                        <div style="flex: 1; min-width: 0;">
                             <h2 class="card-title">
                                 수집 동기화된 주택 목록 (<span id="storedRealEstateCount" style="color: #059669; font-weight: 800;">0</span>개)
                             </h2>
                             <p class="card-desc">서버 로컬 데이터베이스(`realestate_seoul.json`)에 수집·저장된 주택 실거래가 및 등록/수정일 목록입니다.</p>
                         </div>
-                        <div style="display: flex; gap: 8px;">
+                        <div style="display: flex; gap: 8px; flex-shrink: 0; align-items: center;">
+                            <button class="btn-secondary" id="btnRetryMissingAreas" style="padding: 7px 14px; font-size: 12.5px; background: #fffbeb; color: #b45309; border-color: #fde68a; font-weight: 600;" title="공공데이터포털 트래픽 지연으로 전용면적이 누락된 단지들의 호실별 면적을 일괄 재수집합니다.">
+                                🔄 누락 면적 일괄 재수집
+                            </button>
                             <button class="btn-secondary" id="btnDeleteFilteredRealEstate" style="padding: 7px 14px; font-size: 12.5px; background: #fff1f2; color: #e11d48; border-color: #fecdd3; font-weight: 600;">
                                 🗑️ 선택 삭제
                             </button>
@@ -1109,6 +1125,7 @@
                             <option value="rh">🏡 연립·다세대</option>
                             <option value="sh">🏠 단독·다가구</option>
                             <option value="offi">🏙️ 오피스텔</option>
+                            <option value="missing_area">⚠️ 면적 미수집 단지 (API 지연)</option>
                         </select>
                         <input type="text" id="realEstateSearchInput" class="form-control" placeholder="건물명 또는 주소 검색..." style="flex: 2; min-width: 160px; padding: 7px 12px; font-size: 12.5px;">
                     </div>

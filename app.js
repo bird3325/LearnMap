@@ -6221,6 +6221,44 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        // 학원 핀 클릭 시 학원 리스트에 가려질 때만 리스트 너비만큼 지도 이동, 가려지지 않으면 위치 유지
+        window.checkAndAdjustMapForAcademyPin = function(lng, lat) {
+            if (!lng || !lat || window.innerWidth <= 1024) return;
+            const numLng = parseFloat(lng);
+            const numLat = parseFloat(lat);
+            if (isNaN(numLng) || isNaN(numLat)) return;
+
+            const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
+            if (!mapObj || !window.kakao || !window.kakao.maps) return;
+
+            const pos = new kakao.maps.LatLng(numLat, numLng);
+            const mainSidebar = document.querySelector('.sidebar-section');
+            const academySidebar = document.getElementById('academySidebar');
+            const sidebarWidth = (mainSidebar && mainSidebar.offsetWidth > 0) ? mainSidebar.offsetWidth : 400;
+            const listWidth = (academySidebar && academySidebar.offsetWidth > 0) ? academySidebar.offsetWidth : 340;
+            const totalBlockedWidth = sidebarWidth + listWidth;
+
+            const container = typeof mapObj.getContainer === 'function' ? mapObj.getContainer() : (document.getElementById('mapCanvas') || document.body);
+            const containerWidth = container ? container.offsetWidth : window.innerWidth;
+
+            if (typeof mapObj.getProjection === 'function') {
+                const proj = mapObj.getProjection();
+                if (proj && typeof proj.containerPointFromCoordinate === 'function') {
+                    const pt = proj.containerPointFromCoordinate(pos);
+                    const padding = 35; // 마커 크기 및 시각적 여유 패딩
+                    const visibleBoundary = containerWidth - totalBlockedWidth - padding;
+
+                    // 학원리스트가 열려서 클릭한 학원핀이 가려지는 위치인 경우에만 리스트 너비만큼 지도 이동
+                    if (pt && pt.x > visibleBoundary) {
+                        if (typeof mapObj.panBy === 'function') {
+                            mapObj.panBy(listWidth, 0);
+                        }
+                    }
+                    // 가려지지 않을 경우에는 지도를 이동하지 않고 위치 그대로 유지
+                }
+            }
+        };
+
         // 전역 지적 이동/줌 헬퍼 등록 (학원 카드에서 📍 거리/지도 버튼 클릭시 동작)
         window.focusAcademyLocationOnMap = function(lng, lat, name) {
             if (!lng || !lat) return;
@@ -7002,9 +7040,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         itemRow.addEventListener('click', (e) => {
                             e.stopPropagation();
                             closeClusterPopup();
+                            window.isOpeningFromAcademyPin = true;
                             if (typeof window.openAcademyDetailModal === 'function') {
                                 window.openAcademyDetailModal(place);
                             }
+                            setTimeout(() => {
+                                if (typeof window.checkAndAdjustMapForAcademyPin === 'function') {
+                                    window.checkAndAdjustMapForAcademyPin(place.x, place.y);
+                                }
+                            }, 60);
+                            setTimeout(() => {
+                                window.isOpeningFromAcademyPin = false;
+                            }, 350);
                         });
 
                         popupList.appendChild(itemRow);
@@ -7109,23 +7156,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         const primaryPlace = cluster.items[0];
                         const primaryName = primaryPlace.place_name || '학원';
 
-                        const academySidebar = document.getElementById('academySidebar');
-                        const isAlreadyOpen = academySidebar && (
-                            academySidebar.style.display === 'flex' ||
-                            (window.getComputedStyle && window.getComputedStyle(academySidebar).display !== 'none')
-                        );
-
+                        window.isOpeningFromAcademyPin = true;
                         if (typeof window.openAcademyDetailModal === 'function') {
                             window.openAcademyDetailModal(primaryPlace);
                         }
 
-                        if (!isAlreadyOpen) {
-                            if (typeof window.centerAcademyPinWithSidebarOffset === 'function') {
-                                window.centerAcademyPinWithSidebarOffset(primaryPlace.x, primaryPlace.y, primaryName);
-                            } else if (mapObj && typeof mapObj.panTo === 'function') {
-                                mapObj.panTo(pos);
+                        setTimeout(() => {
+                            if (typeof window.checkAndAdjustMapForAcademyPin === 'function') {
+                                window.checkAndAdjustMapForAcademyPin(primaryPlace.x, primaryPlace.y);
                             }
-                        }
+                        }, 60);
+                        setTimeout(() => {
+                            window.isOpeningFromAcademyPin = false;
+                        }, 350);
                     }
                 });
 
@@ -7348,7 +7391,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                                 const propName = primaryPlace.name || '주택 단지';
                                 const typeName = primaryPlace.type_name || '주택';
-                                const priceStr = primaryPlace.short_price || primaryPlace.price_display || '';
+                                const rawPrice = primaryPlace.short_price || primaryPlace.price_display || '';
+                                const hasPrice = rawPrice && rawPrice !== '기본정보' && !rawPrice.includes('기본 정보') && !rawPrice.includes('실거래 대기');
+                                const priceStr = hasPrice ? rawPrice : '';
                                 floatingLabelEl.innerHTML = `<div><strong>${propName}</strong> <span style="color:#94a3b8; font-size:11px; font-weight:normal;">(${typeName})</span> ${priceStr ? `<span style="color:#fde047; font-size:11.5px; margin-left:4px;">${priceStr}</span>` : ''}</div>`;
                             } else {
                                 // 인접 주택 클러스터 배지 (아이콘 + 수량)
@@ -7392,7 +7437,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 cluster.items.forEach(place => {
                                     const pName = place.name || '주택 단지';
                                     const pType = place.type_name || '주택';
-                                    const pPrice = place.short_price || place.price_display || '';
+                                    const rawPPrice = place.short_price || place.price_display || '';
+                                    const pPrice = (rawPPrice && rawPPrice !== '기본정보' && !rawPPrice.includes('기본 정보') && !rawPPrice.includes('실거래 대기')) ? rawPPrice : '';
                                     const pAddr = place.address || '';
 
                                     let pBadgeColor = '#2563eb';
@@ -17630,8 +17676,8 @@ window.openHousingDetailModal = function(placeOrName) {
     // 3) 주택 정보 세팅
     const type = (place && place.type) || 'apt';
     const typeName = (place && place.type_name) || (type === 'apt' ? '아파트' : (type === 'rh' ? '연립·다세대' : (type === 'offi' ? '오피스텔' : '단독·다가구')));
-    const priceDisplay = (place && place.price_display) || '실거래 대기';
-    const shortPrice = (place && place.short_price) || (place && place.price_amount > 0 ? `${(place.price_amount / 10000).toFixed(1)}억` : '기본정보');
+    const priceDisplay = (place && place.price_display && !place.price_display.includes('기본 정보')) ? place.price_display : '실거래 대기';
+    const shortPrice = (place && place.short_price && place.short_price !== '기본정보') ? place.short_price : (place && place.price_amount > 0 ? `${(place.price_amount / 10000).toFixed(1)}억` : '');
     const area = (place && place.area && place.area !== '-') ? place.area : ((place && Array.isArray(place.areaList) && place.areaList.length > 0 && place.areaList[0].area) ? place.areaList[0].area : '-');
     const dealDate = (place && place.deal_date && place.deal_date !== '-') ? place.deal_date : '최근 거래';
     const address = (place && place.address) || '';
@@ -18060,7 +18106,7 @@ function createHousingCard(place) {
     const propName = place.name || '주택 단지';
     const type = place.type || 'apt';
     const typeName = place.type_name || (type === 'apt' ? '아파트' : (type === 'rh' ? '연립·다세대' : (type === 'offi' ? '오피스텔' : '단독·다가구')));
-    const shortPrice = place.short_price || (place.price_amount > 0 ? `${(place.price_amount / 10000).toFixed(1)}억` : '기본정보');
+    const shortPrice = (place.short_price && place.short_price !== '기본정보') ? place.short_price : (place.price_amount > 0 ? `${(place.price_amount / 10000).toFixed(1)}억` : '');
     const area = (place.area && place.area !== '-') ? place.area : ((Array.isArray(place.areaList) && place.areaList.length > 0 && place.areaList[0].area) ? place.areaList[0].area : '-');
     const address = place.address || '';
     const distMeters = place.distance || 0;
@@ -18131,9 +18177,10 @@ function createHousingCard(place) {
             <span style="background: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder}; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 6px;">
                 ${typeName}
             </span>
+            ${shortPrice ? `
             <span style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px;">
                 💰 ${shortPrice}
-            </span>
+            </span>` : ''}
             <span style="background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 6px;">
                 📐 ${area}
             </span>

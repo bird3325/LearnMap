@@ -2151,7 +2151,11 @@ const DEFAULT_SAMPLE_REAL_ESTATES = [
     { id: 're-10', name: '서초롯데캐슬프레지던트', type: 'offi', sido: '서울특별시', sigungu: '서초구', address: '서울특별시 서초구 서초동 1303-34', price: '9억 8,000만원', tradeDate: '2026-02-01', area: '58.40㎡', source: '마스터/실거래가' }
 ];
 
-function getTypeName(type) {
+function getTypeName(type, name = '') {
+    if (type === 'apt' && name) {
+        if (name.includes('빌라') || name.includes('연립') || name.includes('다세대')) return '🏡 연립·다세대';
+        if (name.includes('주택') || name.includes('번지') || name.includes('단독') || name.includes('다가구')) return '🏠 단독·다가구';
+    }
     switch (type) {
         case 'apt': return '🏢 아파트';
         case 'rh': return '🏡 연립·다세대';
@@ -2186,7 +2190,11 @@ function getFilteredRealEstates() {
 
     // Filter by Type
     if (selectedType !== 'all') {
-        filtered = filtered.filter(item => item.type === selectedType);
+        if (selectedType === 'missing_area') {
+            filtered = filtered.filter(item => isMissingAreaRealEstate(item));
+        } else {
+            filtered = filtered.filter(item => item.type === selectedType);
+        }
     }
 
     // Filter by Search Query (name, address, area, kaptCode, or pnu, whitespace-tolerant)
@@ -2230,6 +2238,16 @@ function isComplexRealEstate(item) {
     return false;
 }
 
+function isMissingAreaRealEstate(item) {
+    if (!item || !isComplexRealEstate(item)) return false;
+    const hasSingleArea = item.area && item.area !== '-';
+    const hasValidAreaList = Array.isArray(item.areaList) && item.areaList.some(a => {
+        const val = a ? (a.area || a.rawArea) : null;
+        return val && val !== '-';
+    });
+    return !hasSingleArea && !hasValidAreaList;
+}
+
 function renderStoredRealEstateList() {
     if (!storedRealEstateListContainer || !storedRealEstateCount) return;
 
@@ -2268,7 +2286,7 @@ function renderStoredRealEstateList() {
                     
                     const details = [];
                     if (pyeongVal) details.push(pyeongVal);
-                    if (a.householdCount && a.householdCount > 1) details.push(`${a.householdCount}건 거래`);
+                    if (a.householdCount && a.householdCount > 0) details.push(`${a.householdCount}세대`);
                     if (a.price && a.price !== '기본 정보 구축 (실거래 대기)' && a.price !== '-' && a.price !== '시세 정보') {
                         details.push(`<span style="color: #059669; font-weight: 700;">${a.price}</span>`);
                     }
@@ -2294,18 +2312,32 @@ function renderStoredRealEstateList() {
             }
         }
 
+        const isMissingArea = isMissingAreaRealEstate(item);
+        const missingBadge = isMissingArea
+            ? `<span style="background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; padding: 1.5px 6px; border-radius: 4px; font-weight: bold; margin-left: 4px; font-size: 10px;" title="공공데이터포털(건축HUB) 지연 또는 트래픽 제한으로 호실별 전용면적이 누락되었습니다.">⚠️ 면적 미수집 (API 지연)</span>`
+            : '';
+
+        const areaDisplay = isMissingArea
+            ? `<span style="color: #e11d48; font-weight: 600;">- (공공데이터 지연 누락)</span>`
+            : (item.area || '-');
+
+        const retrySingleBtn = isMissingArea
+            ? `<button class="btn-retry-single-area" data-id="${item.id || ''}" data-name="${encodeURIComponent(item.name || '')}" style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; padding: 2px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 600;" title="공공데이터포털에서 이 단지의 호실별 면적을 단독 재수집합니다.">🔄 면적 재수집</button>`
+            : '';
+
         return `
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.05); padding: 8px 4px;">
                 <div style="flex: 1; padding-right: 10px;">
                     <div>
                         <strong style="color: var(--deep-blue); font-size: 13px;">${index + 1}. ${item.name}</strong>
-                        <span style="font-size: 11px; color: var(--text-muted); margin-left: 4px;">(${getTypeName(item.type)})</span>
+                        <span style="font-size: 11px; color: var(--text-muted); margin-left: 4px;">(${getTypeName(item.type, item.name)})</span>
                         <span style="background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 6px; font-size: 10px;">${item.source || '마스터 DB'}</span>
                         ${item.kaptCode ? `<span style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 1.5px 6px; border-radius: 4px; font-weight: bold; margin-left: 4px; font-size: 10px;" title="K-APT 표준 단지코드">🏢 K-APT: ${item.kaptCode}</span>` : ''}
                         ${item.pnu ? `<span style="background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; padding: 1.5px 5px; border-radius: 4px; margin-left: 4px; font-size: 10px; font-family: monospace;" title="고유필지번호(PNU: ${item.pnu})">PNU</span>` : ''}
+                        ${missingBadge}
                     </div>
                     <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 3px;">
-                        주소: ${item.address} | 전용면적: ${item.area || '-'} | ${coordText}
+                        주소: ${item.address} | 전용면적: ${areaDisplay} | ${coordText}
                     </div>
                     ${areaListHtml}
                     <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
@@ -2315,7 +2347,10 @@ function renderStoredRealEstateList() {
                 <div style="text-align: right; min-width: 140px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
                     <div style="font-weight: 700; color: #059669; font-size: 12.5px;">${item.price || '시세 정보'}</div>
                     <div style="font-size: 11px; color: var(--text-muted);">${item.tradeDate ? '기준/거래: ' + item.tradeDate : ''}</div>
-                    <button class="btn-delete-single-estate" data-key="${encodeURIComponent(itemKey)}" data-name="${encodeURIComponent(item.name || '')}" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; padding: 2px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 600; margin-top: 2px;">🗑️ 삭제</button>
+                    <div style="display: flex; gap: 4px; align-items: center; margin-top: 2px;">
+                        ${retrySingleBtn}
+                        <button class="btn-delete-single-estate" data-key="${encodeURIComponent(itemKey)}" data-name="${encodeURIComponent(item.name || '')}" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; padding: 2px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 600;">🗑️ 삭제</button>
+                    </div>
                 </div>
             </div>
         `;
@@ -2421,9 +2456,47 @@ if (realEstateSearchInput) {
     realEstateSearchInput.addEventListener('input', renderStoredRealEstateList);
 }
 
-// Single item delete event handler via event delegation
+// Single item delete & retry area event handler via event delegation
 if (storedRealEstateListContainer) {
     storedRealEstateListContainer.addEventListener('click', (e) => {
+        // 1) 단일 단지 면적 재수집 버튼 클릭
+        const retryBtn = e.target.closest('.btn-retry-single-area');
+        if (retryBtn) {
+            const id = retryBtn.getAttribute('data-id');
+            const name = decodeURIComponent(retryBtn.getAttribute('data-name') || '단지');
+            retryBtn.disabled = true;
+            retryBtn.innerText = '수집 중...';
+
+            (async () => {
+                try {
+                    const res = await fetch('/api/realestate/fetch-single-area', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id })
+                    });
+                    const result = await res.json();
+                    if (result.success && result.estate) {
+                        const idx = allStoredRealEstates.findIndex(item => item.id === id);
+                        if (idx !== -1) {
+                            allStoredRealEstates[idx] = result.estate;
+                        }
+                        showAlert(`[${name}] 전용면적(${result.estate.area}) ${result.estate.areaList?.length || 0}개 타입이 성공적으로 수집되었습니다.`);
+                        renderStoredRealEstateList();
+                    } else {
+                        showAlert(`[${name}] 면적 수집 실패: ${result.message || '공공데이터포털 응답 지연 또는 전유부 정보가 없습니다.'}`);
+                        retryBtn.disabled = false;
+                        retryBtn.innerText = '🔄 면적 재수집';
+                    }
+                } catch (err) {
+                    showAlert(`[${name}] 통신 오류: ` + err.message);
+                    retryBtn.disabled = false;
+                    retryBtn.innerText = '🔄 면적 재수집';
+                }
+            })();
+            return;
+        }
+
+        // 2) 단일 단지 삭제 버튼 클릭
         const btn = e.target.closest('.btn-delete-single-estate');
         if (!btn) return;
 
@@ -2473,6 +2546,44 @@ if (btnDeleteFilteredRealEstate) {
 
             await saveStoredRealEstate(newList);
             showAlert(`검색/필터 조건에 해당하는 주택 데이터 총 ${filtered.length}건이 성공적으로 삭제되었습니다.`);
+        });
+    });
+}
+
+// Batch Retry Missing Areas Button Handler
+const btnRetryMissingAreas = document.getElementById('btnRetryMissingAreas');
+if (btnRetryMissingAreas) {
+    btnRetryMissingAreas.addEventListener('click', () => {
+        const missingItems = allStoredRealEstates.filter(item => isMissingAreaRealEstate(item));
+        if (missingItems.length === 0) {
+            showAlert('현재 면적이 누락된 단지가 없습니다. 모든 단지의 면적이 정상 수집되었습니다! 🎉');
+            return;
+        }
+
+        showConfirm(`공공데이터포털 트래픽 지연으로 전용면적이 누락된 단지 총 ${missingItems.length}곳의 면적 정보를 일괄 재수집하시겠습니까?\n(API 제한을 방지하기 위해 100ms 안전 간격으로 순차 재수집됩니다)`, async () => {
+            btnRetryMissingAreas.disabled = true;
+            const originalText = btnRetryMissingAreas.innerHTML;
+            btnRetryMissingAreas.innerText = `🔄 재수집 진행 중...`;
+
+            try {
+                const res = await fetch('/api/realestate/retry-missing-areas', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showAlert(`누락 면적 일괄 재수집 완료!\n- 수집 성공: ${result.updatedCount || 0}곳\n- 미등록/지연: ${result.failedCount || 0}곳`);
+                    await loadStoredRealEstate();
+                } else {
+                    showAlert('재수집 중 오류 발생: ' + (result.message || result.error));
+                }
+            } catch (err) {
+                showAlert('재수집 요청 실패: ' + err.message);
+            } finally {
+                btnRetryMissingAreas.disabled = false;
+                btnRetryMissingAreas.innerHTML = originalText;
+            }
         });
     });
 }
@@ -2639,6 +2750,7 @@ if (btnRunRealEstateMaster) {
                 await new Promise(r => setTimeout(r, 400));
                 updateMasterProgress('카카오 로컬 API 정보 보강 중...', 75);
                 logMasterMsg(`카카오 로컬 API 장소/건물 마스터 데이터베이스 보강 중...`);
+                logMasterMsg(`건축물대장 전유부 API(getBrExposPubuseAreaInfo) 호실별 전용면적 및 세대수 정밀 수집 진행 중...`);
                 logMasterMsg(`아파트, 연립, 다세대, 오피스텔 마스터 목록 및 K-APT 단지코드 자동 연동 진행 중...`);
 
                 const res = await fetch('/api/realestate/collect-master', {

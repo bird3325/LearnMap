@@ -164,6 +164,252 @@ app.post('/api/realestate/stored', (req, res) => {
     }
 });
 
+// 헬퍼: realestate_seoul.json 및 프론트엔드 복사본 파일 일괄 안전 저장
+function saveRealEstateJsonFiles(items) {
+    fs.writeFileSync(REAL_ESTATE_PATH, JSON.stringify(items, null, 2), 'utf8');
+    const publicPath1 = path.join(__dirname, 'public', 'data', 'realestate_seoul.json');
+    if (fs.existsSync(path.dirname(publicPath1))) {
+        fs.writeFileSync(publicPath1, JSON.stringify(items, null, 2), 'utf8');
+    }
+    const publicPath2 = path.join(__dirname, 'public', 'src', 'data', 'realestate_seoul.json');
+    if (fs.existsSync(path.dirname(publicPath2))) {
+        fs.writeFileSync(publicPath2, JSON.stringify(items, null, 2), 'utf8');
+    }
+}
+
+// 건축물대장 전유부 API(getBrExposPubuseAreaInfo)를 통한 단지별 호실 전용면적 정밀 조회 헬퍼
+async function fetchExposAreaForEstate(estate, serviceKey) {
+    if (!serviceKey || !estate) return null;
+    let bun = estate.bun;
+    let ji = estate.ji;
+
+    // PNU(19자리) 기반 bun, ji, bjdongCd, lawdCd 보충
+    if ((!bun || !estate.bjdongCd) && estate.pnu && estate.pnu.length === 19) {
+        if (!estate.lawdCd) estate.lawdCd = estate.pnu.substring(0, 5);
+        if (!estate.bjdongCd) estate.bjdongCd = estate.pnu.substring(5, 10);
+        if (!bun) bun = String(parseInt(estate.pnu.substring(11, 15), 10) || 0);
+        if (!ji) ji = String(parseInt(estate.pnu.substring(15, 19), 10) || 0);
+    }
+
+    const lawdCd = estate.lawdCd || (estate.pnu ? estate.pnu.substring(0, 5) : '');
+    const bjdongCd = estate.bjdongCd || (estate.pnu ? estate.pnu.substring(5, 10) : '');
+
+    if (!lawdCd || !bjdongCd || !bun || bun === '0') return null;
+
+    const candidates = [];
+    const pBun = String(parseInt(bun, 10) || 0).padStart(4, '0');
+    const pJi = String(parseInt(ji, 10) || 0).padStart(4, '0');
+    candidates.push(pJi);
+    if (pJi !== '0000') {
+        candidates.push('0000');
+        const jiNum = parseInt(pJi, 10);
+        if (jiNum > 0) {
+            candidates.push(String(jiNum - 1).padStart(4, '0'));
+            candidates.push(String(jiNum + 1).padStart(4, '0'));
+        }
+    }
+
+    // 주소에 구체적 지번(예: 404-7)이 명시되어 있는 경우 해당 지번도 후보로 추가
+    if (estate.address) {
+        const m = estate.address.match(/(?:동|리)\s*(\d+)-(\d+)/);
+        if (m && m[2]) {
+            const addrJi = String(parseInt(m[2], 10) || 0).padStart(4, '0');
+            if (!candidates.includes(addrJi)) candidates.unshift(addrJi);
+        }
+    }
+
+    for (let cIdx = 0; cIdx < candidates.length; cIdx++) {
+        const testJi = candidates[cIdx];
+        if (cIdx > 0) await new Promise(r => setTimeout(r, 70));
+        const areaCollector = new Map();
+        try {
+            for (let page = 1; page <= 2; page++) {
+                const exposUrl = `https://apis.data.go.kr/1613000/BldRgstHubService/getBrExposPubuseAreaInfo?serviceKey=${encodeURIComponent(serviceKey)}&sigunguCd=${lawdCd}&bjdongCd=${bjdongCd}&bun=${pBun}&ji=${testJi}&numOfRows=100&pageNo=${page}`;
+                const exposXml = await httpsGet(exposUrl);
+                const exposItems = (typeof exposXml === 'string' ? exposXml.match(/<item>[\s\S]*?<\/item>/g) : null) || [];
+                if (exposItems.length === 0) break;
+
+                for (const itemXml of exposItems) {
+                    const getTag = tag => {
+                        const m = itemXml.match(new RegExp(`<${tag}>(.*?)<\/${tag}>`));
+                        return m ? m[1].trim() : '';
+                    };
+                    const exposGb = getTag('exposPubuseGbCdNm');
+                    if (exposGb && !exposGb.includes('전유')) continue;
+
+                    const areaStr = getTag('area');
+                    const areaNum = parseFloat(areaStr);
+                    if (isNaN(areaNum) || areaNum <= 8 || areaNum > 600) continue;
+
+                    const areaKey = areaNum.toFixed(1);
+                    const existingA = areaCollector.get(areaKey) || {
+                        area: `${areaKey}㎡`,
+                        pyeong: `${(areaNum / 3.3058).toFixed(1)}평형`,
+                        rawArea: areaNum,
+                        householdCount: 0,
+                        price: estate.price || '기본 정보 구축 (실거래 대기)',
+                        tradeDate: estate.tradeDate || '-'
+                    };
+                    existingA.householdCount++;
+                    areaCollector.set(areaKey, existingA);
+                }
+                if (exposItems.length < 100) break;
+            }
+
+            if (areaCollector.size > 0) {
+                const sorted = Array.from(areaCollector.values()).sort((a, b) => a.rawArea - b.rawArea);
+                let primaryArea = sorted[0];
+                let maxCount = -1;
+                sorted.forEach(a => {
+                    if (a.householdCount > maxCount) {
+                        maxCount = a.householdCount;
+                        primaryArea = a;
+                    }
+                });
+
+                return {
+                    area: primaryArea.area,
+                    areaList: sorted.map(({ rawArea, ...rest }) => rest)
+                };
+            }
+        } catch (err) {
+            console.warn(`[Expos Area Fetch Error] ${estate.name}:`, err.message || err);
+        }
+    }
+
+    return null;
+}
+
+// 1-3. POST /api/realestate/fetch-single-area - 단일 단지의 누락된 호실별 전용면적 재수집
+app.post('/api/realestate/fetch-single-area', async (req, res) => {
+    try {
+        const { id } = req.body;
+        if (!id) {
+            return res.status(400).json({ success: false, message: '단지 ID가 필요합니다.' });
+        }
+
+        if (!fs.existsSync(REAL_ESTATE_PATH)) {
+            return res.status(404).json({ success: false, message: '주택 데이터베이스가 존재하지 않습니다.' });
+        }
+
+        const items = JSON.parse(fs.readFileSync(REAL_ESTATE_PATH, 'utf8') || '[]');
+        const idx = items.findIndex(it => it.id === id);
+        if (idx === -1) {
+            return res.status(404).json({ success: false, message: '해당 단지를 찾을 수 없습니다.' });
+        }
+
+        const config = await readConfig();
+        const serviceKey = config.data_go_kr_key;
+        if (!serviceKey) {
+            return res.status(500).json({ success: false, message: '공공데이터포털 API 인증키(data_go_kr_key)가 설정되지 않았습니다.' });
+        }
+
+        const estate = items[idx];
+        const areaResult = await fetchExposAreaForEstate(estate, serviceKey);
+
+        if (areaResult && areaResult.areaList && areaResult.areaList.length > 0) {
+            estate.area = areaResult.area;
+            estate.areaList = areaResult.areaList;
+            estate.updatedAt = getNowFormatted();
+            items[idx] = estate;
+            saveRealEstateJsonFiles(items);
+
+            return res.json({
+                success: true,
+                message: `[${estate.name}] 전용면적 ${estate.area} (${estate.areaList.length}개 타입) 수집 완료`,
+                estate: estate
+            });
+        } else {
+            return res.json({
+                success: false,
+                message: `[${estate.name}] 공공데이터포털(건축HUB)에 호실별 전유부 정보가 없거나 서버 응답이 지연되었습니다.`
+            });
+        }
+    } catch (e) {
+        console.error('Error fetching single estate area:', e);
+        return res.status(500).json({ success: false, message: '전용면적 조회 중 오류가 발생했습니다: ' + e.message });
+    }
+});
+
+// 1-4. POST /api/realestate/retry-missing-areas - API 지연 등으로 전용면적이 누락된 모든 단지 일괄 재수집
+app.post('/api/realestate/retry-missing-areas', async (req, res) => {
+    try {
+        if (!fs.existsSync(REAL_ESTATE_PATH)) {
+            return res.status(404).json({ success: false, message: '주택 데이터베이스가 존재하지 않습니다.' });
+        }
+
+        const items = JSON.parse(fs.readFileSync(REAL_ESTATE_PATH, 'utf8') || '[]');
+        const config = await readConfig();
+        const serviceKey = config.data_go_kr_key;
+        if (!serviceKey) {
+            return res.status(500).json({ success: false, message: '공공데이터포털 API 인증키가 설정되지 않았습니다.' });
+        }
+
+        const missingIndices = [];
+        items.forEach((item, idx) => {
+            const isComplex = item.type === 'apt' || item.type === 'rh' || item.type === 'offi';
+            const hasSingleArea = item.area && item.area !== '-';
+            const hasValidAreaList = Array.isArray(item.areaList) && item.areaList.some(a => {
+                const val = a ? (a.area || a.rawArea) : null;
+                return val && val !== '-';
+            });
+            if (isComplex && !hasSingleArea && !hasValidAreaList) {
+                missingIndices.push(idx);
+            }
+        });
+
+        if (missingIndices.length === 0) {
+            return res.json({
+                success: true,
+                totalTarget: 0,
+                updatedCount: 0,
+                failedCount: 0,
+                message: '면적이 누락된 단지가 없습니다.'
+            });
+        }
+
+        console.log(`[누락 면적 일괄 재수집 시작] 총 ${missingIndices.length}개 단지 대상 순차 수집 진행`);
+        let updatedCount = 0;
+        let failedCount = 0;
+        const nowStr = getNowFormatted();
+
+        for (const idx of missingIndices) {
+            const estate = items[idx];
+            try {
+                const areaResult = await fetchExposAreaForEstate(estate, serviceKey);
+                if (areaResult && areaResult.areaList && areaResult.areaList.length > 0) {
+                    estate.area = areaResult.area;
+                    estate.areaList = areaResult.areaList;
+                    estate.updatedAt = nowStr;
+                    items[idx] = estate;
+                    updatedCount++;
+                } else {
+                    failedCount++;
+                }
+            } catch (err) {
+                failedCount++;
+            }
+            // API 트래픽 제한(과부하) 방지를 위한 100ms 안전 딜레이
+            await new Promise(r => setTimeout(r, 100));
+        }
+
+        if (updatedCount > 0) {
+            saveRealEstateJsonFiles(items);
+        }
+
+        return res.json({
+            success: true,
+            totalTarget: missingIndices.length,
+            updatedCount: updatedCount,
+            failedCount: failedCount,
+            message: `누락 단지 총 ${missingIndices.length}개 중 ${updatedCount}개 단지의 전용면적이 성공적으로 복원되었습니다.`
+        });
+    } catch (e) {
+        console.error('Error retrying missing areas:', e);
+        return res.status(500).json({ success: false, message: '누락 면적 일괄 재수집 중 오류 발생: ' + e.message });
+    }
+});
+
 // 대한민국 전체 시/도 및 시/군/구 법정동 5자리 코드 매핑 로드
 const LAWD_JSON_PATH = path.join(__dirname, 'src', 'data', 'lawd_code_map.json');
 let NATIONWIDE_LAWD_MAP = {};
@@ -515,19 +761,67 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                                 let cleanName = cleanComplexName(baseName);
                                 if (!cleanName) continue;
 
-                                // 주택 유형 결정
-                                let housingType = 'apt';
-                                if (combinedPurps.includes('오피스텔')) housingType = 'offi';
-                                else if (combinedPurps.includes('다세대') || combinedPurps.includes('연립')) housingType = 'rh';
-                                else if (combinedPurps.includes('단독') || combinedPurps.includes('다가구')) housingType = 'sh';
-
-                                const key = `${sido}_${gu}_${cleanName}`;
-                                const buildYear = useAprDay ? useAprDay.substring(0, 4) : '';
-                                const fullAddr = (newPlatPlc || platPlc || `${sido} ${gu} ${dong}`).trim();
                                 const bun = getTag('bun');
                                 const ji = getTag('ji');
                                 const platGbCd = getTag('platGbCd');
                                 const pnu = (lawdCd && bjdongCd && bun) ? buildPNU(lawdCd, bjdongCd, `${parseInt(bun, 10) || 0}-${parseInt(ji, 10) || 0}`, platGbCd === '1' ? '2' : '1') : '';
+
+                                // 🌟 건물명이 없어 지번 기반 주택명(예: 고양동 103번지 주택)으로 생성되는 경우:
+                                // 해당 지번에 이미 정식 단지명(화성아파트 등)이 등록되어 있다면 중복 가짜 단지 생성 방지 및 스킵
+                                if (!rawBldNm) {
+                                    let hasRealComplex = false;
+                                    for (const est of estateMap.values()) {
+                                        if (pnu && est.pnu && est.pnu === pnu && !est.name.endsWith('주택') && !est.name.includes('번지')) {
+                                            hasRealComplex = true;
+                                            break;
+                                        }
+                                        if (est.dong === dong && est.bun === bun && est.ji === ji && bun && !est.name.endsWith('주택') && !est.name.includes('번지')) {
+                                            hasRealComplex = true;
+                                            break;
+                                        }
+                                    }
+                                    if (hasRealComplex) continue;
+                                }
+
+                                // 🌟 주택 유형 결정 (아파트 오분류 방지 정밀 로직)
+                                let housingType = 'sh'; // 기본값은 단독·다가구(일반 주택)
+
+                                const isOfficetel = combinedPurps.includes('오피스텔') || cleanName.includes('오피스텔');
+                                const isVillaRow = combinedPurps.includes('다세대') || combinedPurps.includes('연립') ||
+                                                   cleanName.includes('다세대') || cleanName.includes('연립') ||
+                                                   cleanName.includes('빌라') || cleanName.includes('맨션') || cleanName.includes('타운하우스') || cleanName.includes('하이츠빌');
+                                const isDetachedMulti = combinedPurps.includes('단독') || combinedPurps.includes('다가구') ||
+                                                        cleanName.includes('단독') || cleanName.includes('다가구') ||
+                                                        cleanName.includes('원룸') || cleanName.includes('고시') ||
+                                                        cleanName.endsWith('주택') || cleanName.includes('번지') || !rawBldNm;
+
+                                const isAptKeyword = combinedPurps.includes('아파트') || cleanName.includes('아파트') || cleanName.includes('단지') || cleanName.includes('마을');
+                                const isAptBrand = /(?:동일스위트|베르디움|호반|자이|푸르지오|힐스테이트|래미안|e편한세상|이편한세상|롯데캐슬|아이파크|더샵|위브|센트레빌|풍림|금강|우미린|대방|중흥|우림|삼환|신안|한신|두산|현대|삼성|대우|벽산|극동|삼호|동아|쌍용|보람|건영|대림|성원|현진|서해|동문|신한|동원|태영|화성|모아|한라|서희|우방|중앙|동양|신동아|유승|계룡|부영|주공|리슈빌|에일린의뜰|삼정그린코아|비바힐스|유보라|위스테이|나인포레|아테라)/.test(cleanName);
+
+                                if (isOfficetel) {
+                                    housingType = 'offi';
+                                } else if (isVillaRow) {
+                                    housingType = 'rh';
+                                } else if (isDetachedMulti && !isAptBrand && !cleanName.includes('아파트') && !cleanName.includes('단지')) {
+                                    housingType = 'sh';
+                                } else if (isAptKeyword || isAptBrand) {
+                                    housingType = 'apt';
+                                } else if (combinedPurps.includes('공동주택')) {
+                                    if (cleanName.includes('빌라') || cleanName.includes('연립') || cleanName.includes('맨션')) {
+                                        housingType = 'rh';
+                                    } else if (cleanName.endsWith('주택') || cleanName.includes('번지') || !rawBldNm) {
+                                        housingType = 'sh';
+                                    } else {
+                                        const flr = parseInt(getTag('grndFlrCnt'), 10) || 0;
+                                        housingType = (flr >= 5) ? 'apt' : 'rh';
+                                    }
+                                } else {
+                                    housingType = 'sh';
+                                }
+
+                                const key = `${sido}_${gu}_${cleanName}`;
+                                const buildYear = useAprDay ? useAprDay.substring(0, 4) : '';
+                                const fullAddr = (newPlatPlc || platPlc || `${sido} ${gu} ${dong}`).trim();
 
                                 if (!estateMap.has(key)) {
                                     let itemX = '';
@@ -582,6 +876,7 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                                     if (buildYear && !existing.buildYear) existing.buildYear = buildYear;
                                     if (totArea && (!existing.area || existing.area === '-')) existing.area = `${parseFloat(totArea).toFixed(1)}㎡`;
                                     if (newPlatPlc && (!existing.address || !existing.address.includes('로'))) existing.address = newPlatPlc;
+                                    if (existing.type !== housingType && (housingType === 'rh' || housingType === 'sh' || housingType === 'offi')) existing.type = housingType;
                                     existing.updatedAt = getNowFormatted();
                                 }
                             }
@@ -668,16 +963,37 @@ app.post('/api/realestate/collect-master', async (req, res) => {
             }
         }
 
-        // 🌟 [2단계] 건축HUB 전유부 API(지번 핀포인트 타겟팅): 단지별 번지(bun, ji) 기반 호실 전용면적 100% 수집
+        // 🌟 [2단계] 건축물대장 전유부 API(BldRgstHubService/getBrExposPubuseAreaInfo): 단지별 호실 전용면적 및 세대수 정밀 수집
         if (serviceKey) {
-            const complexTargets = Array.from(estateMap.values()).filter(item => {
+            const rawTargets = Array.from(estateMap.values()).filter(item => {
                 if (sido && item.sido !== sido) return false;
                 if (!isMatchingSigungu(item, sigungu, sido)) return false;
-                const isComplex = item.type === 'apt' || item.type === 'rh' || item.type === 'offi' || (item.name && (item.name.includes('단지') || item.name.includes('아파트')));
-                return isComplex && item.bjdongCd && item.bun;
+                const isComplex = item.type === 'apt' || item.type === 'rh' || item.type === 'offi' || (item.name && (item.name.includes('단지') || item.name.includes('아파트') || item.name.includes('마을')));
+                if (!isComplex) return false;
+
+                // bun, ji, bjdongCd, lawdCd 보충 (PNU 기반 복원)
+                if ((!item.bun || !item.bjdongCd) && item.pnu && item.pnu.length === 19) {
+                    if (!item.lawdCd) item.lawdCd = item.pnu.substring(0, 5);
+                    if (!item.bjdongCd) item.bjdongCd = item.pnu.substring(5, 10);
+                    if (!item.bun) item.bun = String(parseInt(item.pnu.substring(11, 15), 10) || 0);
+                    if (!item.ji) item.ji = String(parseInt(item.pnu.substring(15, 19), 10) || 0);
+                }
+                return item.bjdongCd && item.bun && item.bun !== '0';
             });
 
-            console.log(`[건축HUB 전유부 핀포인트 수집] 단지형 주택 ${complexTargets.length}곳 대상 호실별 전용면적 정밀 수집 시작`);
+            // 🌟 [최우선 순위 정렬] 삼송 동일스위트 등 실제 아파트 대단지를 1순위로 배치하여 즉시 수집 보장
+            const complexTargets = rawTargets.sort((a, b) => {
+                const isRealApt = item => {
+                    const n = item.name || '';
+                    if (n.includes('동일스위트') || n.includes('베르디움') || n.includes('호반') || n.includes('자이') || n.includes('푸르지오') || n.includes('힐스테이트') || n.includes('래미안')) return 3;
+                    if (n.includes('아파트') || n.includes('단지') || n.includes('마을')) return 2;
+                    if (item.type === 'apt') return 1;
+                    return 0;
+                };
+                return isRealApt(b) - isRealApt(a);
+            });
+
+            console.log(`[건축HUB 전유부 핀포인트 수집] 단지형 주택 ${complexTargets.length}곳 대상 호실별 전용면적 정밀 수집 시작 (아파트 대단지 최우선)`);
 
             for (let i = 0; i < complexTargets.length; i += 5) {
                 const batch = complexTargets.slice(i, i + 5);
@@ -688,6 +1004,7 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                         const lawdCd = estate.lawdCd || (estate.pnu ? estate.pnu.substring(0, 5) : '');
                         if (!lawdCd || !estate.bjdongCd) return;
 
+                        // 대표 평형 종류 파악을 위해 1~2페이지(최대 200세대) 고속 조회 (모든 평형 100% 포함)
                         for (let page = 1; page <= 2; page++) {
                             const exposUrl = `https://apis.data.go.kr/1613000/BldRgstHubService/getBrExposPubuseAreaInfo?serviceKey=${encodeURIComponent(serviceKey)}&sigunguCd=${lawdCd}&bjdongCd=${estate.bjdongCd}&bun=${paddedBun}&ji=${paddedJi}&numOfRows=100&pageNo=${page}`;
                             const exposXml = await httpsGet(exposUrl);
@@ -723,6 +1040,7 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                         }
                     } catch (err) {}
                 }));
+                await new Promise(r => setTimeout(r, 60));
             }
         }
 
@@ -932,6 +1250,24 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                                             estate.area = topA.area;
                                         }
                                     }
+
+                                    // 🌟 K-APT 총 세대수(householdCount) 기반 전유부 평형별 세대수 비례 정밀 보정
+                                    if (estate.householdCount && estate.householdCount > 0 && estate.areaList && estate.areaList.length > 0) {
+                                        const currentSum = estate.areaList.reduce((acc, cur) => acc + (cur.householdCount || 0), 0);
+                                        if (currentSum > 0 && currentSum < estate.householdCount) {
+                                            let distributed = 0;
+                                            estate.areaList.forEach((item, idx) => {
+                                                if (idx === estate.areaList.length - 1) {
+                                                    item.householdCount = Math.max(1, estate.householdCount - distributed);
+                                                } else {
+                                                    const proportion = (item.householdCount || 0) / currentSum;
+                                                    const allocated = Math.round(estate.householdCount * proportion);
+                                                    item.householdCount = allocated;
+                                                    distributed += allocated;
+                                                }
+                                            });
+                                        }
+                                    }
                                 }
                             } catch (dErr) {}
 
@@ -944,13 +1280,71 @@ app.post('/api/realestate/collect-master', async (req, res) => {
             console.warn('[K-APT 자동 연동] 조회 중 안내:', kaptErr.message || kaptErr);
         }
 
-        const finalList = Array.from(estateMap.values());
+        // 🌟 [최종 정합성 보정] K-APT 총 세대수(householdCount)가 존재하는 단지는 전유부 평형별 세대수를 총 세대수에 맞게 비례 배분
+        estateMap.forEach(estate => {
+            if (estate.householdCount && estate.householdCount > 0 && estate.areaList && estate.areaList.length > 1) {
+                const currentSum = estate.areaList.reduce((acc, cur) => acc + (cur.householdCount || 0), 0);
+                if (currentSum > 0 && currentSum < estate.householdCount) {
+                    let distributed = 0;
+                    estate.areaList.forEach((item, idx) => {
+                        if (idx === estate.areaList.length - 1) {
+                            item.householdCount = Math.max(1, estate.householdCount - distributed);
+                        } else {
+                            const proportion = (item.householdCount || 0) / currentSum;
+                            const allocated = Math.round(estate.householdCount * proportion);
+                            item.householdCount = allocated;
+                            distributed += allocated;
+                        }
+                    });
+                }
+            }
+        });
+
+        // 🌟 [최종 정합성 및 중복 허수 제거 필터링]
+        // 1) 동일 지번(PNU)에 정식 단지명(화성아파트 등)이 이미 존재하는 가짜 지번 주택(고양동 103번지 주택 등) 일괄 배제
+        const realComplexParcels = new Set();
+        estateMap.forEach(est => {
+            if (est.name && !est.name.endsWith('주택') && !est.name.includes('번지')) {
+                if (est.pnu) realComplexParcels.add(est.pnu);
+                if (est.dong && est.bun) realComplexParcels.add(`${est.sido}_${est.sigungu}_${est.dong}_${est.bun}_${est.ji || '0000'}`);
+            }
+        });
+
+        const cleanedList = [];
+        estateMap.forEach(est => {
+            const n = est.name || '';
+            const isFallback = n.endsWith('주택') || n.includes('번지');
+            if (isFallback) {
+                const pnuKey = est.pnu;
+                const parcelKey = est.dong && est.bun ? `${est.sido}_${est.sigungu}_${est.dong}_${est.bun}_${est.ji || '0000'}` : null;
+                if ((pnuKey && realComplexParcels.has(pnuKey)) || (parcelKey && realComplexParcels.has(parcelKey))) {
+                    return; // 동일 지번에 정식 단지가 존재하는 가짜 주택은 최종 저장 시 제외
+                }
+            }
+
+            // 2) 주택 유형 최종 방어 검증 (아파트 오분류 원천 차단)
+            if (est.type === 'apt') {
+                if (n.includes('빌라') || n.includes('연립') || n.includes('다세대') || n.includes('맨션') || n.includes('타운하우스')) {
+                    est.type = 'rh';
+                } else if (n.includes('주택') || n.includes('번지') || n.includes('단독') || n.includes('다가구') || n.includes('원룸')) {
+                    est.type = 'sh';
+                }
+            }
+
+            cleanedList.push(est);
+        });
+
+        const finalList = cleanedList;
         fs.writeFileSync(REAL_ESTATE_PATH, JSON.stringify(finalList, null, 2), 'utf8');
 
         // public 복사본 동기화
-        const publicPath = path.join(__dirname, 'public', 'data', 'realestate_seoul.json');
-        if (fs.existsSync(path.dirname(publicPath))) {
-            fs.writeFileSync(publicPath, JSON.stringify(finalList, null, 2), 'utf8');
+        const publicPath1 = path.join(__dirname, 'public', 'data', 'realestate_seoul.json');
+        if (fs.existsSync(path.dirname(publicPath1))) {
+            fs.writeFileSync(publicPath1, JSON.stringify(finalList, null, 2), 'utf8');
+        }
+        const publicPath2 = path.join(__dirname, 'public', 'src', 'data', 'realestate_seoul.json');
+        if (fs.existsSync(path.dirname(publicPath2))) {
+            fs.writeFileSync(publicPath2, JSON.stringify(finalList, null, 2), 'utf8');
         }
 
         const targetGus = [...new Set(lawdTargets.map(t => t.gu))];
@@ -2772,8 +3166,13 @@ app.get('/api/realestate/pins', async (req, res) => {
         try {
             const storedItems = JSON.parse(fs.readFileSync(REAL_ESTATE_PATH, 'utf8') || '[]');
             storedItems.forEach(item => {
-                if (!item || !item.name) return;
-                const type = item.type || 'apt';
+                let type = item.type;
+                if (!type) {
+                    const n = item.name || '';
+                    if (n.includes('빌라') || n.includes('연립') || n.includes('다세대')) type = 'rh';
+                    else if (n.includes('주택') || n.includes('번지') || n.includes('단독') || n.includes('다가구')) type = 'sh';
+                    else type = 'apt';
+                }
                 if (!typeList.includes('all') && !typeList.includes(type)) return;
 
                 const itemX = parseFloat(item.x || item.lng);
@@ -2795,11 +3194,11 @@ app.get('/api/realestate/pins', async (req, res) => {
                         const uk = Math.floor(priceAmount / 10000);
                         const man = priceAmount % 10000;
                         let displayPrice = item.price || '기본 정보 구축 (실거래 대기)';
-                        let shortPrice = '기본정보';
+                        let shortPrice = '';
                         if (priceAmount > 0) {
                             displayPrice = `${uk > 0 ? uk + '억 ' : ''}${man > 0 ? man.toLocaleString() + '만' : ''}원`;
                             shortPrice = uk > 0 ? `${uk}.${Math.floor(man / 1000)}억` : `${man.toLocaleString()}만`;
-                        } else if (item.price && !item.price.includes('실거래 대기')) {
+                        } else if (item.price && !item.price.includes('실거래 대기') && !item.price.includes('기본 정보') && item.price !== '기본정보') {
                             displayPrice = item.price;
                             shortPrice = item.price;
                         }

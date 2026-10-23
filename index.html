@@ -417,6 +417,7 @@
                         } else {
                             // PC 화면: 학원 목록이 열릴 때 선택된 학교 핀이 실제로 사이드바에 가려지는 경우에만 지도 이동
                             setTimeout(() => {
+                                if (window.isOpeningFromAcademyPin) return;
                                 const schoolObj = (typeof fullSchool !== 'undefined' ? fullSchool : null) ||
                                                   (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) ||
                                                   window.currentSelectedSchool || null;
