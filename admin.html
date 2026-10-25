@@ -954,14 +954,28 @@
                         </div>
                     </div>
 
+                    <!-- Auto Sync Trades Option (Rate Limit Protected) -->
+                    <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 14px; font-size: 12.5px; flex-wrap: wrap; gap: 6px;">
+                        <label for="autoSyncTradesAfterMaster" style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #1e293b; font-weight: 600; margin: 0;">
+                            <input type="checkbox" id="autoSyncTradesAfterMaster" checked style="width: 16px; height: 16px; accent-color: #2563eb; cursor: pointer;">
+                            <span>🏢 마스터 DB 구축 직후 국토부 실거래가(공공 API) 자동 연속 수집</span>
+                        </label>
+                        <span style="font-size: 11px; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 2px 7px; border-radius: 4px; font-weight: 600;">
+                            🛡️ 트래픽 쿼터 보호 모드 가동
+                        </span>
+                    </div>
+
                     <button class="btn-primary" id="btnRunRealEstateMaster" style="width: 100%; justify-content: center; height: 44px;">
                         ⚡ 1단계: 주택 마스터 정보 일괄 다운로드 및 DB 구축
                     </button>
 
                     <!-- Real Estate Master Progress Indicator -->
                     <div class="progress-container" id="realEstateMasterProgressContainer" style="display: none;">
-                        <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin: 16px 0 6px;">
-                            <span id="realEstateMasterProgressStatus" style="color: #2563eb;">준비 중...</span>
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; margin: 16px 0 6px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span id="realEstateMasterProgressStatus" style="color: #2563eb;">준비 중...</span>
+                                <button type="button" class="btn-secondary" id="btnStopRealEstateMaster" style="display: none; padding: 2px 8px; font-size: 11px; height: 24px; color: #dc2626; border-color: #fca5a5; background: #fef2f2; font-weight: 600;" title="현재까지 수집된 데이터를 안전하게 보존하고 즉시 수집을 정지합니다.">⏹️ 수집 정지</button>
+                            </div>
                             <span id="realEstateMasterProgressPercent" style="color: #2563eb;">0%</span>
                         </div>
                         <div class="progress-bar-wrapper">
@@ -1045,8 +1059,11 @@
 
                     <!-- Real Estate Sync Progress Indicator -->
                     <div class="progress-container" id="realEstateSyncProgressContainer" style="display: none;">
-                        <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin: 16px 0 6px;">
-                            <span id="realEstateSyncProgressStatus" style="color: #059669;">준비 중...</span>
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; margin: 16px 0 6px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span id="realEstateSyncProgressStatus" style="color: #059669;">준비 중...</span>
+                                <button type="button" class="btn-secondary" id="btnStopRealEstateSync" style="display: none; padding: 2px 8px; font-size: 11px; height: 24px; color: #dc2626; border-color: #fca5a5; background: #fef2f2; font-weight: 600;" title="현재까지 수집된 데이터를 안전하게 보존하고 즉시 수집을 정지합니다.">⏹️ 수집 정지</button>
+                            </div>
                             <span id="realEstateSyncProgressPercent" style="color: #059669;">0%</span>
                         </div>
                         <div class="progress-bar-wrapper">
@@ -1075,7 +1092,10 @@
                             </h2>
                             <p class="card-desc">서버 로컬 데이터베이스(`realestate_seoul.json`)에 수집·저장된 주택 실거래가 및 등록/수정일 목록입니다.</p>
                         </div>
-                        <div style="display: flex; gap: 8px; flex-shrink: 0; align-items: center;">
+                        <div style="display: flex; gap: 8px; flex-shrink: 0; align-items: center; flex-wrap: wrap;">
+                            <button class="btn-secondary" id="btnRetryMissingTrades" style="padding: 7px 14px; font-size: 12.5px; background: #ecfdf5; color: #047857; border-color: #a7f3d0; font-weight: 600;" title="실거래가가 미등록되었거나 대기 중인 주택들의 최근 실거래가를 국토교통부 API에서 일괄 재수집합니다.">
+                                🔄 누락 실거래 일괄 재수집
+                            </button>
                             <button class="btn-secondary" id="btnRetryMissingAreas" style="padding: 7px 14px; font-size: 12.5px; background: #fffbeb; color: #b45309; border-color: #fde68a; font-weight: 600;" title="공공데이터포털 트래픽 지연으로 전용면적이 누락된 단지들의 호실별 면적을 일괄 재수집합니다.">
                                 🔄 누락 면적 일괄 재수집
                             </button>
@@ -1126,6 +1146,17 @@
                             <option value="sh">🏠 단독·다가구</option>
                             <option value="offi">🏙️ 오피스텔</option>
                             <option value="missing_area">⚠️ 면적 미수집 단지 (API 지연)</option>
+                        </select>
+                        <select class="form-control" id="realEstateAreaFilter" style="flex: 1; min-width: 115px; padding: 7px 10px; font-size: 12.5px;">
+                            <option value="all">면적 상태 전체</option>
+                            <option value="missing">⚠️ 누락 면적 (전체)</option>
+                            <option value="missing_complex">🏢 단지형 누락 면적</option>
+                            <option value="completed">✅ 면적 수집 완료</option>
+                        </select>
+                        <select class="form-control" id="realEstateTradeFilter" style="flex: 1; min-width: 120px; padding: 7px 10px; font-size: 12.5px;">
+                            <option value="all">실거래 상태 전체</option>
+                            <option value="has_trade">💰 실거래가 수집 완료</option>
+                            <option value="missing_trade">⚠️ 실거래 대기 / 누락</option>
                         </select>
                         <input type="text" id="realEstateSearchInput" class="form-control" placeholder="건물명 또는 주소 검색..." style="flex: 2; min-width: 160px; padding: 7px 12px; font-size: 12.5px;">
                     </div>

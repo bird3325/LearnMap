@@ -6221,9 +6221,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        // 학원 핀 클릭 시 학원 리스트에 가려질 때만 리스트 너비만큼 지도 이동, 가려지지 않으면 위치 유지
+        // 학원 핀 클릭 시: 사이드바 영역을 제외한 지도의 가시 영역 정중앙에 학원 핀 노출 (이미 중앙이면 이동하지 않음)
         window.checkAndAdjustMapForAcademyPin = function(lng, lat) {
-            if (!lng || !lat || window.innerWidth <= 1024) return;
+            if (!lng || !lat) return;
             const numLng = parseFloat(lng);
             const numLat = parseFloat(lat);
             if (isNaN(numLng) || isNaN(numLat)) return;
@@ -6232,32 +6232,73 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!mapObj || !window.kakao || !window.kakao.maps) return;
 
             const pos = new kakao.maps.LatLng(numLat, numLng);
-            const mainSidebar = document.querySelector('.sidebar-section');
-            const academySidebar = document.getElementById('academySidebar');
-            const sidebarWidth = (mainSidebar && mainSidebar.offsetWidth > 0) ? mainSidebar.offsetWidth : 400;
-            const listWidth = (academySidebar && academySidebar.offsetWidth > 0) ? academySidebar.offsetWidth : 340;
-            const totalBlockedWidth = sidebarWidth + listWidth;
-
             const container = typeof mapObj.getContainer === 'function' ? mapObj.getContainer() : (document.getElementById('mapCanvas') || document.body);
             const containerWidth = container ? container.offsetWidth : window.innerWidth;
+            const containerHeight = container ? container.offsetHeight : window.innerHeight;
 
+            const isMobile = window.innerWidth <= 1024;
+            let targetX = Math.round(containerWidth / 2);
+            let targetY = Math.round(containerHeight / 2);
+
+            if (isMobile) {
+                // 모바일: 하단 바텀시트 영역을 제외한 상단 가시 영역 중앙
+                const mainSidebar = document.querySelector('.sidebar-section');
+                let bottomBlocked = (mainSidebar && mainSidebar.offsetHeight > 0) ? mainSidebar.offsetHeight : Math.round(window.innerHeight * 0.6);
+                if (bottomBlocked >= containerHeight) bottomBlocked = Math.round(containerHeight * 0.6);
+                const visibleHeight = Math.max(80, containerHeight - bottomBlocked);
+                targetX = Math.round(containerWidth / 2);
+                targetY = Math.round(visibleHeight / 2);
+            } else {
+                // PC: 우측 사이드바(메인 사이드바 + 학원/주택 목록 사이드바) 영역을 제외한 좌측 가시 영역 중앙
+                const mainSidebar = document.querySelector('.sidebar-section');
+                const academySidebar = document.getElementById('academySidebar');
+                const housingSidebar = document.getElementById('housingSidebar');
+                const sidebarWidth = (mainSidebar && mainSidebar.offsetWidth > 0) ? mainSidebar.offsetWidth : 500;
+                let listWidth = 0;
+                if (housingSidebar && window.getComputedStyle(housingSidebar).display !== 'none' && housingSidebar.offsetWidth > 0) {
+                    listWidth = housingSidebar.offsetWidth;
+                } else if (academySidebar && window.getComputedStyle(academySidebar).display !== 'none' && academySidebar.offsetWidth > 0) {
+                    listWidth = academySidebar.offsetWidth;
+                } else {
+                    listWidth = 340;
+                }
+                const totalBlockedWidth = sidebarWidth + listWidth;
+
+                const visibleWidth = Math.max(100, containerWidth - totalBlockedWidth);
+                targetX = Math.round(visibleWidth / 2);
+                targetY = Math.round(containerHeight / 2);
+            }
+
+            // 카카오 지도 Projection 객체를 통해 현재 화면 상의 핀 픽셀 좌표 구하기
+            // (카카오맵 SDK 표준 메서드: containerPointFromCoords)
             if (typeof mapObj.getProjection === 'function') {
                 const proj = mapObj.getProjection();
-                if (proj && typeof proj.containerPointFromCoordinate === 'function') {
-                    const pt = proj.containerPointFromCoordinate(pos);
-                    const padding = 35; // 마커 크기 및 시각적 여유 패딩
-                    const visibleBoundary = containerWidth - totalBlockedWidth - padding;
+                if (proj) {
+                    const pt = (typeof proj.containerPointFromCoords === 'function')
+                        ? proj.containerPointFromCoords(pos)
+                        : (typeof proj.containerPointFromCoordinate === 'function' ? proj.containerPointFromCoordinate(pos) : null);
 
-                    // 학원리스트가 열려서 클릭한 학원핀이 가려지는 위치인 경우에만 리스트 너비만큼 지도 이동
-                    if (pt && pt.x > visibleBoundary) {
-                        if (typeof mapObj.panBy === 'function') {
-                            mapObj.panBy(listWidth, 0);
+                    if (pt && typeof pt.x === 'number' && typeof pt.y === 'number') {
+                        const dx = Math.round(pt.x - targetX);
+                        const dy = Math.round(pt.y - targetY);
+
+                        // 이미 가시 영역 중앙에 위치해 있는 경우(오차 5px 이내) 절대 이동하지 않고 종료!
+                        if (Math.abs(dx) <= 5 && Math.abs(dy) <= 5) {
+                            return;
+                        }
+
+                        // 가시 영역 중앙과 차이가 있을 때만 그 차이만큼 정확하게 panBy 이동
+                        if (Math.abs(dx) < containerWidth * 2 && Math.abs(dy) < containerHeight * 2) {
+                            if (typeof mapObj.panBy === 'function') {
+                                mapObj.panBy(dx, dy);
+                                return;
+                            }
                         }
                     }
-                    // 가려지지 않을 경우에는 지도를 이동하지 않고 위치 그대로 유지
                 }
             }
         };
+        window.checkAndAdjustMapForHousingPin = window.checkAndAdjustMapForAcademyPin;
 
         // 전역 지적 이동/줌 헬퍼 등록 (학원 카드에서 📍 거리/지도 버튼 클릭시 동작)
         window.focusAcademyLocationOnMap = function(lng, lat, name) {
@@ -6993,7 +7034,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     popupHeader.appendChild(btnClosePopup);
 
                     const popupList = document.createElement('div');
-                    popupList.style.cssText = 'max-height: 230px; overflow-y: auto; padding: 6px 8px; display: flex; flex-direction: column; gap: 4px;';
+                    popupList.style.cssText = 'max-height: 230px; overflow-y: auto; overscroll-behavior: contain; padding: 6px 8px; display: flex; flex-direction: column; gap: 4px;';
 
                     cluster.items.forEach(place => {
                         const aName = place.place_name || '학원';
@@ -7036,22 +7077,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                         `;
 
-                        // 플로팅 바에서 개별 학원 클릭 시 -> 학원상세와 학원리스트 사이드바 동시 오픈!
+                        // 플로팅 바에서 개별 학원 클릭 시 (플로팅 창 유지)
                         itemRow.addEventListener('click', (e) => {
                             e.stopPropagation();
-                            closeClusterPopup();
+
                             window.isOpeningFromAcademyPin = true;
                             if (typeof window.openAcademyDetailModal === 'function') {
                                 window.openAcademyDetailModal(place);
                             }
-                            setTimeout(() => {
-                                if (typeof window.checkAndAdjustMapForAcademyPin === 'function') {
-                                    window.checkAndAdjustMapForAcademyPin(place.x, place.y);
-                                }
-                            }, 60);
+
                             setTimeout(() => {
                                 window.isOpeningFromAcademyPin = false;
-                            }, 350);
+                            }, 450);
                         });
 
                         popupList.appendChild(itemRow);
@@ -7065,6 +7102,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     clusterPopupEl.appendChild(popupList);
                     clusterPopupEl.appendChild(popupFooter);
                     clusterPopupEl.appendChild(popupArrow);
+
+                    // 플로팅 학원 리스트 스크롤 시 카카오 지도로 전파되어 지도가 확대/축소되는 현상 방지 및 리스트 전용 스크롤 보장
+                    const stopAcademyScrollProp = (e) => {
+                        e.stopPropagation();
+                    };
+                    clusterPopupEl.addEventListener('wheel', stopAcademyScrollProp, { passive: true });
+                    clusterPopupEl.addEventListener('mousewheel', stopAcademyScrollProp, { passive: true });
+                    clusterPopupEl.addEventListener('DOMMouseScroll', stopAcademyScrollProp, { passive: true });
+                    clusterPopupEl.addEventListener('mousedown', (e) => e.stopPropagation());
+                    clusterPopupEl.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+                    clusterPopupEl.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
+
+                    clusterPopupEl.addEventListener('mouseenter', () => {
+                        if (mapObj && typeof mapObj.setZoomable === 'function') {
+                            mapObj.setZoomable(false);
+                        }
+                    });
+                    clusterPopupEl.addEventListener('mouseleave', () => {
+                        if (mapObj && typeof mapObj.setZoomable === 'function') {
+                            mapObj.setZoomable(true);
+                        }
+                    });
                 }
 
                 containerEl.appendChild(dotEl);
@@ -7095,6 +7154,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!clusterPopupEl) return;
                     isClusterPopupOpen = false;
                     clusterPopupEl.style.display = 'none';
+                    if (mapObj && typeof mapObj.setZoomable === 'function') {
+                        mapObj.setZoomable(true);
+                    }
                     if (overlay && typeof overlay.setZIndex === 'function') {
                         overlay.setZIndex(1000);
                     }
@@ -7134,18 +7196,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     e.stopPropagation();
 
                     if (count > 1) {
-                        // 1) 클러스터로 묶여 있는 경우: 플로팅 바 토글 노출 (학원상세 직접 오픈 X)
-                        if (mapObj && typeof mapObj.getLevel === 'function' && mapObj.getLevel() > 2) {
-                            mapObj.setLevel(mapObj.getLevel() - 1);
-                            if (typeof mapObj.panTo === 'function') {
-                                mapObj.panTo(pos);
-                            }
-                        }
-
+                        // 1) 클러스터로 묶여 있는 경우: 플로팅 바 토글 노출 및 사이드바 제외 가시 영역 중앙 정렬
                         if (isClusterPopupOpen) {
                             closeClusterPopup();
                         } else {
                             openClusterPopup();
+                            if (typeof window.checkAndAdjustMapForAcademyPin === 'function') {
+                                window.checkAndAdjustMapForAcademyPin(cluster.lng, cluster.lat);
+                            }
                         }
                     } else {
                         // 2) 단일 학원 마커인 경우: 바로 학원상세와 학원리스트 사이드바 동시 오픈
@@ -7162,13 +7220,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
 
                         setTimeout(() => {
-                            if (typeof window.checkAndAdjustMapForAcademyPin === 'function') {
-                                window.checkAndAdjustMapForAcademyPin(primaryPlace.x, primaryPlace.y);
-                            }
-                        }, 60);
-                        setTimeout(() => {
                             window.isOpeningFromAcademyPin = false;
-                        }, 350);
+                        }, 450);
                     }
                 });
 
@@ -7207,9 +7260,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.clearRealEstateMapMarkers = clearRealEstateMapMarkers;
 
         async function updateRealEstateMapMarkers(radius = 1000) {
-            // 항상 기존 부동산 마커 즉시 클리어
-            clearRealEstateMapMarkers();
-
             const reqSeq = ++window.realEstateReqSeq;
             const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
             if (!mapObj || !window.kakao || !window.kakao.maps) return;
@@ -7217,6 +7267,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 부동산 토글 스위치 확인 (체크 해제 시 마커 제거 후 즉시 리턴)
             const showCheck = document.getElementById('showRealEstateMapCheckbox');
             if (showCheck && !showCheck.checked) {
+                clearRealEstateMapMarkers();
                 return;
             }
 
@@ -7240,6 +7291,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (selectedType === 'none') {
+                clearRealEstateMapMarkers();
                 return;
             }
 
@@ -7257,11 +7309,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!sLat || !sLng) return;
 
+            const activeRadBtn = document.querySelector('#academyRadiusButtonGroup .academy-radius-btn.active') 
+                              || document.querySelector('#housingRadiusButtonGroup .housing-radius-btn.active');
+            const btnRadius = activeRadBtn ? parseInt(activeRadBtn.getAttribute('data-radius'), 10) : 0;
+            const radInput = document.getElementById('academyMapRadiusFilter');
+            const effectiveRadius = radius || btnRadius || window.currentAcademyRadius || window.currentHousingRadius || (radInput ? (parseInt(radInput.value, 10) || 1000) : 1000) || 1000;
+
             if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
                 const geocoder = new window.kakao.maps.services.Geocoder();
                 const fetchAndRenderPins = async (lawdCd) => {
                     try {
-                        const res = await fetch(`/api/realestate/pins?lawd_cd=${lawdCd}&x=${sLng}&y=${sLat}&radius=${radius}&type=${selectedType}`);
+                        const res = await fetch(`/api/realestate/pins?lawd_cd=${lawdCd}&x=${sLng}&y=${sLat}&radius=${effectiveRadius}&type=${selectedType}`);
                         if (reqSeq !== window.realEstateReqSeq) return;
                         if (!res.ok) return;
 
@@ -7271,8 +7329,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         clearRealEstateMapMarkers();
 
+                        // 1. 유효 주택 필터링 (선택된 학교 핀의 반경 원 영역 내만 엄격 필터링)
+                        const validHousings = [];
+                        data.items.forEach(place => {
+                            if (reqSeq !== window.realEstateReqSeq) return;
+                            const lng = parseFloat(place.x);
+                            const lat = parseFloat(place.y);
+                            if (isNaN(lng) || isNaN(lat)) return;
+
+                            // 하버사인(Haversine) 구면 공식으로 정확한 학교와의 거리(미터) 산출
+                            const dist = (typeof calculateAcademyDistance === 'function')
+                                ? calculateAcademyDistance(sLat, sLng, lat, lng)
+                                : (() => {
+                                    const R = 6371000;
+                                    const dLat = (lat - sLat) * Math.PI / 180;
+                                    const dLon = (lng - sLng) * Math.PI / 180;
+                                    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                                              Math.cos(sLat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) *
+                                              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                                    return Math.round(2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+                                })();
+
+                            // 🌟 선택한 학교핀의 영역(반경 원) 밖에 있는 주택은 완전 차단
+                            if (dist > effectiveRadius) return;
+                            place._calcDist = dist;
+                            place.distance = dist;
+                            validHousings.push(place);
+                        });
+
                         // 주택 사이드바 및 상세 정보용 전체 데이터 저장 및 리스트 업데이트
-                        window.allFetchedHousings = data.items || [];
+                        window.allFetchedHousings = validHousings;
                         const hSchoolNameEl = document.getElementById('housingSchoolName');
                         if (hSchoolNameEl) {
                             const curSchoolName = schoolObj ? (schoolObj.name || schoolObj.school_name || schoolObj.place_name || '선택 학교') : '선택 학교';
@@ -7281,22 +7367,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (typeof window.applyHousingFiltersAndRender === 'function') {
                             window.applyHousingFiltersAndRender();
                         }
-
-                        // 1. 유효 주택 필터링 (반경 내)
-                        const validHousings = [];
-                        data.items.forEach(place => {
-                            if (reqSeq !== window.realEstateReqSeq) return;
-                            const lng = parseFloat(place.x);
-                            const lat = parseFloat(place.y);
-                            if (isNaN(lng) || isNaN(lat)) return;
-
-                            const dy = (lat - sLat) * 111000;
-                            const dx = (lng - sLng) * 88800 * Math.cos(sLat * (Math.PI / 180));
-                            const dist = Math.sqrt(dx * dx + dy * dy);
-                            if (dist > (radius ? radius * 2.5 : 3000)) return;
-                            place._calcDist = dist;
-                            validHousings.push(place);
-                        });
 
                         // 2. 인접 주택 클러스터링 (16m 이내 동일 단지 또는 인접 주택)
                         const housingClusters = [];
@@ -7432,7 +7502,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 popupHeader.appendChild(btnClosePopup);
 
                                 const popupList = document.createElement('div');
-                                popupList.style.cssText = 'max-height: 240px; overflow-y: auto; padding: 6px 8px; display: flex; flex-direction: column; gap: 4px;';
+                                popupList.style.cssText = 'max-height: 240px; overflow-y: auto; overscroll-behavior: contain; padding: 6px 8px; display: flex; flex-direction: column; gap: 4px;';
 
                                 cluster.items.forEach(place => {
                                     const pName = place.name || '주택 단지';
@@ -7500,6 +7570,28 @@ document.addEventListener('DOMContentLoaded', () => {
                                 clusterPopupEl.appendChild(popupList);
                                 clusterPopupEl.appendChild(popupFooter);
                                 clusterPopupEl.appendChild(popupArrow);
+
+                                // 플로팅 주택 리스트 스크롤 시 카카오 지도로 전파되어 지도가 확대/축소되는 현상 방지 및 리스트 전용 스크롤 처리
+                                const stopHousingScrollProp = (e) => {
+                                    e.stopPropagation();
+                                };
+                                clusterPopupEl.addEventListener('wheel', stopHousingScrollProp, { passive: true });
+                                clusterPopupEl.addEventListener('mousewheel', stopHousingScrollProp, { passive: true });
+                                clusterPopupEl.addEventListener('DOMMouseScroll', stopHousingScrollProp, { passive: true });
+                                clusterPopupEl.addEventListener('mousedown', (e) => e.stopPropagation());
+                                clusterPopupEl.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+                                clusterPopupEl.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
+
+                                clusterPopupEl.addEventListener('mouseenter', () => {
+                                    if (mapObj && typeof mapObj.setZoomable === 'function') {
+                                        mapObj.setZoomable(false);
+                                    }
+                                });
+                                clusterPopupEl.addEventListener('mouseleave', () => {
+                                    if (mapObj && typeof mapObj.setZoomable === 'function') {
+                                        mapObj.setZoomable(true);
+                                    }
+                                });
                             }
 
                             containerEl.appendChild(badgeEl);
@@ -7530,6 +7622,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 if (!clusterPopupEl) return;
                                 isClusterPopupOpen = false;
                                 clusterPopupEl.style.display = 'none';
+                                if (mapObj && typeof mapObj.setZoomable === 'function') {
+                                    mapObj.setZoomable(true);
+                                }
                                 if (overlay && typeof overlay.setZIndex === 'function') {
                                     overlay.setZIndex(950);
                                 }
@@ -7565,38 +7660,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
                             containerEl.addEventListener('click', (e) => {
                                 e.stopPropagation();
+
                                 if (count > 1) {
-                                    if (mapObj && typeof mapObj.getLevel === 'function' && mapObj.getLevel() > 2) {
-                                        mapObj.setLevel(mapObj.getLevel() - 1);
-                                        if (typeof mapObj.panTo === 'function') {
-                                            mapObj.panTo(pos);
-                                        }
-                                    }
+                                    // 1) 클러스터로 묶여 있는 경우: 플로팅 바 토글 노출 및 사이드바 제외 가시 영역 중앙 정렬
                                     if (isClusterPopupOpen) {
                                         closeClusterPopup();
                                     } else {
                                         openClusterPopup();
+                                        if (typeof window.checkAndAdjustMapForHousingPin === 'function') {
+                                            window.checkAndAdjustMapForHousingPin(cluster.lng, cluster.lat);
+                                        }
                                     }
                                 } else {
+                                    // 2) 단일 주택 마커인 경우: 바로 주택상세와 주택리스트 사이드바 동시 오픈 및 가시 영역 정렬
                                     if (typeof window.closeActiveHousingClusterPopup === 'function') {
                                         window.closeActiveHousingClusterPopup();
                                     }
+
+                                    window.isOpeningFromHousingPin = true;
                                     if (typeof window.openHousingDetailModal === 'function') {
                                         window.openHousingDetailModal(primaryPlace);
                                     }
 
-                                    const housingSidebar = document.getElementById('housingSidebar');
-                                    const isAlreadyOpen = housingSidebar && (
-                                        housingSidebar.style.display === 'flex' ||
-                                        (window.getComputedStyle && window.getComputedStyle(housingSidebar).display !== 'none')
-                                    );
-                                    if (!isAlreadyOpen) {
-                                        if (typeof window.centerHousingPinWithSidebarOffset === 'function') {
-                                            window.centerHousingPinWithSidebarOffset(primaryPlace.x, primaryPlace.y, primaryPlace.name || '주택');
-                                        } else if (mapObj && typeof mapObj.panTo === 'function') {
-                                            mapObj.panTo(pos);
-                                        }
-                                    }
+                                    setTimeout(() => {
+                                        window.isOpeningFromHousingPin = false;
+                                    }, 450);
                                 }
                             });
 
@@ -7673,17 +7761,10 @@ document.addEventListener('DOMContentLoaded', () => {
             reTypeSelect.addEventListener('change', handleReFilterChange);
         }
 
-        // 초기 페이지 로딩 및 지도 로드 완료 후 부동산 마커 자동 최초 렌더링
-        const autoInitRealEstateMarkers = () => {
-            if (typeof window.initHousingSidebarEvents === 'function') {
-                window.initHousingSidebarEvents();
-            }
-            const radInput = document.getElementById('academyMapRadiusFilter');
-            const radVal = window.currentAcademyRadius || (radInput ? parseInt(radInput.value, 10) : 1000) || 1000;
-            updateRealEstateMapMarkers(radVal);
-        };
-        setTimeout(autoInitRealEstateMarkers, 1000);
-        setTimeout(autoInitRealEstateMarkers, 3000);
+        // 부동산 사이드바 이벤트 1회 초기화
+        if (typeof window.initHousingSidebarEvents === 'function') {
+            window.initHousingSidebarEvents();
+        }
 
         // 반경별 학원 데이터 호출 함수
         async function loadAcademiesForRadius(radius = 1000) {
@@ -17509,6 +17590,11 @@ window.openAcademyDetailModal = function(placeOrName) {
         if (container) container.classList.add('academy-open');
     }
 
+    const btnToggleTop = document.getElementById('btnToggleSidebarTop');
+    if (btnToggleTop) {
+        btnToggleTop.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+    }
+
     // 2) 과목 및 유형 정보 추출
     let categorySubject = '';
     if (place && place.category_name) {
@@ -17587,6 +17673,13 @@ window.openAcademyDetailModal = function(placeOrName) {
             foundCard.style.boxShadow = '';
         }, 2000);
     }
+
+    // 6) 클릭한 학원 핀 위치를 사이드바를 제외한 지도의 가시 영역 정중앙에 노출
+    if (xCoord && yCoord && typeof window.checkAndAdjustMapForAcademyPin === 'function') {
+        setTimeout(() => {
+            window.checkAndAdjustMapForAcademyPin(xCoord, yCoord);
+        }, 60);
+    }
 };
 
 window.closeAcademyDetailModal = function() {
@@ -17662,6 +17755,8 @@ window.openHousingDetailModal = function(placeOrName) {
     const housingPanel = document.getElementById('housingDetailPanel');
     if (housingPanel) {
         housingPanel.style.display = 'flex';
+        const scrollContent = housingPanel.querySelector('.community-scroll-content');
+        if (scrollContent) scrollContent.scrollTop = 0;
     }
     if (sbSection) sbSection.classList.add('active-housing');
 
@@ -17718,7 +17813,7 @@ window.openHousingDetailModal = function(placeOrName) {
     if (areaBadge) areaBadge.innerText = typeof area === 'number' ? `전용 ${area}㎡` : (String(area).includes('㎡') ? area : `전용 ${area}㎡`);
 
     const dealBadge = document.getElementById('housingDetailDealBadge');
-    if (dealBadge) dealBadge.innerText = `${dealDate} 거래`;
+    if (dealBadge) dealBadge.style.display = 'none';
 
     // 기본 정보 컨테이너 렌더링
     const basicContainer = document.getElementById('housingBasicInfoContainer');
@@ -17727,6 +17822,9 @@ window.openHousingDetailModal = function(placeOrName) {
         const safeAddress = address.replace(/'/g, "\\'");
         const latVal = place && place.y ? parseFloat(place.y) : 0;
         const lngVal = place && place.x ? parseFloat(place.x) : 0;
+        const totalHouseholds = (place && place.householdCount) ? parseInt(place.householdCount, 10) : (Array.isArray(place && place.areaList) ? place.areaList.reduce((sum, item) => sum + (parseInt(item.householdCount, 10) || 0), 0) : 0);
+        const totalHouseholdStr = totalHouseholds > 0 ? `${totalHouseholds.toLocaleString()}세대` : '정보 확인 중';
+        const buildYearStr = (place && place.buildYear && String(place.buildYear).trim() !== '') ? `${place.buildYear}년` : '정보 확인 중';
 
         basicContainer.innerHTML = `
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
@@ -17735,12 +17833,12 @@ window.openHousingDetailModal = function(placeOrName) {
                     <strong style="color: #0f172a; font-size: 13px;">${typeName}</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 6px;">
-                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">최근 실거래가</span>
-                    <strong id="housingBasicPriceValue" style="color: #dc2626; font-size: 14px; font-weight: 800;">${priceDisplay}</strong>
+                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">단지 총 세대수</span>
+                    <strong style="color: #0f172a; font-size: 13px;">${totalHouseholdStr}</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 6px;">
-                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">전용 면적</span>
-                    <strong id="housingBasicAreaValue" style="color: #1e293b; font-size: 13px;">${area}</strong>
+                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">준공년도</span>
+                    <strong style="color: #0f172a; font-size: 13px;">${buildYearStr}</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; border-top: 1px solid #f1f5f9; padding-top: 6px; gap: 8px;">
                     <span style="font-size: 12px; color: #64748b; font-weight: 600; flex-shrink: 0;">소재지 주소</span>
@@ -17775,6 +17873,12 @@ window.openHousingDetailModal = function(placeOrName) {
     // 탭 2 (학군·통학 안심) 렌더링
     renderHousingSchoolSection(place);
 
+    // 탭 3 (단지 이야기 커뮤니티) 데이터 로드
+    window.cachedHousingCommunityName = null;
+    if (typeof window.loadHousingCommunity === 'function') {
+        window.loadHousingCommunity(place, 'all');
+    }
+
     // 기본 탭: 시세 분석 활성화
     window.switchHousingTab('market');
 
@@ -17790,6 +17894,15 @@ window.openHousingDetailModal = function(placeOrName) {
             foundCard.style.borderColor = '';
             foundCard.style.boxShadow = '';
         }, 2000);
+    }
+
+    // 5) 클릭한 주택 핀 위치를 사이드바를 제외한 지도의 가시 영역 정중앙에 노출 (학원 핀과 동일)
+    const xCoord = place ? (place.x || place.lng) : '';
+    const yCoord = place ? (place.y || place.lat) : '';
+    if (xCoord && yCoord && typeof window.checkAndAdjustMapForHousingPin === 'function') {
+        setTimeout(() => {
+            window.checkAndAdjustMapForHousingPin(xCoord, yCoord);
+        }, 60);
     }
 };
 
@@ -17818,7 +17931,9 @@ window.focusHousingLocationOnMap = function(x, y, name) {
     const numY = parseFloat(y);
     if (isNaN(numX) || isNaN(numY)) return;
 
-    if (typeof window.centerHousingPinWithSidebarOffset === 'function') {
+    if (typeof window.checkAndAdjustMapForHousingPin === 'function') {
+        window.checkAndAdjustMapForHousingPin(numX, numY);
+    } else if (typeof window.centerHousingPinWithSidebarOffset === 'function') {
         window.centerHousingPinWithSidebarOffset(numX, numY, name);
     } else {
         const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
@@ -17875,33 +17990,215 @@ window.selectCommuteStartFromComplex = function(lat, lng, name) {
     }
 };
 
+// 단지 커뮤니티 데이터 캐시 및 필터 상태
+window.housingCommunityPosts = [];
+window.cachedHousingCommunityName = null;
+window.currentHousingCommunityFilter = 'all';
+
 window.switchHousingTab = function(tabName) {
     const tabMarket = document.getElementById('tabHousingMarket');
     const tabSchool = document.getElementById('tabHousingSchool');
+    const tabCommunity = document.getElementById('tabHousingCommunity');
     const secMarket = document.getElementById('sectionHousingMarket');
     const secSchool = document.getElementById('sectionHousingSchool');
+    const secCommunity = document.getElementById('sectionHousingCommunity');
 
     if (!tabMarket || !tabSchool || !secMarket || !secSchool) return;
+
+    // 모든 탭 버튼 및 섹션 비활성화
+    [tabMarket, tabSchool, tabCommunity].forEach(btn => {
+        if (btn) {
+            btn.style.background = 'transparent';
+            btn.style.color = '#64748b';
+            btn.style.boxShadow = 'none';
+        }
+    });
+    [secMarket, secSchool, secCommunity].forEach(sec => {
+        if (sec) sec.style.display = 'none';
+    });
 
     if (tabName === 'market') {
         tabMarket.style.background = '#ffffff';
         tabMarket.style.color = '#2563eb';
         tabMarket.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
-        tabSchool.style.background = 'transparent';
-        tabSchool.style.color = '#64748b';
-        tabSchool.style.boxShadow = 'none';
         secMarket.style.display = 'block';
-        secSchool.style.display = 'none';
-    } else {
+    } else if (tabName === 'school') {
         tabSchool.style.background = '#ffffff';
         tabSchool.style.color = '#2563eb';
         tabSchool.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
-        tabMarket.style.background = 'transparent';
-        tabMarket.style.color = '#64748b';
-        tabMarket.style.boxShadow = 'none';
         secSchool.style.display = 'block';
-        secMarket.style.display = 'none';
+    } else if (tabName === 'community') {
+        if (tabCommunity) {
+            tabCommunity.style.background = '#ffffff';
+            tabCommunity.style.color = '#2563eb';
+            tabCommunity.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+        }
+        if (secCommunity) secCommunity.style.display = 'block';
+
+        if (window.currentSelectedHousing) {
+            window.loadHousingCommunity(window.currentSelectedHousing, window.currentHousingCommunityFilter || 'all');
+        }
     }
+};
+
+window.filterHousingCommunity = function(filterType) {
+    window.currentHousingCommunityFilter = filterType;
+    if (window.currentSelectedHousing) {
+        window.renderHousingCommunityList(filterType);
+    }
+};
+
+window.loadHousingCommunity = async function(place, filterType = 'all') {
+    if (!place) return;
+    const listEl = document.getElementById('housingCommunityList');
+    if (!listEl) return;
+
+    const name = place.name || '';
+    let query = name;
+    if (place.dong && !name.includes(place.dong) && name.length <= 4) {
+        query = `${place.dong} ${name}`;
+    }
+
+    if (window.cachedHousingCommunityName === name && Array.isArray(window.housingCommunityPosts) && window.housingCommunityPosts.length > 0) {
+        window.renderHousingCommunityList(filterType);
+        return;
+    }
+
+    listEl.innerHTML = `
+        <div style="padding: 28px 16px; text-align: center; color: #64748b; font-size: 13px;">
+            <div style="font-size: 22px; margin-bottom: 6px;">⏳</div>
+            <div>네이버·다음 카페 및 블로그에서 단지 이야기를 불러오는 중입니다...</div>
+        </div>
+    `;
+
+    try {
+        const res = await fetch(`/api/community?q=${encodeURIComponent(query)}&type=all`);
+        if (!res.ok) throw new Error('커뮤니티 데이터를 가져오지 못했습니다.');
+        const data = await res.json();
+        const items = data.items || [];
+        window.housingCommunityPosts = items;
+        window.cachedHousingCommunityName = name;
+
+        const badge = document.getElementById('housingCommunityCountBadge');
+        if (badge) badge.innerText = items.length;
+
+        window.renderHousingCommunityList(filterType);
+    } catch (err) {
+        console.error('loadHousingCommunity Error:', err);
+        listEl.innerHTML = `
+            <div style="padding: 24px; text-align: center; color: #94a3b8; font-size: 13px;">
+                <div style="font-size: 22px; margin-bottom: 6px;">💬</div>
+                <div>관련 카페 및 블로그 커뮤니티 글을 불러오지 못했습니다.</div>
+            </div>
+        `;
+    }
+};
+
+window.renderHousingCommunityList = function(filterType = 'all') {
+    const listEl = document.getElementById('housingCommunityList');
+    if (!listEl) return;
+
+    const items = Array.isArray(window.housingCommunityPosts) ? window.housingCommunityPosts : [];
+    
+    const naverCafeCount = items.filter(it => it._platform === 'naver' && (it._source === 'cafe' || it._source === 'naver_cafe')).length;
+    const daumCafeCount = items.filter(it => it._platform === 'daum' || it._source === 'daum_cafe').length;
+    const blogCount = items.filter(it => it._source === 'blog' || it._source === 'naver_blog').length;
+    const totalCount = items.length;
+
+    const badge = document.getElementById('housingCommunityCountBadge');
+    if (badge) badge.innerText = totalCount;
+
+    const filterBtns = document.querySelectorAll('.housing-comm-filter-btn');
+    filterBtns.forEach(btn => {
+        const type = btn.getAttribute('data-type');
+        const isActive = type === filterType;
+        btn.style.background = isActive ? '#2563eb' : '#ffffff';
+        btn.style.color = isActive ? '#ffffff' : '#475569';
+        btn.style.borderColor = isActive ? '#2563eb' : '#cbd5e1';
+        btn.style.fontWeight = isActive ? '600' : '500';
+
+        if (type === 'all') btn.innerText = `전체 ${totalCount}`;
+        else if (type === 'naver_cafe') btn.innerText = `네이버 카페 ${naverCafeCount}`;
+        else if (type === 'daum_cafe') btn.innerText = `다음 카페 ${daumCafeCount}`;
+        else if (type === 'blog') btn.innerText = `블로그 ${blogCount}`;
+    });
+
+    let filteredItems = items;
+    if (filterType === 'naver_cafe') {
+        filteredItems = items.filter(it => it._platform === 'naver' && (it._source === 'cafe' || it._source === 'naver_cafe'));
+    } else if (filterType === 'daum_cafe') {
+        filteredItems = items.filter(it => it._platform === 'daum' || it._source === 'daum_cafe');
+    } else if (filterType === 'blog') {
+        filteredItems = items.filter(it => it._source === 'blog' || it._source === 'naver_blog');
+    }
+
+    if (filteredItems.length === 0) {
+        listEl.innerHTML = `
+            <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 14px; padding: 28px 16px; text-align: center; color: #64748b; font-size: 13px;">
+                <div style="font-size: 22px; margin-bottom: 6px;">☕</div>
+                <div style="font-weight: 600; color: #334155; margin-bottom: 4px;">해당 커뮤니티 글이 없습니다.</div>
+                <div style="font-size: 11.5px; color: #94a3b8;">네이버 카페 또는 다음 카페에서 단지명으로 검색해 보세요.</div>
+            </div>
+        `;
+        return;
+    }
+
+    listEl.innerHTML = filteredItems.map(item => {
+        const isNaverCafe = item._platform === 'naver' && (item._source === 'cafe' || item._source === 'naver_cafe');
+        const isDaumCafe = item._platform === 'daum' || item._source === 'daum_cafe';
+
+        let tagText = '블로그';
+        let tagBg = '#ecfdf5';
+        let tagColor = '#059669';
+        let tagBorder = '#d1fae5';
+
+        if (isNaverCafe) {
+            tagText = '네이버 카페';
+            tagBg = '#fff7ed';
+            tagColor = '#ea580c';
+            tagBorder = '#fed7aa';
+        } else if (isDaumCafe) {
+            tagText = '다음 카페';
+            tagBg = '#fefce8';
+            tagColor = '#ca8a04';
+            tagBorder = '#fef08a';
+        }
+
+        const sourceName = item.cafename || item.bloggername || (isNaverCafe ? '네이버 카페' : (isDaumCafe ? '다음 카페' : '블로그'));
+        const cleanTitle = (item.title || '단지 커뮤니티 글').replace(/<[^>]*>?/gm, '');
+        const cleanDesc = (item.description || '').replace(/<[^>]*>?/gm, '');
+
+        let postDate = item.postdate || '';
+        if (postDate.length === 8) {
+            postDate = `${postDate.substring(0,4)}.${postDate.substring(4,6)}.${postDate.substring(6,8)}`;
+        }
+
+        return `
+            <div class="review-card-item" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 7px; transition: transform 0.15s ease;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-size: 11px; font-weight: 700; color: ${tagColor}; background: ${tagBg}; border: 1px solid ${tagBorder}; border-radius: 6px; padding: 2px 7px;">${tagText}</span>
+                        <span style="font-size: 12px; font-weight: 600; color: #475569;">${sourceName}</span>
+                    </div>
+                    ${postDate ? `<span style="font-size: 11.5px; color: #94a3b8;">${postDate}</span>` : ''}
+                </div>
+                <a href="${item.link || '#'}" target="_blank" rel="noopener noreferrer"
+                   style="font-size: 13.5px; font-weight: 700; color: #0f172a; line-height: 1.4; text-decoration: none; margin-top: 1px; display: block; word-break: break-all;"
+                   onmouseover="this.style.color='#2563eb'" onmouseout="this.style.color='#0f172a'">
+                    ${cleanTitle}
+                </a>
+                <div style="font-size: 12px; color: #475569; line-height: 1.5; word-break: keep-all; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                    ${cleanDesc}
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3px; padding-top: 8px; border-top: 1px solid #f1f5f9; font-size: 11px; color: #64748b;">
+                    <span>출처: ${sourceName}</span>
+                    <a href="${item.link || '#'}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; font-weight: 600; text-decoration: none; font-size: 11.5px; display: flex; align-items: center; gap: 2px;">
+                        원문 보기 ↗
+                    </a>
+                </div>
+            </div>
+        `;
+    }).join('');
 };
 
 window.selectHousingAreaType = function(idx) {
@@ -17923,15 +18220,7 @@ window.selectHousingAreaType = function(idx) {
         }
 
         const dealBadge = document.getElementById('housingDetailDealBadge');
-        if (dealBadge && item.tradeDate && item.tradeDate !== '-') {
-            dealBadge.innerText = `${item.tradeDate} 거래`;
-        }
-
-        const basicAreaVal = document.getElementById('housingBasicAreaValue');
-        if (basicAreaVal) basicAreaVal.innerText = item.area;
-
-        const basicPriceVal = document.getElementById('housingBasicPriceValue');
-        if (basicPriceVal) basicPriceVal.innerText = item.price || '기본 정보 구축 (실거래 대기)';
+        if (dealBadge) dealBadge.style.display = 'none';
     }
 
     renderHousingMarketSection(place, idx);
@@ -17967,11 +18256,11 @@ function renderHousingMarketSection(place, activeAreaIdx = 0) {
                         const chipColor = isSelected ? '#ffffff' : '#334155';
                         const chipBorder = isSelected ? '#1e40af' : '#cbd5e1';
                         const shadow = isSelected ? 'box-shadow: 0 2px 6px rgba(30,64,175,0.25);' : '';
-                        const hhCount = aItem.householdCount ? ` (${aItem.householdCount}세대)` : '';
+                        const areaText = aItem.area ? (String(aItem.area).includes('㎡') ? aItem.area : `${aItem.area}㎡`) : '-';
                         return `
                             <button onclick="window.selectHousingAreaType(${idx})"
                                     style="flex-shrink: 0; padding: 7px 11px; border-radius: 8px; border: 1px solid ${chipBorder}; background: ${chipBg}; color: ${chipColor}; font-size: 12px; font-weight: ${isSelected ? '700' : '600'}; cursor: pointer; transition: all 0.15s ease; ${shadow}">
-                                ${aItem.area || ''} <span style="font-size: 11px; opacity: ${isSelected ? '0.9' : '0.75'};">${aItem.pyeong || ''}</span>${hhCount}
+                                ${areaText}
                             </button>
                         `;
                     }).join('')}
@@ -17982,7 +18271,10 @@ function renderHousingMarketSection(place, activeAreaIdx = 0) {
     const priceAmount = (place && place.price_amount) || 0;
     const priceDisplay = (place && place.price_display) || '실거래 대기';
     const areaNum = parseFloat(String(currentAreaStr).replace(/[^0-9.]/g, '')) || 84;
-    const pyeong = areaNum > 0 ? (areaNum / 3.3058).toFixed(1) : '25.4';
+    const pyeong = (activeItem && activeItem.pyeong) ? activeItem.pyeong : (areaNum > 0 ? `약 ${(areaNum / 3.3058).toFixed(1)}평형` : '약 25.4평형');
+    const pyeongNum = parseFloat(String(pyeong).replace(/[^0-9.]/g, '')) || (areaNum / 3.3058);
+    const household = (activeItem && activeItem.householdCount) ? `${activeItem.householdCount}세대` : ((place && place.householdCount) ? `${place.householdCount}세대` : '-');
+
     let pricePerPyeong = '-';
     let rawAmount = 0;
     if (currentPriceDisplay && currentPriceDisplay.includes('만원')) {
@@ -17990,8 +18282,8 @@ function renderHousingMarketSection(place, activeAreaIdx = 0) {
     } else if (priceAmount > 0) {
         rawAmount = priceAmount;
     }
-    if (rawAmount > 0 && parseFloat(pyeong) > 0) {
-        const perPyeongAmount = Math.round(rawAmount / parseFloat(pyeong));
+    if (rawAmount > 0 && pyeongNum > 0) {
+        const perPyeongAmount = Math.round(rawAmount / pyeongNum);
         pricePerPyeong = perPyeongAmount >= 10000 
             ? `${(perPyeongAmount / 10000).toFixed(1)}억원`
             : `${perPyeongAmount.toLocaleString()}만원`;
@@ -18007,14 +18299,18 @@ function renderHousingMarketSection(place, activeAreaIdx = 0) {
                     <span style="font-size: 13px; font-weight: 600; color: #1e293b;">최근 실거래가</span>
                     <span style="font-size: 18px; font-weight: 800; color: #dc2626;">${currentPriceDisplay}</span>
                 </div>
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; border-top: 1px dashed #bfdbfe; padding-top: 8px;">
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; border-top: 1px dashed #bfdbfe; padding-top: 8px;">
+                    <div>
+                        <div style="font-size: 11px; color: #64748b;">공급/전용 평형</div>
+                        <div style="font-size: 13px; font-weight: 700; color: #0f172a;">${pyeong}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 11px; color: #64748b;">해당 세대수</div>
+                        <div style="font-size: 13px; font-weight: 700; color: #0f172a;">${household}</div>
+                    </div>
                     <div>
                         <div style="font-size: 11px; color: #64748b;">3.3㎡당 환산가</div>
                         <div style="font-size: 13px; font-weight: 700; color: #0f172a;">${pricePerPyeong}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 11px; color: #64748b;">공급/전용 평형</div>
-                        <div style="font-size: 13px; font-weight: 700; color: #0f172a;">약 ${pyeong}평형</div>
                     </div>
                 </div>
             </div>
@@ -18031,19 +18327,8 @@ function renderHousingMarketSection(place, activeAreaIdx = 0) {
                         <span style="color: #2563eb; font-weight: 700;">✓</span>
                         <span>인근 학원가 밀집도 및 방과후 통학 동선 우수</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="color: #d97706; font-weight: 700;">✓</span>
-                        <span>실거래가 정기 동기화 및 국토부 공공 API 연동</span>
-                    </div>
                 </div>
             </div>
-
-            <!-- 변동 알림 신청 버튼 -->
-            <button onclick="alert('🔔 [${propName}] 실거래가 변동 알림이 신청되었습니다. 신규 거래 등록 시 안내해 드립니다.')"
-                    style="width: 100%; padding: 11px 0; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; color: #2563eb; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;"
-                    onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">
-                🔔 이 단지 실거래가 변동 알림 받기
-            </button>
         </div>
     `;
 }
@@ -18181,9 +18466,6 @@ function createHousingCard(place) {
             <span style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px;">
                 💰 ${shortPrice}
             </span>` : ''}
-            <span style="background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 6px;">
-                📐 ${area}
-            </span>
         </div>
 
         ${address ? `
@@ -18193,7 +18475,7 @@ function createHousingCard(place) {
 
         <div style="display: flex; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px dashed #f1f5f9;">
             <button class="btn-card-detail" style="flex: 1; padding: 6px 0; background: #2563eb; color: #ffffff; border: none; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer;">
-                🏢 단지 상세 & 실거래
+                🏢 단지 상세
             </button>
             <button onclick="event.stopPropagation(); window.focusHousingLocationOnMap('${place.x}', '${place.y}', '${safePropName}');" style="padding: 6px 10px; background: #f8fafc; color: #334155; border: 1px solid #cbd5e1; border-radius: 7px; font-size: 12px; font-weight: 500; cursor: pointer;">
                 📍 지도
@@ -18312,7 +18594,9 @@ window.shareHousingDetail = function() {
 };
 
 window.centerHousingPinWithSidebarOffset = function(lng, lat, name) {
-    if (typeof window.centerAcademyPinWithSidebarOffset === 'function') {
+    if (typeof window.checkAndAdjustMapForHousingPin === 'function') {
+        window.checkAndAdjustMapForHousingPin(lng, lat);
+    } else if (typeof window.centerAcademyPinWithSidebarOffset === 'function') {
         window.centerAcademyPinWithSidebarOffset(lng, lat, name);
     }
 };
