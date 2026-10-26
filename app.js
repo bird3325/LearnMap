@@ -6092,6 +6092,43 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         window.academyRatingsMap = {};
+        window.premiumAcademiesMap = {};
+
+        // 학업여지도 비즈니스 모델 (PRD v1.0): 프리미엄 구독 학원 목록 조회
+        async function fetchPremiumAcademies() {
+            try {
+                const res = await fetch('/api/academies/premium');
+                if (res.ok) {
+                    const list = await res.json();
+                    const map = {};
+                    if (Array.isArray(list)) {
+                        list.forEach(item => {
+                            if (item.name) map[item.name.trim()] = item;
+                        });
+                    }
+                    window.premiumAcademiesMap = map;
+                    return map;
+                }
+            } catch (err) {
+                console.warn('Failed to fetch premium academies:', err);
+            }
+            return {};
+        }
+        window.fetchPremiumAcademies = fetchPremiumAcademies;
+
+        // 분석 이벤트 로깅 헬퍼 (PRD P-08: profile_view, premium_impression, phone_click, contact_click)
+        window.logAnalyticsEvent = function(eventType, businessId, metadata = {}) {
+            try {
+                fetch('/api/analytics/event', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ eventType, businessId, metadata })
+                }).catch(() => {});
+            } catch (e) {}
+        };
+
+        // 초기 프리미엄 학원 캐시 로드
+        fetchPremiumAcademies();
 
         async function fetchAcademyRatingsFromDb() {
             try {
@@ -6485,6 +6522,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const acadName = place.place_name || '';
             const typeLabel = acadName.includes('교습소') ? '교습소' : '학원';
 
+            // 프리미엄 유료 구독 여부 확인 (PRD v1.0 P-07)
+            const cleanAcadName = acadName.trim();
+            const premInfo = (window.premiumAcademiesMap && window.premiumAcademiesMap[cleanAcadName]) || null;
+            const isPremium = Boolean(premInfo);
+
+            if (isPremium && typeof window.logAnalyticsEvent === 'function') {
+                window.logAnalyticsEvent('premium_impression', premInfo.businessId, { place_name: cleanAcadName });
+            }
+
             let subjectLabel = '';
             if (place.category_name) {
                 const parts = place.category_name.split('>').map(s => s.trim());
@@ -6516,26 +6562,27 @@ document.addEventListener('DOMContentLoaded', () => {
             card.className = 'academy-card';
             card.style.cssText = `
                 background: #ffffff;
-                border: 1px solid #e2e8f0;
+                border: 1px solid ${isPremium ? '#bfdbfe' : '#e2e8f0'};
                 border-radius: 14px;
                 padding: 14px 16px;
                 margin-bottom: 10px;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                box-shadow: ${isPremium ? '0 4px 12px rgba(37, 99, 235, 0.08)' : '0 2px 8px rgba(0, 0, 0, 0.04)'};
                 transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
                 cursor: pointer;
                 display: flex;
                 flex-direction: column;
                 gap: 8px;
+                position: relative;
             `;
 
             card.onmouseenter = () => {
                 card.style.borderColor = '#3b82f6';
-                card.style.boxShadow = '0 4px 14px rgba(37, 99, 235, 0.12)';
+                card.style.boxShadow = '0 4px 14px rgba(37, 99, 235, 0.15)';
                 card.style.transform = 'translateY(-2px)';
             };
             card.onmouseleave = () => {
-                card.style.borderColor = '#e2e8f0';
-                card.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.04)';
+                card.style.borderColor = isPremium ? '#bfdbfe' : '#e2e8f0';
+                card.style.boxShadow = isPremium ? '0 4px 12px rgba(37, 99, 235, 0.08)' : '0 2px 8px rgba(0, 0, 0, 0.04)';
                 card.style.transform = 'translateY(0)';
             };
 
@@ -6545,8 +6592,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             card.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-                    <div style="font-weight: 700; font-size: 15px; color: #1e293b; line-height: 1.35; flex: 1;">
-                        ${acadName}
+                    <div style="font-weight: 700; font-size: 15px; color: #1e293b; line-height: 1.35; flex: 1; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        ${isPremium ? `<span style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 10.5px; font-weight: 800; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.2px;">광고</span>` : ''}
+                        <span>${acadName}</span>
                     </div>
                     <button onclick="event.stopPropagation(); window.focusAcademyLocationOnMap('${place.x}', '${place.y}', '${safeAcadName}');"
                             style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 3px;"
@@ -6570,7 +6618,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${(addressStr || hasPhone) ? `
                 <div style="font-size: 12px; color: #64748b; line-height: 1.45; display: flex; flex-direction: column; gap: 2px;">
                     ${addressStr ? `<div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">🏢 ${addressStr}</div>` : ''}
-                    ${hasPhone ? `<div>📞 ${place.phone}</div>` : ''}
+                    ${hasPhone ? `<div onclick="if(typeof window.logAnalyticsEvent==='function' && '${isPremium ? premInfo.businessId : ''}') window.logAnalyticsEvent('phone_click', '${isPremium ? premInfo.businessId : ''}');">📞 ${place.phone}</div>` : ''}
                 </div>` : ''}
 
                 <div style="display: flex; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px dashed #f1f5f9;">
@@ -6581,7 +6629,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         📍 지도
                     </button>
                     ${place.place_url ? `
-                    <a href="${place.place_url}" target="_blank" onclick="event.stopPropagation();" style="padding: 6px 9px; background: #f8fafc; color: #64748b; border: 1px solid #cbd5e1; border-radius: 7px; font-size: 12px; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center;">
+                    <a href="${place.place_url}" target="_blank" onclick="event.stopPropagation(); if(typeof window.logAnalyticsEvent==='function' && '${isPremium ? premInfo.businessId : ''}') window.logAnalyticsEvent('website_click', '${isPremium ? premInfo.businessId : ''}');" style="padding: 6px 9px; background: #f8fafc; color: #64748b; border: 1px solid #cbd5e1; border-radius: 7px; font-size: 12px; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center;">
                         🔗 상세
                     </a>` : ''}
                 </div>
@@ -6589,6 +6637,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 학원 클릭 시 후기 모달 & 계산기 & 타운톡 연동
             card.onclick = () => {
+                if (isPremium && typeof window.logAnalyticsEvent === 'function') {
+                    window.logAnalyticsEvent('profile_view', premInfo.businessId, { place_name: cleanAcadName });
+                }
                 if (typeof window.openAcademyDetailModal === 'function') {
                     window.openAcademyDetailModal(place);
                 }
@@ -6689,6 +6740,16 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (sortMode === 'rating') {
                 filtered.sort((a, b) => (b._computedRating || 0) - (a._computedRating || 0));
             }
+
+            // 프리미엄 우선 정렬 (PRD v1.0 P-07: 유료 활성 구독 학원 상단 스폰서 영역 배치)
+            const premMap = window.premiumAcademiesMap || {};
+            filtered.sort((a, b) => {
+                const aName = (a.place_name || '').trim();
+                const bName = (b.place_name || '').trim();
+                const aPrem = premMap[aName] ? 1 : 0;
+                const bPrem = premMap[bName] ? 1 : 0;
+                return bPrem - aPrem;
+            });
 
             const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
             const isMobile = window.innerWidth <= 1024;
@@ -17704,6 +17765,72 @@ window.closeAcademyDetailModal = function() {
 window.allFetchedHousings = [];
 window.currentHousingRadius = 1000;
 
+// 아파트, 오피스텔(단지) 여부 판별 (비단지: 연립·다세대, 단독·다가구 등)
+window.isComplexHousing = function(place) {
+    if (!place) return true;
+    const type = (place.type || '').toLowerCase();
+    const typeName = (place.type_name || '').trim();
+    if (type === 'apt' || type === 'offi') return true;
+    if (typeName.includes('아파트') || typeName.includes('오피스텔')) return true;
+    if (type === 'rh' || type === 'sh') return false;
+    if (typeName.includes('연립') || typeName.includes('다세대') || typeName.includes('단독') || typeName.includes('다가구') || typeName.includes('빌라')) return false;
+    const name = place.name || '';
+    if (name.includes('아파트') || name.includes('오피스텔')) return true;
+    return false;
+};
+
+// 주택의 동네명(법정동/행정동 및 시·군·구) 추출
+window.getHousingNeighborhood = function(place) {
+    if (!place) return '';
+    let dongName = '';
+    if (place.dong && place.dong.trim()) {
+        dongName = place.dong.trim();
+    } else {
+        const addrs = [place.jibun, place.address].filter(Boolean);
+        for (const addr of addrs) {
+            const paren = addr.match(/\(([^)]+)\)/);
+            if (paren && paren[1]) {
+                const pParts = paren[1].split(/[\s,]+/);
+                const pDong = pParts.find(p => /^[가-힣0-9]+(?:동|읍|면|리|[0-9]가)$/.test(p));
+                if (pDong) { dongName = pDong; break; }
+            }
+            const tokens = addr.replace(/[(),]/g, ' ').split(/\s+/);
+            const candidates = tokens.filter(t => /^[가-힣0-9]+(?:동|읍|면|리|[0-9]가)$/.test(t) && !t.endsWith('로') && !t.endsWith('길'));
+            if (candidates.length > 0) {
+                dongName = candidates[candidates.length - 1];
+                break;
+            }
+        }
+    }
+    if (!dongName && place.name) {
+        const nm = place.name.match(/^([가-힣0-9]+(?:동|읍|면|리|[0-9]가))(?:\s+|\d)/);
+        if (nm && nm[1]) dongName = nm[1];
+    }
+    if (!dongName) {
+        const schoolObj = window.currentSelectedSchool || (typeof fullSchool !== 'undefined' ? fullSchool : null);
+        if (schoolObj) {
+            if (schoolObj.dong) dongName = schoolObj.dong;
+            else {
+                const sAddr = schoolObj.address || schoolObj.road_address || '';
+                const sm = sAddr.match(/([가-힣0-9]+(?:동|읍|면|리|[0-9]가))/);
+                if (sm && sm[1]) dongName = sm[1];
+            }
+        }
+    }
+
+    let sigunguName = place.sigungu || '';
+    if (!sigunguName && (place.address || place.jibun)) {
+        const fullAddr = (place.address || '') + ' ' + (place.jibun || '');
+        const guMatch = fullAddr.match(/([가-힣]+(?:구|군|시))\s+[가-힣0-9]+(?:동|읍|면|리|[0-9]가)/);
+        if (guMatch && guMatch[1]) sigunguName = guMatch[1];
+    }
+
+    if (dongName) {
+        return (sigunguName && !dongName.includes(sigunguName)) ? `${sigunguName} ${dongName}` : dongName;
+    }
+    return place.name || '';
+};
+
 window.openHousingDetailModal = function(placeOrName) {
     if (!placeOrName) return;
 
@@ -17716,8 +17843,11 @@ window.openHousingDetailModal = function(placeOrName) {
         }
     } else if (typeof placeOrName === 'object') {
         place = placeOrName;
-        propName = place.name || '주택 단지';
+        propName = place.name || '';
     }
+
+    const isComplex = window.isComplexHousing(place);
+    if (!propName) propName = isComplex ? '주택 단지' : '주택';
 
     if (!propName) return;
     window.currentSelectedHousing = place;
@@ -17833,7 +17963,7 @@ window.openHousingDetailModal = function(placeOrName) {
                     <strong style="color: #0f172a; font-size: 13px;">${typeName}</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 6px;">
-                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">단지 총 세대수</span>
+                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">${isComplex ? '단지 총 세대수' : '총 세대수'}</span>
                     <strong style="color: #0f172a; font-size: 13px;">${totalHouseholdStr}</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 6px;">
@@ -17873,14 +18003,32 @@ window.openHousingDetailModal = function(placeOrName) {
     // 탭 2 (학군·통학 안심) 렌더링
     renderHousingSchoolSection(place);
 
-    // 탭 3 (단지 이야기 커뮤니티) 데이터 로드
+    // 탭 3 (단지 이야기 / 동네 이야기 커뮤니티) 라벨 및 데이터 로드
+    const tabLabelEl = document.getElementById('tabHousingCommunityLabel');
+    if (tabLabelEl) {
+        tabLabelEl.innerText = isComplex ? '단지 이야기' : '동네 이야기';
+    } else {
+        const tabCommBtn = document.getElementById('tabHousingCommunity');
+        if (tabCommBtn) {
+            const commBadge = document.getElementById('housingCommunityCountBadge');
+            const badgeCount = commBadge ? commBadge.innerText : '0';
+            tabCommBtn.innerHTML = `💬 <span id="tabHousingCommunityLabel">${isComplex ? '단지 이야기' : '동네 이야기'}</span> <span id="housingCommunityCountBadge" style="font-size: 10.5px; background: #eff6ff; color: #2563eb; padding: 1px 5px; border-radius: 8px; border: 1px solid #bfdbfe;">${badgeCount}</span>`;
+        }
+    }
+
     window.cachedHousingCommunityName = null;
+    window.cachedHousingCommunityKey = null;
     if (typeof window.loadHousingCommunity === 'function') {
         window.loadHousingCommunity(place, 'all');
     }
 
     // 기본 탭: 시세 분석 활성화
     window.switchHousingTab('market');
+
+    // 학업여지도 비즈니스 모델 (PRD v1.0 P-12, P-13): 부동산 교육환경 파트너 공인중개업소 연동 노출
+    if (typeof window.renderHousingPartnerBroker === 'function') {
+        window.renderHousingPartnerBroker(place);
+    }
 
     // 4) 주택 목록 내 카드 스크롤 & 포커스 하이라이트
     const foundCard = Array.from(document.querySelectorAll('#sideHousingList .housing-card, .housing-card')).find(c => {
@@ -17923,6 +18071,231 @@ window.closeHousingDetailModal = function() {
     }
     const sb = document.querySelector('.sidebar-section');
     if (sb) sb.classList.remove('active-housing');
+};
+
+// 학업여지도 비즈니스 모델 (PRD v1.0 P-12, P-13): 부동산 교육환경 파트너 연동 및 노출
+window.renderHousingPartnerBroker = async function(place) {
+    if (!place) return;
+    const scrollContent = document.querySelector('#housingDetailPanel .community-scroll-content');
+    if (!scrollContent) return;
+
+    let container = document.getElementById('sectionHousingPartnerBroker');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'sectionHousingPartnerBroker';
+        container.style.marginTop = '16px';
+        scrollContent.appendChild(container);
+    }
+
+    const propName = (place.name || '').trim();
+    const dong = (place.dong || (typeof window.getHousingNeighborhood === 'function' ? window.getHousingNeighborhood(place) : '') || '').trim();
+
+    try {
+        let partners = [];
+        const res = await fetch(`/api/real-estates/partners?complex=${encodeURIComponent(propName)}&area=${encodeURIComponent(dong)}`);
+        if (res.ok) {
+            partners = await res.json();
+        }
+
+        if ((!partners || partners.length === 0) && dong) {
+            const areaRes = await fetch(`/api/real-estates/partners?area=${encodeURIComponent(dong)}`);
+            if (areaRes.ok) {
+                partners = await areaRes.json();
+            }
+        }
+
+        if ((!partners || partners.length === 0)) {
+            const allRes = await fetch('/api/real-estates/partners');
+            if (allRes.ok) {
+                partners = await allRes.json();
+            }
+        }
+
+        if (Array.isArray(partners) && partners.length > 0) {
+            const partner = partners[0];
+            const prof = partner.profile || {};
+            const officeName = prof.officeName || partner.name;
+            const brokerName = prof.brokerName || partner.representative;
+            const phone = prof.contactPhone || partner.phone;
+            const regNo = prof.registrationNo ? `등록번호: ${prof.registrationNo}` : '';
+            const topics = (prof.consultingTopics && prof.consultingTopics.length > 0) 
+                ? prof.consultingTopics 
+                : ['학군 배정 상담', '안심 통학로 매물'];
+            const desc = prof.description || '대치동 학군 배정 및 안심 통학로 전문 공인중개사사무소입니다.';
+
+            // 노출 이벤트 로깅 (PRD P-08, P-12)
+            if (typeof window.logAnalyticsEvent === 'function') {
+                window.logAnalyticsEvent('premium_impression', partner.businessId, { complex: propName, area: dong });
+            }
+
+            container.innerHTML = `
+                <div style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border: 1.5px solid #2563eb; border-radius: 14px; padding: 16px; box-shadow: 0 4px 14px rgba(37,99,235,0.08); margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 11px; font-weight: 800; background: #2563eb; color: #ffffff; padding: 3px 8px; border-radius: 6px;">
+                                👑 학군 안심 파트너 공인중개사
+                            </span>
+                            <span style="font-size: 11px; color: #16a34a; font-weight: 700; background: #dcfce7; padding: 2px 6px; border-radius: 4px;">인증 중개사</span>
+                        </div>
+                        <span style="font-size: 10.5px; color: #64748b;">${regNo}</span>
+                    </div>
+
+                    <div style="font-size: 15px; font-weight: 800; color: #0f172a; margin-bottom: 2px;">
+                        ${officeName}
+                    </div>
+                    <div style="font-size: 12px; color: #475569; margin-bottom: 8px;">
+                        대표 공인중개사 <strong>${brokerName}</strong> | 📍 ${partner.address}
+                    </div>
+
+                    <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px;">
+                        ${topics.map(t => `<span style="font-size: 11px; font-weight: 600; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 2px 7px; border-radius: 6px;">#${t}</span>`).join('')}
+                    </div>
+
+                    <div style="font-size: 12px; color: #334155; line-height: 1.5; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+                        💬 "${desc}"
+                    </div>
+
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="window.callPartnerBroker('${partner.businessId}', '${phone}', '${propName}')"
+                                style="flex: 1; padding: 10px 0; background: #2563eb; color: #ffffff; border: none; border-radius: 8px; font-size: 12.5px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; box-shadow: 0 2px 6px rgba(37,99,235,0.25);">
+                            📞 전화 상담 (${phone})
+                        </button>
+                        <button onclick="window.openBrokerInquiryModal('${partner.businessId}', '${officeName}', '${propName}')"
+                                style="flex: 1; padding: 10px 0; background: #ffffff; color: #2563eb; border: 1.5px solid #2563eb; border-radius: 8px; font-size: 12.5px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                            💬 1:1 학군 매물 문의
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 14px; padding: 14px; text-align: center; margin-bottom: 14px;">
+                    <div style="font-size: 18px; margin-bottom: 4px;">🏢</div>
+                    <div style="font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 3px;">
+                        이 단지의 첫 번째 [학군 전문 파트너 공인중개사]를 모십니다
+                    </div>
+                    <div style="font-size: 11.5px; color: #64748b; margin-bottom: 8px;">
+                        학군 이사를 고민하는 학부모 고객에게 단독으로 노출되고 상담 문의를 선점하세요.
+                    </div>
+                    <a href="/business" target="_blank"
+                       style="display: inline-block; padding: 6px 14px; background: #ffffff; color: #2563eb; border: 1px solid #bfdbfe; border-radius: 6px; font-size: 11.5px; font-weight: 700; text-decoration: none;">
+                        파트너 센터 입점 안내 ↗
+                    </a>
+                </div>
+            `;
+        }
+    } catch (err) {
+        console.error('renderHousingPartnerBroker error:', err);
+    }
+};
+
+window.callPartnerBroker = function(bizId, phone, placeName) {
+    if (typeof window.logAnalyticsEvent === 'function') {
+        window.logAnalyticsEvent('phone_click', bizId, { place: placeName });
+    }
+    window.location.href = `tel:${phone}`;
+};
+
+window.openBrokerInquiryModal = function(bizId, officeName, placeName) {
+    if (typeof window.logAnalyticsEvent === 'function') {
+        window.logAnalyticsEvent('contact_click', bizId, { place: placeName });
+    }
+
+    let modal = document.getElementById('brokerInquiryModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'brokerInquiryModal';
+        modal.style.cssText = 'display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 100010; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;';
+        document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+        <div style="background: #ffffff; border-radius: 18px; width: 100%; max-width: 440px; box-shadow: 0 24px 48px rgba(0,0,0,0.25); overflow: hidden; display: flex; flex-direction: column; border: 1px solid #e2e8f0;">
+            <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 18px;">🏠</span>
+                    <div>
+                        <h3 style="margin: 0; font-size: 15px; font-weight: 700; color: #1e293b;">1:1 학군 매물 상담 신청</h3>
+                        <span style="font-size: 11px; color: #64748b;">${officeName} 직통 안심 상담</span>
+                    </div>
+                </div>
+                <button type="button" onclick="window.closeBrokerInquiryModal()"
+                        style="background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer; padding: 2px 6px; line-height: 1;">&times;</button>
+            </div>
+            <form onsubmit="window.submitBrokerInquiry(event, '${bizId}', '${placeName}')" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                <div>
+                    <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">상담 대상 단지 / 주택</label>
+                    <input type="text" value="${placeName}" readonly style="width: 100%; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; background: #f1f5f9; color: #475569; box-sizing: border-box;">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">학부모 성함 <span style="color:#ef4444;">*</span></label>
+                        <input type="text" id="inqReParentName" required placeholder="예: 김학부모" style="width: 100%; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">자녀 학년</label>
+                        <input type="text" id="inqReGrade" placeholder="예: 예비 초1, 중2" style="width: 100%; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; box-sizing: border-box;">
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">회신 연락처 <span style="color:#ef4444;">*</span></label>
+                    <input type="tel" id="inqReParentPhone" required placeholder="예: 010-1234-5678" style="width: 100%; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">문의 및 상담 희망 내용 <span style="color:#ef4444;">*</span></label>
+                    <textarea id="inqReContent" rows="3" required placeholder="예: 대청중 100% 배정 가능한 34평형 전세 매물 및 입주 시기 상담 원합니다." style="width: 100%; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; resize: none; box-sizing: border-box;"></textarea>
+                </div>
+                <div>
+                    <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">희망 상담 시간</label>
+                    <input type="text" id="inqRePreferredTime" placeholder="예: 평일 오후 2시~5시" style="width: 100%; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; box-sizing: border-box;">
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                    <button type="button" onclick="window.closeBrokerInquiryModal()" style="flex: 1; padding: 10px 0; border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; color: #475569; font-size: 13px; font-weight: 600; cursor: pointer;">취소</button>
+                    <button type="submit" style="flex: 2; padding: 10px 0; border: none; border-radius: 8px; background: #2563eb; color: #ffffff; font-size: 13px; font-weight: 700; cursor: pointer;">📩 상담 신청 접수하기</button>
+                </div>
+            </form>
+        </div>
+    `;
+    modal.style.display = 'flex';
+};
+
+window.closeBrokerInquiryModal = function() {
+    const modal = document.getElementById('brokerInquiryModal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.submitBrokerInquiry = async function(e, bizId, placeName) {
+    e.preventDefault();
+    const parentName = document.getElementById('inqReParentName').value.trim();
+    const parentPhone = document.getElementById('inqReParentPhone').value.trim();
+    const studentGrade = document.getElementById('inqReGrade').value.trim();
+    const content = document.getElementById('inqReContent').value.trim();
+    const preferredTime = document.getElementById('inqRePreferredTime').value.trim();
+
+    try {
+        const res = await fetch('/api/inquiries', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                businessId: bizId,
+                parentName,
+                parentPhone,
+                studentGrade,
+                inquiryContent: `[${placeName} 학군 매물 상담] ${content}`,
+                preferredTime
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            window.closeBrokerInquiryModal();
+            alert('공인중개사사무소로 상담 문의가 안전하게 접수되었습니다!\n담당 공인중개사가 확인 후 빠른 시일 내에 연락드립니다.');
+        } else {
+            alert(data.error || '상담 문의 접수에 실패했습니다.');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('상담 통신 중 오류가 발생했습니다.');
+    }
 };
 
 window.focusHousingLocationOnMap = function(x, y, name) {
@@ -18053,21 +18426,29 @@ window.loadHousingCommunity = async function(place, filterType = 'all') {
     const listEl = document.getElementById('housingCommunityList');
     if (!listEl) return;
 
+    const isComplex = (typeof window.isComplexHousing === 'function') ? window.isComplexHousing(place) : (place && (place.type === 'apt' || place.type === 'offi'));
     const name = place.name || '';
     let query = name;
-    if (place.dong && !name.includes(place.dong) && name.length <= 4) {
-        query = `${place.dong} ${name}`;
+
+    if (!isComplex) {
+        query = (typeof window.getHousingNeighborhood === 'function') ? window.getHousingNeighborhood(place) : name;
+    } else {
+        if (place.dong && !name.includes(place.dong) && name.length <= 4) {
+            query = `${place.dong} ${name}`;
+        }
     }
 
-    if (window.cachedHousingCommunityName === name && Array.isArray(window.housingCommunityPosts) && window.housingCommunityPosts.length > 0) {
+    const cacheKey = `${isComplex ? 'complex' : 'dong'}_${query}`;
+    if (window.cachedHousingCommunityKey === cacheKey && Array.isArray(window.housingCommunityPosts) && window.housingCommunityPosts.length > 0) {
         window.renderHousingCommunityList(filterType);
         return;
     }
 
+    const commLabel = isComplex ? '단지 이야기' : '동네 이야기';
     listEl.innerHTML = `
         <div style="padding: 28px 16px; text-align: center; color: #64748b; font-size: 13px;">
             <div style="font-size: 22px; margin-bottom: 6px;">⏳</div>
-            <div>네이버·다음 카페 및 블로그에서 단지 이야기를 불러오는 중입니다...</div>
+            <div>네이버·다음 카페 및 블로그에서 ${commLabel}를 불러오는 중입니다...</div>
         </div>
     `;
 
@@ -18078,6 +18459,7 @@ window.loadHousingCommunity = async function(place, filterType = 'all') {
         const items = data.items || [];
         window.housingCommunityPosts = items;
         window.cachedHousingCommunityName = name;
+        window.cachedHousingCommunityKey = cacheKey;
 
         const badge = document.getElementById('housingCommunityCountBadge');
         if (badge) badge.innerText = items.length;
@@ -18098,6 +18480,9 @@ window.renderHousingCommunityList = function(filterType = 'all') {
     const listEl = document.getElementById('housingCommunityList');
     if (!listEl) return;
 
+    const place = window.currentSelectedHousing;
+    const isComplex = (typeof window.isComplexHousing === 'function') ? window.isComplexHousing(place) : (place && (place.type === 'apt' || place.type === 'offi'));
+
     const items = Array.isArray(window.housingCommunityPosts) ? window.housingCommunityPosts : [];
     
     const naverCafeCount = items.filter(it => it._platform === 'naver' && (it._source === 'cafe' || it._source === 'naver_cafe')).length;
@@ -18107,6 +18492,11 @@ window.renderHousingCommunityList = function(filterType = 'all') {
 
     const badge = document.getElementById('housingCommunityCountBadge');
     if (badge) badge.innerText = totalCount;
+
+    const tabLabelEl = document.getElementById('tabHousingCommunityLabel');
+    if (tabLabelEl) {
+        tabLabelEl.innerText = isComplex ? '단지 이야기' : '동네 이야기';
+    }
 
     const filterBtns = document.querySelectorAll('.housing-comm-filter-btn');
     filterBtns.forEach(btn => {
@@ -18133,16 +18523,18 @@ window.renderHousingCommunityList = function(filterType = 'all') {
     }
 
     if (filteredItems.length === 0) {
+        const searchTipTarget = isComplex ? '단지명' : '동네명';
         listEl.innerHTML = `
             <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 14px; padding: 28px 16px; text-align: center; color: #64748b; font-size: 13px;">
                 <div style="font-size: 22px; margin-bottom: 6px;">☕</div>
                 <div style="font-weight: 600; color: #334155; margin-bottom: 4px;">해당 커뮤니티 글이 없습니다.</div>
-                <div style="font-size: 11.5px; color: #94a3b8;">네이버 카페 또는 다음 카페에서 단지명으로 검색해 보세요.</div>
+                <div style="font-size: 11.5px; color: #94a3b8;">네이버 카페 또는 다음 카페에서 ${searchTipTarget}으로 검색해 보세요.</div>
             </div>
         `;
         return;
     }
 
+    const defaultTitle = isComplex ? '단지 커뮤니티 글' : '동네 커뮤니티 글';
     listEl.innerHTML = filteredItems.map(item => {
         const isNaverCafe = item._platform === 'naver' && (item._source === 'cafe' || item._source === 'naver_cafe');
         const isDaumCafe = item._platform === 'daum' || item._source === 'daum_cafe';
@@ -18165,7 +18557,7 @@ window.renderHousingCommunityList = function(filterType = 'all') {
         }
 
         const sourceName = item.cafename || item.bloggername || (isNaverCafe ? '네이버 카페' : (isDaumCafe ? '다음 카페' : '블로그'));
-        const cleanTitle = (item.title || '단지 커뮤니티 글').replace(/<[^>]*>?/gm, '');
+        const cleanTitle = (item.title || defaultTitle).replace(/<[^>]*>?/gm, '');
         const cleanDesc = (item.description || '').replace(/<[^>]*>?/gm, '');
 
         let postDate = item.postdate || '';

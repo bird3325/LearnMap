@@ -1,0 +1,136 @@
+{
+  "products": [
+    {
+      "id": "prod_academy_free",
+      "type": "academy",
+      "name": "학원 무료 입점",
+      "price": 0,
+      "billingPeriod": "free",
+      "badge": "일반",
+      "features": [
+        "기본 학원 프로필 제공",
+        "일반 검색 결과 노출",
+        "기본 성과 통계 (단순 조회)"
+      ]
+    },
+    {
+      "id": "prod_academy_premium",
+      "type": "academy",
+      "name": "학원 프리미엄 멤버십",
+      "price": 29000,
+      "billingPeriod": "monthly",
+      "badge": "인기 MVP",
+      "recommended": true,
+      "features": [
+        "학원 상세 프로필 전체 커스텀 (과목/학년/수업방식)",
+        "지역·학교 검색 결과 상단 [스폰서/광고] 배지 노출",
+        "학부모 1:1 상담 문의 접수 및 바로 연결",
+        "사업자 전용 통계 대시보드 (노출·조회·전화클릭 상세 분석)",
+        "우선 검색 정렬 지원"
+      ]
+    },
+    {
+      "id": "prod_academy_plus",
+      "type": "academy",
+      "name": "학원 마케팅 플러스 (후속)",
+      "price": 59000,
+      "billingPeriod": "monthly",
+      "badge": "확장형",
+      "features": [
+        "프리미엄 전체 기능 포함",
+        "인접 3개 행정동 다지역 확장 노출",
+        "주간 학부모 관심 리포트 제공"
+      ]
+    },
+    {
+      "id": "prod_re_local",
+      "type": "real_estate",
+      "name": "부동산 지역 전문 (후속)",
+      "price": 49000,
+      "billingPeriod": "monthly",
+      "badge": "공인중개사",
+      "features": [
+        "중개사무소 인증 프로필",
+        "단지/동네 학군 전문 중개사 배지",
+        "동네 이야기 상담창구 연결"
+      ]
+    },
+    {
+      "id": "prod_re_partner",
+      "type": "real_estate",
+      "name": "부동산 교육환경 파트너",
+      "price": 99000,
+      "billingPeriod": "monthly",
+      "badge": "대표 파트너",
+      "recommended": true,
+      "features": [
+        "단지 상세 및 동네 이야기 최상단 단독 배너 노출",
+        "학군·통학로 전문 공인중개사 골드 인증 마크",
+        "학부모 1:1 매물/학군 상담 문의 직통 연결",
+        "지역 교육환경 분석 리포트 열람 권한"
+      ]
+    }
+  ],
+  "subscriptions": [
+    {
+      "id": "sub_demo_01",
+      "businessId": "biz_demo_daechi_math_01",
+      "productId": "prod_academy_premium",
+      "productName": "학원 프리미엄 멤버십",
+      "amount": 29000,
+      "status": "active",
+      "startDate": "2026-10-20T10:00:00.000Z",
+      "endDate": "2026-11-20T10:00:00.000Z",
+      "paymentMethod": "카드 자동결제",
+      "lastPaymentDate": "2026-10-20T10:00:00.000Z",
+      "history": [
+        {
+          "date": "2026-10-20T10:00:00.000Z",
+          "action": "subscribe",
+          "amount": 29000,
+          "status": "success"
+        }
+      ]
+    },
+    {
+      "id": "sub_demo_02",
+      "businessId": "biz_demo_mokdong_eng_02",
+      "productId": "prod_academy_premium",
+      "productName": "학원 프리미엄 멤버십",
+      "amount": 29000,
+      "status": "active",
+      "startDate": "2026-10-22T14:30:00.000Z",
+      "endDate": "2026-11-22T14:30:00.000Z",
+      "paymentMethod": "카드 자동결제",
+      "lastPaymentDate": "2026-10-22T14:30:00.000Z",
+      "history": [
+        {
+          "date": "2026-10-22T14:30:00.000Z",
+          "action": "subscribe",
+          "amount": 29000,
+          "status": "success"
+        }
+      ]
+    },
+    {
+      "id": "sub_demo_03",
+      "businessId": "biz_demo_daechi_re_04",
+      "productId": "prod_re_partner",
+      "productName": "부동산 교육환경 파트너",
+      "amount": 99000,
+      "status": "active",
+      "startDate": "2026-10-24T11:00:00.000Z",
+      "endDate": "2026-11-24T11:00:00.000Z",
+      "paymentMethod": "카드 자동결제",
+      "lastPaymentDate": "2026-10-24T11:00:00.000Z",
+      "history": [
+        {
+          "date": "2026-10-24T11:00:00.000Z",
+          "action": "subscribe",
+          "amount": 99000,
+          "status": "success"
+        }
+      ]
+    }
+  ]
+}

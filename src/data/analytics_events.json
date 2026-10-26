@@ -1,0 +1,122 @@
+[
+  {
+    "id": "evt_001",
+    "businessId": "biz_demo_daechi_math_01",
+    "eventType": "premium_impression",
+    "metadata": {
+      "location": "대치동",
+      "source": "map_academy_list"
+    },
+    "createdAt": "2026-10-24T09:12:00.000Z"
+  },
+  {
+    "id": "evt_002",
+    "businessId": "biz_demo_daechi_math_01",
+    "eventType": "profile_view",
+    "metadata": {
+      "source": "card_click"
+    },
+    "createdAt": "2026-10-24T09:15:30.000Z"
+  },
+  {
+    "id": "evt_003",
+    "businessId": "biz_demo_daechi_math_01",
+    "eventType": "phone_click",
+    "metadata": {
+      "target": "02-555-1234"
+    },
+    "createdAt": "2026-10-24T14:20:10.000Z"
+  },
+  {
+    "id": "evt_004",
+    "businessId": "biz_demo_daechi_math_01",
+    "eventType": "contact_click",
+    "metadata": {
+      "type": "inquiry_open"
+    },
+    "createdAt": "2026-10-25T11:05:00.000Z"
+  },
+  {
+    "id": "evt_005",
+    "businessId": "biz_demo_daechi_math_01",
+    "eventType": "profile_view",
+    "metadata": {
+      "source": "search"
+    },
+    "createdAt": "2026-10-26T08:30:00.000Z"
+  },
+  {
+    "id": "evt_006",
+    "businessId": "biz_demo_mokdong_eng_02",
+    "eventType": "premium_impression",
+    "metadata": {
+      "location": "목동",
+      "source": "map_academy_list"
+    },
+    "createdAt": "2026-10-25T16:00:00.000Z"
+  },
+  {
+    "id": "evt_007",
+    "businessId": "biz_demo_mokdong_eng_02",
+    "eventType": "profile_view",
+    "metadata": {
+      "source": "card_click"
+    },
+    "createdAt": "2026-10-25T16:02:15.000Z"
+  },
+  {
+    "id": "evt_008",
+    "businessId": "biz_demo_mokdong_eng_02",
+    "eventType": "phone_click",
+    "metadata": {
+      "target": "02-2645-5678"
+    },
+    "createdAt": "2026-10-26T10:11:40.000Z"
+  },
+  {
+    "id": "evt_1792999989844_ugwe",
+    "businessId": "biz_demo_daechi_math_01",
+    "eventType": "profile_view",
+    "metadata": {
+      "source": "test_script"
+    },
+    "createdAt": "2026-10-26T07:33:09.844Z"
+  },
+  {
+    "id": "evt_1792999989858",
+    "businessId": "biz_demo_daechi_math_01",
+    "eventType": "inquiry_submitted",
+    "metadata": {
+      "studentGrade": "중학교 3학년"
+    },
+    "createdAt": "2026-10-26T07:33:09.858Z"
+  },
+  {
+    "id": "evt_re_01",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": { "complex": "래미안대치팰리스", "area": "대치동" },
+    "createdAt": "2026-10-25T14:10:00.000Z"
+  },
+  {
+    "id": "evt_re_02",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "profile_view",
+    "metadata": { "complex": "래미안대치팰리스" },
+    "createdAt": "2026-10-25T14:12:30.000Z"
+  },
+  {
+    "id": "evt_re_03",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "phone_click",
+    "metadata": { "target": "02-555-8899" },
+    "createdAt": "2026-10-26T10:05:00.000Z"
+  },
+  {
+    "id": "evt_re_04",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "contact_click",
+    "metadata": { "type": "broker_inquiry" },
+    "createdAt": "2026-10-26T11:18:00.000Z"
+  }
+]

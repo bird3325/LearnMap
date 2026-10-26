@@ -52,6 +52,10 @@ function utf8HeadersPlugin() {
           const query = req.url.includes('?') ? '?' + req.url.split('?')[1] : '';
           req.url = '/admin.html' + query;
         }
+        if (cleanUrl === '/business' || cleanUrl === '/business/' || cleanUrl === '/partner' || cleanUrl === '/partner/') {
+          const query = req.url.includes('?') ? '?' + req.url.split('?')[1] : '';
+          req.url = '/business.html' + query;
+        }
 
         const origSetHeader = res.setHeader;
         res.setHeader = function (name, val) {
@@ -104,7 +108,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        admin: resolve(__dirname, 'admin.html')
+        admin: resolve(__dirname, 'admin.html'),
+        business: resolve(__dirname, 'business.html')
       }
     }
   }

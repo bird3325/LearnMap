@@ -692,6 +692,9 @@
                 <button class="btn-secondary" data-target="realestateMasterCard,realestateSyncCard,storedRealEstateCard">
                     <span>🏢</span><span>주택·실거래 관리</span>
                 </button>
+                <button class="btn-secondary" data-target="businessManagementCard">
+                    <span>🏢</span><span>사업자 & 구독 관리</span>
+                </button>
                 <button class="btn-secondary" data-target="reviewsManagementCard">
                     <span>📝</span><span>리뷰 및 후기</span>
                 </button>
@@ -1300,6 +1303,55 @@
 
                     <div id="adminUsersListContainer" style="max-height: 480px; overflow-y: auto; border: 1px solid var(--adm-border); border-radius: 10px; padding: 12px; background: #ffffff; font-size: 12px; line-height: 1.8;">
                         <div style="text-align: center; color: var(--adm-text-muted); padding: 30px 0;">회원 데이터를 불러오는 중...</div>
+                    </div>
+                </div>
+
+                <!-- 11. 사업자 & 유료 구독 관리 카드 -->
+                <div class="admin-card" id="businessManagementCard" style="display: none;">
+                    <div class="card-header-styled">
+                        <div>
+                            <h2 class="card-title">🏢 학원 & 부동산 사업자 심사 및 구독 관리</h2>
+                            <p class="card-desc">입점 신청 사업자의 서류 및 정보 검수(승인/반려), 월 29,000원 학원 프리미엄 구독 상태, MRR(월 반복매출)을 통합 관리합니다.</p>
+                        </div>
+                    </div>
+
+                    <!-- 요약 지표 (MRR, 활성 구독, 심사 대기) -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px;">
+                        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 14px;">
+                            <div style="font-size: 12px; color: #1e40af; font-weight: 600;">월 반복매출 (MRR)</div>
+                            <div style="font-size: 22px; font-weight: 800; color: #1e3a8a; margin-top: 4px;"><span id="adminMrrValue">0</span>원</div>
+                        </div>
+                        <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 14px;">
+                            <div style="font-size: 12px; color: #065f46; font-weight: 600;">활성 유료 구독 (Active)</div>
+                            <div style="font-size: 22px; font-weight: 800; color: #047857; margin-top: 4px;"><span id="adminActiveSubCount">0</span>곳</div>
+                        </div>
+                        <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 14px;">
+                            <div style="font-size: 12px; color: #92400e; font-weight: 600;">심사 대기 신청 (Pending)</div>
+                            <div style="font-size: 22px; font-weight: 800; color: #b45309; margin-top: 4px;"><span id="adminSubmittedBizCount">0</span>건</div>
+                        </div>
+                    </div>
+
+                    <!-- 서브 탭 (사업자 심사 목록 / 구독 및 결제 내역) -->
+                    <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+                        <button class="btn-primary" id="btnTabBizReview" style="flex: 1; min-width: 140px; padding: 10px; font-size: 12.5px;">📋 사업자 신청 심사 (<span id="tabPendingBadge">0</span>)</button>
+                        <button class="btn-secondary" id="btnTabBizSubs" style="flex: 1; min-width: 140px; padding: 10px; font-size: 12.5px;">💎 유료 구독 및 결제 현황</button>
+                    </div>
+
+                    <!-- 사업자 심사 목록 컨테이너 -->
+                    <div id="adminBizReviewContainer" style="display: block;">
+                        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+                            <button class="btn-secondary" id="btnRefreshBizList" style="width: auto; padding: 6px 14px; font-size: 12px;">🔄 사업자 목록 새로고침</button>
+                        </div>
+                        <div id="adminBizTableArea" style="max-height: 480px; overflow-y: auto; border: 1px solid var(--adm-border); border-radius: 10px; padding: 12px; background: #ffffff;">
+                            <div style="text-align: center; color: var(--adm-text-muted); padding: 30px;">사업자 데이터를 불러오는 중...</div>
+                        </div>
+                    </div>
+
+                    <!-- 유료 구독 및 결제 내역 컨테이너 -->
+                    <div id="adminBizSubsContainer" style="display: none;">
+                        <div id="adminSubsTableArea" style="max-height: 480px; overflow-y: auto; border: 1px solid var(--adm-border); border-radius: 10px; padding: 12px; background: #ffffff;">
+                            <div style="text-align: center; color: var(--adm-text-muted); padding: 30px;">구독 데이터를 불러오는 중...</div>
+                        </div>
                     </div>
                 </div>
 
