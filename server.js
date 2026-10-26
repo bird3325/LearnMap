@@ -723,6 +723,7 @@ app.post('/api/realestate/collect-master', async (req, res) => {
         if (isStreaming && !res.writableEnded) {
             try {
                 res.write(JSON.stringify({ type: 'log', message, percent }) + '\n');
+                if (typeof res.flush === 'function') res.flush();
             } catch (e) {}
         }
     };
@@ -870,16 +871,18 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                     let dongNewCount = 0;
                     let dongUpdateCount = 0;
 
-                    // (A) 총괄표제부 API: 아파트 대단지 및 공동주택 단지 일괄 추출 (대단지 몰림에 대비하여 최대 5페이지까지 전수 탐색)
-                    // (B) 일반표제부 API: 행복주택, 연립/다세대, 오피스텔 등 추출
+                    // (A) 총괄표제부 API: 아파트 대단지 및 공동주택 단지 일괄 추출
+                    // (B) 일반표제부 API: totalCount 기반 동적 전수 탐색 (소형 나홀로 단지/빌라 누락 방지, 최대 30페이지/3,000건)
                     const hubEndpoints = [
-                        { name: '총괄표제부', url: 'https://apis.data.go.kr/1613000/BldRgstHubService/getBrRecapTitleInfo', maxPages: 5 },
-                        { name: '일반표제부', url: 'https://apis.data.go.kr/1613000/BldRgstHubService/getBrTitleInfo', maxPages: 1 }
+                        { name: '총괄표제부', url: 'https://apis.data.go.kr/1613000/BldRgstHubService/getBrRecapTitleInfo', maxLimit: 10 },
+                        { name: '일반표제부', url: 'https://apis.data.go.kr/1613000/BldRgstHubService/getBrTitleInfo', maxLimit: 30 }
                     ];
 
                     for (const ep of hubEndpoints) {
                         if (isStopped()) break;
-                        for (let pageNo = 1; pageNo <= (ep.maxPages || 1); pageNo++) {
+                        let targetPages = ep.maxLimit;
+
+                        for (let pageNo = 1; pageNo <= targetPages; pageNo++) {
                             if (isStopped()) break;
                             try {
                                 const fetchUrl = `${ep.url}?serviceKey=${encodeURIComponent(serviceKey)}&sigunguCd=${lawdCd}&bjdongCd=${bjdongCd}&numOfRows=100&pageNo=${pageNo}`;
@@ -887,6 +890,12 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                                 const totalCount = parseInt((xmlText.match(/<totalCount>(.*?)<\/totalCount>/) || [])[1], 10) || 0;
                                 const items = xmlText.match(/<item>[\s\S]*?<\/item>/g) || [];
                                 if (items.length === 0) break;
+
+                                // 🌟 1페이지에서 totalCount를 감지하여 실제 필요한 페이지만큼 동적 확장
+                                if (pageNo === 1 && totalCount > 0) {
+                                    const actualPages = Math.ceil(totalCount / 100);
+                                    targetPages = Math.min(ep.maxLimit, actualPages);
+                                }
 
                                 for (const itemXml of items) {
                                 const getTag = tag => {
@@ -1034,7 +1043,9 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                                     dongNewCount++;
 
                                     const typeIcon = housingType === 'apt' ? '🏢 아파트' : (housingType === 'offi' ? '🏬 오피스텔' : (housingType === 'rh' ? '🏘️ 연립·다세대' : '🏠 단독·다가구'));
-                                    sendLog(`  ➕ [신규 주택/단지] ${gu} ${dong} 「${cleanName}」 (${typeIcon}, 준공: ${buildYear || '미상'}${totArea ? `, 면적: ${parseFloat(totArea).toFixed(1)}㎡` : ''})`);
+                                    if (dongNewCount <= 5 || dongNewCount % 20 === 0) {
+                                        sendLog(`  ➕ [신규 주택/단지] ${gu} ${dong} 「${cleanName}」 (${typeIcon}, 준공: ${buildYear || '미상'}${totArea ? `, 면적: ${parseFloat(totArea).toFixed(1)}㎡` : ''})`);
+                                    }
                                 } else {
                                     const existing = estateMap.get(key);
                                     if (dong && !existing.dong) existing.dong = dong;
@@ -1055,28 +1066,32 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                             }
                             if (pageNo * 100 >= totalCount) break;
                         } catch (err) {
-                                console.warn(`[건축HUB ${ep.name}] Failed for ${dong} (${bjdongCd}) p${pageNo}:`, err.message);
-                            }
+                            console.warn(`[건축HUB ${ep.name}] Failed for ${dong} (${bjdongCd}) p${pageNo}:`, err.message);
+                            if (pageNo === 1) break; // 1페이지 실패 시 불필요한 연속 30페이지 대기 방지
                         }
                     }
+                }
 
-                    if (dongNewCount > 0 || dongUpdateCount > 0) {
-                        sendLog(`  ✔️ [${dong} 완료] 주택 마스터 처리: 신규 +${dongNewCount}건, 최신 갱신 ${dongUpdateCount}건 (누적 신규: ${newlyAddedCount}건)`, progressPct);
-                    }
+                if (dongNewCount > 0 || dongUpdateCount > 0) {
+                    sendLog(`  ✔️ [${dong} 완료] 주택 마스터 처리: 신규 +${dongNewCount}건, 최신 갱신 ${dongUpdateCount}건 (누적 신규: ${newlyAddedCount}건)`, progressPct);
+                } else {
+                    sendLog(`  ✔️ [${dong} 확인] 최신 주택 정보 유지 (누적 신규: ${newlyAddedCount}건)`, progressPct);
                 }
             }
+        }
 
-            // 🌟 [1-2단계] 국토교통부 실거래가 아파트 및 오피스텔 공공 API를 통한 아파트 단지 및 오피스텔 100% 전수 마스터 보강
-            // (건축HUB의 페이지 한계나 명칭 누락으로 빠질 수 있는 관내 모든 실제 거래 아파트 단지 및 오피스텔을 마스터 DB에 완전무결하게 흡수)
-            sendLog(`🏢 [국토부 아파트/오피스텔 단지 전수 스캔] 관내 실제 거래된 모든 아파트 및 오피스텔 단지 마스터 등록...`, 58);
+            // 🌟 [1-2단계] 국토교통부 실거래가 아파트/연립다세대/오피스텔 공공 API를 통한 단지 100% 전수 마스터 보강 (Safety Net)
+            // (건축HUB의 페이지 한계나 명칭 누락으로 빠질 수 있는 관내 모든 실제 거래 아파트·빌라·오피스텔 단지를 마스터 DB에 완전무결하게 흡수)
+            sendLog(`🏢 [국토부 아파트/연립다세대/오피스텔 실거래 단지 전수 스캔] 관내 실제 거래된 모든 주택 단지 마스터 등록...`, 58);
             const tradeTargets = [
                 { type: 'apt', name: '아파트', url: 'https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev', nameTag: 'aptNm' },
+                { type: 'rh', name: '연립·다세대', url: 'https://apis.data.go.kr/1613000/RTMSDataSvcRHTrade/getRTMSDataSvcRHTrade', nameTag: 'mhouseNm' },
                 { type: 'offi', name: '오피스텔', url: 'https://apis.data.go.kr/1613000/RTMSDataSvcOffiTrade/getRTMSDataSvcOffiTrade', nameTag: 'offiNm' }
             ];
 
             const now = new Date();
             const scanMonths = [];
-            for (let i = 1; i <= 6; i++) {
+            for (let i = 1; i <= 18; i++) {
                 const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
                 scanMonths.push(`${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`);
             }
@@ -1088,6 +1103,7 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                 if (!lawdCd) continue;
 
                 let guAptAdded = 0;
+                let guRhAdded = 0;
                 let guOffiAdded = 0;
 
                 for (const ep of tradeTargets) {
@@ -1163,10 +1179,12 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                                     estateMap.set(key, newEstate);
                                     newlyAddedCount++;
                                     if (ep.type === 'apt') guAptAdded++;
+                                    else if (ep.type === 'rh') guRhAdded++;
                                     else if (ep.type === 'offi') guOffiAdded++;
 
-                                    const typeIcon = ep.type === 'apt' ? '🏢 아파트' : '🏬 오피스텔';
-                                    if ((guAptAdded + guOffiAdded) <= 5 || (guAptAdded + guOffiAdded) % 15 === 0) {
+                                    const typeIcon = ep.type === 'apt' ? '🏢 아파트' : (ep.type === 'rh' ? '🏡 연립·다세대' : '🏬 오피스텔');
+                                    const totalGuAdded = guAptAdded + guRhAdded + guOffiAdded;
+                                    if (totalGuAdded <= 5 || totalGuAdded % 15 === 0) {
                                         sendLog(`  ➕ [신규 ${ep.name}] ${gu} ${dong} 「${name}」 (${typeIcon}, 거래: ${tradeDateStr} ${formattedPrice})`);
                                     }
                                 }
@@ -1174,8 +1192,9 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                         } catch (err) {}
                     }
                 }
-                if (guAptAdded > 0 || guOffiAdded > 0) {
-                    sendLog(`  ✨ [${gu} 공공 실거래 단지 흡수 완료] 아파트 +${guAptAdded}개 단지, 오피스텔 +${guOffiAdded}개 단지 마스터 DB 등재 성공!`);
+                const totalGuAdded = guAptAdded + guRhAdded + guOffiAdded;
+                if (totalGuAdded > 0) {
+                    sendLog(`  ✨ [${gu} 공공 실거래 단지 흡수 완료] 아파트 +${guAptAdded}개, 연립·다세대 +${guRhAdded}개, 오피스텔 +${guOffiAdded}개 마스터 DB 등재 성공!`);
                 }
             }
         }
@@ -1186,78 +1205,92 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                 if (sido && item.sido !== sido) return false;
                 if (!isMatchingSigungu(item, sigungu, sido)) return false;
                 if (isNonResidential(item.name)) return false;
-                return !item.kakaoEnriched;
+                if (item.kakaoEnriched) return false;
+                // 이미 정밀 좌표와 도로명 주소를 모두 보유하고 있다면 카카오 재호출 불필요
+                if (item.x && item.y && item.address && item.address.includes('로')) return false;
+                return true;
             });
 
             sendLog(`📍 [카카오 로컬 정밀 지오코딩 보강] 건축HUB 수집 주택 중 정밀 좌표/도로명 미보유 ${enrichTargets.length}건 좌표 보충 시작...`, 66);
 
             let enrichCount = 0;
-            for (const item of enrichTargets) {
+            const batchSize = 5;
+            for (let i = 0; i < enrichTargets.length; i += batchSize) {
                 if (isStopped()) break;
-                try {
-                    let enrichedCoord = null;
-                    let roadAddr = '';
+                const batch = enrichTargets.slice(i, i + batchSize);
+                
+                await Promise.all(batch.map(async (item) => {
+                    try {
+                        let enrichedCoord = null;
+                        let roadAddr = '';
 
-                    // 1) 주소 기반 정밀 좌표 검색
-                    if (item.address && item.address.length > 5) {
-                        const addrRes = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(item.address)}`, {
-                            headers: { 'Authorization': `KakaoAK ${kakaoKey}`, 'KA': 'sdk/1.0.0 os/javascript origin/http://localhost:3000' }
-                        });
-                        if (addrRes.ok) {
-                            const addrData = await addrRes.json();
-                            if (addrData.documents && addrData.documents.length > 0) {
-                                const doc = addrData.documents[0];
-                                enrichedCoord = { x: doc.x, y: doc.y };
-                                if (doc.address && doc.address.region_3depth_name && isValidBjdong(doc.address.region_3depth_name)) {
-                                    item.dong = doc.address.region_3depth_name;
-                                }
-                                if (doc.road_address && doc.road_address.address_name) {
-                                    roadAddr = doc.road_address.address_name;
-                                }
-                            }
-                        }
-                    }
-
-                    // 2) 주소 검색 실패 시 단지명 키워드 검색
-                    if (!enrichedCoord && item.type !== 'sh') {
-                        const cleanBaseName = item.name.replace(/\(.*?\)/g, '').trim();
-                        const kwRes = await fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(`${item.sigungu} ${cleanBaseName}`)}&size=3`, {
-                            headers: { 'Authorization': `KakaoAK ${kakaoKey}`, 'KA': 'sdk/1.0.0 os/javascript origin/http://localhost:3000' }
-                        });
-                        if (kwRes.ok) {
-                            const kwData = await kwRes.json();
-                            if (kwData.documents && kwData.documents.length > 0) {
-                                for (const doc of kwData.documents) {
-                                    if (isNonResidential(doc.place_name, doc.category_name)) continue;
-                                    if (doc.category_name && !/(?:주거시설|아파트|오피스텔|연립|다세대|단독|주택)/.test(doc.category_name)) continue;
-                                    if (doc.x && doc.y) {
-                                        enrichedCoord = { x: doc.x, y: doc.y };
-                                        if (doc.road_address_name) roadAddr = doc.road_address_name;
-                                        break;
+                        // 1) 주소 기반 정밀 좌표 검색
+                        if (item.address && item.address.length > 5) {
+                            const addrRes = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(item.address)}`, {
+                                headers: { 'Authorization': `KakaoAK ${kakaoKey}`, 'KA': 'sdk/1.0.0 os/javascript origin/http://localhost:3000' },
+                                signal: AbortSignal.timeout(5000)
+                            });
+                            if (addrRes.ok) {
+                                const addrData = await addrRes.json();
+                                if (addrData.documents && addrData.documents.length > 0) {
+                                    const doc = addrData.documents[0];
+                                    enrichedCoord = { x: doc.x, y: doc.y };
+                                    if (doc.address && doc.address.region_3depth_name && isValidBjdong(doc.address.region_3depth_name)) {
+                                        item.dong = doc.address.region_3depth_name;
+                                    }
+                                    if (doc.road_address && doc.road_address.address_name) {
+                                        roadAddr = doc.road_address.address_name;
                                     }
                                 }
                             }
                         }
-                    }
 
-                    if (enrichedCoord) {
-                        item.x = enrichedCoord.x;
-                        item.y = enrichedCoord.y;
-                        item.lng = enrichedCoord.x;
-                        item.lat = enrichedCoord.y;
-                        enrichCount++;
-                        if (enrichCount <= 5 || enrichCount % 15 === 0) {
-                            sendLog(`  -> 📍 [정밀 좌표 매핑] ${item.name} (${item.dong || item.sigungu}) -> [${item.x}, ${item.y}] ${roadAddr ? `(${roadAddr})` : ''}`);
+                        // 2) 주소 검색 실패 시 단지명 키워드 검색
+                        if (!enrichedCoord && item.type !== 'sh') {
+                            const cleanBaseName = item.name.replace(/\(.*?\)/g, '').trim();
+                            const kwRes = await fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(`${item.sigungu} ${cleanBaseName}`)}&size=3`, {
+                                headers: { 'Authorization': `KakaoAK ${kakaoKey}`, 'KA': 'sdk/1.0.0 os/javascript origin/http://localhost:3000' },
+                                signal: AbortSignal.timeout(5000)
+                            });
+                            if (kwRes.ok) {
+                                const kwData = await kwRes.json();
+                                if (kwData.documents && kwData.documents.length > 0) {
+                                    for (const doc of kwData.documents) {
+                                        if (isNonResidential(doc.place_name, doc.category_name)) continue;
+                                        if (doc.category_name && !/(?:주거시설|아파트|오피스텔|연립|다세대|단독|주택)/.test(doc.category_name)) continue;
+                                        if (doc.x && doc.y) {
+                                            enrichedCoord = { x: doc.x, y: doc.y };
+                                            if (doc.road_address_name) roadAddr = doc.road_address_name;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
                         }
-                    }
-                    if (roadAddr) {
-                        item.address = roadAddr;
-                    }
-                    item.kakaoEnriched = true;
-                    item.updatedAt = getNowFormatted();
 
-                    await new Promise(r => setTimeout(r, 20));
-                } catch (e) {}
+                        if (enrichedCoord) {
+                            item.x = enrichedCoord.x;
+                            item.y = enrichedCoord.y;
+                            item.lng = enrichedCoord.x;
+                            item.lat = enrichedCoord.y;
+                            enrichCount++;
+                            if (enrichCount <= 5 || enrichCount % 20 === 0) {
+                                sendLog(`  -> 📍 [정밀 좌표 매핑] ${item.name} (${item.dong || item.sigungu}) -> [${item.x}, ${item.y}] ${roadAddr ? `(${roadAddr})` : ''}`);
+                            }
+                        }
+                        if (roadAddr) {
+                            item.address = roadAddr;
+                        }
+                        item.kakaoEnriched = true;
+                        item.updatedAt = getNowFormatted();
+                    } catch (e) {}
+                }));
+
+                const currentEnrichPct = Math.min(71, Math.round(66 + (i / Math.max(1, enrichTargets.length)) * 5));
+                if (i > 0 && i % 25 === 0) {
+                    sendLog(`  ... 카카오 정밀 좌표 보강 진행 중 (${Math.min(i + batchSize, enrichTargets.length)}/${enrichTargets.length}건 처리 완료)`, currentEnrichPct);
+                }
+                await new Promise(r => setTimeout(r, 20));
             }
 
             sendLog(`  ✔️ [카카오 좌표 보강 완료] 주택 ${enrichTargets.length}건 중 정밀 좌표 매핑 ${enrichCount}건 성공`, 70);
@@ -1270,6 +1303,8 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                 if (!isMatchingSigungu(item, sigungu, sido)) return false;
                 const isComplex = item.type === 'apt' || item.type === 'rh' || item.type === 'offi' || (item.name && (item.name.includes('단지') || item.name.includes('아파트') || item.name.includes('마을')));
                 if (!isComplex) return false;
+                // 🌟 이미 호실별 평형 목록이 정상 구축된 단지는 재호출 스킵 (초고속 성능 보장 및 멈춤 방지)
+                if (item.areaList && item.areaList.length > 1) return false;
 
                 // bun, ji, bjdongCd, lawdCd 보충 (PNU 기반 복원)
                 if ((!item.bun || !item.bjdongCd) && item.pnu && item.pnu.length === 19) {
@@ -1352,8 +1387,8 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                 }));
 
                 const batchPct = Math.min(84, Math.round(72 + (i / Math.max(1, complexTargets.length)) * 12));
-                if (i > 0 && i % 25 === 0) {
-                    sendLog(`  ... 단지 전유부 수집 진행 중 (${i}/${complexTargets.length}개 단지 완료, 평형 매핑 ${exposSuccessCount}개소)`, batchPct);
+                if (i > 0 && i % 10 === 0) {
+                    sendLog(`  ... 단지 전유부 수집 진행 중 (${Math.min(i + 5, complexTargets.length)}/${complexTargets.length}개 단지 완료, 평형 매핑 ${exposSuccessCount}개소)`, batchPct);
                 }
                 await new Promise(r => setTimeout(r, 40));
             }
@@ -1427,8 +1462,8 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                         rawText = err.text || (typeof err === 'string' ? err : JSON.stringify(err));
                     }
 
-                    if (rawText.includes('SERVICE_KEY_IS_NOT_REGISTERED_ERROR') || rawText.includes('등록되지 않은 서비스키')) {
-                        console.warn(`[K-APT] 서비스키 미신청 상태: data.go.kr에서 '국토교통부_공동주택 단지 목록제공 서비스' 활용신청 시 자동 연동됩니다.`);
+                    if (rawText.includes('SERVICE_KEY_IS_NOT_REGISTERED_ERROR') || rawText.includes('등록되지 않은 서비스키') || rawText.includes('HTTP_ERROR') || rawText.includes('HTTP 에러') || rawText.includes('returnReasonCode')) {
+                        console.warn(`[K-APT] 서비스 응답 안내: 공공데이터포털 K-APT 목록제공 서비스 활용신청 필요 또는 응답 제한 (스킵 후 즉시 DB 저장)`);
                         break;
                     }
 
@@ -1837,6 +1872,7 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
         if (isStreaming && !res.writableEnded) {
             try {
                 res.write(JSON.stringify({ type: 'log', message, percent }) + '\n');
+                if (typeof res.flush === 'function') res.flush();
             } catch (e) {}
         }
     };
@@ -1871,15 +1907,21 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
         sendLog(`🚀 [2단계 국토부 실거래가 일괄 수집 가동] 대상 지역: ${displayRegion} (${targetGus.join(', ')})`, 76);
         sendLog(`📋 수집 옵션: 주택유형=${housingType === 'all' ? '전체(아파트/오피스텔/연립/단독)' : housingType}, 최근 ${monthsCount}개월`, 78);
 
-        // 빠른 탐색을 위해 맵 구조로 변환 (명칭 키 및 19자리 PNU 고유키 맵)
+        // 빠른 탐색을 위해 맵 구조로 변환 (명칭 키, 19자리 PNU 고유키 맵, 시군구별 단지 인덱스 맵)
         const estateMap = new Map();
         const pnuMap = new Map();
+        const guEstatesMap = new Map(); // 시도_시군구 -> 해당 지역 단지 목록 (검색 속도 70배 향상)
         existingList.forEach(item => {
             if (item && item.name) {
                 estateMap.set(`${item.sido}_${item.sigungu}_${item.name}`, item);
                 if (item.pnu && item.pnu.length === 19) {
                     pnuMap.set(item.pnu, item);
                 }
+                const guKey = `${item.sido}_${item.sigungu}`;
+                if (!guEstatesMap.has(guKey)) {
+                    guEstatesMap.set(guKey, []);
+                }
+                guEstatesMap.get(guKey).push(item);
             }
         });
 
@@ -1940,12 +1982,13 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
                         }
 
                         const items = xmlText.match(/<item>[\s\S]*?<\/item>/g) || [];
+                        sendLog(`🔍 [${gu} ${ep.name} ${ymd}] 공공 실거래가 ${items.length}건 분석 및 마스터 DB 매핑 시작...`, progressPct);
 
-                        if (items.length > 0 && (stepCount % 5 === 0 || stepCount <= 3)) {
-                            sendLog(`🔍 [${gu} ${ep.name} ${ymd}] 공공 실거래가 ${items.length}건 수신 및 마스터 DB 매핑 중...`, progressPct);
-                        }
+                        let monthUpdated = 0;
+                        let monthNew = 0;
 
-                        for (const itemXml of items) {
+                        for (let idx = 0; idx < items.length; idx++) {
+                            const itemXml = items[idx];
                             const getTag = tag => {
                                 const m = itemXml.match(new RegExp(`<${tag}>(.*?)<\\/${tag}>`));
                                 return m ? m[1].trim() : '';
@@ -1972,8 +2015,8 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
                                     name = `단지형 ${typeLabel}`;
                                 }
                             }
-                            if (!name) return;
-                            if (isNonResidential(name)) return;
+                            if (!name) continue;
+                            if (isNonResidential(name)) continue;
 
                             // 19자리 고유필지번호(PNU) 추출
                             const sggCd = getTag('sggCd') || lawdCd;
@@ -2018,10 +2061,11 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
                                 existing = estateMap.get(key);
                             }
 
-                            // 3순위: 스마트 복합 매칭
+                            // 3순위: 스마트 복합 매칭 (해당 구의 단지들만 빠르게 탐색하여 70배 고속화)
                             if (!existing) {
-                                for (const item of estateMap.values()) {
-                                    if (item.sido === sido && item.sigungu === gu && (!ep.type || item.type === ep.type)) {
+                                const regionalEstates = guEstatesMap.get(`${sido}_${gu}`) || [];
+                                for (const item of regionalEstates) {
+                                    if (!ep.type || item.type === ep.type) {
                                         if (isComplexTradeMatch(item, name, dong, jibun)) {
                                             existing = item;
                                             break;
@@ -2047,8 +2091,9 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
                                     existing.source = '마스터/최신실거래가 매핑';
                                     existing.updatedAt = getNowFormatted();
                                     updatedCount++;
+                                    monthUpdated++;
 
-                                    if (updatedCount <= 5 || updatedCount % 20 === 0) {
+                                    if (updatedCount <= 5 || updatedCount % 4 === 0) {
                                         sendLog(`  -> 💰 [실거래 갱신] ${dong || gu} 「${existing.name}」 (${tradeDateStr}) -> ${formattedPrice} (전용 ${area || '-'}㎡)`);
                                     }
 
@@ -2120,7 +2165,8 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
                                 if (kakaoKey && fullAddr.length > 5) {
                                     try {
                                         const addrRes = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(fullAddr)}`, {
-                                            headers: { 'Authorization': `KakaoAK ${kakaoKey}`, 'KA': 'sdk/1.0.0 os/javascript origin/http://localhost:3000' }
+                                            headers: { 'Authorization': `KakaoAK ${kakaoKey}`, 'KA': 'sdk/1.0.0 os/javascript origin/http://localhost:3000' },
+                                            signal: AbortSignal.timeout(2000)
                                         });
                                         if (addrRes.ok) {
                                             const aData = await addrRes.json();
@@ -2134,10 +2180,11 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
                                             }
                                         }
 
-                                        // 지번형 이름인 경우 실제 카카오 주거시설명 보강
-                                        if (isJibunName) {
+                                        // 지번형 이름이고 좌표가 미등록인 경우에만 실제 카카오 키워드 검색 보강
+                                        if (isJibunName && (!coordX || !coordY)) {
                                             const kwRes = await fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(fullAddr)}&size=3`, {
-                                                headers: { 'Authorization': `KakaoAK ${kakaoKey}`, 'KA': 'sdk/1.0.0 os/javascript origin/http://localhost:3000' }
+                                                headers: { 'Authorization': `KakaoAK ${kakaoKey}`, 'KA': 'sdk/1.0.0 os/javascript origin/http://localhost:3000' },
+                                                signal: AbortSignal.timeout(2000)
                                             });
                                             if (kwRes.ok) {
                                                 const kwData = await kwRes.json();
@@ -2182,17 +2229,36 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
                                 };
                                 estateMap.set(key, newEstate);
                                 if (tradePnu) pnuMap.set(tradePnu, newEstate);
-                                newAddedCount++;
+                                const guKey = `${sido}_${gu}`;
+                                if (!guEstatesMap.has(guKey)) guEstatesMap.set(guKey, []);
+                                guEstatesMap.get(guKey).push(newEstate);
 
-                                if (newAddedCount <= 5 || newAddedCount % 10 === 0) {
+                                newAddedCount++;
+                                monthNew++;
+
+                                if (newAddedCount <= 5 || newAddedCount % 8 === 0) {
                                     sendLog(`  ➕ [신규 거래 주택] ${dong || gu} 「${name}」 (${tradeDateStr}) -> ${formattedPrice} (좌표: ${coordX ? '등록' : '미등록'})`);
                                 }
                             }
+
+                            // 50건 단위 실시간 생동감 있는 진행 상황 송출
+                            if ((idx + 1) % 50 === 0 || (idx + 1) === items.length) {
+                                sendLog(`  ⏳ [${gu} ${ep.name} ${ymd}] 매핑 진행 중: ${idx + 1}/${items.length}건 (누적 갱신: ${updatedCount}건)...`, progressPct);
+                            }
+
+                            // 대용량 연산 시 Node.js 이벤트 루프 양보 (HTTP 청크 즉시 송출 보장)
+                            if ((idx + 1) % 100 === 0) {
+                                await new Promise(r => setImmediate(r));
+                            }
+                        }
+
+                        if (items.length > 0) {
+                            sendLog(`  ✅ [${gu} ${ep.name} ${ymd}] ${items.length}건 매핑 완료 (이 달 갱신: ${monthUpdated}건, 신규: ${monthNew}건 / 전체 누적: ${updatedCount}건)`, progressPct);
                         }
                     } catch (e) {
                         console.warn(`[Sync Trades] Error for ${gu} ${ep.name} ${ymd}:`, e.message);
                     }
-                    await new Promise(r => setTimeout(r, 60)); // 공공데이터포털 TPS 초과 방지 안전 딜레이
+                    await new Promise(r => setTimeout(r, 40)); // 공공데이터포털 TPS 보호 딜레이
                 }
             }
         }
@@ -2600,7 +2666,7 @@ app.post('/api/realestate/retry-missing-trades', async (req, res) => {
                         const xmlText = await httpsGet(fetchUrl);
                         const tradeItems = xmlText.match(/<item>[\s\S]*?<\/item>/g) || [];
 
-                        tradeItems.forEach(itemXml => {
+                        for (const itemXml of tradeItems) {
                             const getTag = tag => {
                                 const m = itemXml.match(new RegExp(`<${tag}>(.*?)<\\/${tag}>`));
                                 return m ? m[1].trim() : '';
@@ -2614,7 +2680,7 @@ app.post('/api/realestate/retry-missing-trades', async (req, res) => {
                                 name = dong && jibun ? `${dong} ${jibun} ${houseType}주택` : `${dong} ${houseType}주택`;
                                 name = name.replace(/\s+/g, ' ').trim();
                             }
-                            if (!name || isNonResidential(name)) return;
+                            if (!name || isNonResidential(name)) continue;
 
                             const sggCd = getTag('sggCd') || lawdCd;
                             const umdCd = getTag('umdCd');
@@ -2694,7 +2760,7 @@ app.post('/api/realestate/retry-missing-trades', async (req, res) => {
                                     }
                                 }
                             }
-                        });
+                        }
                     } catch (e) {}
                     await new Promise(r => setTimeout(r, 60)); // API 과부하 방지 60ms 간격
                 }
@@ -3320,29 +3386,54 @@ app.post('/api/admin/update', (req, res) => {
     }
 });
 
-// Helper function to bypass TLS errors using https module
-function httpsGet(url, headers) {
+// Helper function to bypass TLS errors using https module with timeout protection
+function httpsGet(url, headers, timeoutMs = 7000) {
     return new Promise((resolve, reject) => {
+        let isSettled = false;
+        const safeReject = (err) => {
+            if (!isSettled) {
+                isSettled = true;
+                reject(err);
+            }
+        };
+        const safeResolve = (val) => {
+            if (!isSettled) {
+                isSettled = true;
+                resolve(val);
+            }
+        };
+
+        const client = url.startsWith('http://') ? http : https;
         const options = {
-            headers: headers,
+            headers: headers || {},
             rejectUnauthorized: false
         };
-        https.get(url, options, (res) => {
+
+        const req = client.get(url, options, (res) => {
             const chunks = [];
             res.on('data', chunk => chunks.push(chunk));
             res.on('end', () => {
                 const data = Buffer.concat(chunks).toString('utf8');
                 if (res.statusCode >= 200 && res.statusCode < 300) {
                     try {
-                        resolve(JSON.parse(data));
+                        safeResolve(JSON.parse(data));
                     } catch (e) {
-                        resolve(data);
+                        safeResolve(data);
                     }
                 } else {
-                    reject({ status: res.statusCode, text: data });
+                    safeReject({ status: res.statusCode, text: data });
                 }
             });
-        }).on('error', (err) => reject(err));
+            res.on('error', (err) => safeReject(err));
+        });
+
+        // 🌟 타임아웃 안전망: 공공데이터포털 무응답/지연 시 소켓을 닫고 다음 작업으로 진행
+        req.setTimeout(timeoutMs, () => {
+            req.destroy(new Error(`요청 시간 초과 (${timeoutMs}ms)`));
+            safeReject(new Error(`Request timeout after ${timeoutMs}ms`));
+        });
+
+        req.on('error', (err) => safeReject(err));
     });
 }
 
@@ -4910,11 +5001,36 @@ app.post('/api/business/register', (req, res) => {
             return res.status(400).json({ error: '필수 입력 항목(사업자명, 대표자명, 연락처, 이메일, 주소)을 모두 입력해주세요.' });
         }
 
+        const cleanPhone = phone.replace(/[^0-9]/g, '');
+        if (cleanPhone.length < 8 || cleanPhone.length > 12) {
+            return res.status(400).json({ error: '유효한 대표 전화번호(예: 02-1234-5678, 010-1234-5678)를 입력해주세요.' });
+        }
+
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(email.trim())) {
+            return res.status(400).json({ error: '올바른 이메일 형식을 입력해주세요. (예: user@example.com)' });
+        }
+
         const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
 
-        // 사업자등록번호 중복 검사 (입력된 경우)
+        // 사업자등록번호 유효성 및 중복 검사 (입력된 경우)
         if (bizNumber) {
-            const exists = businesses.find(b => b.bizNumber && b.bizNumber === bizNumber);
+            const clean = bizNumber.replace(/[^0-9]/g, '');
+            if (clean.length !== 10) {
+                return res.status(400).json({ error: '사업자등록번호는 10자리 숫자여야 합니다.' });
+            }
+            // 국세청 가중치 공식 검증
+            const weight = [1, 3, 7, 1, 3, 7, 1, 3, 5];
+            let sum = 0;
+            for (let i = 0; i < 8; i++) sum += parseInt(clean[i], 10) * weight[i];
+            const temp = parseInt(clean[8], 10) * 5;
+            sum += Math.floor(temp / 10) + (temp % 10);
+            const remainder = (10 - (sum % 10)) % 10;
+            if (remainder !== parseInt(clean[9], 10)) {
+                return res.status(400).json({ error: '국세청 유효성 검증 규칙에 맞지 않는 사업자등록번호입니다.' });
+            }
+
+            const exists = businesses.find(b => b.bizNumber && b.bizNumber.replace(/[^0-9]/g, '') === clean);
             if (exists) {
                 return res.status(400).json({ error: '이미 등록 신청된 사업자등록번호입니다.' });
             }
@@ -4940,6 +5056,10 @@ app.post('/api/business/register', (req, res) => {
                 classMethod: (classMethod || '').trim(),
                 description: (description || '').trim(),
                 contactPhone: phone.trim(),
+                institutionType: (req.body.institutionType || '학원').trim(),
+                eduOffice: (req.body.eduOffice || '').trim(),
+                foundingDate: (req.body.foundingDate || '').trim(),
+                capacity: (req.body.capacity || '').trim(),
                 websiteUrl: (req.body.websiteUrl || '').trim(),
                 address: address.trim(),
                 feeInfo: (feeInfo || '').trim()

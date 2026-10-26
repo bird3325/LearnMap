@@ -3954,6 +3954,21 @@ document.addEventListener('DOMContentLoaded', () => {
             mapMarkers = [];
             currentLoadedSchools = [];
 
+            // 클러스터 줌 단계(7 이상): 학원 핀 및 주택 핀 숨기기
+            if (typeof window.clearAcademyMapMarkers === 'function') {
+                window.clearAcademyMapMarkers();
+            } else if (Array.isArray(window.academyMapOverlays)) {
+                window.academyMapOverlays.forEach(ov => ov && ov.setMap(null));
+                window.academyMapOverlays = [];
+                if (window.academyRadiusCircle) {
+                    window.academyRadiusCircle.setMap(null);
+                    window.academyRadiusCircle = null;
+                }
+            }
+            if (typeof window.clearRealEstateMapMarkers === 'function') {
+                window.clearRealEstateMapMarkers();
+            }
+
             // 공통 필터 적용 (줌 레벨 7 이상 축소 시에는 전체 지역 학교가 보이도록 'all' 및 isClusterMode=true 전달)
             const filteredForCluster = filterSchools(schoolsDatabase, 'all', typeLabel, true);
 
@@ -3986,6 +4001,26 @@ document.addEventListener('DOMContentLoaded', () => {
         // 줌 레벨 6 이하: 클러스터 해제 후 개별 핀 모드
         if (clusterer) {
             clusterer.clear();
+        }
+
+        // 개별 핀 모드로 전환 시 선택된 학교가 있다면 학원 핀 및 주택 핀 복원
+        const activeSchool = (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) || window.currentSelectedSchool || null;
+        if (activeSchool) {
+            const chkShowAcademy = document.getElementById('showAcademyMapCheckbox');
+            if ((!chkShowAcademy || chkShowAcademy.checked) && typeof window.updateAcademyMapMarkers === 'function' && Array.isArray(window.allFetchedAcademies) && window.allFetchedAcademies.length > 0) {
+                if (!window.academyMapOverlays || window.academyMapOverlays.length === 0) {
+                    window.updateAcademyMapMarkers(window.allFetchedAcademies);
+                }
+            }
+            const chkShowRealEstate = document.getElementById('showRealEstateMapCheckbox');
+            if ((!chkShowRealEstate || chkShowRealEstate.checked) && typeof window.updateRealEstateMapMarkers === 'function') {
+                if (!window.realEstateMapOverlays || window.realEstateMapOverlays.length === 0) {
+                    const activeRadBtn = document.querySelector('#academyRadiusButtonGroup .academy-radius-btn.active') 
+                                      || document.querySelector('#housingRadiusButtonGroup .housing-radius-btn.active');
+                    const radVal = activeRadBtn ? parseInt(activeRadBtn.getAttribute('data-radius'), 10) : 1000;
+                    window.updateRealEstateMapMarkers(radVal);
+                }
+            }
         }
 
         // 학업성취도 가이드 범례 복구
@@ -6929,24 +6964,31 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        function updateAcademyMapMarkers(academiesList) {
-            const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
-            if (!mapObj || !window.kakao || !window.kakao.maps) return;
-
+        function clearAcademyMapMarkers() {
             if (typeof window.closeActiveAcademyClusterPopup === 'function') {
                 window.closeActiveAcademyClusterPopup();
             }
-
-            // 기존 학원 마커들 제거
             if (Array.isArray(window.academyMapOverlays)) {
                 window.academyMapOverlays.forEach(ov => ov && ov.setMap(null));
             }
             window.academyMapOverlays = [];
 
-            // 기존 학원 반경원 제거
             if (window.academyRadiusCircle) {
                 window.academyRadiusCircle.setMap(null);
                 window.academyRadiusCircle = null;
+            }
+        }
+        window.clearAcademyMapMarkers = clearAcademyMapMarkers;
+
+        function updateAcademyMapMarkers(academiesList) {
+            const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
+            if (!mapObj || !window.kakao || !window.kakao.maps) return;
+
+            clearAcademyMapMarkers();
+
+            // 클러스터 줌 단계(레벨 7 이상)에서는 학원 핀을 표시하지 않음
+            if (typeof mapObj.getLevel === 'function' && mapObj.getLevel() >= 7) {
+                return;
             }
 
             // 필터: '지도상 학원 노출' 체크박스 확인 (기본값 checked)
@@ -7324,6 +7366,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const reqSeq = ++window.realEstateReqSeq;
             const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
             if (!mapObj || !window.kakao || !window.kakao.maps) return;
+
+            // 클러스터 줌 단계(레벨 7 이상)에서는 주택 핀을 표시하지 않음
+            if (typeof mapObj.getLevel === 'function' && mapObj.getLevel() >= 7) {
+                clearRealEstateMapMarkers();
+                return;
+            }
 
             // 부동산 토글 스위치 확인 (체크 해제 시 마커 제거 후 즉시 리턴)
             const showCheck = document.getElementById('showRealEstateMapCheckbox');

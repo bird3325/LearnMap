@@ -1011,7 +1011,26 @@
                             </div>
                             <div class="form-group">
                                 <label>대표 연락처 <span class="req">*</span></label>
-                                <input type="tel" id="profPhone" class="form-control">
+                                <input type="tel" id="profPhone" class="form-control" placeholder="예: 02-1234-5678 또는 010-1234-5678" maxlength="14" oninput="handlePhoneInput(this, 'profPhoneError')" onblur="checkPhoneValidation(this, 'profPhoneError')">
+                                <div id="profPhoneError" style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>🏷️ 구분 (학원 / 교습소) <span class="req">*</span></label>
+                                <input type="text" id="profInstitutionType" class="form-control" placeholder="예: 교습소, 종합학원, 보습·어학 전문 등">
+                            </div>
+                            <div class="form-group">
+                                <label>🏛️ 관할 교육청</label>
+                                <input type="text" id="profEduOffice" class="form-control" placeholder="예: 관할 교육청 (정식 등록 인가) 또는 경기도고양교육지원청">
+                            </div>
+
+                            <div class="form-group">
+                                <label>📅 설립일</label>
+                                <input type="text" id="profFoundingDate" class="form-control" placeholder="예: 설립 및 정식 운영 중 또는 2021-03-15">
+                            </div>
+                            <div class="form-group">
+                                <label>👥 수용 정원 (동시 수용 기준)</label>
+                                <input type="text" id="profCapacity" class="form-control" placeholder="예: 수용 정원 기준 운영 (동시 수용 기준) 또는 30명">
                             </div>
 
                             <div class="form-group">
@@ -1034,23 +1053,17 @@
                             </div>
 
                             <div class="form-group full-width">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                    <label style="margin-bottom: 0;">학원 상세 주소 <span class="req">*</span></label>
-                                    <button type="button" class="btn-action btn-secondary-act" onclick="openKakaoPostcode()"
-                                            style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 7px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
-                                        📮 카카오 우편번호 검색
-                                    </button>
-                                </div>
+                                <label onclick="openKakaoPostcode()" style="cursor: pointer;">학원 상세 주소 <span class="req">*</span></label>
                                 <div style="display: flex; gap: 8px;">
-                                    <input type="text" id="profZonecode" class="form-control" placeholder="우편번호" style="width: 140px; flex-shrink: 0;" readonly>
-                                    <input type="text" id="profAddress" class="form-control" placeholder="기본 주소 (우편번호 검색 시 자동 입력)" style="flex: 1;">
+                                    <input type="text" id="profZonecode" class="form-control" placeholder="우편번호" style="width: 140px; flex-shrink: 0; cursor: pointer;" readonly onclick="openKakaoPostcode()">
+                                    <input type="text" id="profAddress" class="form-control" placeholder="기본 주소 (클릭하여 주소 검색)" style="flex: 1; cursor: pointer;" readonly onclick="openKakaoPostcode()">
                                 </div>
                                 <div style="margin-top: 8px;">
                                     <input type="text" id="profAddressDetail" class="form-control" placeholder="상세 주소 (건물 층수, 동·호수 등 직접 입력)">
                                 </div>
                             </div>
 
-                            <!-- 좌표(위도/경도) 확인 및 변경 영역 -->
+                            <!-- 학원 지도 표시 좌표 (위도·경도) 설정 영역: 위경도 텍스트 대신 카카오 지도 노출 -->
                             <div class="form-group full-width" style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 16px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                     <div style="display: flex; align-items: center; gap: 6px;">
@@ -1060,20 +1073,16 @@
                                     </div>
                                     <button type="button" class="btn-action btn-secondary-act" onclick="convertAddressToCoords()"
                                             style="width: auto; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 7px; cursor: pointer;">
-                                        🔄 주소로 좌표 재변환
+                                        🔄 주소로 지도 위치 새로고침
                                     </button>
                                 </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-                                    <div>
-                                        <label style="font-size: 11.5px; color: #475569; margin-bottom: 4px; display: block; font-weight: 600;">위도 (Latitude)</label>
-                                        <input type="number" step="any" id="profLat" class="form-control" placeholder="예: 37.4981" style="font-size: 13px;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size: 11.5px; color: #475569; margin-bottom: 4px; display: block; font-weight: 600;">경도 (Longitude)</label>
-                                        <input type="number" step="any" id="profLng" class="form-control" placeholder="예: 127.0628" style="font-size: 13px;">
-                                    </div>
-                                </div>
+                                <!-- 카카오 지도 영역 -->
+                                <div id="academyCoordMap" style="width: 100%; height: 260px; border-radius: 8px; border: 1px solid var(--border-color); background: #f1f5f9; position: relative;"></div>
+                                <!-- 숨겨진 위도/경도 필드 (데이터 전송 및 저장용) -->
+                                <input type="hidden" id="profLat">
+                                <input type="hidden" id="profLng">
                                 <div id="coordStatusMsg" style="font-size: 11.5px; color: #059669; font-weight: 600; margin-top: 8px; display: none;"></div>
+                                <div style="font-size: 11.5px; color: #64748b; margin-top: 4px;">💡 주소를 검색하면 지도에 학원 위치 마커가 자동 표시되며, 마커를 드래그하거나 지도를 클릭하여 위치를 조정할 수 있습니다.</div>
                             </div>
 
                             <div class="form-group full-width">
@@ -1104,12 +1113,14 @@
                             </div>
                             <div class="form-group">
                                 <label>대표 유선 전화번호 <span class="req">*</span></label>
-                                <input type="tel" id="profRePhone" class="form-control" placeholder="예: 02-555-8899">
+                                <input type="tel" id="profRePhone" class="form-control" placeholder="예: 02-555-8899" maxlength="14" oninput="handlePhoneInput(this, 'profRePhoneError')" onblur="checkPhoneValidation(this, 'profRePhoneError', '대표 유선 전화번호')">
+                                <div id="profRePhoneError" style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
                             </div>
 
                             <div class="form-group">
                                 <label>상담 직통 휴대폰 번호</label>
-                                <input type="tel" id="profReMobile" class="form-control" placeholder="예: 010-3344-5566">
+                                <input type="tel" id="profReMobile" class="form-control" placeholder="예: 010-3344-5566" maxlength="14" oninput="handlePhoneInput(this, 'profReMobileError')" onblur="checkMobileValidation(this, 'profReMobileError')">
+                                <div id="profReMobileError" style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
                             </div>
                             <div class="form-group">
                                 <label>전문 담당 행정동 / 지역 (쉼표 구분) <span class="req">*</span></label>
@@ -1126,11 +1137,40 @@
                                 <input type="text" id="profReTopics" class="form-control" placeholder="예: 대청중 100% 배정 단지 매물, 안심 통학로 도보 5분 매물, 대치동 학원가 인접 실거래 매매·전세">
                             </div>
 
-                            <div class="form-group">
-                                <label>중개사무소 소재지 주소</label>
-                                <input type="text" id="profReAddress" class="form-control">
+                            <div class="form-group full-width">
+                                <label onclick="openReKakaoPostcode()" style="cursor: pointer;">중개사무소 소재지 주소 <span class="req">*</span></label>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="text" id="profReZonecode" class="form-control" placeholder="우편번호" style="width: 140px; flex-shrink: 0; cursor: pointer;" readonly onclick="openReKakaoPostcode()">
+                                    <input type="text" id="profReAddress" class="form-control" placeholder="기본 주소 (클릭하여 주소 검색)" style="flex: 1; cursor: pointer;" readonly onclick="openReKakaoPostcode()">
+                                </div>
+                                <div style="margin-top: 8px;">
+                                    <input type="text" id="profReAddressDetail" class="form-control" placeholder="상세 주소 (건물 층수, 동·호수 등 직접 입력)">
+                                </div>
                             </div>
-                            <div class="form-group">
+
+                            <!-- 중개사무소 지도 표시 좌표 (위도·경도) 설정 영역: 위경도 텍스트 대신 카카오 지도 노출 -->
+                            <div class="form-group full-width" style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 16px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span style="font-size: 14px;">📍</span>
+                                        <label style="margin-bottom: 0; font-size: 13px; font-weight: 700; color: #0f172a;">중개사무소 지도 표시 좌표 (위도·경도) 설정</label>
+                                        <span style="font-size: 11.5px; color: #64748b;">(학부모 지도 마커 핀 및 단지 연계 노출에 반영됩니다)</span>
+                                    </div>
+                                    <button type="button" class="btn-action btn-secondary-act" onclick="convertReAddressToCoords()"
+                                            style="width: auto; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 7px; cursor: pointer;">
+                                        🔄 주소로 지도 위치 새로고침
+                                    </button>
+                                </div>
+                                <!-- 카카오 지도 영역 -->
+                                <div id="reCoordMap" style="width: 100%; height: 260px; border-radius: 8px; border: 1px solid var(--border-color); background: #f1f5f9; position: relative;"></div>
+                                <!-- 숨겨진 위도/경도 필드 (데이터 전송 및 저장용) -->
+                                <input type="hidden" id="profReLat">
+                                <input type="hidden" id="profReLng">
+                                <div id="reCoordStatusMsg" style="font-size: 11.5px; color: #059669; font-weight: 600; margin-top: 8px; display: none;"></div>
+                                <div style="font-size: 11.5px; color: #64748b; margin-top: 4px;">💡 주소를 검색하면 지도에 중개사무소 위치 마커가 자동 표시되며, 마커를 드래그하거나 지도를 클릭하여 위치를 조정할 수 있습니다.</div>
+                            </div>
+
+                            <div class="form-group full-width">
                                 <label>네이버 부동산 매물 / 블로그 URL</label>
                                 <input type="url" id="profReWebsiteUrl" class="form-control" placeholder="https://land.naver.com">
                             </div>
@@ -1175,16 +1215,19 @@
                             </div>
                             <div class="form-group">
                                 <label>사업자 등록번호</label>
-                                <input type="text" id="regBizNumber" class="form-control" placeholder="예: 123-45-67890">
+                                <input type="text" id="regBizNumber" class="form-control" placeholder="예: 123-45-67890 (10자리)" maxlength="12" oninput="handleBizNumberInput(this, 'regBizNumberError')" onblur="checkBizNumberValidation(this, 'regBizNumberError')">
+                                <div id="regBizNumberError" style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
                             </div>
 
                             <div class="form-group">
                                 <label>대표 전화번호 <span class="req">*</span></label>
-                                <input type="tel" id="regPhone" class="form-control" placeholder="예: 02-1234-5678" required>
+                                <input type="tel" id="regPhone" class="form-control" placeholder="예: 02-1234-5678 또는 010-1234-5678" required maxlength="14" oninput="handlePhoneInput(this, 'regPhoneError')" onblur="checkPhoneValidation(this, 'regPhoneError', '대표 전화번호')">
+                                <div id="regPhoneError" style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
                             </div>
                             <div class="form-group">
                                 <label>이메일 주소 <span class="req">*</span></label>
-                                <input type="email" id="regEmail" class="form-control" placeholder="예: partner@academy.com" required>
+                                <input type="email" id="regEmail" class="form-control" placeholder="예: partner@academy.com" required oninput="handleEmailInput(this, 'regEmailError')" onblur="checkEmailValidation(this, 'regEmailError')">
+                                <div id="regEmailError" style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
                             </div>
 
                             <div class="form-group full-width">
@@ -1246,6 +1289,22 @@
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.toggle('active', content.id === tabId);
             });
+            if (tabId === 'tab-profile') {
+                setTimeout(() => {
+                    if (academyMap) {
+                        academyMap.relayout();
+                        if (academyMarker && academyMarker.getPosition()) {
+                            academyMap.setCenter(academyMarker.getPosition());
+                        }
+                    }
+                    if (reMap) {
+                        reMap.relayout();
+                        if (reMarker && reMarker.getPosition()) {
+                            reMap.setCenter(reMarker.getPosition());
+                        }
+                    }
+                }, 100);
+            }
         }
 
         async function loadSession() {
@@ -1486,20 +1545,67 @@
                 document.getElementById('profReOfficeName').value = p.officeName || biz.name || '';
                 document.getElementById('profReBrokerName').value = p.brokerName || biz.representative || '';
                 document.getElementById('profReRegNo').value = p.registrationNo || '';
-                document.getElementById('profRePhone').value = p.contactPhone || biz.phone || '';
-                document.getElementById('profReMobile').value = p.mobilePhone || '';
+                document.getElementById('profRePhone').value = formatPhoneNumber(p.contactPhone || biz.phone || '');
+                document.getElementById('profReMobile').value = formatPhoneNumber(p.mobilePhone || '');
+                const rePhoneErr = document.getElementById('profRePhoneError');
+                if (rePhoneErr) { rePhoneErr.style.display = 'none'; rePhoneErr.innerText = ''; }
+                const reMobileErr = document.getElementById('profReMobileError');
+                if (reMobileErr) { reMobileErr.style.display = 'none'; reMobileErr.innerText = ''; }
                 document.getElementById('profReAreas').value = (p.serviceAreas || []).join(', ');
                 document.getElementById('profReComplexes').value = (p.specializedComplexes || []).join(', ');
                 document.getElementById('profReTopics').value = (p.consultingTopics || []).join(', ');
+                document.getElementById('profReZonecode').value = p.zonecode || '';
                 document.getElementById('profReAddress').value = p.address || biz.address || '';
+                document.getElementById('profReAddressDetail').value = p.addressDetail || '';
+
+                const savedReLat = (p.lat !== undefined && p.lat !== null && p.lat !== '') ? parseFloat(p.lat) : null;
+                const savedReLng = (p.lng !== undefined && p.lng !== null && p.lng !== '') ? parseFloat(p.lng) : null;
+                document.getElementById('profReLat').value = (savedReLat !== null && !isNaN(savedReLat)) ? savedReLat : '';
+                document.getElementById('profReLng').value = (savedReLng !== null && !isNaN(savedReLng)) ? savedReLng : '';
                 document.getElementById('profReWebsiteUrl').value = p.websiteUrl || '';
                 document.getElementById('profReDescription').value = p.description || '';
+
+                const reStatusEl = document.getElementById('reCoordStatusMsg');
+                if (reStatusEl) {
+                    if (savedReLat && savedReLng && !isNaN(savedReLat) && !isNaN(savedReLng)) {
+                        reStatusEl.style.display = 'block';
+                        reStatusEl.style.color = '#059669';
+                        reStatusEl.innerText = `📍 현재 등록된 지도 위치가 표시되었습니다.`;
+                    } else {
+                        reStatusEl.style.display = 'none';
+                        reStatusEl.innerText = '';
+                    }
+                }
+
+                // 부동산 카카오 지도 및 좌표 초기화
+                ensureKakaoMapSDK().then(() => {
+                    if (savedReLat && savedReLng && !isNaN(savedReLat) && !isNaN(savedReLng)) {
+                        initOrUpdateReMap(savedReLat, savedReLng, true);
+                    } else if (p.address || biz.address) {
+                        geocodeAddress(p.address || biz.address).then(geo => {
+                            if (geo && !isNaN(geo.lat) && !isNaN(geo.lng)) {
+                                updateReCoordInputs(geo.lat, geo.lng);
+                                initOrUpdateReMap(geo.lat, geo.lng, true);
+                            } else {
+                                initOrUpdateReMap(37.5665, 126.9780, false);
+                            }
+                        });
+                    } else {
+                        initOrUpdateReMap(37.5665, 126.9780, false);
+                    }
+                }).catch(() => {});
             } else {
                 if (acaFields) acaFields.style.display = 'grid';
                 if (reFields) reFields.style.display = 'none';
                 const p = biz.academyProfile || {};
                 document.getElementById('profAcademyName').value = p.targetAcademyName || biz.name || '';
-                document.getElementById('profPhone').value = p.contactPhone || biz.phone || '';
+                document.getElementById('profPhone').value = formatPhoneNumber(p.contactPhone || biz.phone || '');
+                const phoneErr = document.getElementById('profPhoneError');
+                if (phoneErr) { phoneErr.style.display = 'none'; phoneErr.innerText = ''; }
+                document.getElementById('profInstitutionType').value = p.institutionType || p.acaInstiScNm || '';
+                document.getElementById('profEduOffice').value = p.eduOffice || p.atptOfcdcScNm || '';
+                document.getElementById('profFoundingDate').value = p.foundingDate || p.estblYmd || '';
+                document.getElementById('profCapacity').value = p.capacity || (p.toforSmtot ? `${p.toforSmtot}명` : '') || '';
                 document.getElementById('profSubjects').value = (p.subjects || []).join(', ');
                 document.getElementById('profGrades').value = (p.grades || []).join(', ');
                 document.getElementById('profClassMethod').value = p.classMethod || '';
@@ -1507,37 +1613,53 @@
                 document.getElementById('profZonecode').value = p.zonecode || '';
                 document.getElementById('profAddress').value = p.address || biz.address || '';
                 document.getElementById('profAddressDetail').value = p.addressDetail || '';
-                document.getElementById('profLat').value = (p.lat !== undefined && p.lat !== null) ? p.lat : '';
-                document.getElementById('profLng').value = (p.lng !== undefined && p.lng !== null) ? p.lng : '';
+                const savedLat = (p.lat !== undefined && p.lat !== null && p.lat !== '') ? parseFloat(p.lat) : null;
+                const savedLng = (p.lng !== undefined && p.lng !== null && p.lng !== '') ? parseFloat(p.lng) : null;
+                document.getElementById('profLat').value = (savedLat !== null && !isNaN(savedLat)) ? savedLat : '';
+                document.getElementById('profLng').value = (savedLng !== null && !isNaN(savedLng)) ? savedLng : '';
                 document.getElementById('profWebsiteUrl').value = p.websiteUrl || '';
                 document.getElementById('profFeeInfo').value = p.feeInfo || '';
 
                 const statusEl = document.getElementById('coordStatusMsg');
                 if (statusEl) {
-                    if (p.lat && p.lng) {
+                    if (savedLat && savedLng && !isNaN(savedLat) && !isNaN(savedLng)) {
                         statusEl.style.display = 'block';
                         statusEl.style.color = '#059669';
-                        statusEl.innerText = `📍 현재 등록된 좌표: 위도 ${p.lat}, 경도 ${p.lng}`;
+                        statusEl.innerText = `📍 현재 등록된 지도 위치가 표시되었습니다.`;
                     } else {
                         statusEl.style.display = 'none';
                         statusEl.innerText = '';
                     }
                 }
-                // 카카오 지오코더 사전 준비
-                ensureKakaoGeocoder().catch(() => {});
+
+                // 카카오 지도 및 좌표 초기화
+                ensureKakaoMapSDK().then(() => {
+                    if (savedLat && savedLng && !isNaN(savedLat) && !isNaN(savedLng)) {
+                        initOrUpdateAcademyMap(savedLat, savedLng, true);
+                    } else if (p.address || biz.address) {
+                        geocodeAddress(p.address || biz.address).then(geo => {
+                            if (geo && !isNaN(geo.lat) && !isNaN(geo.lng)) {
+                                updateCoordInputs(geo.lat, geo.lng);
+                                initOrUpdateAcademyMap(geo.lat, geo.lng, true);
+                            } else {
+                                initOrUpdateAcademyMap(37.5665, 126.9780, false);
+                            }
+                        });
+                    } else {
+                        initOrUpdateAcademyMap(37.5665, 126.9780, false);
+                    }
+                }).catch(() => {});
             }
         }
 
-        // --- 카카오 우편번호 검색 및 좌표(위도/경도) 변환 기능 ---
+        // --- 카카오 지도 SDK, 우편번호 검색 및 좌표 연동 기능 ---
         let kakaoGeocoder = null;
         let kakaoSdkLoadingPromise = null;
+        let academyMap = null;
+        let academyMarker = null;
 
-        async function ensureKakaoGeocoder() {
-            if (kakaoGeocoder) return kakaoGeocoder;
-            if (window.kakao && window.kakao.maps && window.kakao.maps.services && window.kakao.maps.services.Geocoder) {
-                kakaoGeocoder = new window.kakao.maps.services.Geocoder();
-                return kakaoGeocoder;
-            }
+        async function ensureKakaoMapSDK() {
+            if (kakaoGeocoder && window.kakao && window.kakao.maps) return kakaoGeocoder;
             if (kakaoSdkLoadingPromise) return kakaoSdkLoadingPromise;
 
             kakaoSdkLoadingPromise = new Promise(async (resolve) => {
@@ -1566,10 +1688,8 @@
                             window.kakao.maps.load(() => {
                                 if (window.kakao.maps.services && window.kakao.maps.services.Geocoder) {
                                     kakaoGeocoder = new window.kakao.maps.services.Geocoder();
-                                    resolve(kakaoGeocoder);
-                                } else {
-                                    resolve(null);
                                 }
+                                resolve(kakaoGeocoder);
                             });
                         } else {
                             resolve(null);
@@ -1586,12 +1706,108 @@
                         };
                     }
                 } catch (err) {
-                    console.error('ensureKakaoGeocoder error:', err);
+                    console.error('ensureKakaoMapSDK error:', err);
                     resolve(null);
                 }
             });
 
             return kakaoSdkLoadingPromise;
+        }
+
+        function ensureKakaoGeocoder() {
+            return ensureKakaoMapSDK();
+        }
+
+        function updateCoordInputs(lat, lng) {
+            const latEl = document.getElementById('profLat');
+            const lngEl = document.getElementById('profLng');
+            if (latEl) latEl.value = parseFloat(lat).toFixed(6);
+            if (lngEl) lngEl.value = parseFloat(lng).toFixed(6);
+
+            const statusEl = document.getElementById('coordStatusMsg');
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.style.color = '#059669';
+                statusEl.innerText = `📍 지도 위치 지정됨 (위도: ${parseFloat(lat).toFixed(6)}, 경도: ${parseFloat(lng).toFixed(6)})`;
+            }
+        }
+
+        async function initOrUpdateAcademyMap(lat, lng, hasMarker = true) {
+            if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
+            await ensureKakaoMapSDK();
+            if (!window.kakao || !window.kakao.maps) return;
+
+            const container = document.getElementById('academyCoordMap');
+            if (!container) return;
+
+            const coords = new window.kakao.maps.LatLng(lat, lng);
+
+            if (!academyMap) {
+                const options = {
+                    center: coords,
+                    level: 3
+                };
+                academyMap = new window.kakao.maps.Map(container, options);
+
+                const zoomControl = new window.kakao.maps.ZoomControl();
+                academyMap.addControl(zoomControl, window.kakao.maps.ControlPosition.RIGHT);
+
+                if (hasMarker) {
+                    academyMarker = new window.kakao.maps.Marker({
+                        position: coords,
+                        map: academyMap,
+                        draggable: true
+                    });
+
+                    window.kakao.maps.event.addListener(academyMarker, 'dragend', function() {
+                        const pos = academyMarker.getPosition();
+                        updateCoordInputs(pos.getLat(), pos.getLng());
+                    });
+                }
+
+                window.kakao.maps.event.addListener(academyMap, 'click', function(mouseEvent) {
+                    const latlng = mouseEvent.latLng;
+                    if (!academyMarker) {
+                        academyMarker = new window.kakao.maps.Marker({
+                            position: latlng,
+                            map: academyMap,
+                            draggable: true
+                        });
+                        window.kakao.maps.event.addListener(academyMarker, 'dragend', function() {
+                            const pos = academyMarker.getPosition();
+                            updateCoordInputs(pos.getLat(), pos.getLng());
+                        });
+                    } else {
+                        academyMarker.setPosition(latlng);
+                        academyMarker.setMap(academyMap);
+                    }
+                    updateCoordInputs(latlng.getLat(), latlng.getLng());
+                });
+            } else {
+                academyMap.setCenter(coords);
+                if (hasMarker) {
+                    if (!academyMarker) {
+                        academyMarker = new window.kakao.maps.Marker({
+                            position: coords,
+                            map: academyMap,
+                            draggable: true
+                        });
+                        window.kakao.maps.event.addListener(academyMarker, 'dragend', function() {
+                            const pos = academyMarker.getPosition();
+                            updateCoordInputs(pos.getLat(), pos.getLng());
+                        });
+                    } else {
+                        academyMarker.setPosition(coords);
+                        academyMarker.setMap(academyMap);
+                    }
+                }
+                setTimeout(() => {
+                    if (academyMap) {
+                        academyMap.relayout();
+                        academyMap.setCenter(coords);
+                    }
+                }, 50);
+            }
         }
 
         function geocodeAddress(address) {
@@ -1650,24 +1866,22 @@
                     if (statusEl) {
                         statusEl.style.display = 'block';
                         statusEl.style.color = '#2563eb';
-                        statusEl.innerText = '🔍 입력된 주소로 위도/경도 좌표를 변환 중입니다...';
+                        statusEl.innerText = '🔍 입력된 주소로 지도 위치를 찾는 중입니다...';
                     }
 
                     const geo = await geocodeAddress(addr);
                     if (geo && !isNaN(geo.lat) && !isNaN(geo.lng)) {
-                        const latEl = document.getElementById('profLat');
-                        const lngEl = document.getElementById('profLng');
-                        if (latEl) latEl.value = geo.lat.toFixed(6);
-                        if (lngEl) lngEl.value = geo.lng.toFixed(6);
+                        updateCoordInputs(geo.lat, geo.lng);
+                        await initOrUpdateAcademyMap(geo.lat, geo.lng, true);
 
                         if (statusEl) {
                             statusEl.style.color = '#059669';
-                            statusEl.innerText = `✅ 주소 기반 좌표 변환 성공: 위도 ${geo.lat.toFixed(6)}, 경도 ${geo.lng.toFixed(6)}`;
+                            statusEl.innerText = `✅ 지도에 학원 위치 마커가 표시되었습니다. (지도를 클릭하거나 마커를 이동하여 위치 조정 가능)`;
                         }
                     } else {
                         if (statusEl) {
                             statusEl.style.color = '#d97706';
-                            statusEl.innerText = '⚠️ 주소의 상세 좌표를 자동으로 찾지 못했습니다. 위도/경도를 직접 입력해주세요.';
+                            statusEl.innerText = '⚠️ 주소의 상세 좌표를 자동으로 찾지 못했습니다. 지도 위를 직접 클릭하여 위치를 지정해주세요.';
                         }
                     }
                 }
@@ -1680,15 +1894,15 @@
             const addr = addrEl ? addrEl.value.trim() : '';
 
             if (!addr) {
-                alert('좌표를 조회할 기본 주소를 먼저 입력하거나 우편번호 검색으로 선택해주세요.');
-                if (addrEl) addrEl.focus();
+                alert('위치를 조회할 기본 주소를 먼저 입력하거나 주소 검색으로 선택해주세요.');
+                openKakaoPostcode();
                 return;
             }
 
             if (statusEl) {
                 statusEl.style.display = 'block';
                 statusEl.style.color = '#2563eb';
-                statusEl.innerText = '🔍 주소 기반 좌표 변환 중입니다...';
+                statusEl.innerText = '🔍 주소 기반 지도 위치 확인 중입니다...';
             }
 
             const cleanAddr = addr.replace(/\s*\([^)]*\)/g, '').trim();
@@ -1698,21 +1912,447 @@
             }
 
             if (geo && !isNaN(geo.lat) && !isNaN(geo.lng)) {
-                const latEl = document.getElementById('profLat');
-                const lngEl = document.getElementById('profLng');
-                if (latEl) latEl.value = geo.lat.toFixed(6);
-                if (lngEl) lngEl.value = geo.lng.toFixed(6);
+                updateCoordInputs(geo.lat, geo.lng);
+                await initOrUpdateAcademyMap(geo.lat, geo.lng, true);
 
                 if (statusEl) {
                     statusEl.style.color = '#059669';
-                    statusEl.innerText = `✅ 주소 좌표 변환 완료: 위도 ${geo.lat.toFixed(6)}, 경도 ${geo.lng.toFixed(6)}`;
+                    statusEl.innerText = `✅ 지도 위치 새로고침 완료: 지도에 위치 마커가 표시되었습니다.`;
                 }
             } else {
                 if (statusEl) {
                     statusEl.style.color = '#dc2626';
-                    statusEl.innerText = '❌ 해당 주소의 좌표를 찾을 수 없습니다. 위도/경도를 직접 숫자로 입력해주세요.';
+                    statusEl.innerText = '❌ 해당 주소의 좌표를 찾을 수 없습니다. 지도 위를 직접 클릭하여 위치를 지정해주세요.';
                 }
-                alert('주소에 해당하는 좌표를 찾지 못했습니다.\n도로명 또는 지번 주소를 확인하시거나 직접 위도, 경도를 입력해주세요.');
+                alert('주소에 해당하는 좌표를 찾지 못했습니다.\n지도 위를 직접 클릭하여 학원 위치를 지정해주세요.');
+            }
+        }
+
+        // --- 부동산 전용 지도 및 주소 연동 기능 ---
+        let reMap = null;
+        let reMarker = null;
+
+        function updateReCoordInputs(lat, lng) {
+            const latEl = document.getElementById('profReLat');
+            const lngEl = document.getElementById('profReLng');
+            if (latEl) latEl.value = parseFloat(lat).toFixed(6);
+            if (lngEl) lngEl.value = parseFloat(lng).toFixed(6);
+
+            const statusEl = document.getElementById('reCoordStatusMsg');
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.style.color = '#059669';
+                statusEl.innerText = `📍 지도 위치 지정됨 (위도: ${parseFloat(lat).toFixed(6)}, 경도: ${parseFloat(lng).toFixed(6)})`;
+            }
+        }
+
+        async function initOrUpdateReMap(lat, lng, hasMarker = true) {
+            if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
+            await ensureKakaoMapSDK();
+            if (!window.kakao || !window.kakao.maps) return;
+
+            const container = document.getElementById('reCoordMap');
+            if (!container) return;
+
+            const coords = new window.kakao.maps.LatLng(lat, lng);
+
+            if (!reMap) {
+                const options = {
+                    center: coords,
+                    level: 3
+                };
+                reMap = new window.kakao.maps.Map(container, options);
+
+                const zoomControl = new window.kakao.maps.ZoomControl();
+                reMap.addControl(zoomControl, window.kakao.maps.ControlPosition.RIGHT);
+
+                if (hasMarker) {
+                    reMarker = new window.kakao.maps.Marker({
+                        position: coords,
+                        map: reMap,
+                        draggable: true
+                    });
+
+                    window.kakao.maps.event.addListener(reMarker, 'dragend', function() {
+                        const pos = reMarker.getPosition();
+                        updateReCoordInputs(pos.getLat(), pos.getLng());
+                    });
+                }
+
+                window.kakao.maps.event.addListener(reMap, 'click', function(mouseEvent) {
+                    const latlng = mouseEvent.latLng;
+                    if (!reMarker) {
+                        reMarker = new window.kakao.maps.Marker({
+                            position: latlng,
+                            map: reMap,
+                            draggable: true
+                        });
+                        window.kakao.maps.event.addListener(reMarker, 'dragend', function() {
+                            const pos = reMarker.getPosition();
+                            updateReCoordInputs(pos.getLat(), pos.getLng());
+                        });
+                    } else {
+                        reMarker.setPosition(latlng);
+                        reMarker.setMap(reMap);
+                    }
+                    updateReCoordInputs(latlng.getLat(), latlng.getLng());
+                });
+            } else {
+                reMap.setCenter(coords);
+                if (hasMarker) {
+                    if (!reMarker) {
+                        reMarker = new window.kakao.maps.Marker({
+                            position: coords,
+                            map: reMap,
+                            draggable: true
+                        });
+                        window.kakao.maps.event.addListener(reMarker, 'dragend', function() {
+                            const pos = reMarker.getPosition();
+                            updateReCoordInputs(pos.getLat(), pos.getLng());
+                        });
+                    } else {
+                        reMarker.setPosition(coords);
+                        reMarker.setMap(reMap);
+                    }
+                }
+                setTimeout(() => {
+                    if (reMap) {
+                        reMap.relayout();
+                        reMap.setCenter(coords);
+                    }
+                }, 50);
+            }
+        }
+
+        function openReKakaoPostcode() {
+            if (typeof daum === 'undefined' || !daum.Postcode) {
+                alert('우편번호 서비스 스크립트를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+                return;
+            }
+
+            new daum.Postcode({
+                oncomplete: async function(data) {
+                    const addr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
+                    const zonecode = data.zonecode;
+
+                    let extraAddr = '';
+                    if (data.userSelectedType === 'R') {
+                        if (data.bname !== '' && /[동|로|가]$/g.test(data.bname)) {
+                            extraAddr += data.bname;
+                        }
+                        if (data.buildingName !== '' && data.apartment === 'Y') {
+                            extraAddr += (extraAddr !== '' ? ', ' + data.buildingName : data.buildingName);
+                        }
+                    }
+
+                    const fullBaseAddr = extraAddr ? `${addr} (${extraAddr})` : addr;
+
+                    const zoneEl = document.getElementById('profReZonecode');
+                    const addrEl = document.getElementById('profReAddress');
+                    const detailEl = document.getElementById('profReAddressDetail');
+                    const statusEl = document.getElementById('reCoordStatusMsg');
+
+                    if (zoneEl) zoneEl.value = zonecode;
+                    if (addrEl) addrEl.value = fullBaseAddr;
+                    if (detailEl) detailEl.focus();
+
+                    if (statusEl) {
+                        statusEl.style.display = 'block';
+                        statusEl.style.color = '#2563eb';
+                        statusEl.innerText = '🔍 입력된 주소로 지도 위치를 찾는 중입니다...';
+                    }
+
+                    const geo = await geocodeAddress(addr);
+                    if (geo && !isNaN(geo.lat) && !isNaN(geo.lng)) {
+                        updateReCoordInputs(geo.lat, geo.lng);
+                        await initOrUpdateReMap(geo.lat, geo.lng, true);
+
+                        if (statusEl) {
+                            statusEl.style.color = '#059669';
+                            statusEl.innerText = `✅ 지도에 중개사무소 위치 마커가 표시되었습니다. (지도를 클릭하거나 마커를 이동하여 위치 조정 가능)`;
+                        }
+                    } else {
+                        if (statusEl) {
+                            statusEl.style.color = '#d97706';
+                            statusEl.innerText = '⚠️ 주소의 상세 좌표를 자동으로 찾지 못했습니다. 지도 위를 직접 클릭하여 위치를 지정해주세요.';
+                        }
+                    }
+                }
+            }).open();
+        }
+
+        async function convertReAddressToCoords() {
+            const addrEl = document.getElementById('profReAddress');
+            const statusEl = document.getElementById('reCoordStatusMsg');
+            const addr = addrEl ? addrEl.value.trim() : '';
+
+            if (!addr) {
+                alert('위치를 조회할 기본 주소를 먼저 입력하거나 주소 검색으로 선택해주세요.');
+                openReKakaoPostcode();
+                return;
+            }
+
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.style.color = '#2563eb';
+                statusEl.innerText = '🔍 주소 기반 지도 위치 확인 중입니다...';
+            }
+
+            const cleanAddr = addr.replace(/\s*\([^)]*\)/g, '').trim();
+            let geo = await geocodeAddress(cleanAddr);
+            if (!geo) {
+                geo = await geocodeAddress(addr);
+            }
+
+            if (geo && !isNaN(geo.lat) && !isNaN(geo.lng)) {
+                updateReCoordInputs(geo.lat, geo.lng);
+                await initOrUpdateReMap(geo.lat, geo.lng, true);
+
+                if (statusEl) {
+                    statusEl.style.color = '#059669';
+                    statusEl.innerText = `✅ 지도 위치 새로고침 완료: 지도에 위치 마커가 표시되었습니다.`;
+                }
+            } else {
+                if (statusEl) {
+                    statusEl.style.color = '#dc2626';
+                    statusEl.innerText = '❌ 해당 주소의 좌표를 찾을 수 없습니다. 지도 위를 직접 클릭하여 위치를 지정해주세요.';
+                }
+                alert('주소에 해당하는 좌표를 찾지 못했습니다.\n지도 위를 직접 클릭하여 중개사무소 위치를 지정해주세요.');
+            }
+        }
+
+        // --- 전화번호 자동 하이픈(-) 포맷팅 및 유효성 검사 유틸리티 ---
+        function formatPhoneNumber(value) {
+            if (!value) return '';
+            const clean = value.replace(/[^0-9]/g, '').slice(0, 12);
+            if (!clean) return '';
+
+            // 1) 전국 대표번호 (15xx, 16xx, 18xx 등 8자리)
+            if (/^(15|16|18)/.test(clean)) {
+                if (clean.length <= 4) return clean;
+                return clean.replace(/^(\d{4})(\d{1,4})$/, '$1-$2');
+            }
+
+            // 2) 서울 지역번호 (02: 9~10자리)
+            if (clean.startsWith('02')) {
+                if (clean.length <= 2) return clean;
+                if (clean.length <= 5) return clean.replace(/^(\d{2})(\d{1,3})$/, '$1-$2');
+                if (clean.length <= 9) return clean.replace(/^(\d{2})(\d{3})(\d{1,4})$/, '$1-$2-$3');
+                return clean.replace(/^(\d{2})(\d{4})(\d{4}).*$/, '$1-$2-$3');
+            }
+
+            // 3) 050 가상번호/안심번호 (11~12자리)
+            if (clean.startsWith('050')) {
+                if (clean.length <= 4) return clean;
+                if (clean.length <= 7) return clean.replace(/^(\d{4})(\d{1,3})$/, '$1-$2');
+                if (clean.length <= 11) return clean.replace(/^(\d{4})(\d{3})(\d{1,4})$/, '$1-$2-$3');
+                return clean.replace(/^(\d{4})(\d{4})(\d{4}).*$/, '$1-$2-$3');
+            }
+
+            // 4) 일반 휴대폰(010 등) 및 지역번호(031, 042 등), 인터넷전화(070)
+            if (clean.length <= 3) return clean;
+            if (clean.length <= 6) return clean.replace(/^(\d{3})(\d{1,3})$/, '$1-$2');
+            if (clean.length <= 10) return clean.replace(/^(\d{3})(\d{3})(\d{1,4})$/, '$1-$2-$3');
+            return clean.replace(/^(\d{3})(\d{4})(\d{4}).*$/, '$1-$2-$3');
+        }
+
+        function validatePhoneNumber(value) {
+            if (!value || !value.trim()) return false;
+            const clean = value.replace(/[^0-9]/g, '');
+            // 대표번호: 8자리
+            if (/^(15|16|18)\d{6}$/.test(clean)) return true;
+            // 서울(02): 9~10자리
+            if (/^02\d{7,8}$/.test(clean)) return true;
+            // 휴대폰 및 일반 지역번호 / 070: 10~11자리
+            if (/^0(1[016789]|3[1-3]|4[1-4]|5[1-5]|6[1-4]|70)\d{7,8}$/.test(clean)) return true;
+            // 050 번호: 11~12자리
+            if (/^050\d{7,8}$/.test(clean)) return true;
+            return false;
+        }
+
+        function validateMobileNumber(value) {
+            if (!value || !value.trim()) return true; // 선택 필드
+            const clean = value.replace(/[^0-9]/g, '');
+            return /^01[016789]\d{7,8}$/.test(clean);
+        }
+
+        function handlePhoneInput(inputEl, errorElId) {
+            if (!inputEl) return;
+            inputEl.value = formatPhoneNumber(inputEl.value);
+
+            if (errorElId) {
+                const errEl = document.getElementById(errorElId);
+                if (errEl) {
+                    const clean = inputEl.value.replace(/[^0-9]/g, '');
+                    if (clean.length >= 8 && validatePhoneNumber(inputEl.value)) {
+                        errEl.style.display = 'none';
+                        errEl.innerText = '';
+                    }
+                }
+            }
+        }
+
+        function checkPhoneValidation(inputEl, errorElId, fieldName = '대표 연락처') {
+            if (!inputEl || !errorElId) return;
+            const errEl = document.getElementById(errorElId);
+            if (!errEl) return;
+
+            const val = inputEl.value.trim();
+            if (!val) {
+                errEl.style.display = 'block';
+                errEl.innerText = `⚠️ ${fieldName}를 입력해주세요.`;
+                return;
+            }
+
+            if (!validatePhoneNumber(val)) {
+                errEl.style.display = 'block';
+                errEl.innerText = '⚠️ 올바른 전화번호 형식(예: 02-1234-5678, 010-1234-5678)이 아닙니다.';
+            } else {
+                errEl.style.display = 'none';
+                errEl.innerText = '';
+            }
+        }
+
+        function checkMobileValidation(inputEl, errorElId) {
+            if (!inputEl || !errorElId) return;
+            const errEl = document.getElementById(errorElId);
+            if (!errEl) return;
+
+            const val = inputEl.value.trim();
+            if (!val) {
+                errEl.style.display = 'none';
+                errEl.innerText = '';
+                return;
+            }
+
+            if (!validateMobileNumber(val)) {
+                errEl.style.display = 'block';
+                errEl.innerText = '⚠️ 올바른 휴대폰 번호 형식(예: 010-1234-5678)이 아닙니다.';
+            } else {
+                errEl.style.display = 'none';
+                errEl.innerText = '';
+            }
+        }
+
+        // --- 사업자 등록번호 자동 하이픈(-) 포맷팅 및 국세청 유효성 검사 ---
+        function formatBizNumber(value) {
+            if (!value) return '';
+            const clean = value.replace(/[^0-9]/g, '').slice(0, 10);
+            if (clean.length <= 3) return clean;
+            if (clean.length <= 5) return clean.replace(/^(\d{3})(\d{1,2})$/, '$1-$2');
+            return clean.replace(/^(\d{3})(\d{2})(\d{1,5})$/, '$1-$2-$3');
+        }
+
+        function validateBizNumber(value) {
+            if (!value || !value.trim()) return false;
+            const clean = value.replace(/[^0-9]/g, '');
+            if (clean.length !== 10) return false;
+            // 000-00-00000 등 모든 숫자가 동일한 경우 제외
+            if (/^(\d)\1{9}$/.test(clean)) return false;
+
+            // 국세청 가중치 공식 검증 [1, 3, 7, 1, 3, 7, 1, 3, 5]
+            const weight = [1, 3, 7, 1, 3, 7, 1, 3, 5];
+            let sum = 0;
+            for (let i = 0; i < 8; i++) {
+                sum += parseInt(clean[i], 10) * weight[i];
+            }
+            const temp = parseInt(clean[8], 10) * 5;
+            sum += Math.floor(temp / 10) + (temp % 10);
+            const remainder = (10 - (sum % 10)) % 10;
+            return remainder === parseInt(clean[9], 10);
+        }
+
+        function handleBizNumberInput(inputEl, errorElId) {
+            if (!inputEl) return;
+            inputEl.value = formatBizNumber(inputEl.value);
+
+            if (errorElId) {
+                const errEl = document.getElementById(errorElId);
+                if (errEl) {
+                    const clean = inputEl.value.replace(/[^0-9]/g, '');
+                    if (clean.length === 10) {
+                        if (validateBizNumber(inputEl.value)) {
+                            errEl.style.display = 'none';
+                            errEl.innerText = '';
+                        } else {
+                            errEl.style.display = 'block';
+                            errEl.innerText = '⚠️ 유효하지 않은 사업자 등록번호입니다. 번호를 확인해주세요.';
+                        }
+                    } else {
+                        errEl.style.display = 'none';
+                        errEl.innerText = '';
+                    }
+                }
+            }
+        }
+
+        function checkBizNumberValidation(inputEl, errorElId) {
+            if (!inputEl || !errorElId) return;
+            const errEl = document.getElementById(errorElId);
+            if (!errEl) return;
+
+            const val = inputEl.value.trim();
+            if (!val) {
+                errEl.style.display = 'none';
+                errEl.innerText = '';
+                return;
+            }
+
+            const clean = val.replace(/[^0-9]/g, '');
+            if (clean.length !== 10) {
+                errEl.style.display = 'block';
+                errEl.innerText = '⚠️ 사업자 등록번호는 10자리 숫자(예: 123-45-67890)여야 합니다.';
+                return;
+            }
+
+            if (!validateBizNumber(val)) {
+                errEl.style.display = 'block';
+                errEl.innerText = '⚠️ 국세청 유효성 검증 규칙에 맞지 않는 사업자 등록번호입니다.';
+            } else {
+                errEl.style.display = 'none';
+                errEl.innerText = '';
+            }
+        }
+
+        // --- 이메일 주소 유효성 검사 ---
+        function validateEmail(value) {
+            if (!value || !value.trim()) return false;
+            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            return emailRegex.test(value.trim());
+        }
+
+        function handleEmailInput(inputEl, errorElId) {
+            if (!inputEl) return;
+            if (errorElId) {
+                const errEl = document.getElementById(errorElId);
+                if (errEl) {
+                    const val = inputEl.value.trim();
+                    if (val && validateEmail(val)) {
+                        errEl.style.display = 'none';
+                        errEl.innerText = '';
+                    }
+                }
+            }
+        }
+
+        function checkEmailValidation(inputEl, errorElId) {
+            if (!inputEl || !errorElId) return;
+            const errEl = document.getElementById(errorElId);
+            if (!errEl) return;
+
+            const val = inputEl.value.trim();
+            if (!val) {
+                errEl.style.display = 'block';
+                errEl.innerText = '⚠️ 이메일 주소를 입력해주세요.';
+                return;
+            }
+
+            if (!validateEmail(val)) {
+                errEl.style.display = 'block';
+                errEl.innerText = '⚠️ 올바른 이메일 형식이 아닙니다. (예: partner@academy.com)';
+            } else {
+                errEl.style.display = 'none';
+                errEl.innerText = '';
             }
         }
 
@@ -1721,24 +2361,74 @@
             let payload = { businessId: currentBiz.id };
 
             if (currentBiz.type === 'real_estate') {
+                const rePhoneInput = document.getElementById('profRePhone');
+                const rePhoneVal = rePhoneInput ? rePhoneInput.value.trim() : '';
+                if (!rePhoneVal) {
+                    alert('중개사무소 대표 유선 전화번호를 입력해주세요.');
+                    if (rePhoneInput) rePhoneInput.focus();
+                    checkPhoneValidation(rePhoneInput, 'profRePhoneError', '대표 유선 전화번호');
+                    return;
+                }
+                if (!validatePhoneNumber(rePhoneVal)) {
+                    alert('중개사무소 대표 유선 전화번호 형식이 올바르지 않습니다.\n유효한 전화번호(예: 02-555-8899, 031-123-4567, 1588-1234 등)를 입력해주세요.');
+                    if (rePhoneInput) rePhoneInput.focus();
+                    checkPhoneValidation(rePhoneInput, 'profRePhoneError', '대표 유선 전화번호');
+                    return;
+                }
+
+                const reMobileInput = document.getElementById('profReMobile');
+                const reMobileVal = reMobileInput ? reMobileInput.value.trim() : '';
+                if (reMobileVal && !validateMobileNumber(reMobileVal)) {
+                    alert('상담 직통 휴대폰 번호 형식이 올바르지 않습니다.\n유효한 휴대폰 번호(예: 010-1234-5678)를 입력해주세요.');
+                    if (reMobileInput) reMobileInput.focus();
+                    checkMobileValidation(reMobileInput, 'profReMobileError');
+                    return;
+                }
+
                 const serviceAreas = document.getElementById('profReAreas').value.split(',').map(s => s.trim()).filter(Boolean);
                 const specializedComplexes = document.getElementById('profReComplexes').value.split(',').map(s => s.trim()).filter(Boolean);
                 const consultingTopics = document.getElementById('profReTopics').value.split(',').map(s => s.trim()).filter(Boolean);
+
+                const rawReLat = document.getElementById('profReLat').value.trim();
+                const rawReLng = document.getElementById('profReLng').value.trim();
+                const reLatVal = rawReLat !== '' ? parseFloat(rawReLat) : null;
+                const reLngVal = rawReLng !== '' ? parseFloat(rawReLng) : null;
 
                 payload.realEstateProfile = {
                     officeName: document.getElementById('profReOfficeName').value.trim(),
                     brokerName: document.getElementById('profReBrokerName').value.trim(),
                     registrationNo: document.getElementById('profReRegNo').value.trim(),
-                    contactPhone: document.getElementById('profRePhone').value.trim(),
-                    mobilePhone: document.getElementById('profReMobile').value.trim(),
+                    contactPhone: rePhoneVal,
+                    mobilePhone: reMobileVal,
                     serviceAreas,
                     specializedComplexes,
                     consultingTopics,
+                    zonecode: document.getElementById('profReZonecode').value.trim(),
                     address: document.getElementById('profReAddress').value.trim(),
+                    addressDetail: document.getElementById('profReAddressDetail').value.trim(),
+                    lat: (reLatVal !== null && !isNaN(reLatVal)) ? reLatVal : null,
+                    lng: (reLngVal !== null && !isNaN(reLngVal)) ? reLngVal : null,
                     websiteUrl: document.getElementById('profReWebsiteUrl').value.trim(),
                     description: document.getElementById('profReDescription').value.trim()
                 };
             } else {
+                const phoneInput = document.getElementById('profPhone');
+                const phoneVal = phoneInput ? phoneInput.value.trim() : '';
+
+                if (!phoneVal) {
+                    alert('대표 연락처를 입력해주세요.');
+                    if (phoneInput) phoneInput.focus();
+                    checkPhoneValidation(phoneInput, 'profPhoneError');
+                    return;
+                }
+
+                if (!validatePhoneNumber(phoneVal)) {
+                    alert('대표 연락처 형식이 올바르지 않습니다.\n유효한 전화번호(예: 02-1234-5678, 010-1234-5678, 031-123-4567, 1588-1234 등)를 입력해주세요.');
+                    if (phoneInput) phoneInput.focus();
+                    checkPhoneValidation(phoneInput, 'profPhoneError');
+                    return;
+                }
+
                 const subjects = document.getElementById('profSubjects').value.split(',').map(s => s.trim()).filter(Boolean);
                 const grades = document.getElementById('profGrades').value.split(',').map(s => s.trim()).filter(Boolean);
                 const rawLat = document.getElementById('profLat').value.trim();
@@ -1748,7 +2438,11 @@
 
                 payload.academyProfile = {
                     targetAcademyName: document.getElementById('profAcademyName').value.trim(),
-                    contactPhone: document.getElementById('profPhone').value.trim(),
+                    contactPhone: phoneVal,
+                    institutionType: document.getElementById('profInstitutionType').value.trim(),
+                    eduOffice: document.getElementById('profEduOffice').value.trim(),
+                    foundingDate: document.getElementById('profFoundingDate').value.trim(),
+                    capacity: document.getElementById('profCapacity').value.trim(),
                     subjects,
                     grades,
                     classMethod: document.getElementById('profClassMethod').value.trim(),
@@ -1851,13 +2545,55 @@
         }
 
         async function submitNewBusiness() {
+            const bizNumInput = document.getElementById('regBizNumber');
+            const bizNumVal = bizNumInput ? bizNumInput.value.trim() : '';
+
+            if (bizNumVal) {
+                if (!validateBizNumber(bizNumVal)) {
+                    alert('유효하지 않은 사업자 등록번호입니다.\n10자리 번호 및 국세청 유효성 검증 규칙을 확인해주세요.');
+                    if (bizNumInput) bizNumInput.focus();
+                    checkBizNumberValidation(bizNumInput, 'regBizNumberError');
+                    return;
+                }
+            }
+
+            const phoneInput = document.getElementById('regPhone');
+            const phoneVal = phoneInput ? phoneInput.value.trim() : '';
+            if (!phoneVal) {
+                alert('대표 전화번호를 입력해주세요.');
+                if (phoneInput) phoneInput.focus();
+                checkPhoneValidation(phoneInput, 'regPhoneError', '대표 전화번호');
+                return;
+            }
+            if (!validatePhoneNumber(phoneVal)) {
+                alert('대표 전화번호 형식이 올바르지 않습니다.\n유효한 전화번호(예: 02-1234-5678, 010-1234-5678, 031-123-4567, 1588-1234 등)를 입력해주세요.');
+                if (phoneInput) phoneInput.focus();
+                checkPhoneValidation(phoneInput, 'regPhoneError', '대표 전화번호');
+                return;
+            }
+
+            const emailInput = document.getElementById('regEmail');
+            const emailVal = emailInput ? emailInput.value.trim() : '';
+            if (!emailVal) {
+                alert('이메일 주소를 입력해주세요.');
+                if (emailInput) emailInput.focus();
+                checkEmailValidation(emailInput, 'regEmailError');
+                return;
+            }
+            if (!validateEmail(emailVal)) {
+                alert('올바른 이메일 형식이 아닙니다.\n(예: partner@academy.com)');
+                if (emailInput) emailInput.focus();
+                checkEmailValidation(emailInput, 'regEmailError');
+                return;
+            }
+
             const payload = {
                 type: document.getElementById('regType').value,
                 name: document.getElementById('regName').value.trim(),
                 representative: document.getElementById('regRepresentative').value.trim(),
-                bizNumber: document.getElementById('regBizNumber').value.trim(),
-                phone: document.getElementById('regPhone').value.trim(),
-                email: document.getElementById('regEmail').value.trim(),
+                bizNumber: bizNumVal,
+                phone: phoneVal,
+                email: emailVal,
                 address: document.getElementById('regAddress').value.trim(),
                 description: document.getElementById('regDescription').value.trim()
             };
@@ -1874,6 +2610,12 @@
                     alert('신규 사업자 등록 신청이 접수되었습니다!\n관리자 검수 후 대시보드가 활성화됩니다.');
                     currentBizId = data.business.id;
                     document.getElementById('newBizForm').reset();
+                    const pErr = document.getElementById('regPhoneError');
+                    if (pErr) pErr.style.display = 'none';
+                    const bErr = document.getElementById('regBizNumberError');
+                    if (bErr) bErr.style.display = 'none';
+                    const eErr = document.getElementById('regEmailError');
+                    if (eErr) eErr.style.display = 'none';
                     loadSession();
                     openTab('tab-dashboard');
                 } else {

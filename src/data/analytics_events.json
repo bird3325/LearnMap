@@ -95,28 +95,87 @@
     "id": "evt_re_01",
     "businessId": "biz_demo_daechi_re_04",
     "eventType": "premium_impression",
-    "metadata": { "complex": "래미안대치팰리스", "area": "대치동" },
+    "metadata": {
+      "complex": "래미안대치팰리스",
+      "area": "대치동"
+    },
     "createdAt": "2026-10-25T14:10:00.000Z"
   },
   {
     "id": "evt_re_02",
     "businessId": "biz_demo_daechi_re_04",
     "eventType": "profile_view",
-    "metadata": { "complex": "래미안대치팰리스" },
+    "metadata": {
+      "complex": "래미안대치팰리스"
+    },
     "createdAt": "2026-10-25T14:12:30.000Z"
   },
   {
     "id": "evt_re_03",
     "businessId": "biz_demo_daechi_re_04",
     "eventType": "phone_click",
-    "metadata": { "target": "02-555-8899" },
+    "metadata": {
+      "target": "02-555-8899"
+    },
     "createdAt": "2026-10-26T10:05:00.000Z"
   },
   {
     "id": "evt_re_04",
     "businessId": "biz_demo_daechi_re_04",
     "eventType": "contact_click",
-    "metadata": { "type": "broker_inquiry" },
+    "metadata": {
+      "type": "broker_inquiry"
+    },
     "createdAt": "2026-10-26T11:18:00.000Z"
+  },
+  {
+    "id": "evt_1793019605984_1cbs",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "장미7차아파트",
+      "area": "행신동"
+    },
+    "createdAt": "2026-10-26T13:00:05.985Z"
+  },
+  {
+    "id": "evt_1793019613181_v3n7",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "건우아파트",
+      "area": "행신동"
+    },
+    "createdAt": "2026-10-26T13:00:13.181Z"
+  },
+  {
+    "id": "evt_1793019621183_6pjs",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "윤창아파트총괄동",
+      "area": "행신동"
+    },
+    "createdAt": "2026-10-26T13:00:21.183Z"
+  },
+  {
+    "id": "evt_1793019622472_wpy5",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "행신3차SK VIEW 아파트",
+      "area": "행신동"
+    },
+    "createdAt": "2026-10-26T13:00:22.472Z"
+  },
+  {
+    "id": "evt_1793020062298_x4nd",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "행신동 108번지 주택",
+      "area": "행신동"
+    },
+    "createdAt": "2026-10-26T13:07:42.298Z"
   }
 ]

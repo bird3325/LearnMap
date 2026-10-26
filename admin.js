@@ -347,6 +347,95 @@ function getFormattedLogTime() {
     return `${ampm} ${hours}:${minutes}:${seconds}`;
 }
 
+// 고성능 비차단(Non-blocking) 배치 로그 렌더러 (백그라운드 탭 지원)
+function createBatchLogger(element, maxLines = 400) {
+    let queue = [];
+    let animationFrameId = null;
+    let fallbackTimerId = null;
+    let lastScrollTime = 0;
+
+    function renderBatch() {
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+        if (fallbackTimerId) {
+            clearTimeout(fallbackTimerId);
+            fallbackTimerId = null;
+        }
+        if (!element || queue.length === 0) return;
+
+        const fragment = document.createDocumentFragment();
+        const itemsToProcess = queue.splice(0, queue.length);
+
+        for (let i = 0; i < itemsToProcess.length; i++) {
+            const lineDiv = document.createElement('div');
+            lineDiv.style.whiteSpace = 'pre-wrap';
+            lineDiv.style.wordBreak = 'break-all';
+            lineDiv.textContent = itemsToProcess[i];
+            fragment.appendChild(lineDiv);
+        }
+
+        element.appendChild(fragment);
+
+        // DOM 노드 비대화 방지 (최대 maxLines개 유지하여 브라우저 메모리 및 렌더링 보호)
+        const excess = element.childNodes.length - maxLines;
+        if (excess > 0) {
+            for (let i = 0; i < excess; i++) {
+                if (element.firstChild) element.removeChild(element.firstChild);
+            }
+        }
+
+        // 스크롤 최적화: 60ms 간격 스로틀링으로 강제 리플로우 방지
+        const now = performance.now();
+        if (now - lastScrollTime > 60) {
+            element.scrollTop = element.scrollHeight;
+            lastScrollTime = now;
+        }
+    }
+
+    return {
+        log: (msg) => {
+            queue.push(`[${getFormattedLogTime()}] ${msg}`);
+            if (!animationFrameId) {
+                animationFrameId = requestAnimationFrame(renderBatch);
+            }
+            // 🌟 백그라운드 탭에서도 멈추지 않고 실시간 출력되도록 50ms 타이머 보장
+            if (!fallbackTimerId) {
+                fallbackTimerId = setTimeout(renderBatch, 50);
+            }
+        },
+        flush: () => {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            if (fallbackTimerId) {
+                clearTimeout(fallbackTimerId);
+                fallbackTimerId = null;
+            }
+            if (queue.length > 0) {
+                renderBatch();
+            }
+            if (element) {
+                element.scrollTop = element.scrollHeight;
+            }
+        },
+        clear: () => {
+            queue = [];
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            if (fallbackTimerId) {
+                clearTimeout(fallbackTimerId);
+                fallbackTimerId = null;
+            }
+            if (element) element.innerHTML = '';
+        }
+    };
+}
+
 // Log utility
 function logMsg(msg) {
     adminLog.innerHTML += `[${getFormattedLogTime()}] ${msg}<br>`;
@@ -2792,9 +2881,11 @@ if (btnRefreshRealEstateList) {
 // 🌟 주택 수집 실시간 중단 제어 컨트롤러 및 플래그
 let masterAbortController = null;
 let isMasterCollecting = false;
+let activeMasterLogger = null;
 
 let syncAbortController = null;
 let isSyncCollecting = false;
+let activeSyncLogger = null;
 
 async function requestStopRealEstateCollection() {
     try {
@@ -2810,11 +2901,10 @@ function stopSyncCollection() {
     showConfirmModal('진행 중인 실거래가 공공 API 일괄 수집을 즉시 정지하시겠습니까?\n현재까지 갱신/추가된 실거래가 데이터는 안전하게 보존됩니다.', '실거래가 수집 정지 확인').then(async (proceed) => {
         if (!proceed) return;
         const statusEl = document.getElementById('realEstateSyncProgressStatus');
-        const logEl = document.getElementById('realEstateSyncLog');
         if (statusEl) statusEl.innerText = '수집 정지 및 안전 저장 중...';
-        if (logEl) {
-            logEl.innerHTML += `[${getFormattedLogTime()}] ⏹️ [정지 요청] 국토교통부 실거래가 수집 정지 신호를 서버에 전송합니다...<br>`;
-            logEl.scrollTop = logEl.scrollHeight;
+        if (activeSyncLogger) {
+            activeSyncLogger.log(`⏹️ [정지 요청] 국토교통부 실거래가 수집 정지 신호를 서버에 전송합니다...`);
+            activeSyncLogger.flush();
         }
         await requestStopRealEstateCollection();
         if (syncAbortController) {
@@ -2829,11 +2919,10 @@ function stopMasterCollection() {
     showConfirmModal('진행 중인 주택 마스터 DB 구축을 즉시 정지하시겠습니까?\n현재까지 수집·갱신된 주택 데이터는 안전하게 보존됩니다.', '주택 수집 정지 확인').then(async (proceed) => {
         if (!proceed) return;
         const statusEl = document.getElementById('realEstateMasterProgressStatus');
-        const logEl = document.getElementById('realEstateMasterLog');
         if (statusEl) statusEl.innerText = '수집 정지 및 안전 저장 중...';
-        if (logEl) {
-            logEl.innerHTML += `[${getFormattedLogTime()}] ⏹️ [정지 요청] 주택 마스터 DB 구축 정지 신호를 서버에 전송합니다...<br>`;
-            logEl.scrollTop = logEl.scrollHeight;
+        if (activeMasterLogger) {
+            activeMasterLogger.log(`⏹️ [정지 요청] 주택 마스터 DB 구축 정지 신호를 서버에 전송합니다...`);
+            activeMasterLogger.flush();
         }
         await requestStopRealEstateCollection();
         if (masterAbortController) {
@@ -2877,7 +2966,9 @@ if (btnRunRealEstateSync) {
             if (container) container.style.display = 'block';
             if (logEl) logEl.innerHTML = '';
 
-            // NDJSON 스트리밍 로그 수신 헬퍼
+            activeSyncLogger = createBatchLogger(logEl, 400);
+
+            // NDJSON 스트리밍 로그 수신 헬퍼 (UI 멈춤 방지 및 비동기 양보 적용)
             async function consumeNdjsonStream(response, onLog, onPercent) {
                 if (!response.body || !response.body.getReader) {
                     return await response.json();
@@ -2891,6 +2982,7 @@ if (btnRunRealEstateSync) {
                 const decoder = new TextDecoder('utf-8');
                 let buffer = '';
                 let finalResult = null;
+                let lastYieldTime = performance.now();
 
                 while (true) {
                     const { done, value } = await reader.read();
@@ -2917,6 +3009,13 @@ if (btnRunRealEstateSync) {
                             console.warn('NDJSON line parse warning:', pErr, trimmed);
                         }
                     }
+
+                    // 브라우저 UI 스레드가 페인트 및 유저 입력을 처리할 수 있도록 16ms마다 제어권 양보
+                    const now = performance.now();
+                    if (now - lastYieldTime > 16) {
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                        lastYieldTime = performance.now();
+                    }
                 }
 
                 if (buffer.trim()) {
@@ -2939,9 +3038,8 @@ if (btnRunRealEstateSync) {
             }
 
             function logSyncMsg(msg) {
-                if (logEl) {
-                    logEl.innerHTML += `[${getFormattedLogTime()}] ${msg}<br>`;
-                    logEl.scrollTop = logEl.scrollHeight;
+                if (activeSyncLogger) {
+                    activeSyncLogger.log(msg);
                 }
             }
 
@@ -3018,6 +3116,10 @@ if (btnRunRealEstateSync) {
                     });
                 }
             } finally {
+                if (activeSyncLogger) {
+                    activeSyncLogger.flush();
+                    activeSyncLogger = null;
+                }
                 isSyncCollecting = false;
                 syncAbortController = null;
                 if (btnStopSync) btnStopSync.style.display = 'none';
@@ -3068,7 +3170,9 @@ if (btnRunRealEstateMaster) {
             if (container) container.style.display = 'block';
             if (logEl) logEl.innerHTML = '';
 
-            // NDJSON 스트리밍 로그 수신 헬퍼
+            activeMasterLogger = createBatchLogger(logEl, 400);
+
+            // NDJSON 스트리밍 로그 수신 헬퍼 (UI 멈춤 방지 및 비동기 양보 적용)
             async function consumeNdjsonStream(response, onLog, onPercent) {
                 if (!response.body || !response.body.getReader) {
                     return await response.json();
@@ -3082,6 +3186,7 @@ if (btnRunRealEstateMaster) {
                 const decoder = new TextDecoder('utf-8');
                 let buffer = '';
                 let finalResult = null;
+                let lastYieldTime = performance.now();
 
                 while (true) {
                     const { done, value } = await reader.read();
@@ -3108,6 +3213,13 @@ if (btnRunRealEstateMaster) {
                             console.warn('NDJSON line parse warning:', pErr, trimmed);
                         }
                     }
+
+                    // 브라우저 UI 스레드가 페인트 및 사용자 입력을 처리할 수 있도록 16ms마다 제어권 양보
+                    const now = performance.now();
+                    if (now - lastYieldTime > 16) {
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                        lastYieldTime = performance.now();
+                    }
                 }
 
                 if (buffer.trim()) {
@@ -3130,9 +3242,8 @@ if (btnRunRealEstateMaster) {
             }
 
             function logMasterMsg(msg) {
-                if (logEl) {
-                    logEl.innerHTML += `[${getFormattedLogTime()}] ${msg}<br>`;
-                    logEl.scrollTop = logEl.scrollHeight;
+                if (activeMasterLogger) {
+                    activeMasterLogger.log(msg);
                 }
             }
 
@@ -3274,6 +3385,10 @@ if (btnRunRealEstateMaster) {
                     });
                 }
             } finally {
+                if (activeMasterLogger) {
+                    activeMasterLogger.flush();
+                    activeMasterLogger = null;
+                }
                 isMasterCollecting = false;
                 masterAbortController = null;
                 if (btnStopMaster) btnStopMaster.style.display = 'none';
