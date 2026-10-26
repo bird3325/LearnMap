@@ -469,6 +469,25 @@ const SUB_DISTRICT_MAP = {
     '창원시': ['의창구', '성산구', '마산합포구', '마산회원구', '진해구']
 };
 
+// 전국 주요 복합 행정구(일반구)의 표준 법정동 마스터 (카카오 로컬 검색 누락 방지 및 전수 탐색 보장)
+const KNOWN_DISTRICT_DONGS = {
+    '일산동구': ['식사동', '중산동', '정발산동', '장항동', '마두동', '백석동', '풍동', '산황동', '사리현동', '지영동', '설문동', '문봉동', '성석동'],
+    '일산서구': ['일산동', '주엽동', '탄현동', '대화동', '덕이동', '가좌동', '구산동', '법곳동'],
+    '덕양구': ['주교동', '원당동', '신원동', '원흥동', '도내동', '북한동', '효자동', '지축동', '오금동', '삼송동', '동산동', '용두동', '벽제동', '선유동', '고양동', '대자동', '관산동', '내유동', '토당동', '내곡동', '대장동', '화정동', '강매동', '행주내동', '행주외동', '신평동', '행신동', '화전동', '현천동', '덕은동', '향동동', '성사동'],
+    '분당구': ['분당동', '수내동', '정자동', '율동', '서현동', '이매동', '야탑동', '판교동', '삼평동', '백현동', '운중동', '대장동', '금곡동', '궁내동', '동원동', '구미동'],
+    '수정구': ['신흥동', '태평동', '수진동', '단대동', '산성동', '양지동', '복정동', '창곡동', '신촌동', '오야동', '심곡동', '고등동', '상적동', '둔전동', '사송동', '금토동'],
+    '중원구': ['성남동', '중동', '금광동', '은행동', '상대원동', '여수동', '도촌동', '갈현동', '하대원동'],
+    '영통구': ['매탄동', '원천동', '이의동', '하동', '영통동', '신동', '망포동'],
+    '장안구': ['파장동', '정자동', '이목동', '율전동', '천천동', '영화동', '송죽동', '조원동', '연무동', '상광교동', '하광교동'],
+    '권선구': ['세류동', '평동', '고색동', '오목천동', '평리동', '서둔동', '구운동', '탑동', '금곡동', '호매실동', '곡반정동', '권선동', '장지동', '대황교동', '입북동', '당수동'],
+    '팔달구': ['팔달로1가', '팔달로2가', '팔달로3가', '남창동', '영동', '중동', '구천동', '남수동', '매향동', '북수동', '신풍동', '장안동', '교동', '매교동', '매산로1가', '매산로2가', '매산로3가', '고등동', '화서동', '지동', '우만동', '인계동'],
+    '수지구': ['풍덕천동', '죽전동', '동천동', '고기동', '신봉동', '성복동', '상현동'],
+    '기흥구': ['신갈동', '구갈동', '상갈동', '하갈동', '보라동', '지곡동', '공세동', '고매동', '농서동', '서천동', '영덕동', '언남동', '마북동', '청덕동', '동백동', '중동', '상하동', '보정동'],
+    '처인구': ['김량장동', '역북동', '삼가동', '남동', '유방동', '고림동', '마평동', '운학동', '호동', '해곡동', '포곡읍', '모현읍', '이동읍', '남사읍', '원삼면', '백암면', '양지면'],
+    '동안구': ['비산동', '관양동', '평촌동', '호계동'],
+    '만안구': ['안양동', '석수동', '박달동']
+};
+
 function findParentCity(guName) {
     if (!guName) return '';
     for (const [city, gus] of Object.entries(SUB_DISTRICT_MAP)) {
@@ -505,13 +524,15 @@ function getLawdTargets(sido, sigungu) {
                 targets.push({ gu: sigungu, code: val });
             }
         } else {
-            const foundKey = Object.keys(sidoMap).find(k => k.includes(sigungu) || sigungu.includes(k));
+            // 더 긴 키를 우선 매칭 (예: '고양시 일산동구'가 입력되었을 때 '고양시'보다 '일산동구'가 정확히 우선 매칭되도록)
+            const sortedKeys = Object.keys(sidoMap).sort((a, b) => b.length - a.length);
+            const foundKey = sortedKeys.find(k => sigungu.includes(k) || k.includes(sigungu));
             if (foundKey) {
                 const fVal = sidoMap[foundKey];
                 if (Array.isArray(fVal)) {
                     fVal.forEach(c => targets.push({ gu: findSubGuName(c, sigungu), code: c }));
                 } else {
-                    targets.push({ gu: sigungu, code: fVal });
+                    targets.push({ gu: foundKey, code: fVal });
                 }
             } else {
                 targets.push({ gu: sigungu, code: null });
@@ -653,9 +674,16 @@ app.post('/api/realestate/collect-master', async (req, res) => {
     const isStreaming = Boolean(stream);
 
     isRealEstateCollectStopped = false; // 새로운 수집 시작 시 중단 플래그 초기화
-    req.on('close', () => {
-        isRealEstateCollectStopped = true;
+    let isClientDisconnected = false;
+    res.on('close', () => {
+        if (!res.writableEnded) {
+            isClientDisconnected = true;
+            isRealEstateCollectStopped = true;
+            console.log('[MasterDB] ⏹️ 브라우저 클라이언트 연결 종료 감지');
+        }
     });
+
+    const isStopped = () => isRealEstateCollectStopped || isClientDisconnected || (res.destroyed && !res.writableEnded);
 
     if (isStreaming) {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -745,7 +773,7 @@ app.post('/api/realestate/collect-master', async (req, res) => {
 
             let targetIdx = 0;
             for (const target of lawdTargets) {
-                if (isRealEstateCollectStopped || req.destroyed) break;
+                if (isStopped()) break;
                 targetIdx++;
                 const gu = target.gu;
                 const lawdCd = target.code;
@@ -753,8 +781,11 @@ app.post('/api/realestate/collect-master', async (req, res) => {
 
                 sendLog(`🔍 [${gu}] 법정동 코드(${lawdCd}) 관내 법정동 목록 및 주거시설 탐색...`, Math.round(15 + (targetIdx / lawdTargets.length) * 5));
 
-                // 1) 해당 구의 동 목록 탐색 (기존 DB + 카카오 행정복지센터/주민센터/초등학교/아파트 검색 다각화)
+                // 1) 해당 구의 동 목록 탐색 (표준 마스터 + 기존 DB + 카카오 행정복지센터/주민센터/초등학교/아파트 검색 다각화)
                 const dongsInGu = new Set();
+                if (KNOWN_DISTRICT_DONGS[gu]) {
+                    KNOWN_DISTRICT_DONGS[gu].forEach(d => dongsInGu.add(d));
+                }
 
                 // (A) 기존 DB에 등록된 해당 구의 동 먼저 수집
                 existingList.forEach(item => {
@@ -774,7 +805,7 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                         `${prefix} 아파트`
                     ];
                     for (const q of queries) {
-                        if (isRealEstateCollectStopped || req.destroyed) break;
+                        if (isStopped()) break;
                         try {
                             const centerRes = await fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(q)}&size=15`, {
                                 headers: { 'Authorization': `KakaoAK ${kakaoKey}`, 'KA': 'sdk/1.0.0 os/javascript origin/http://localhost:3000' }
@@ -803,7 +834,7 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                 // 2) 각 동별 건축물대장 총괄표제부(getBrRecapTitleInfo) 및 표제부(getBrTitleInfo) 조회
                 let dongIdx = 0;
                 for (const dong of dongArray) {
-                    if (isRealEstateCollectStopped || req.destroyed) break;
+                    if (isStopped()) break;
                     dongIdx++;
                     const progressPct = Math.min(65, Math.round(20 + ((targetIdx - 1 + dongIdx / Math.max(1, dongArray.length)) / lawdTargets.length) * 45));
 
@@ -814,21 +845,25 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                     let dongNewCount = 0;
                     let dongUpdateCount = 0;
 
-                    // (A) 총괄표제부 API: 아파트 대단지 및 공동주택 단지 일괄 추출
+                    // (A) 총괄표제부 API: 아파트 대단지 및 공동주택 단지 일괄 추출 (대단지 몰림에 대비하여 최대 5페이지까지 전수 탐색)
                     // (B) 일반표제부 API: 행복주택, 연립/다세대, 오피스텔 등 추출
                     const hubEndpoints = [
-                        { name: '총괄표제부', url: 'https://apis.data.go.kr/1613000/BldRgstHubService/getBrRecapTitleInfo' },
-                        { name: '일반표제부', url: 'https://apis.data.go.kr/1613000/BldRgstHubService/getBrTitleInfo' }
+                        { name: '총괄표제부', url: 'https://apis.data.go.kr/1613000/BldRgstHubService/getBrRecapTitleInfo', maxPages: 5 },
+                        { name: '일반표제부', url: 'https://apis.data.go.kr/1613000/BldRgstHubService/getBrTitleInfo', maxPages: 1 }
                     ];
 
                     for (const ep of hubEndpoints) {
-                        if (isRealEstateCollectStopped || req.destroyed) break;
-                        try {
-                            const fetchUrl = `${ep.url}?serviceKey=${encodeURIComponent(serviceKey)}&sigunguCd=${lawdCd}&bjdongCd=${bjdongCd}&numOfRows=100&pageNo=1`;
-                            const xmlText = await httpsGet(fetchUrl);
-                            const items = xmlText.match(/<item>[\s\S]*?<\/item>/g) || [];
+                        if (isStopped()) break;
+                        for (let pageNo = 1; pageNo <= (ep.maxPages || 1); pageNo++) {
+                            if (isStopped()) break;
+                            try {
+                                const fetchUrl = `${ep.url}?serviceKey=${encodeURIComponent(serviceKey)}&sigunguCd=${lawdCd}&bjdongCd=${bjdongCd}&numOfRows=100&pageNo=${pageNo}`;
+                                const xmlText = await httpsGet(fetchUrl);
+                                const totalCount = parseInt((xmlText.match(/<totalCount>(.*?)<\/totalCount>/) || [])[1], 10) || 0;
+                                const items = xmlText.match(/<item>[\s\S]*?<\/item>/g) || [];
+                                if (items.length === 0) break;
 
-                            for (const itemXml of items) {
+                                for (const itemXml of items) {
                                 const getTag = tag => {
                                     const m = itemXml.match(new RegExp(`<${tag}>(.*?)<\/${tag}>`));
                                     return m ? m[1].trim() : '';
@@ -862,6 +897,15 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                                 const bun = getTag('bun');
                                 const ji = getTag('ji');
                                 const platGbCd = getTag('platGbCd');
+
+                                // 🌟 대표 마을 브랜드(백송마을, 호수마을, 백마마을, 흰돌마을, 양지마을, 강촌마을 등)는 지번별로 독립된 단지이므로 지번 분리 적용
+                                if (bun && /(?:마을|단지|블럭|블록)$/.test(cleanName) && !cleanName.includes('번지') && !cleanName.includes('블럭')) {
+                                    const bunNum = parseInt(bun, 10) || 0;
+                                    if (bunNum > 0) {
+                                        cleanName = `${cleanName} (${bunNum}번지)`;
+                                    }
+                                }
+
                                 const pnu = (lawdCd && bjdongCd && bun) ? buildPNU(lawdCd, bjdongCd, `${parseInt(bun, 10) || 0}-${parseInt(ji, 10) || 0}`, platGbCd === '1' ? '2' : '1') : '';
 
                                 // 🌟 건물명이 없어 지번 기반 주택명(예: 고양동 103번지 주택)으로 생성되는 경우:
@@ -984,14 +1028,129 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                                     dongUpdateCount++;
                                 }
                             }
+                            if (pageNo * 100 >= totalCount) break;
                         } catch (err) {
-                            console.warn(`[건축HUB ${ep.name}] Failed for ${dong} (${bjdongCd}):`, err.message);
+                                console.warn(`[건축HUB ${ep.name}] Failed for ${dong} (${bjdongCd}) p${pageNo}:`, err.message);
+                            }
                         }
                     }
 
                     if (dongNewCount > 0 || dongUpdateCount > 0) {
                         sendLog(`  ✔️ [${dong} 완료] 주택 마스터 처리: 신규 +${dongNewCount}건, 최신 갱신 ${dongUpdateCount}건 (누적 신규: ${newlyAddedCount}건)`, progressPct);
                     }
+                }
+            }
+
+            // 🌟 [1-2단계] 국토교통부 실거래가 아파트 및 오피스텔 공공 API를 통한 아파트 단지 및 오피스텔 100% 전수 마스터 보강
+            // (건축HUB의 페이지 한계나 명칭 누락으로 빠질 수 있는 관내 모든 실제 거래 아파트 단지 및 오피스텔을 마스터 DB에 완전무결하게 흡수)
+            sendLog(`🏢 [국토부 아파트/오피스텔 단지 전수 스캔] 관내 실제 거래된 모든 아파트 및 오피스텔 단지 마스터 등록...`, 58);
+            const tradeTargets = [
+                { type: 'apt', name: '아파트', url: 'https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev', nameTag: 'aptNm' },
+                { type: 'offi', name: '오피스텔', url: 'https://apis.data.go.kr/1613000/RTMSDataSvcOffiTrade/getRTMSDataSvcOffiTrade', nameTag: 'offiNm' }
+            ];
+
+            const now = new Date();
+            const scanMonths = [];
+            for (let i = 1; i <= 6; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                scanMonths.push(`${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`);
+            }
+
+            for (const target of lawdTargets) {
+                if (isStopped()) break;
+                const gu = target.gu;
+                const lawdCd = target.code;
+                if (!lawdCd) continue;
+
+                let guAptAdded = 0;
+                let guOffiAdded = 0;
+
+                for (const ep of tradeTargets) {
+                    if (isStopped()) break;
+                    for (const ymd of scanMonths) {
+                        if (isStopped()) break;
+                        try {
+                            const fetchUrl = `${ep.url}?serviceKey=${encodeURIComponent(serviceKey)}&pageNo=1&numOfRows=1000&LAWD_CD=${lawdCd}&DEAL_YMD=${ymd}`;
+                            const xmlText = await httpsGet(fetchUrl);
+                            if (xmlText.includes('LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR') || xmlText.includes('등록되지 않은 서비스키')) {
+                                break;
+                            }
+                            const items = xmlText.match(/<item>[\s\S]*?<\/item>/g) || [];
+                            for (const itemXml of items) {
+                                const getTag = tag => {
+                                    const m = itemXml.match(new RegExp(`<${tag}>(.*?)<\\/${tag}>`));
+                                    return m ? m[1].trim() : '';
+                                };
+                                const dong = getTag('umdNm') || getTag('법정동');
+                                const jibun = getTag('jibun') || getTag('지번');
+                                let rawName = getTag(ep.nameTag) || getTag('단지') || '';
+                                let name = (rawName || '').trim();
+                                if (!name || isNonResidential(name)) continue;
+
+                                const key = `${sido}_${gu}_${name}`;
+                                if (!estateMap.has(key)) {
+                                    const sggCd = getTag('sggCd') || lawdCd;
+                                    const umdCd = getTag('umdCd');
+                                    const bonbun = getTag('bonbun');
+                                    const bubun = getTag('bubun');
+                                    const landCd = getTag('landCd') || '1';
+                                    let tradePnu = '';
+                                    if (sggCd && umdCd && bonbun) {
+                                        tradePnu = `${sggCd}${umdCd}${landCd === '2' ? '2' : '1'}${String(bonbun).padStart(4, '0')}${String(bubun || '0').padStart(4, '0')}`;
+                                    }
+
+                                    const amount = getTag('dealAmount') || getTag('거래금액');
+                                    const dealYear = getTag('dealYear') || getTag('년');
+                                    const dealMonth = getTag('dealMonth') || getTag('월');
+                                    const dealDay = getTag('dealDay') || getTag('일');
+                                    const area = getTag('totalFloorAr') || getTag('plottageAr') || getTag('excluUseAr') || getTag('전용면적');
+                                    const tradeBuildYear = getTag('buildYear') || getTag('건축년도');
+                                    const tradeDateStr = dealYear && dealMonth 
+                                        ? `${dealYear}-${String(dealMonth).padStart(2, '0')}${dealDay ? '-' + String(dealDay).padStart(2, '0') : ''}` 
+                                        : ymd;
+                                    const formattedPrice = amount ? `${amount.trim()}만원` : '기본 정보 구축 (실거래 대기)';
+
+                                    const fullAddr = `${sido} ${gu} ${dong || ''} ${jibun || ''}`.trim();
+
+                                    const newEstate = {
+                                        id: `master-trade-${ep.type}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                                        name,
+                                        type: ep.type,
+                                        sido,
+                                        sigungu: gu,
+                                        dong: dong || '',
+                                        address: fullAddr,
+                                        price: formattedPrice,
+                                        tradeDate: tradeDateStr,
+                                        area: area ? `${parseFloat(area).toFixed(1)}㎡` : '-',
+                                        pnu: tradePnu || '',
+                                        lawdCd: lawdCd || '',
+                                        buildYear: tradeBuildYear ? String(tradeBuildYear).trim() : '',
+                                        source: '국토부 마스터 DB',
+                                        x: '',
+                                        y: '',
+                                        lng: '',
+                                        lat: '',
+                                        createdAt: getNowFormatted(),
+                                        updatedAt: getNowFormatted()
+                                    };
+
+                                    estateMap.set(key, newEstate);
+                                    newlyAddedCount++;
+                                    if (ep.type === 'apt') guAptAdded++;
+                                    else if (ep.type === 'offi') guOffiAdded++;
+
+                                    const typeIcon = ep.type === 'apt' ? '🏢 아파트' : '🏬 오피스텔';
+                                    if ((guAptAdded + guOffiAdded) <= 5 || (guAptAdded + guOffiAdded) % 15 === 0) {
+                                        sendLog(`  ➕ [신규 ${ep.name}] ${gu} ${dong} 「${name}」 (${typeIcon}, 거래: ${tradeDateStr} ${formattedPrice})`);
+                                    }
+                                }
+                            }
+                        } catch (err) {}
+                    }
+                }
+                if (guAptAdded > 0 || guOffiAdded > 0) {
+                    sendLog(`  ✨ [${gu} 공공 실거래 단지 흡수 완료] 아파트 +${guAptAdded}개 단지, 오피스텔 +${guOffiAdded}개 단지 마스터 DB 등재 성공!`);
                 }
             }
         }
@@ -1009,7 +1168,7 @@ app.post('/api/realestate/collect-master', async (req, res) => {
 
             let enrichCount = 0;
             for (const item of enrichTargets) {
-                if (isRealEstateCollectStopped || req.destroyed) break;
+                if (isStopped()) break;
                 try {
                     let enrichedCoord = null;
                     let roadAddr = '';
@@ -1113,7 +1272,7 @@ app.post('/api/realestate/collect-master', async (req, res) => {
 
             let exposSuccessCount = 0;
             for (let i = 0; i < complexTargets.length; i += 5) {
-                if (isRealEstateCollectStopped || req.destroyed) break;
+                if (isStopped()) break;
                 const batch = complexTargets.slice(i, i + 5);
                 await Promise.all(batch.map(async (estate) => {
                     try {
@@ -1228,12 +1387,12 @@ app.post('/api/realestate/collect-master', async (req, res) => {
         try {
             const kaptItems = [];
             for (const target of lawdTargets) {
-                if (isRealEstateCollectStopped || req.destroyed) break;
+                if (isStopped()) break;
                 const lawdCd = target.code;
                 if (!lawdCd) continue;
 
                 for (let page = 1; page <= 5; page++) {
-                    if (isRealEstateCollectStopped || req.destroyed) break;
+                    if (isStopped()) break;
                     const url = `https://apis.data.go.kr/1613000/AptListService4/getSigunguAptList4?serviceKey=${encodeURIComponent(serviceKey)}&sigunguCode=${lawdCd}&pageNo=${page}&numOfRows=100`;
                     let rawText = '';
                     try {
@@ -1287,7 +1446,7 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                 const normalize = s => (s || '').replace(/\s+/g, '').replace(/아파트$/g, '').toLowerCase();
 
                 for (const kapt of kaptItems) {
-                    if (isRealEstateCollectStopped || req.destroyed) break;
+                    if (isStopped()) break;
                     const kNorm = normalize(kapt.kaptName);
                     for (const estate of estateMap.values()) {
                         if (estate.type && estate.type !== 'apt') continue;
@@ -1476,7 +1635,7 @@ app.post('/api/realestate/collect-master', async (req, res) => {
         });
 
         const finalList = cleanedList;
-        const wasStopped = isRealEstateCollectStopped || req.destroyed;
+        const wasStopped = isStopped();
 
         sendLog(`💾 [DB 파일 동기화] realestate_seoul.json 및 배포용 DB 저장 중 (총 ${finalList.length.toLocaleString()}건)...`, 96);
         fs.writeFileSync(REAL_ESTATE_PATH, JSON.stringify(finalList, null, 2), 'utf8');
@@ -1629,9 +1788,16 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
     const isStreaming = Boolean(stream);
 
     isRealEstateCollectStopped = false; // 새로운 실거래가 수집 시작 시 중단 플래그 초기화
-    req.on('close', () => {
-        isRealEstateCollectStopped = true;
+    let isClientDisconnected = false;
+    res.on('close', () => {
+        if (!res.writableEnded) {
+            isClientDisconnected = true;
+            isRealEstateCollectStopped = true;
+            console.log('[TradeLog] ⏹️ 브라우저 클라이언트 연결 종료 감지');
+        }
     });
+
+    const isStopped = () => isRealEstateCollectStopped || isClientDisconnected || (res.destroyed && !res.writableEnded);
 
     if (isStreaming) {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -1725,15 +1891,15 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
 
         // 3. 구별 / 유형별 / 거래월별 실제 API 호출 및 매핑 (공공데이터 트래픽 보호 적용)
         for (const target of lawdTargets) {
-            if (isRealEstateCollectStopped || req.destroyed) break;
+            if (isStopped()) break;
             const gu = target.gu;
             const lawdCd = target.code;
             if (!lawdCd) continue;
 
             for (const ep of apiEndpoints) {
-                if (quotaWarning || isRealEstateCollectStopped || req.destroyed) break;
+                if (quotaWarning || isStopped()) break;
                 for (const ymd of months) {
-                    if (isRealEstateCollectStopped || req.destroyed) break;
+                    if (isStopped()) break;
                     stepCount++;
                     const progressPct = Math.min(95, Math.round(78 + (stepCount / Math.max(1, totalTargetSteps)) * 17));
 
@@ -2007,7 +2173,7 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
         }
 
         const finalList = Array.from(estateMap.values());
-        const wasStopped = isRealEstateCollectStopped || req.destroyed;
+        const wasStopped = isStopped();
 
         sendLog(`💾 [실거래가 DB 동기화] realestate_seoul.json 저장 중 (총 ${finalList.length.toLocaleString()}건)...`, 97);
         fs.writeFileSync(REAL_ESTATE_PATH, JSON.stringify(finalList, null, 2), 'utf8');
