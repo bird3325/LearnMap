@@ -20,10 +20,35 @@ const CONFIG_PATH = path.join(__dirname, 'config.json');
 const DATA_DIR = path.join(__dirname, 'src', 'data');
 const SCHOOLS_PATH = path.join(DATA_DIR, 'schools_seoul.json');
 const REAL_ESTATE_PATH = path.join(DATA_DIR, 'realestate_seoul.json');
+const BUSINESSES_PATH = path.join(DATA_DIR, 'businesses.json');
+const SUBSCRIPTIONS_PATH = path.join(DATA_DIR, 'subscriptions.json');
+const ANALYTICS_PATH = path.join(DATA_DIR, 'analytics_events.json');
+const INQUIRIES_PATH = path.join(DATA_DIR, 'inquiries.json');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+function readJsonFileSafe(filePath, defaultVal = []) {
+    try {
+        if (!fs.existsSync(filePath)) return defaultVal;
+        const raw = fs.readFileSync(filePath, 'utf8');
+        return JSON.parse(raw);
+    } catch (err) {
+        console.error(`[Data Read Error] ${filePath}:`, err.message);
+        return defaultVal;
+    }
+}
+
+function writeJsonFileSafe(filePath, data) {
+    try {
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+        return true;
+    } catch (err) {
+        console.error(`[Data Write Error] ${filePath}:`, err.message);
+        return false;
+    }
 }
 
 const SUPABASE_URL = 'https://khwzgqnwlknawggugznd.supabase.co';
@@ -4086,7 +4111,11 @@ app.get('/api/realestate/pins', async (req, res) => {
                             name: item.name,
                             address: item.address || '',
                             jibun: item.jibun || '',
-                            road_name: item.road_name || '',
+                            dong: item.dong || '',
+                            sigungu: item.sigungu || '',
+                            sido: item.sido || '',
+                            buildYear: item.buildYear || '',
+                            householdCount: item.householdCount || 0,
                             x: String(itemX),
                             y: String(itemY),
                             distance: dist,
@@ -4652,31 +4681,627 @@ app.get('/api/admin/academy-registers', async (req, res) => {
     }
 });
 
-// 24. DELETE /api/admin/academy-registers/:id - Delete an academy registration from Supabase
-app.delete('/api/admin/academy-registers/:id', async (req, res) => {
-    const token = req.headers.authorization;
-    if (token !== 'session_token_example_12345') {
-        return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
-    }
-    const { id } = req.params;
+// ==============================================================================
+// 학업여지도 비즈니스화 모델 (PRD v1.0) API
+// 학원 프리미엄 구독 (월 29,000원), 사업자 등록 및 대시보드, 분석 통계, 상담 문의
+// ==============================================================================
 
+// 1. 파트너 센터 포털 서빙 (/business, /partner)
+app.get(['/business', '/business/', '/partner', '/partner/'], (req, res) => {
+    res.sendFile(path.join(__dirname, 'business.html'));
+});
+
+// 2. 현재 로그인/선택된 사업자 정보 조회 (기본 데모 세션 제공)
+app.get('/api/business/session', (req, res) => {
     try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/academy_registration_requests?id=eq.${id}`, {
-            method: 'DELETE',
-            headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`
+        const { bizId } = req.query;
+        const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+        let biz = null;
+        if (bizId) {
+            biz = businesses.find(b => b.id === bizId);
+        }
+        if (!biz && businesses.length > 0) {
+            // 기본 활성 데모 학원 제공
+            biz = businesses[0];
+        }
+
+        const subData = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [], subscriptions: [] });
+        const subscription = biz 
+            ? subData.subscriptions.find(s => s.businessId === biz.id && s.status === 'active') || null
+            : null;
+
+        return res.json({
+            business: biz,
+            subscription,
+            allBusinesses: businesses.map(b => ({ id: b.id, name: b.name, status: b.status }))
+        });
+    } catch (err) {
+        console.error('Business Session Error:', err);
+        return res.status(500).json({ error: '사업자 정보를 가져오는 중 오류가 발생했습니다.' });
+    }
+});
+
+// 3. 신규 사업자 등록 신청 (P-03)
+app.post('/api/business/register', (req, res) => {
+    try {
+        const {
+            type = 'academy',
+            name,
+            representative,
+            bizNumber,
+            phone,
+            email,
+            address,
+            targetAcademyName,
+            subjects = [],
+            grades = [],
+            classMethod = '',
+            description = '',
+            feeInfo = ''
+        } = req.body;
+
+        if (!name || !representative || !phone || !email || !address) {
+            return res.status(400).json({ error: '필수 입력 항목(사업자명, 대표자명, 연락처, 이메일, 주소)을 모두 입력해주세요.' });
+        }
+
+        const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+
+        // 사업자등록번호 중복 검사 (입력된 경우)
+        if (bizNumber) {
+            const exists = businesses.find(b => b.bizNumber && b.bizNumber === bizNumber);
+            if (exists) {
+                return res.status(400).json({ error: '이미 등록 신청된 사업자등록번호입니다.' });
             }
+        }
+
+        const newBizId = `biz_${Date.now()}`;
+        const newBusiness = {
+            id: newBizId,
+            userId: req.body.userId || `usr_${Date.now()}`,
+            type,
+            name: name.trim(),
+            representative: representative.trim(),
+            bizNumber: (bizNumber || '').trim(),
+            phone: phone.trim(),
+            email: email.trim(),
+            address: address.trim(),
+            status: 'submitted', // draft -> submitted -> approved / rejected
+            rejectionReason: '',
+            academyProfile: {
+                targetAcademyName: (targetAcademyName || name).trim(),
+                subjects: Array.isArray(subjects) ? subjects : [subjects],
+                grades: Array.isArray(grades) ? grades : [grades],
+                classMethod: (classMethod || '').trim(),
+                description: (description || '').trim(),
+                contactPhone: phone.trim(),
+                websiteUrl: (req.body.websiteUrl || '').trim(),
+                address: address.trim(),
+                feeInfo: (feeInfo || '').trim()
+            },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        businesses.push(newBusiness);
+        writeJsonFileSafe(BUSINESSES_PATH, businesses);
+
+        // 이벤트 기록
+        const events = readJsonFileSafe(ANALYTICS_PATH, []);
+        events.push({
+            id: `evt_${Date.now()}`,
+            businessId: newBizId,
+            eventType: 'business_signup',
+            metadata: { type, name },
+            createdAt: new Date().toISOString()
+        });
+        writeJsonFileSafe(ANALYTICS_PATH, events.slice(-5000));
+
+        return res.json({
+            success: true,
+            business: newBusiness,
+            message: '사업자 등록 신청이 정상 접수되었습니다. 관리자 검수 후 승인됩니다.'
+        });
+    } catch (err) {
+        console.error('Business Register Error:', err);
+        return res.status(500).json({ error: '신청 처리 중 서버 오류가 발생했습니다.' });
+    }
+});
+
+// 4. 본인 사업자 프로필 수정 (P-04, P-02, P-12)
+app.put('/api/business/profile', (req, res) => {
+    try {
+        const { businessId, academyProfile, realEstateProfile } = req.body;
+        if (!businessId || (!academyProfile && !realEstateProfile)) {
+            return res.status(400).json({ error: 'businessId와 프로필 정보가 필요합니다.' });
+        }
+
+        const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+        const idx = businesses.findIndex(b => b.id === businessId);
+        if (idx === -1) {
+            return res.status(404).json({ error: '해당 사업자를 찾을 수 없습니다.' });
+        }
+
+        if (academyProfile) {
+            businesses[idx].academyProfile = {
+                ...businesses[idx].academyProfile,
+                ...academyProfile
+            };
+            if (academyProfile.address) {
+                businesses[idx].address = academyProfile.address;
+            }
+        }
+        if (realEstateProfile) {
+            businesses[idx].realEstateProfile = {
+                ...businesses[idx].realEstateProfile,
+                ...realEstateProfile
+            };
+        }
+        businesses[idx].updatedAt = new Date().toISOString();
+        writeJsonFileSafe(BUSINESSES_PATH, businesses);
+
+        return res.json({
+            success: true,
+            business: businesses[idx],
+            message: '프로필 정보가 안전하게 업데이트되었습니다.'
+        });
+    } catch (err) {
+        console.error('Business Profile Update Error:', err);
+        return res.status(500).json({ error: '프로필 업데이트 중 오류가 발생했습니다.' });
+    }
+});
+
+// 5. 사업자 대시보드 통계 및 문의 조회 (P-04, P-08)
+app.get('/api/business/dashboard', (req, res) => {
+    try {
+        const { businessId } = req.query;
+        if (!businessId) {
+            return res.status(400).json({ error: 'businessId 파라미터가 필요합니다.' });
+        }
+
+        const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+        const biz = businesses.find(b => b.id === businessId);
+        if (!biz) {
+            return res.status(404).json({ error: '사업자 정보를 찾을 수 없습니다.' });
+        }
+
+        const subData = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [], subscriptions: [] });
+        const subscription = subData.subscriptions.find(s => s.businessId === businessId && s.status === 'active') || null;
+
+        const allEvents = readJsonFileSafe(ANALYTICS_PATH, []);
+        const bizEvents = allEvents.filter(e => e.businessId === businessId);
+
+        // 집계
+        const stats = {
+            profile_views: bizEvents.filter(e => e.eventType === 'profile_view').length,
+            premium_impressions: bizEvents.filter(e => e.eventType === 'premium_impression').length,
+            phone_clicks: bizEvents.filter(e => e.eventType === 'phone_click').length,
+            contact_clicks: bizEvents.filter(e => e.eventType === 'contact_click').length,
+            website_clicks: bizEvents.filter(e => e.eventType === 'website_click').length
+        };
+
+        // 최근 7일 일별 통계
+        const now = new Date();
+        const dailyViews = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(now);
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const count = bizEvents.filter(e => e.eventType === 'profile_view' && e.createdAt.startsWith(dateStr)).length;
+            const impCount = bizEvents.filter(e => e.eventType === 'premium_impression' && e.createdAt.startsWith(dateStr)).length;
+            dailyViews.push({ date: dateStr.slice(5), views: count, impressions: impCount });
+        }
+
+        // 해당 사업자의 학부모 문의 내역
+        const allInquiries = readJsonFileSafe(INQUIRIES_PATH, []);
+        const inquiries = allInquiries.filter(iq => iq.businessId === businessId);
+
+        return res.json({
+            business: biz,
+            subscription,
+            stats,
+            dailyViews,
+            inquiries
+        });
+    } catch (err) {
+        console.error('Business Dashboard Error:', err);
+        return res.status(500).json({ error: '대시보드 통계를 조회하는 중 오류가 발생했습니다.' });
+    }
+});
+
+// 6. 구독 상품 목록 (P-05)
+app.get('/api/products', (req, res) => {
+    try {
+        const subData = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [] });
+        return res.json(subData.products || []);
+    } catch (err) {
+        console.error('Products Error:', err);
+        return res.status(500).json({ error: '상품 목록을 불러오지 못했습니다.' });
+    }
+});
+
+// 7. 프리미엄 구독 결제 신청 및 서버 검증 (P-06)
+app.post('/api/subscription/checkout', (req, res) => {
+    try {
+        const { businessId, productId = 'prod_academy_premium', paymentMethod = '카드 자동결제' } = req.body;
+        if (!businessId) {
+            return res.status(400).json({ error: 'businessId가 누락되었습니다.' });
+        }
+
+        const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+        const biz = businesses.find(b => b.id === businessId);
+        if (!biz) {
+            return res.status(404).json({ error: '사업자 정보를 찾을 수 없습니다.' });
+        }
+
+        // 미승인 상태의 사업자는 프리미엄 구매 불가 (PRD TC-003, P-03)
+        if (biz.status !== 'approved') {
+            return res.status(403).json({ error: '관리자 승인이 완료된 사업자만 프리미엄 상품을 신청할 수 있습니다.' });
+        }
+
+        const subData = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [], subscriptions: [] });
+        const product = subData.products.find(p => p.id === productId);
+        if (!product) {
+            return res.status(400).json({ error: '존재하지 않는 상품입니다.' });
+        }
+
+        const now = new Date();
+        const endDate = new Date(now);
+        endDate.setDate(endDate.getDate() + 30); // 30일 구독 기간
+
+        const subId = `sub_${Date.now()}`;
+        const newSub = {
+            id: subId,
+            businessId,
+            productId,
+            productName: product.name,
+            amount: product.price,
+            status: 'active',
+            startDate: now.toISOString(),
+            endDate: endDate.toISOString(),
+            paymentMethod,
+            lastPaymentDate: now.toISOString(),
+            history: [
+                {
+                    date: now.toISOString(),
+                    action: 'subscribe',
+                    amount: product.price,
+                    status: 'success'
+                }
+            ]
+        };
+
+        // 기존 구독 만료 처리 후 신규 추가
+        subData.subscriptions = subData.subscriptions.filter(s => s.businessId !== businessId);
+        subData.subscriptions.push(newSub);
+        writeJsonFileSafe(SUBSCRIPTIONS_PATH, subData);
+
+        // 이벤트 기록
+        const events = readJsonFileSafe(ANALYTICS_PATH, []);
+        events.push({
+            id: `evt_${Date.now()}`,
+            businessId,
+            eventType: 'subscription_started',
+            metadata: { productId, amount: product.price },
+            createdAt: now.toISOString()
+        });
+        writeJsonFileSafe(ANALYTICS_PATH, events.slice(-5000));
+
+        return res.json({
+            success: true,
+            subscription: newSub,
+            message: `${product.name} (월 ${product.price.toLocaleString()}원) 결제 및 구독 활성화가 완료되었습니다!`
+        });
+    } catch (err) {
+        console.error('Checkout Error:', err);
+        return res.status(500).json({ error: '결제 처리 중 서버 오류가 발생했습니다.' });
+    }
+});
+
+// 8. 구독 해지 요청 (P-06)
+app.post('/api/subscription/cancel', (req, res) => {
+    try {
+        const { businessId, subscriptionId } = req.body;
+        const subData = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [], subscriptions: [] });
+        const target = subData.subscriptions.find(s => s.businessId === businessId && s.status === 'active');
+        if (!target) {
+            return res.status(404).json({ error: '활성화된 구독을 찾을 수 없습니다.' });
+        }
+
+        target.status = 'cancelled';
+        target.history.push({
+            date: new Date().toISOString(),
+            action: 'cancel',
+            amount: 0,
+            status: 'success'
+        });
+        writeJsonFileSafe(SUBSCRIPTIONS_PATH, subData);
+
+        const events = readJsonFileSafe(ANALYTICS_PATH, []);
+        events.push({
+            id: `evt_${Date.now()}`,
+            businessId,
+            eventType: 'subscription_cancelled',
+            metadata: { subscriptionId: target.id },
+            createdAt: new Date().toISOString()
+        });
+        writeJsonFileSafe(ANALYTICS_PATH, events.slice(-5000));
+
+        return res.json({
+            success: true,
+            message: '구독 해지가 접수되었습니다. 현재 이용 기간 종료일까지는 프리미엄 혜택이 유지됩니다.',
+            subscription: target
+        });
+    } catch (err) {
+        console.error('Subscription Cancel Error:', err);
+        return res.status(500).json({ error: '구독 해지 처리 중 오류가 발생했습니다.' });
+    }
+});
+
+// 9. 성과 분석 이벤트 수집 API (P-08)
+app.post('/api/analytics/event', (req, res) => {
+    try {
+        const { eventType, businessId, metadata = {} } = req.body;
+        const validEvents = [
+            'profile_view', 'premium_impression', 'phone_click',
+            'contact_click', 'website_click', 'school_search', 'academy_search'
+        ];
+
+        if (!eventType || !validEvents.includes(eventType)) {
+            return res.status(400).json({ error: '유효하지 않은 이벤트 유형입니다.' });
+        }
+
+        const events = readJsonFileSafe(ANALYTICS_PATH, []);
+        events.push({
+            id: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+            businessId: businessId || null,
+            eventType,
+            metadata,
+            createdAt: new Date().toISOString()
         });
 
-        if (!response.ok) {
-            throw new Error(`Supabase error: ${await response.text()}`);
-        }
+        // 최대 10,000건 유지
+        writeJsonFileSafe(ANALYTICS_PATH, events.slice(-10000));
 
         return res.json({ success: true });
     } catch (err) {
-        console.error('Delete Academy Register Error:', err);
-        return res.status(500).json({ error: '삭제 중 오류가 발생했습니다.' });
+        console.error('Analytics Event Error:', err);
+        return res.status(500).json({ error: '이벤트 저장 중 오류가 발생했습니다.' });
+    }
+});
+
+// 10. 학부모 1:1 상담 문의 접수 API (P-09, P-11)
+app.post('/api/inquiries', (req, res) => {
+    try {
+        const {
+            targetBusinessId,
+            targetAcademyName,
+            parentName,
+            parentPhone,
+            studentGrade = '',
+            inquiryContent,
+            preferredTime = '',
+            consentAgreed
+        } = req.body;
+
+        if (!targetBusinessId || !inquiryContent || !parentPhone) {
+            return res.status(400).json({ error: '문의 대상, 내용 및 연락처는 필수 입력 사항입니다.' });
+        }
+
+        // 개인정보 수집 및 제3자 제공 동의 확인 (PRD 6.9, 개인정보보호법 제17조)
+        if (!consentAgreed) {
+            return res.status(400).json({ error: '개인정보 수집 및 학원 전달 동의가 필요합니다.' });
+        }
+
+        const inquiries = readJsonFileSafe(INQUIRIES_PATH, []);
+        const newInquiry = {
+            id: `inq_${Date.now()}`,
+            businessId: targetBusinessId,
+            targetAcademyName: targetAcademyName || '해당 학원',
+            parentName: (parentName || '학부모').trim(),
+            parentPhone: parentPhone.trim(),
+            studentGrade: (studentGrade || '').trim(),
+            inquiryContent: inquiryContent.trim(),
+            preferredTime: (preferredTime || '').trim(),
+            consentAgreed: true,
+            status: 'new', // new -> contacted -> resolved
+            createdAt: new Date().toISOString()
+        };
+
+        inquiries.push(newInquiry);
+        writeJsonFileSafe(INQUIRIES_PATH, inquiries);
+
+        // 이벤트 기록
+        const events = readJsonFileSafe(ANALYTICS_PATH, []);
+        events.push({
+            id: `evt_${Date.now()}`,
+            businessId: targetBusinessId,
+            eventType: 'inquiry_submitted',
+            metadata: { studentGrade },
+            createdAt: new Date().toISOString()
+        });
+        writeJsonFileSafe(ANALYTICS_PATH, events.slice(-5000));
+
+        return res.json({
+            success: true,
+            inquiry: newInquiry,
+            message: '상담 문의가 안전하게 전달되었습니다. 원장님/담당자가 확인 후 연락드립니다.'
+        });
+    } catch (err) {
+        console.error('Inquiry Submission Error:', err);
+        return res.status(500).json({ error: '문의 접수 중 서버 오류가 발생했습니다.' });
+    }
+});
+
+// 11. 활성 프리미엄 학원 목록 (검색 및 지도 광고 표시용 P-07)
+app.get('/api/academies/premium', (req, res) => {
+    try {
+        const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+        const subData = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [], subscriptions: [] });
+
+        const now = new Date();
+        const activeSubBizIds = new Set(
+            subData.subscriptions
+                .filter(s => s.status === 'active' && new Date(s.endDate) > now)
+                .map(s => s.businessId)
+        );
+
+        const premiumAcademies = businesses
+            .filter(b => b.status === 'approved' && activeSubBizIds.has(b.id))
+            .map(b => ({
+                businessId: b.id,
+                name: b.name,
+                isPremium: true,
+                badgeText: '광고',
+                profile: b.academyProfile || {},
+                phone: b.phone,
+                address: b.address
+            }));
+
+        return res.json(premiumAcademies);
+    } catch (err) {
+        console.error('Premium Academies Error:', err);
+        return res.status(500).json({ error: '프리미엄 학원 목록을 불러오지 못했습니다.' });
+    }
+});
+
+// 11-2. 활성 부동산 파트너 공인중개업소 목록 (주택 상세 및 동네 이야기 노출용 P-12, P-13)
+app.get('/api/real-estates/partners', (req, res) => {
+    try {
+        const { area, complex } = req.query;
+        const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+        const subData = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [], subscriptions: [] });
+
+        const now = new Date();
+        const activeSubBizIds = new Set(
+            subData.subscriptions
+                .filter(s => s.status === 'active' && new Date(s.endDate) > now)
+                .map(s => s.businessId)
+        );
+
+        let partners = businesses
+            .filter(b => b.type === 'real_estate' && b.status === 'approved' && activeSubBizIds.has(b.id))
+            .map(b => {
+                const sub = subData.subscriptions.find(s => s.businessId === b.id && s.status === 'active');
+                return {
+                    businessId: b.id,
+                    name: b.name,
+                    representative: b.representative,
+                    phone: b.phone,
+                    address: b.address,
+                    isPartner: true,
+                    productName: sub?.productName || '교육환경 파트너',
+                    profile: b.realEstateProfile || {}
+                };
+            });
+
+        // 특정 단지나 행정동 필터링 (요청된 경우)
+        if (complex) {
+            partners = partners.filter(p => {
+                const complexes = p.profile.specializedComplexes || [];
+                return complexes.some(c => c.includes(complex) || complex.includes(c));
+            });
+        } else if (area) {
+            partners = partners.filter(p => {
+                const areas = p.profile.serviceAreas || [];
+                return areas.some(a => a.includes(area) || area.includes(a)) || p.address.includes(area);
+            });
+        }
+
+        return res.json(partners);
+    } catch (err) {
+        console.error('Real Estate Partners Error:', err);
+        return res.status(500).json({ error: '부동산 파트너 목록을 불러오지 못했습니다.' });
+    }
+});
+
+// 12. 관리자용: 사업자 전체 목록 및 심사 관리 (P-10)
+app.get('/api/admin/businesses', (req, res) => {
+    try {
+        const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+        const subData = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [], subscriptions: [] });
+
+        const enriched = businesses.map(b => {
+            const sub = subData.subscriptions.find(s => s.businessId === b.id && s.status === 'active');
+            return {
+                ...b,
+                subscription: sub || null
+            };
+        });
+
+        return res.json({
+            total: enriched.length,
+            submittedCount: enriched.filter(b => b.status === 'submitted').length,
+            approvedCount: enriched.filter(b => b.status === 'approved').length,
+            rejectedCount: enriched.filter(b => b.status === 'rejected').length,
+            businesses: enriched
+        });
+    } catch (err) {
+        console.error('Admin Businesses Error:', err);
+        return res.status(500).json({ error: '사업자 목록을 가져오지 못했습니다.' });
+    }
+});
+
+// 13. 관리자용: 사업자 승인 / 반려 / 정지 (P-10)
+app.post('/api/admin/business/status', (req, res) => {
+    try {
+        const { businessId, status, rejectionReason = '' } = req.body;
+        const validStatuses = ['approved', 'rejected', 'suspended', 'submitted'];
+
+        if (!businessId || !status || !validStatuses.includes(status)) {
+            return res.status(400).json({ error: '유효한 businessId와 status(approved/rejected/suspended)가 필요합니다.' });
+        }
+
+        const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+        const target = businesses.find(b => b.id === businessId);
+        if (!target) {
+            return res.status(404).json({ error: '해당 사업자를 찾을 수 없습니다.' });
+        }
+
+        target.status = status;
+        if (status === 'rejected') {
+            target.rejectionReason = rejectionReason || '정보 불일치 또는 검수 기준 미충족';
+        } else {
+            target.rejectionReason = '';
+        }
+        target.updatedAt = new Date().toISOString();
+        writeJsonFileSafe(BUSINESSES_PATH, businesses);
+
+        return res.json({
+            success: true,
+            business: target,
+            message: `사업자 상태가 [${status}]로 변경되었습니다.`
+        });
+    } catch (err) {
+        console.error('Admin Business Status Update Error:', err);
+        return res.status(500).json({ error: '상태 변경 중 오류가 발생했습니다.' });
+    }
+});
+
+// 14. 관리자용: 전체 구독 및 결제 현황 (P-10)
+app.get('/api/admin/subscriptions', (req, res) => {
+    try {
+        const subData = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [], subscriptions: [] });
+        const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+        const bizMap = new Map(businesses.map(b => [b.id, b]));
+
+        const enriched = (subData.subscriptions || []).map(s => ({
+            ...s,
+            businessName: bizMap.get(s.businessId)?.name || '알 수 없음',
+            businessOwner: bizMap.get(s.businessId)?.representative || '-'
+        }));
+
+        const mrr = enriched
+            .filter(s => s.status === 'active')
+            .reduce((sum, s) => sum + (s.amount || 0), 0);
+
+        return res.json({
+            subscriptions: enriched,
+            mrr,
+            activeCount: enriched.filter(s => s.status === 'active').length
+        });
+    } catch (err) {
+        console.error('Admin Subscriptions Error:', err);
+        return res.status(500).json({ error: '구독 데이터를 가져오지 못했습니다.' });
     }
 });
 

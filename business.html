@@ -1,0 +1,1894 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>학업여지도 파트너 센터</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏢</text></svg>">
+    
+    <!-- Google Fonts Inter & Pretendard -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #eff6ff;
+            --primary-border: #bfdbfe;
+            --success: #059669;
+            --success-light: #ecfdf5;
+            --warning: #d97706;
+            --warning-light: #fffbeb;
+            --danger: #dc2626;
+            --danger-light: #fef2f2;
+            --text-main: #0f172a;
+            --text-sub: #475569;
+            --text-muted: #94a3b8;
+            --bg-page: #f8fafc;
+            --bg-surface: #ffffff;
+            --border-color: #e2e8f0;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.03);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Pretendard', 'Noto Sans KR', 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Top Header */
+        header.top-navbar {
+            background: #ffffff;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .brand-logo-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .brand-icon {
+            font-size: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+        }
+
+        .brand-title-area h1 {
+            font-size: 17px;
+            font-weight: 800;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .partner-badge {
+            font-size: 11px;
+            font-weight: 700;
+            background: #1e293b;
+            color: #ffffff;
+            padding: 2px 7px;
+            border-radius: 6px;
+            letter-spacing: 0.5px;
+        }
+
+        .brand-title-area p {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .biz-switcher {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f1f5f9;
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            font-size: 13px;
+        }
+
+        .biz-switcher select {
+            border: none;
+            background: transparent;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .btn-link {
+            text-decoration: none;
+            color: var(--primary);
+            font-size: 13px;
+            font-weight: 600;
+            padding: 8px 14px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn-link:hover {
+            background: #eff6ff;
+        }
+
+        /* Hero Sub Header */
+        .hero-banner {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%);
+            color: #ffffff;
+            padding: 32px 24px;
+        }
+
+        .hero-banner-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .hero-title h2 {
+            font-size: 24px;
+            font-weight: 800;
+            margin-bottom: 6px;
+            letter-spacing: -0.3px;
+        }
+
+        .hero-title p {
+            font-size: 14px;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+
+        .hero-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            padding: 8px 16px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .hero-status-pill .indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ade80;
+            box-shadow: 0 0 8px #4ade80;
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs-bar {
+            background: #ffffff;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 73px;
+            z-index: 90;
+        }
+
+        .nav-tabs-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 16px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-sub);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary);
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            font-weight: 700;
+        }
+
+        /* Main Container */
+        main.main-body {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 24px 60px;
+            width: 100%;
+            flex: 1;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.25s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Cards & Grids */
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+
+        .metric-card {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            padding: 22px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: #e2e8f0;
+        }
+
+        .metric-card.primary::before { background: var(--primary); }
+        .metric-card.success::before { background: var(--success); }
+        .metric-card.warning::before { background: var(--warning); }
+
+        .metric-info h4 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: #0f172a;
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .metric-value .unit {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .metric-subtext {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        .metric-icon {
+            font-size: 24px;
+            width: 46px;
+            height: 46px;
+            background: #f8fafc;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Content Panel Card */
+        .panel-card {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 28px;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .panel-header h3 {
+            font-size: 16px;
+            font-weight: 700;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-header p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .panel-body {
+            padding: 24px;
+        }
+
+        /* Status Badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .badge-success { background: var(--success-light); color: var(--success); border: 1px solid #a7f3d0; }
+        .badge-primary { background: var(--primary-light); color: var(--primary); border: 1px solid var(--primary-border); }
+        .badge-warning { background: var(--warning-light); color: var(--warning); border: 1px solid #fde68a; }
+        .badge-danger { background: var(--danger-light); color: var(--danger); border: 1px solid #fecaca; }
+
+        /* Pricing Card Grid */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+            margin-top: 12px;
+        }
+
+        .pricing-card {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 32px 28px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transition: all 0.25s ease;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+            border-color: #cbd5e1;
+        }
+
+        .pricing-card.featured {
+            border: 2px solid var(--primary);
+            box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.15);
+        }
+
+        .pricing-badge-top {
+            position: absolute;
+            top: -12px;
+            right: 24px;
+            background: var(--primary);
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 4px 12px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+        }
+
+        .pricing-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .pricing-price {
+            font-size: 32px;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 14px 0 20px;
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .pricing-price .period {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .pricing-features {
+            list-style: none;
+            margin-bottom: 28px;
+            flex: 1;
+        }
+
+        .pricing-features li {
+            font-size: 13.5px;
+            color: var(--text-sub);
+            padding: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px dashed #f1f5f9;
+        }
+
+        .pricing-features li::before {
+            content: '✓';
+            color: var(--primary);
+            font-weight: 800;
+            font-size: 14px;
+        }
+
+        /* Buttons & Forms */
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            text-decoration: none;
+            width: 100%;
+        }
+
+        .btn-primary-act {
+            background: var(--primary);
+            color: #ffffff;
+        }
+
+        .btn-primary-act:hover {
+            background: var(--primary-dark);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+        }
+
+        .btn-secondary-act {
+            background: #f1f5f9;
+            color: #1e293b;
+            border-color: #cbd5e1;
+        }
+
+        .btn-secondary-act:hover {
+            background: #e2e8f0;
+        }
+
+        .btn-danger-act {
+            background: #fff1f2;
+            color: var(--danger);
+            border-color: #fecdd3;
+        }
+
+        .btn-danger-act:hover {
+            background: #fee2e2;
+        }
+
+        /* Form Controls */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: #334155;
+            margin-bottom: 6px;
+        }
+
+        .form-group label span.req {
+            color: var(--danger);
+            margin-left: 2px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 13.5px;
+            color: #0f172a;
+            outline: none;
+            background: #ffffff;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        textarea.form-control {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        /* Inquiries Table */
+        .inquiry-item {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 14px;
+            background: #ffffff;
+            transition: all 0.2s;
+        }
+
+        .inquiry-item:hover {
+            border-color: #cbd5e1;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .inquiry-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .inquiry-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+        }
+
+        .inquiry-meta .name {
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .inquiry-meta .grade {
+            background: #f1f5f9;
+            padding: 2px 8px;
+            border-radius: 6px;
+            color: var(--text-sub);
+            font-size: 12px;
+        }
+
+        .inquiry-meta .time {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .inquiry-body {
+            font-size: 13.5px;
+            color: #334155;
+            line-height: 1.6;
+            background: #f8fafc;
+            padding: 12px 14px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .inquiry-foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12.5px;
+            color: var(--text-sub);
+        }
+
+        /* Toast Notice */
+        #toastNotice {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #1e293b;
+            color: #ffffff;
+            padding: 14px 22px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. Top Navbar -->
+    <header class="top-navbar">
+        <div class="header-inner">
+            <a href="/business" class="brand-logo-wrap">
+                <div class="brand-icon">🗺️</div>
+                <div class="brand-title-area">
+                    <h1>학업여지도 파트너 센터</h1>
+                    <p>지역 교육 마케팅 솔루션</p>
+                </div>
+            </a>
+
+            <div class="header-controls">
+                <div class="biz-switcher">
+                    <span>🏢 사업자:</span>
+                    <select id="bizSelector" onchange="switchBusiness(this.value)">
+                        <option value="">불러오는 중...</option>
+                    </select>
+                </div>
+                <a href="/" class="btn-link">🗺️ 학부모 지도 보기 ↗</a>
+                <a href="/admin" class="btn-link" style="color: #64748b;">⚙️ 관리자 콘솔</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 2. Hero Status Banner -->
+    <section class="hero-banner">
+        <div class="hero-banner-inner">
+            <div class="hero-title">
+                <h2 id="heroBizName">대치 탑클래스 수학학원</h2>
+                <p id="heroBizSub">대표자: 김학원 | 사업자등록번호: 123-45-67890 | 서울 강남구 대치동</p>
+            </div>
+            <div class="hero-status-pill" id="heroStatusPill">
+                <span class="indicator"></span>
+                <span id="heroStatusText">프리미엄 구독 이용 중</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. Navigation Tabs -->
+    <nav class="nav-tabs-bar">
+        <div class="nav-tabs-inner">
+            <button class="tab-btn active" data-tab="tab-dashboard" onclick="openTab('tab-dashboard')">
+                <span>📊</span><span>사업자 대시보드</span>
+            </button>
+            <button class="tab-btn" data-tab="tab-pricing" onclick="openTab('tab-pricing')">
+                <span>💎</span><span>프리미엄 상품 & 구독</span>
+            </button>
+            <button class="tab-btn" data-tab="tab-profile" onclick="openTab('tab-profile')">
+                <span>✏️</span><span id="tabProfileNavLabel">학원 프로필 관리</span>
+            </button>
+            <button class="tab-btn" data-tab="tab-register" onclick="openTab('tab-register')">
+                <span>📝</span><span>신규 사업자 등록 신청</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- 4. Main Body Content -->
+    <main class="main-body">
+
+        <!-- TAB 1: 사업자 대시보드 -->
+        <div id="tab-dashboard" class="tab-content active">
+            <!-- 핵심 성과 지표 (KPI) -->
+            <div class="metric-grid">
+                <div class="metric-card primary">
+                    <div class="metric-info">
+                        <h4>프로필 상세 조회</h4>
+                        <div class="metric-value"><span id="metricProfileViews">0</span><span class="unit">회</span></div>
+                        <div class="metric-subtext">학부모가 상세 페이지를 확인한 횟수</div>
+                    </div>
+                    <div class="metric-icon">👁️</div>
+                </div>
+
+                <div class="metric-card primary">
+                    <div class="metric-info">
+                        <h4>프리미엄 광고 노출</h4>
+                        <div class="metric-value"><span id="metricImpressions">0</span><span class="unit">회</span></div>
+                        <div class="metric-subtext">지도/검색 상단 스폰서 뱃지 노출</div>
+                    </div>
+                    <div class="metric-icon">📢</div>
+                </div>
+
+                <div class="metric-card success">
+                    <div class="metric-info">
+                        <h4>전화 문의 클릭</h4>
+                        <div class="metric-value"><span id="metricPhoneClicks">0</span><span class="unit">건</span></div>
+                        <div class="metric-subtext">상세 화면에서 전화걸기 버튼 클릭</div>
+                    </div>
+                    <div class="metric-icon">📞</div>
+                </div>
+
+                <div class="metric-card warning">
+                    <div class="metric-info">
+                        <h4>1:1 상담 문의 접수</h4>
+                        <div class="metric-value"><span id="metricInquiriesCount">0</span><span class="unit">건</span></div>
+                        <div class="metric-subtext">학부모가 전송한 입학/상담 요청</div>
+                    </div>
+                    <div class="metric-icon">💬</div>
+                </div>
+            </div>
+
+            <!-- 노출 통계 그래프 & 구독 현황 요약 -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 28px;">
+                <div class="panel-card" style="margin-bottom: 0;">
+                    <div class="panel-header">
+                        <div>
+                            <h3>📈 최근 7일간 노출 및 조회 트렌드</h3>
+                            <p>프리미엄 뱃지 노출 및 학부모 방문 추이를 실시간 분석합니다.</p>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <canvas id="viewsTrendChart" style="max-height: 240px; width: 100%;"></canvas>
+                    </div>
+                </div>
+
+                <div class="panel-card" style="margin-bottom: 0;">
+                    <div class="panel-header">
+                        <div>
+                            <h3>💳 현재 구독 상태</h3>
+                            <p>월간 멤버십</p>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; margin-bottom: 16px;">
+                            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">이용 상품</div>
+                            <div style="font-size: 17px; font-weight: 800; color: #0f172a;" id="dashSubProductName">학원 프리미엄 멤버십</div>
+                            <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
+                                <span style="font-size: 13px; color: var(--text-sub);">월 결제액</span>
+                                <span style="font-size: 15px; font-weight: 700; color: var(--primary);" id="dashSubAmount">29,000원</span>
+                            </div>
+                            <div style="margin-top: 6px; display: flex; align-items: center; justify-content: space-between;">
+                                <span style="font-size: 13px; color: var(--text-sub);">만료 예정일</span>
+                                <span style="font-size: 13px; font-weight: 600; color: #0f172a;" id="dashSubEndDate">2026-11-20</span>
+                            </div>
+                        </div>
+                        <button class="btn-action btn-secondary-act" onclick="openTab('tab-pricing')" style="font-size: 13px;">
+                            구독 상품 변경 및 관리 ➔
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 학부모 1:1 상담 문의 리스트 -->
+            <div class="panel-card">
+                <div class="panel-header">
+                    <div>
+                        <h3>📬 학부모 상담 및 입급 문의 접수 내역</h3>
+                        <p>학부모가 안심 번호와 자녀 학년을 남기고 상담을 요청한 목록입니다.</p>
+                    </div>
+                    <span class="badge badge-primary" id="inquiryCountBadge">2건 접수됨</span>
+                </div>
+                <div class="panel-body" id="inquiriesListContainer">
+                    <!-- Javascript 렌더링 -->
+                    <div style="text-align: center; color: var(--text-muted); padding: 30px;">문의 내역을 불러오는 중...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: 프리미엄 상품 & 구독 관리 -->
+        <div id="tab-pricing" class="tab-content">
+            <div class="panel-card">
+                <div class="panel-header">
+                    <div>
+                        <h3 id="pricingHeaderTitle">💎 학업여지도 비즈니스 멤버십 플랜</h3>
+                        <p id="pricingHeaderSub">지역 내 잠재 학부모 고객에게 사업자를 확실하게 각인시키고 직접적인 상담 문의를 유치하세요.</p>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <!-- 학원 전용 요금제 그리드 -->
+                    <div id="academyPricingGrid" class="pricing-grid">
+                        <!-- 무료 플랜 -->
+                        <div class="pricing-card">
+                            <div class="pricing-title">학원 무료 등록</div>
+                            <div style="font-size: 13px; color: var(--text-muted);">기본 검색 노출</div>
+                            <div class="pricing-price">
+                                0원 <span class="period">/ 평생 무료</span>
+                            </div>
+                            <ul class="pricing-features">
+                                <li>학원 기본 프로필 제공</li>
+                                <li>학업여지도 일반 검색 목록 노출</li>
+                                <li>기본 조회수 확인</li>
+                            </ul>
+                            <button class="btn-action btn-secondary-act" disabled style="opacity: 0.6; cursor: default;">
+                                현재 기본 적용됨
+                            </button>
+                        </div>
+
+                        <!-- 학원 프리미엄 (MVP 핵심) -->
+                        <div class="pricing-card featured">
+                            <div class="pricing-badge-top">BEST 추천 플랜</div>
+                            <div class="pricing-title" style="color: var(--primary);">학원 프리미엄 멤버십</div>
+                            <div style="font-size: 13px; color: var(--text-muted);">지역 타깃 학부모 집중 홍보 & 상담 유치</div>
+                            <div class="pricing-price">
+                                29,000원 <span class="period">/ 월 (VAT 포함)</span>
+                            </div>
+                            <ul class="pricing-features">
+                                <li><strong>지역·학교 검색 결과 상단 [스폰서/광고] 배지 노출</strong></li>
+                                <li><strong>학부모 1:1 안심 상담 문의 직접 연결 및 알림</strong></li>
+                                <li><strong>학원 상세 프로필 전체 커스텀 (과목·학년·수업방식·수강료)</strong></li>
+                                <li><strong>실시간 사업자 성과 통계 대시보드 제공</strong></li>
+                                <li>지도 마커 우선 가시성 지원</li>
+                            </ul>
+                            <div id="premiumSubActionArea">
+                                <button class="btn-action btn-primary-act" onclick="subscribePlan('prod_academy_premium')">
+                                    🚀 월 29,000원으로 프리미엄 시작하기
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 학원 마케팅 플러스 (후속) -->
+                        <div class="pricing-card">
+                            <div class="pricing-title">학원 마케팅 플러스</div>
+                            <div style="font-size: 13px; color: var(--text-muted);">인접 동네 확장 홍보 (후속 상품)</div>
+                            <div class="pricing-price">
+                                59,000원 <span class="period">/ 월</span>
+                            </div>
+                            <ul class="pricing-features">
+                                <li>프리미엄 모든 기능 기본 포함</li>
+                                <li>인접 3개 행정동 다지역 확장 배지 노출</li>
+                                <li>주간 학부모 관심사 심층 분석 리포트</li>
+                            </ul>
+                            <button class="btn-action btn-secondary-act" onclick="subscribePlan('prod_academy_plus')">
+                                마케팅 플러스 신청하기
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 부동산 중개업소 전용 요금제 그리드 -->
+                    <div id="realEstatePricingGrid" class="pricing-grid" style="display: none;">
+                        <!-- 부동산 무료 플랜 -->
+                        <div class="pricing-card">
+                            <div class="pricing-title">부동산 기본 등록</div>
+                            <div style="font-size: 13px; color: var(--text-muted);">중개사무소 기본 프로필</div>
+                            <div class="pricing-price">
+                                0원 <span class="period">/ 평생 무료</span>
+                            </div>
+                            <ul class="pricing-features">
+                                <li>중개사무소 기본 프로필 제공</li>
+                                <li>학업여지도 파트너 목록 기본 등록</li>
+                                <li>기본 조회수 확인</li>
+                            </ul>
+                            <button class="btn-action btn-secondary-act" disabled style="opacity: 0.6; cursor: default;">
+                                현재 기본 적용됨
+                            </button>
+                        </div>
+
+                        <!-- 부동산 교육환경 파트너 (BEST 추천 플랜) -->
+                        <div class="pricing-card featured">
+                            <div class="pricing-badge-top">BEST 추천 플랜</div>
+                            <div class="pricing-title" style="color: var(--primary);">부동산 교육환경 파트너</div>
+                            <div style="font-size: 13px; color: var(--text-muted);">단지 이야기 / 동네 이야기 학군 상담 우선 노출</div>
+                            <div class="pricing-price">
+                                99,000원 <span class="period">/ 월 (VAT 포함)</span>
+                            </div>
+                            <ul class="pricing-features">
+                                <li><strong>주택 단지 상세 및 동네 이야기 하단 단독 파트너 배너 노출</strong></li>
+                                <li><strong>학군 안심 전문 공인중개사 골드 인증 뱃지 부여</strong></li>
+                                <li><strong>학부모 1:1 학군 매물 상담 및 직통 전화 바로 연결</strong></li>
+                                <li><strong>단지별 실시간 학부모 조회수 및 상담 전환 통계 제공</strong></li>
+                                <li>담당 지역 내 전문 아파트 단지 다수 매핑 지원</li>
+                            </ul>
+                            <div id="reSubActionArea">
+                                <button class="btn-action btn-primary-act" onclick="subscribePlan('prod_re_partner')">
+                                    🚀 월 99,000원으로 교육환경 파트너 시작하기
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 부동산 지역 전문 (49,000원) -->
+                        <div class="pricing-card">
+                            <div class="pricing-title">부동산 지역 전문</div>
+                            <div style="font-size: 13px; color: var(--text-muted);">행정동 단위 학군 전문 공인중개사</div>
+                            <div class="pricing-price">
+                                49,000원 <span class="period">/ 월</span>
+                            </div>
+                            <ul class="pricing-features">
+                                <li>중개사무소 인증 프로필 제공</li>
+                                <li>동네 이야기 및 지역 검색 결과 스폰서 노출</li>
+                                <li>학부모 직통 전화 문의 연결 및 클릭 통계</li>
+                            </ul>
+                            <button class="btn-action btn-secondary-act" onclick="subscribePlan('prod_re_local')">
+                                지역 전문 신청하기
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 구독 안내 및 해지 정책 -->
+                    <div style="margin-top: 32px; padding: 20px; background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px; font-size: 13px; color: var(--text-sub); line-height: 1.6;">
+                        <strong>📌 구독 및 결제 안내</strong>
+                        <ul style="margin-top: 8px; padding-left: 18px;">
+                            <li>결제는 30일 주기로 자동 갱신되며, 언제든 대시보드에서 위약금 없이 즉시 해지 신청이 가능합니다.</li>
+                            <li>해지 신청 시 남은 이용 기간까지는 프리미엄 노출 혜택이 정상 유지되며, 이후 자동으로 무료 상태로 전환됩니다.</li>
+                            <li>공개 검수가 완료되지 않은 미승인 사업자는 결제를 진행할 수 없습니다 (관리자 사전 심사 원칙).</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: 프로필 상세 관리 (학원 / 부동산) -->
+        <div id="tab-profile" class="tab-content">
+            <div class="panel-card">
+                <div class="panel-header">
+                    <div>
+                        <h3 id="profHeaderTitle">✏️ 학원 상세 프로필 관리</h3>
+                        <p id="profHeaderSub">학부모에게 노출되는 상세 정보 및 전문 분야를 정확하게 관리하세요.</p>
+                    </div>
+                    <button class="btn-action btn-primary-act" onclick="saveProfile()" style="width: auto; padding: 10px 20px;">
+                        💾 변경사항 저장하기
+                    </button>
+                </div>
+                <div class="panel-body">
+                    <form id="profileForm" onsubmit="event.preventDefault(); saveProfile();">
+                        <!-- 학원 전용 프로필 필드 -->
+                        <div id="academyProfileFields" class="form-grid">
+                            <div class="form-group">
+                                <label>학원명 <span class="req">*</span></label>
+                                <input type="text" id="profAcademyName" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>대표 연락처 <span class="req">*</span></label>
+                                <input type="tel" id="profPhone" class="form-control">
+                            </div>
+
+                            <div class="form-group">
+                                <label>대표 교육 과목 (쉼표로 구분) <span class="req">*</span></label>
+                                <input type="text" id="profSubjects" class="form-control" placeholder="예: 수학, 수리논술, 입시종합">
+                            </div>
+                            <div class="form-group">
+                                <label>교육 대상 학년 (쉼표로 구분) <span class="req">*</span></label>
+                                <input type="text" id="profGrades" class="form-control" placeholder="예: 중등, 고등, N수">
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label>수업 및 지도 방식 특징</label>
+                                <input type="text" id="profClassMethod" class="form-control" placeholder="예: 반당 정원 6명 소수정예 밀착 오답 클리닉 운영">
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label>학원 소개글</label>
+                                <textarea id="profDescription" class="form-control" rows="4" placeholder="학원의 교육 철학, 강사진 구성, 합격 실적 등을 작성해주세요."></textarea>
+                            </div>
+
+                            <div class="form-group full-width">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                    <label style="margin-bottom: 0;">학원 상세 주소 <span class="req">*</span></label>
+                                    <button type="button" class="btn-action btn-secondary-act" onclick="openKakaoPostcode()"
+                                            style="width: auto; padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 7px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                        📮 카카오 우편번호 검색
+                                    </button>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="text" id="profZonecode" class="form-control" placeholder="우편번호" style="width: 140px; flex-shrink: 0;" readonly>
+                                    <input type="text" id="profAddress" class="form-control" placeholder="기본 주소 (우편번호 검색 시 자동 입력)" style="flex: 1;">
+                                </div>
+                                <div style="margin-top: 8px;">
+                                    <input type="text" id="profAddressDetail" class="form-control" placeholder="상세 주소 (건물 층수, 동·호수 등 직접 입력)">
+                                </div>
+                            </div>
+
+                            <!-- 좌표(위도/경도) 확인 및 변경 영역 -->
+                            <div class="form-group full-width" style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 16px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span style="font-size: 14px;">📍</span>
+                                        <label style="margin-bottom: 0; font-size: 13px; font-weight: 700; color: #0f172a;">학원 지도 표시 좌표 (위도·경도) 설정</label>
+                                        <span style="font-size: 11.5px; color: #64748b;">(학부모 지도 마커 핀 및 통학 거리 계산에 반영됩니다)</span>
+                                    </div>
+                                    <button type="button" class="btn-action btn-secondary-act" onclick="convertAddressToCoords()"
+                                            style="width: auto; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 7px; cursor: pointer;">
+                                        🔄 주소로 좌표 재변환
+                                    </button>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                                    <div>
+                                        <label style="font-size: 11.5px; color: #475569; margin-bottom: 4px; display: block; font-weight: 600;">위도 (Latitude)</label>
+                                        <input type="number" step="any" id="profLat" class="form-control" placeholder="예: 37.4981" style="font-size: 13px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11.5px; color: #475569; margin-bottom: 4px; display: block; font-weight: 600;">경도 (Longitude)</label>
+                                        <input type="number" step="any" id="profLng" class="form-control" placeholder="예: 127.0628" style="font-size: 13px;">
+                                    </div>
+                                </div>
+                                <div id="coordStatusMsg" style="font-size: 11.5px; color: #059669; font-weight: 600; margin-top: 8px; display: none;"></div>
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label>홈페이지 또는 블로그 URL</label>
+                                <input type="url" id="profWebsiteUrl" class="form-control" placeholder="https://blog.naver.com/...">
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label>수강료 안내 (선택)</label>
+                                <input type="text" id="profFeeInfo" class="form-control" placeholder="예: 월 450,000원 ~ 650,000원 (주 2~3회 기준)">
+                            </div>
+                        </div>
+
+                        <!-- 부동산 공인중개사 전용 프로필 필드 -->
+                        <div id="realEstateProfileFields" class="form-grid" style="display: none;">
+                            <div class="form-group">
+                                <label>중개사무소 상호 <span class="req">*</span></label>
+                                <input type="text" id="profReOfficeName" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>대표 공인중개사 성명 <span class="req">*</span></label>
+                                <input type="text" id="profReBrokerName" class="form-control">
+                            </div>
+
+                            <div class="form-group">
+                                <label>중개사무소 개설등록번호 <span class="req">*</span></label>
+                                <input type="text" id="profReRegNo" class="form-control" placeholder="예: 11680-2021-00234">
+                            </div>
+                            <div class="form-group">
+                                <label>대표 유선 전화번호 <span class="req">*</span></label>
+                                <input type="tel" id="profRePhone" class="form-control" placeholder="예: 02-555-8899">
+                            </div>
+
+                            <div class="form-group">
+                                <label>상담 직통 휴대폰 번호</label>
+                                <input type="tel" id="profReMobile" class="form-control" placeholder="예: 010-3344-5566">
+                            </div>
+                            <div class="form-group">
+                                <label>전문 담당 행정동 / 지역 (쉼표 구분) <span class="req">*</span></label>
+                                <input type="text" id="profReAreas" class="form-control" placeholder="예: 대치동, 도곡동, 개포동">
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label>전문 중개 단지 / 주택 (쉼표 구분) <span class="req">*</span></label>
+                                <input type="text" id="profReComplexes" class="form-control" placeholder="예: 래미안대치팰리스, 대치우성1차, 대치선경, 대치동 다세대·연립">
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label>주요 전문 학군 상담 주제 (쉼표 구분)</label>
+                                <input type="text" id="profReTopics" class="form-control" placeholder="예: 대청중 100% 배정 단지 매물, 안심 통학로 도보 5분 매물, 대치동 학원가 인접 실거래 매매·전세">
+                            </div>
+
+                            <div class="form-group">
+                                <label>중개사무소 소재지 주소</label>
+                                <input type="text" id="profReAddress" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>네이버 부동산 매물 / 블로그 URL</label>
+                                <input type="url" id="profReWebsiteUrl" class="form-control" placeholder="https://land.naver.com">
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label>중개사무소 및 학군 전문성 소개글</label>
+                                <textarea id="profReDescription" class="form-control" rows="4" placeholder="학군 배정 노하우, 안심 통학로 매물 중개 경력 등을 자세히 기재해주세요."></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: 신규 사업자 등록 신청 -->
+        <div id="tab-register" class="tab-content">
+            <div class="panel-card">
+                <div class="panel-header">
+                    <div>
+                        <h3>📝 신규 사업자 등록 신청</h3>
+                        <p>학원 원장님 및 부동산 대표님을 위한 파트너 입점 등록 신청 양식입니다.</p>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <form id="newBizForm" onsubmit="event.preventDefault(); submitNewBusiness();">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>사업자 유형 <span class="req">*</span></label>
+                                <select id="regType" class="form-control" required>
+                                    <option value="academy">학원 사업자</option>
+                                    <option value="real_estate">부동산 중개사무소</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>사업자 상호명 <span class="req">*</span></label>
+                                <input type="text" id="regName" class="form-control" placeholder="예: 대치 미래탐구 학원" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>대표자 또는 담당자 성명 <span class="req">*</span></label>
+                                <input type="text" id="regRepresentative" class="form-control" placeholder="예: 홍길동 원장" required>
+                            </div>
+                            <div class="form-group">
+                                <label>사업자 등록번호</label>
+                                <input type="text" id="regBizNumber" class="form-control" placeholder="예: 123-45-67890">
+                            </div>
+
+                            <div class="form-group">
+                                <label>대표 전화번호 <span class="req">*</span></label>
+                                <input type="tel" id="regPhone" class="form-control" placeholder="예: 02-1234-5678" required>
+                            </div>
+                            <div class="form-group">
+                                <label>이메일 주소 <span class="req">*</span></label>
+                                <input type="email" id="regEmail" class="form-control" placeholder="예: partner@academy.com" required>
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label>사업장 소재지 주소 <span class="req">*</span></label>
+                                <input type="text" id="regAddress" class="form-control" placeholder="예: 서울특별시 강남구 대치동 123-45 3층" required>
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label>주요 과목 및 교육 소개</label>
+                                <textarea id="regDescription" class="form-control" placeholder="주요 지도 과목, 대상 학년 및 특징을 간단히 기재해주세요."></textarea>
+                            </div>
+
+                            <div class="form-group full-width" style="background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                                    <input type="checkbox" id="regConsent" required style="width: 16px; height: 16px;">
+                                    [필수] 개인정보 수집 및 파트너 입점 심사 안내에 동의합니다.
+                                </label>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 24px;">
+                            <button type="submit" class="btn-action btn-primary-act">
+                                🚀 파트너 등록 신청서 제출하기
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Toast Notice Modal -->
+    <div id="toastNotice">
+        <span id="toastIcon">✅</span>
+        <span id="toastMsg">작업이 성공적으로 처리되었습니다.</span>
+    </div>
+
+    <script>
+        let currentBizId = 'biz_demo_daechi_math_01';
+        let currentBiz = null;
+        let currentSub = null;
+        let chartInstance = null;
+
+        function showToast(msg, icon = '✅') {
+            const toast = document.getElementById('toastNotice');
+            document.getElementById('toastIcon').innerText = icon;
+            document.getElementById('toastMsg').innerText = msg;
+            toast.style.display = 'flex';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        function openTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.toggle('active', content.id === tabId);
+            });
+        }
+
+        async function loadSession() {
+            try {
+                const res = await fetch(`/api/business/session?bizId=${currentBizId}`);
+                const data = await res.json();
+                
+                if (data.business) {
+                    currentBiz = data.business;
+                    currentSub = data.subscription;
+                    renderHeaderAndBanner(currentBiz, currentSub);
+                    populateProfileForm(currentBiz);
+                    loadDashboard(currentBiz.id);
+                }
+
+                // 사업자 전환 셀렉터 바인딩
+                const selector = document.getElementById('bizSelector');
+                if (data.allBusinesses && data.allBusinesses.length > 0) {
+                    selector.innerHTML = data.allBusinesses.map(b => {
+                        const icon = b.type === 'real_estate' ? '🏠 [부동산] ' : '🏫 [학원] ';
+                        const stat = b.status === 'approved' ? '승인' : '대기';
+                        return `<option value="${b.id}" ${b.id === currentBizId ? 'selected' : ''}>${icon}${b.name} (${stat})</option>`;
+                    }).join('');
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function switchBusiness(newBizId) {
+            if (!newBizId) return;
+            currentBizId = newBizId;
+            loadSession();
+            showToast('사업자가 전환되었습니다.', '🏢');
+        }
+
+        function renderHeaderAndBanner(biz, sub) {
+            const isRe = biz.type === 'real_estate';
+            document.getElementById('heroBizName').innerText = biz.name;
+            document.getElementById('heroBizSub').innerText = 
+                `대표자: ${biz.representative} | 연락처: ${biz.phone} | ${biz.address}`;
+
+            const pill = document.getElementById('heroStatusPill');
+            const pillText = document.getElementById('heroStatusText');
+
+            if (sub && sub.status === 'active') {
+                pill.style.background = 'rgba(16, 185, 129, 0.2)';
+                pill.style.borderColor = '#10b981';
+                pillText.innerText = isRe ? '부동산 교육환경 파트너 [광고 라이브]' : '프리미엄 구독 이용 중 [광고 라이브]';
+            } else if (biz.status === 'submitted') {
+                pill.style.background = 'rgba(245, 158, 11, 0.2)';
+                pill.style.borderColor = '#f59e0b';
+                pillText.innerText = '관리자 승인 대기 중';
+            } else {
+                pill.style.background = 'rgba(255, 255, 255, 0.15)';
+                pillText.innerText = '일반 무료 등록 상태';
+            }
+
+            // 요금제 그리드 전환 (학원 vs 부동산)
+            const acaGrid = document.getElementById('academyPricingGrid');
+            const reGrid = document.getElementById('realEstatePricingGrid');
+            const pricingTitle = document.getElementById('pricingHeaderTitle');
+            const pricingSub = document.getElementById('pricingHeaderSub');
+
+            if (isRe) {
+                if (acaGrid) acaGrid.style.display = 'none';
+                if (reGrid) reGrid.style.display = 'grid';
+                if (pricingTitle) pricingTitle.innerText = '💎 부동산 중개업소 파트너 멤버십 플랜';
+                if (pricingSub) pricingSub.innerText = '단지 이야기 및 동네 이야기 학군 상담 창구를 선점하고 학부모 실거래·전월세 문의를 유치하세요.';
+            } else {
+                if (acaGrid) acaGrid.style.display = 'grid';
+                if (reGrid) reGrid.style.display = 'none';
+                if (pricingTitle) pricingTitle.innerText = '💎 학원 비즈니스 멤버십 플랜';
+                if (pricingSub) pricingSub.innerText = '지역 내 잠재 학부모 고객에게 학원을 확실하게 각인시키고 직접적인 상담 문의를 유치하세요.';
+            }
+
+            // 프리미엄 결제 버튼 상태 동기화
+            const actionArea = isRe ? document.getElementById('reSubActionArea') : document.getElementById('premiumSubActionArea');
+            const targetProdId = isRe ? 'prod_re_partner' : 'prod_academy_premium';
+            const btnLabel = isRe ? '🚀 월 99,000원으로 교육환경 파트너 시작하기' : '🚀 월 29,000원으로 프리미엄 시작하기';
+
+            if (actionArea) {
+                if (sub && sub.status === 'active') {
+                    actionArea.innerHTML = `
+                        <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 12px; text-align: center; margin-bottom: 10px; font-size: 13.5px; font-weight: 700; color: #065f46;">
+                            ✅ 현재 파트너 이용 중 (만료일: ${sub.endDate.split('T')[0]})
+                        </div>
+                        <button class="btn-action btn-danger-act" onclick="cancelPlan('${sub.id}')">
+                            구독 해지 신청하기
+                        </button>
+                    `;
+                } else {
+                    actionArea.innerHTML = `
+                        <button class="btn-action btn-primary-act" onclick="subscribePlan('${targetProdId}')">
+                            ${btnLabel}
+                        </button>
+                    `;
+                }
+            }
+        }
+
+        async function loadDashboard(bizId) {
+            try {
+                const res = await fetch(`/api/business/dashboard?businessId=${bizId}`);
+                const data = await res.json();
+
+                // KPI 수치
+                document.getElementById('metricProfileViews').innerText = (data.stats.profile_views || 0).toLocaleString();
+                document.getElementById('metricImpressions').innerText = (data.stats.premium_impressions || 0).toLocaleString();
+                document.getElementById('metricPhoneClicks').innerText = (data.stats.phone_clicks || 0).toLocaleString();
+                document.getElementById('metricInquiriesCount').innerText = (data.inquiries?.length || 0).toLocaleString();
+
+                // 구독 요약
+                if (data.subscription && data.subscription.status === 'active') {
+                    document.getElementById('dashSubProductName').innerText = data.subscription.productName;
+                    document.getElementById('dashSubAmount').innerText = data.subscription.amount.toLocaleString() + '원';
+                    document.getElementById('dashSubEndDate').innerText = data.subscription.endDate.split('T')[0];
+                } else {
+                    document.getElementById('dashSubProductName').innerText = '일반 무료 등록';
+                    document.getElementById('dashSubAmount').innerText = '0원';
+                    document.getElementById('dashSubEndDate').innerText = '-';
+                }
+
+                // 그래프 렌더링
+                renderChart(data.dailyViews || []);
+
+                // 문의 내역 렌더링
+                renderInquiries(data.inquiries || []);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderChart(dailyViews) {
+            const ctx = document.getElementById('viewsTrendChart').getContext('2d');
+            const labels = dailyViews.map(d => d.date);
+            const views = dailyViews.map(d => d.views);
+            const impressions = dailyViews.map(d => d.impressions);
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '프리미엄 노출수',
+                            data: impressions,
+                            borderColor: '#2563eb',
+                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: '상세 조회수',
+                            data: views,
+                            borderColor: '#059669',
+                            backgroundColor: 'transparent',
+                            borderDash: [5, 5],
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } }
+                    }
+                }
+            });
+        }
+
+        function renderInquiries(list) {
+            const container = document.getElementById('inquiriesListContainer');
+            document.getElementById('inquiryCountBadge').innerText = `${list.length}건 접수됨`;
+
+            if (list.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: var(--text-muted); padding: 36px 20px;">
+                        <div style="font-size: 32px; margin-bottom: 8px;">📭</div>
+                        <div style="font-weight: 600; color: #475569;">접수된 신규 학부모 상담 문의가 없습니다.</div>
+                        <div style="font-size: 12.5px; margin-top: 4px;">프리미엄 광고를 활성화하면 더 많은 학부모 문의를 유치할 수 있습니다.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = list.map(inq => `
+                <div class="inquiry-item">
+                    <div class="inquiry-head">
+                        <div class="inquiry-meta">
+                            <span class="name">학부모: ${inq.parentName}</span>
+                            <span class="grade">${inq.studentGrade || '학년 미지정'}</span>
+                            <span class="time">${inq.createdAt.split('T')[0]}</span>
+                        </div>
+                        <span class="badge ${inq.status === 'new' ? 'badge-danger' : 'badge-success'}">
+                            ${inq.status === 'new' ? '미확인 신규 문의' : '상담 완료'}
+                        </span>
+                    </div>
+                    <div class="inquiry-body">
+                        "${inq.inquiryContent}"
+                    </div>
+                    <div class="inquiry-foot">
+                        <div>📞 회신 연락처: <strong>${inq.parentPhone}</strong> (희망 시간: ${inq.preferredTime || '상시'})</div>
+                        <button class="btn-action btn-secondary-act" style="width: auto; padding: 6px 14px; font-size: 12px;" onclick="window.location.href='tel:${inq.parentPhone}'">
+                            📞 바로 전화걸기
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function populateProfileForm(biz) {
+            const isRe = biz.type === 'real_estate';
+            const acaFields = document.getElementById('academyProfileFields');
+            const reFields = document.getElementById('realEstateProfileFields');
+            const tabLabel = document.getElementById('tabProfileNavLabel');
+            const titleEl = document.getElementById('profHeaderTitle');
+            const subEl = document.getElementById('profHeaderSub');
+
+            if (tabLabel) tabLabel.innerText = isRe ? '부동산 프로필 관리' : '학원 프로필 관리';
+            if (titleEl) titleEl.innerText = isRe ? '✏️ 부동산 중개업소 프로필 관리' : '✏️ 학원 상세 프로필 관리';
+            if (subEl) subEl.innerText = isRe 
+                ? '학부모에게 주택 단지 및 동네 이야기 하단에 노출되는 중개업소 정보와 전문 단지를 관리하세요.' 
+                : '학부모에게 노출되는 학원 정보, 대표 과목, 지도 방식 및 수강료를 정확하게 관리하세요.';
+
+            if (isRe) {
+                if (acaFields) acaFields.style.display = 'none';
+                if (reFields) reFields.style.display = 'grid';
+                const p = biz.realEstateProfile || {};
+                document.getElementById('profReOfficeName').value = p.officeName || biz.name || '';
+                document.getElementById('profReBrokerName').value = p.brokerName || biz.representative || '';
+                document.getElementById('profReRegNo').value = p.registrationNo || '';
+                document.getElementById('profRePhone').value = p.contactPhone || biz.phone || '';
+                document.getElementById('profReMobile').value = p.mobilePhone || '';
+                document.getElementById('profReAreas').value = (p.serviceAreas || []).join(', ');
+                document.getElementById('profReComplexes').value = (p.specializedComplexes || []).join(', ');
+                document.getElementById('profReTopics').value = (p.consultingTopics || []).join(', ');
+                document.getElementById('profReAddress').value = p.address || biz.address || '';
+                document.getElementById('profReWebsiteUrl').value = p.websiteUrl || '';
+                document.getElementById('profReDescription').value = p.description || '';
+            } else {
+                if (acaFields) acaFields.style.display = 'grid';
+                if (reFields) reFields.style.display = 'none';
+                const p = biz.academyProfile || {};
+                document.getElementById('profAcademyName').value = p.targetAcademyName || biz.name || '';
+                document.getElementById('profPhone').value = p.contactPhone || biz.phone || '';
+                document.getElementById('profSubjects').value = (p.subjects || []).join(', ');
+                document.getElementById('profGrades').value = (p.grades || []).join(', ');
+                document.getElementById('profClassMethod').value = p.classMethod || '';
+                document.getElementById('profDescription').value = p.description || '';
+                document.getElementById('profZonecode').value = p.zonecode || '';
+                document.getElementById('profAddress').value = p.address || biz.address || '';
+                document.getElementById('profAddressDetail').value = p.addressDetail || '';
+                document.getElementById('profLat').value = (p.lat !== undefined && p.lat !== null) ? p.lat : '';
+                document.getElementById('profLng').value = (p.lng !== undefined && p.lng !== null) ? p.lng : '';
+                document.getElementById('profWebsiteUrl').value = p.websiteUrl || '';
+                document.getElementById('profFeeInfo').value = p.feeInfo || '';
+
+                const statusEl = document.getElementById('coordStatusMsg');
+                if (statusEl) {
+                    if (p.lat && p.lng) {
+                        statusEl.style.display = 'block';
+                        statusEl.style.color = '#059669';
+                        statusEl.innerText = `📍 현재 등록된 좌표: 위도 ${p.lat}, 경도 ${p.lng}`;
+                    } else {
+                        statusEl.style.display = 'none';
+                        statusEl.innerText = '';
+                    }
+                }
+                // 카카오 지오코더 사전 준비
+                ensureKakaoGeocoder().catch(() => {});
+            }
+        }
+
+        // --- 카카오 우편번호 검색 및 좌표(위도/경도) 변환 기능 ---
+        let kakaoGeocoder = null;
+        let kakaoSdkLoadingPromise = null;
+
+        async function ensureKakaoGeocoder() {
+            if (kakaoGeocoder) return kakaoGeocoder;
+            if (window.kakao && window.kakao.maps && window.kakao.maps.services && window.kakao.maps.services.Geocoder) {
+                kakaoGeocoder = new window.kakao.maps.services.Geocoder();
+                return kakaoGeocoder;
+            }
+            if (kakaoSdkLoadingPromise) return kakaoSdkLoadingPromise;
+
+            kakaoSdkLoadingPromise = new Promise(async (resolve) => {
+                try {
+                    let appkey = 'a1395655b7d4904b57ff20a90998c001';
+                    try {
+                        const res = await fetch('/api/config/map-key');
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data && data.kakao_app_key) appkey = data.kakao_app_key;
+                        }
+                    } catch (e) {
+                        console.warn('Map key fetch failed:', e);
+                    }
+
+                    let script = document.querySelector('script[src*="dapi.kakao.com/v2/maps/sdk.js"]');
+                    if (!script) {
+                        script = document.createElement('script');
+                        script.type = 'text/javascript';
+                        script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appkey}&libraries=services&autoload=false`;
+                        document.head.appendChild(script);
+                    }
+
+                    const onScriptReady = () => {
+                        if (window.kakao && window.kakao.maps && window.kakao.maps.load) {
+                            window.kakao.maps.load(() => {
+                                if (window.kakao.maps.services && window.kakao.maps.services.Geocoder) {
+                                    kakaoGeocoder = new window.kakao.maps.services.Geocoder();
+                                    resolve(kakaoGeocoder);
+                                } else {
+                                    resolve(null);
+                                }
+                            });
+                        } else {
+                            resolve(null);
+                        }
+                    };
+
+                    if (window.kakao && window.kakao.maps && window.kakao.maps.load) {
+                        onScriptReady();
+                    } else {
+                        script.onload = onScriptReady;
+                        script.onerror = () => {
+                            console.error('카카오 지도 SDK 스크립트 로드 실패');
+                            resolve(null);
+                        };
+                    }
+                } catch (err) {
+                    console.error('ensureKakaoGeocoder error:', err);
+                    resolve(null);
+                }
+            });
+
+            return kakaoSdkLoadingPromise;
+        }
+
+        function geocodeAddress(address) {
+            return new Promise(async (resolve) => {
+                if (!address || !address.trim()) {
+                    return resolve(null);
+                }
+                const geocoder = await ensureKakaoGeocoder();
+                if (!geocoder) {
+                    return resolve(null);
+                }
+                geocoder.addressSearch(address.trim(), (result, status) => {
+                    if (status === window.kakao.maps.services.Status.OK && result && result.length > 0) {
+                        const lat = parseFloat(result[0].y);
+                        const lng = parseFloat(result[0].x);
+                        resolve({ lat, lng, fullData: result[0] });
+                    } else {
+                        resolve(null);
+                    }
+                });
+            });
+        }
+
+        function openKakaoPostcode() {
+            if (typeof daum === 'undefined' || !daum.Postcode) {
+                alert('우편번호 서비스 스크립트를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+                return;
+            }
+
+            new daum.Postcode({
+                oncomplete: async function(data) {
+                    const addr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
+                    const zonecode = data.zonecode;
+
+                    let extraAddr = '';
+                    if (data.userSelectedType === 'R') {
+                        if (data.bname !== '' && /[동|로|가]$/g.test(data.bname)) {
+                            extraAddr += data.bname;
+                        }
+                        if (data.buildingName !== '' && data.apartment === 'Y') {
+                            extraAddr += (extraAddr !== '' ? ', ' + data.buildingName : data.buildingName);
+                        }
+                    }
+
+                    const fullBaseAddr = extraAddr ? `${addr} (${extraAddr})` : addr;
+
+                    const zoneEl = document.getElementById('profZonecode');
+                    const addrEl = document.getElementById('profAddress');
+                    const detailEl = document.getElementById('profAddressDetail');
+                    const statusEl = document.getElementById('coordStatusMsg');
+
+                    if (zoneEl) zoneEl.value = zonecode;
+                    if (addrEl) addrEl.value = fullBaseAddr;
+                    if (detailEl) detailEl.focus();
+
+                    if (statusEl) {
+                        statusEl.style.display = 'block';
+                        statusEl.style.color = '#2563eb';
+                        statusEl.innerText = '🔍 입력된 주소로 위도/경도 좌표를 변환 중입니다...';
+                    }
+
+                    const geo = await geocodeAddress(addr);
+                    if (geo && !isNaN(geo.lat) && !isNaN(geo.lng)) {
+                        const latEl = document.getElementById('profLat');
+                        const lngEl = document.getElementById('profLng');
+                        if (latEl) latEl.value = geo.lat.toFixed(6);
+                        if (lngEl) lngEl.value = geo.lng.toFixed(6);
+
+                        if (statusEl) {
+                            statusEl.style.color = '#059669';
+                            statusEl.innerText = `✅ 주소 기반 좌표 변환 성공: 위도 ${geo.lat.toFixed(6)}, 경도 ${geo.lng.toFixed(6)}`;
+                        }
+                    } else {
+                        if (statusEl) {
+                            statusEl.style.color = '#d97706';
+                            statusEl.innerText = '⚠️ 주소의 상세 좌표를 자동으로 찾지 못했습니다. 위도/경도를 직접 입력해주세요.';
+                        }
+                    }
+                }
+            }).open();
+        }
+
+        async function convertAddressToCoords() {
+            const addrEl = document.getElementById('profAddress');
+            const statusEl = document.getElementById('coordStatusMsg');
+            const addr = addrEl ? addrEl.value.trim() : '';
+
+            if (!addr) {
+                alert('좌표를 조회할 기본 주소를 먼저 입력하거나 우편번호 검색으로 선택해주세요.');
+                if (addrEl) addrEl.focus();
+                return;
+            }
+
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.style.color = '#2563eb';
+                statusEl.innerText = '🔍 주소 기반 좌표 변환 중입니다...';
+            }
+
+            const cleanAddr = addr.replace(/\s*\([^)]*\)/g, '').trim();
+            let geo = await geocodeAddress(cleanAddr);
+            if (!geo) {
+                geo = await geocodeAddress(addr);
+            }
+
+            if (geo && !isNaN(geo.lat) && !isNaN(geo.lng)) {
+                const latEl = document.getElementById('profLat');
+                const lngEl = document.getElementById('profLng');
+                if (latEl) latEl.value = geo.lat.toFixed(6);
+                if (lngEl) lngEl.value = geo.lng.toFixed(6);
+
+                if (statusEl) {
+                    statusEl.style.color = '#059669';
+                    statusEl.innerText = `✅ 주소 좌표 변환 완료: 위도 ${geo.lat.toFixed(6)}, 경도 ${geo.lng.toFixed(6)}`;
+                }
+            } else {
+                if (statusEl) {
+                    statusEl.style.color = '#dc2626';
+                    statusEl.innerText = '❌ 해당 주소의 좌표를 찾을 수 없습니다. 위도/경도를 직접 숫자로 입력해주세요.';
+                }
+                alert('주소에 해당하는 좌표를 찾지 못했습니다.\n도로명 또는 지번 주소를 확인하시거나 직접 위도, 경도를 입력해주세요.');
+            }
+        }
+
+        async function saveProfile() {
+            if (!currentBiz) return;
+            let payload = { businessId: currentBiz.id };
+
+            if (currentBiz.type === 'real_estate') {
+                const serviceAreas = document.getElementById('profReAreas').value.split(',').map(s => s.trim()).filter(Boolean);
+                const specializedComplexes = document.getElementById('profReComplexes').value.split(',').map(s => s.trim()).filter(Boolean);
+                const consultingTopics = document.getElementById('profReTopics').value.split(',').map(s => s.trim()).filter(Boolean);
+
+                payload.realEstateProfile = {
+                    officeName: document.getElementById('profReOfficeName').value.trim(),
+                    brokerName: document.getElementById('profReBrokerName').value.trim(),
+                    registrationNo: document.getElementById('profReRegNo').value.trim(),
+                    contactPhone: document.getElementById('profRePhone').value.trim(),
+                    mobilePhone: document.getElementById('profReMobile').value.trim(),
+                    serviceAreas,
+                    specializedComplexes,
+                    consultingTopics,
+                    address: document.getElementById('profReAddress').value.trim(),
+                    websiteUrl: document.getElementById('profReWebsiteUrl').value.trim(),
+                    description: document.getElementById('profReDescription').value.trim()
+                };
+            } else {
+                const subjects = document.getElementById('profSubjects').value.split(',').map(s => s.trim()).filter(Boolean);
+                const grades = document.getElementById('profGrades').value.split(',').map(s => s.trim()).filter(Boolean);
+                const rawLat = document.getElementById('profLat').value.trim();
+                const rawLng = document.getElementById('profLng').value.trim();
+                const latVal = rawLat !== '' ? parseFloat(rawLat) : null;
+                const lngVal = rawLng !== '' ? parseFloat(rawLng) : null;
+
+                payload.academyProfile = {
+                    targetAcademyName: document.getElementById('profAcademyName').value.trim(),
+                    contactPhone: document.getElementById('profPhone').value.trim(),
+                    subjects,
+                    grades,
+                    classMethod: document.getElementById('profClassMethod').value.trim(),
+                    description: document.getElementById('profDescription').value.trim(),
+                    zonecode: document.getElementById('profZonecode').value.trim(),
+                    address: document.getElementById('profAddress').value.trim(),
+                    addressDetail: document.getElementById('profAddressDetail').value.trim(),
+                    lat: (latVal !== null && !isNaN(latVal)) ? latVal : null,
+                    lng: (lngVal !== null && !isNaN(lngVal)) ? lngVal : null,
+                    websiteUrl: document.getElementById('profWebsiteUrl').value.trim(),
+                    feeInfo: document.getElementById('profFeeInfo').value.trim()
+                };
+            }
+
+            try {
+                const res = await fetch('/api/business/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showToast('프로필 정보가 안전하게 저장되었습니다!');
+                    loadSession();
+                } else {
+                    alert(result.error || '저장에 실패했습니다.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('서버 연결 중 오류가 발생했습니다.');
+            }
+        }
+
+        async function subscribePlan(productId) {
+            if (!currentBiz) return;
+            if (currentBiz.status !== 'approved') {
+                alert('현재 검수 대기 중인 사업자입니다.\n관리자 승인 완료 후 프리미엄 결제를 진행할 수 있습니다.');
+                return;
+            }
+
+            const planName = productId === 'prod_re_partner' 
+                ? '부동산 교육환경 파트너(월 99,000원)' 
+                : (productId === 'prod_re_local' ? '부동산 지역 전문(월 49,000원)' : '학원 프리미엄 플랜(월 29,000원)');
+
+            if (!confirm(`${planName}을(를) 결제 및 활성화하시겠습니까?`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/subscription/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        businessId: currentBiz.id,
+                        productId: productId,
+                        paymentMethod: '카드 자동결제'
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    showToast('결제 및 프리미엄 구독이 활성화되었습니다!', '🚀');
+                    loadSession();
+                    openTab('tab-dashboard');
+                } else {
+                    alert(data.error || '결제 처리에 실패했습니다.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('결제 통신 중 오류가 발생했습니다.');
+            }
+        }
+
+        async function cancelPlan(subId) {
+            if (!confirm('정말 구독을 해지하시겠습니까? 해지 시 만료일 이후 일반 무료 상태로 전환됩니다.')) {
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/subscription/cancel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        businessId: currentBiz.id,
+                        subscriptionId: subId
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    showToast('구독 해지가 정상 접수되었습니다.', 'ℹ️');
+                    loadSession();
+                } else {
+                    alert(data.error || '해지 처리에 실패했습니다.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('통신 중 오류가 발생했습니다.');
+            }
+        }
+
+        async function submitNewBusiness() {
+            const payload = {
+                type: document.getElementById('regType').value,
+                name: document.getElementById('regName').value.trim(),
+                representative: document.getElementById('regRepresentative').value.trim(),
+                bizNumber: document.getElementById('regBizNumber').value.trim(),
+                phone: document.getElementById('regPhone').value.trim(),
+                email: document.getElementById('regEmail').value.trim(),
+                address: document.getElementById('regAddress').value.trim(),
+                description: document.getElementById('regDescription').value.trim()
+            };
+
+            try {
+                const res = await fetch('/api/business/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert('신규 사업자 등록 신청이 접수되었습니다!\n관리자 검수 후 대시보드가 활성화됩니다.');
+                    currentBizId = data.business.id;
+                    document.getElementById('newBizForm').reset();
+                    loadSession();
+                    openTab('tab-dashboard');
+                } else {
+                    alert(data.error || '신청 중 오류가 발생했습니다.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('서버 연결 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 초기 로드
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSession();
+        });
+    </script>
+</body>
+</html>

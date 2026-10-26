@@ -127,6 +127,9 @@ adminMenuButtons.forEach(btn => {
         if (targetAttr.includes('usersManagementCard') && typeof loadUsers === 'function') {
             loadUsers();
         }
+        if (targetAttr.includes('businessManagementCard') && typeof loadBusinessManagement === 'function') {
+            loadBusinessManagement();
+        }
         if ((targetAttr.includes('realestateMasterCard') || targetAttr.includes('storedRealEstateCard')) && typeof loadStoredRealEstate === 'function') {
             if (Array.isArray(allStoredRealEstates) && allStoredRealEstates.length > 0) {
                 renderStoredRealEstateList();
@@ -3507,6 +3510,258 @@ function ensureButtonsInteractive() {
     });
 }
 
+// ==============================================================================
+// 학업여지도 비즈니스화 모델 (PRD v1.0) 관리자 모듈
+// 사업자 신청 심사(승인/반려/정지), SaaS 유료 구독 및 MRR 통계 관리
+// ==============================================================================
+
+let currentBizAdminTab = 'review';
+let allAdminBusinesses = [];
+
+async function loadBusinessManagement() {
+    await Promise.all([
+        loadAdminBusinesses(),
+        loadAdminSubscriptions()
+    ]);
+}
+window.loadBusinessManagement = loadBusinessManagement;
+
+async function loadAdminBusinesses() {
+    const tableArea = document.getElementById('adminBizTableArea');
+    if (!tableArea) return;
+
+    try {
+        const res = await fetch('/api/admin/businesses');
+        const data = await res.json();
+        allAdminBusinesses = data.businesses || [];
+
+        // 지표 바인딩
+        const submittedCountEl = document.getElementById('adminSubmittedBizCount');
+        const tabPendingBadge = document.getElementById('tabPendingBadge');
+        if (submittedCountEl) submittedCountEl.innerText = data.submittedCount || 0;
+        if (tabPendingBadge) tabPendingBadge.innerText = data.submittedCount || 0;
+
+        renderAdminBizTable(allAdminBusinesses);
+    } catch (err) {
+        console.error('loadAdminBusinesses error:', err);
+        tableArea.innerHTML = `<div style="text-align: center; color: red; padding: 20px;">사업자 데이터를 불러오지 못했습니다: ${err.message}</div>`;
+    }
+}
+
+function renderAdminBizTable(businesses) {
+    const tableArea = document.getElementById('adminBizTableArea');
+    if (!tableArea) return;
+
+    if (!businesses || businesses.length === 0) {
+        tableArea.innerHTML = '<div style="text-align: center; color: var(--adm-text-muted); padding: 30px;">등록된 사업자가 없습니다.</div>';
+        return;
+    }
+
+    tableArea.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            ${businesses.map(b => {
+                const sub = b.subscription;
+                let statusBadge = '';
+                if (b.status === 'approved') {
+                    statusBadge = '<span style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; padding: 2px 8px; border-radius: 12px; font-weight: 700; font-size: 11px;">승인 완료</span>';
+                } else if (b.status === 'submitted') {
+                    statusBadge = '<span style="background: #fffbeb; color: #d97706; border: 1px solid #fde68a; padding: 2px 8px; border-radius: 12px; font-weight: 700; font-size: 11px;">심사 대기중</span>';
+                } else if (b.status === 'rejected') {
+                    statusBadge = '<span style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; padding: 2px 8px; border-radius: 12px; font-weight: 700; font-size: 11px;">반려됨</span>';
+                } else {
+                    statusBadge = `<span style="background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 12px; font-size: 11px;">${b.status}</span>`;
+                }
+
+                const isRe = b.type === 'real_estate';
+                let subBadge = sub && sub.status === 'active'
+                    ? `<span style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; padding: 2px 8px; border-radius: 12px; font-weight: 700; font-size: 11px;">💎 ${escapeHtml(sub.productName || (isRe ? '부동산 교육환경 파트너' : '학원 프리미엄'))} (월 ${(sub.amount || (isRe ? 99000 : 29000)).toLocaleString()}원)</span>`
+                    : '<span style="background: #f8fafc; color: #94a3b8; padding: 2px 8px; border-radius: 12px; font-size: 11px;">일반 무료</span>';
+
+                let detailsHtml = '';
+                if (isRe) {
+                    const prof = b.realEstateProfile || {};
+                    const areas = (prof.serviceAreas || []).join(', ') || '지역 미입력';
+                    const complexes = (prof.specializedComplexes || []).join(', ') || '단지 미입력';
+                    const topics = (prof.consultingTopics || []).join(', ') || '주제 미입력';
+                    detailsHtml = `
+                        🏠 유형: <strong>부동산 공인중개업소</strong> (개설등록번호: ${escapeHtml(prof.registrationNo || '-')})<br>
+                        📍 전문 지역: <strong>${escapeHtml(areas)}</strong><br>
+                        🏢 전문 단지: <strong>${escapeHtml(complexes)}</strong><br>
+                        🎯 상담 주제: ${escapeHtml(topics)}<br>
+                        💬 소개: ${escapeHtml(prof.description ? prof.description.slice(0, 100) + '...' : '없음')}
+                    `;
+                } else {
+                    const prof = b.academyProfile || {};
+                    const subjects = (prof.subjects || []).join(', ') || '과목 미입력';
+                    const grades = (prof.grades || []).join(', ') || '학년 미입력';
+                    detailsHtml = `
+                        📚 대상/과목: <strong>${escapeHtml(subjects)}</strong> (${escapeHtml(grades)})<br>
+                        💡 수업 방식: ${escapeHtml(prof.classMethod || '미입력')}<br>
+                        💬 소개: ${escapeHtml(prof.description ? prof.description.slice(0, 100) + '...' : '없음')}
+                    `;
+                }
+
+                return `
+                    <div style="border: 1px solid var(--adm-border); border-radius: 10px; padding: 14px; background: #fafafa; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 260px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                <span style="font-size: 15px;">${isRe ? '🏠' : '🏫'}</span>
+                                <strong style="font-size: 15px; color: #0f172a;">${escapeHtml(b.name)}</strong>
+                                ${statusBadge}
+                                ${subBadge}
+                            </div>
+                            <div style="font-size: 12px; color: var(--adm-text-muted); margin-bottom: 6px;">
+                                대표자: <strong>${escapeHtml(b.representative)}</strong> | 전화: ${escapeHtml(b.phone)} | 이메일: ${escapeHtml(b.email)} | 사업자등록번호: ${escapeHtml(b.bizNumber || '-')}
+                            </div>
+                            <div style="font-size: 12px; color: #334155; margin-bottom: 4px;">
+                                📍 소재지: ${escapeHtml(b.address)}
+                            </div>
+                            <div style="font-size: 12px; color: #475569; background: #ffffff; padding: 8px 10px; border-radius: 6px; border: 1px solid #e2e8f0; margin-top: 6px;">
+                                ${detailsHtml}
+                                ${b.rejectionReason ? `<div style="color: #dc2626; margin-top: 4px;">⚠️ 반려 사유: ${escapeHtml(b.rejectionReason)}</div>` : ''}
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px; min-width: 120px;">
+                            ${b.status !== 'approved' ? `
+                                <button onclick="setBusinessStatus('${b.id}', 'approved')" class="btn-primary" style="padding: 7px 12px; font-size: 12px; background: var(--adm-success-gradient); justify-content: center;">
+                                    ✓ 입점 승인
+                                </button>
+                            ` : ''}
+                            ${b.status !== 'rejected' ? `
+                                <button onclick="rejectBusinessPrompt('${b.id}')" class="btn-secondary" style="padding: 7px 12px; font-size: 12px; color: #dc2626; border-color: #fecaca; justify-content: center;">
+                                    ✕ 신청 반려
+                                </button>
+                            ` : ''}
+                            ${b.status === 'approved' ? `
+                                <button onclick="setBusinessStatus('${b.id}', 'suspended')" class="btn-secondary" style="padding: 7px 12px; font-size: 11px; color: #64748b; justify-content: center;">
+                                    ⚠️ 이용 정지
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+async function loadAdminSubscriptions() {
+    const tableArea = document.getElementById('adminSubsTableArea');
+    if (!tableArea) return;
+
+    try {
+        const res = await fetch('/api/admin/subscriptions');
+        const data = await res.json();
+
+        const mrrEl = document.getElementById('adminMrrValue');
+        const activeCountEl = document.getElementById('adminActiveSubCount');
+        if (mrrEl) mrrEl.innerText = (data.mrr || 0).toLocaleString();
+        if (activeCountEl) activeCountEl.innerText = (data.activeCount || 0).toLocaleString();
+
+        const subs = data.subscriptions || [];
+        if (subs.length === 0) {
+            tableArea.innerHTML = '<div style="text-align: center; color: var(--adm-text-muted); padding: 30px;">현재 구독 내역이 없습니다.</div>';
+            return;
+        }
+
+        tableArea.innerHTML = `
+            <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left;">
+                <thead>
+                    <tr style="background: #f1f5f9; border-bottom: 2px solid var(--adm-border); color: #334155;">
+                        <th style="padding: 10px 12px;">사업자명</th>
+                        <th style="padding: 10px 12px;">구독 상품</th>
+                        <th style="padding: 10px 12px;">월 결제금액</th>
+                        <th style="padding: 10px 12px;">상태</th>
+                        <th style="padding: 10px 12px;">구독 시작일</th>
+                        <th style="padding: 10px 12px;">만료 예정일</th>
+                        <th style="padding: 10px 12px;">결제 수단</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${subs.map(s => `
+                        <tr style="border-bottom: 1px solid var(--adm-border);">
+                            <td style="padding: 10px 12px; font-weight: 700; color: #0f172a;">${escapeHtml(s.businessName)}</td>
+                            <td style="padding: 10px 12px;">${escapeHtml(s.productName)}</td>
+                            <td style="padding: 10px 12px; font-weight: 700; color: #2563eb;">${(s.amount || 0).toLocaleString()}원</td>
+                            <td style="padding: 10px 12px;">
+                                <span style="background: ${s.status === 'active' ? '#ecfdf5' : '#fff1f2'}; color: ${s.status === 'active' ? '#059669' : '#e11d48'}; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 11px;">
+                                    ${s.status === 'active' ? '이용중 (Active)' : s.status}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 12px; color: var(--adm-text-muted);">${s.startDate ? s.startDate.split('T')[0] : '-'}</td>
+                            <td style="padding: 10px 12px; color: #0f172a; font-weight: 600;">${s.endDate ? s.endDate.split('T')[0] : '-'}</td>
+                            <td style="padding: 10px 12px; color: var(--adm-text-muted);">${escapeHtml(s.paymentMethod || '카드 자동결제')}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    } catch (err) {
+        console.error('loadAdminSubscriptions error:', err);
+        tableArea.innerHTML = `<div style="text-align: center; color: red; padding: 20px;">구독 데이터를 불러오지 못했습니다: ${err.message}</div>`;
+    }
+}
+
+window.setBusinessStatus = async function(businessId, status, rejectionReason = '') {
+    if (!confirm(`해당 사업자 상태를 [${status}]로 변경하시겠습니까?`)) return;
+
+    try {
+        const res = await fetch('/api/admin/business/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ businessId, status, rejectionReason })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert(data.message || '상태가 변경되었습니다.');
+            loadBusinessManagement();
+        } else {
+            alert(data.error || '상태 변경에 실패했습니다.');
+        }
+    } catch (err) {
+        console.error('setBusinessStatus error:', err);
+        alert('요청 중 서버 오류가 발생했습니다.');
+    }
+};
+
+window.rejectBusinessPrompt = function(businessId) {
+    const reason = prompt('반려 사유를 입력해주세요 (사업자에게 안내됩니다):', '등록 서류 또는 학원 정보 확인 필요');
+    if (reason !== null) {
+        window.setBusinessStatus(businessId, 'rejected', reason.trim());
+    }
+};
+
+// 사업자 관리 내부 탭 리스너
+const btnTabBizReview = document.getElementById('btnTabBizReview');
+const btnTabBizSubs = document.getElementById('btnTabBizSubs');
+const btnRefreshBizList = document.getElementById('btnRefreshBizList');
+const adminBizReviewContainer = document.getElementById('adminBizReviewContainer');
+const adminBizSubsContainer = document.getElementById('adminBizSubsContainer');
+
+if (btnTabBizReview && btnTabBizSubs) {
+    btnTabBizReview.addEventListener('click', () => {
+        btnTabBizReview.className = 'btn-primary';
+        btnTabBizSubs.className = 'btn-secondary';
+        if (adminBizReviewContainer) adminBizReviewContainer.style.display = 'block';
+        if (adminBizSubsContainer) adminBizSubsContainer.style.display = 'none';
+        loadAdminBusinesses();
+    });
+
+    btnTabBizSubs.addEventListener('click', () => {
+        btnTabBizReview.className = 'btn-secondary';
+        btnTabBizSubs.className = 'btn-primary';
+        if (adminBizReviewContainer) adminBizReviewContainer.style.display = 'none';
+        if (adminBizSubsContainer) adminBizSubsContainer.style.display = 'block';
+        loadAdminSubscriptions();
+    });
+}
+
+if (btnRefreshBizList) {
+    btnRefreshBizList.addEventListener('click', () => {
+        loadBusinessManagement();
+    });
+}
+
 // Initial load on script execution if DOM ready
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
     initAdminAuth();
@@ -3514,6 +3769,7 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
     loadStoredSchools();
     loadStoredRealEstate();
     loadUsers();
+    loadBusinessManagement();
 } else {
     window.addEventListener('DOMContentLoaded', () => {
         initAdminAuth();
@@ -3521,7 +3777,9 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
         loadStoredSchools();
         loadStoredRealEstate();
         loadUsers();
+        loadBusinessManagement();
     });
 }
+
 
 
