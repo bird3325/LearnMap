@@ -20,6 +20,8 @@ const CONFIG_PATH = path.join(__dirname, 'config.json');
 const DATA_DIR = path.join(__dirname, 'src', 'data');
 const SCHOOLS_PATH = path.join(DATA_DIR, 'schools_seoul.json');
 const REAL_ESTATE_PATH = path.join(DATA_DIR, 'realestate_seoul.json');
+const REAL_ESTATE_DIR = path.join(DATA_DIR, 'realestate');
+const REAL_ESTATE_REGIONS_PATH = path.join(DATA_DIR, 'realestate_regions.json');
 const BUSINESSES_PATH = path.join(DATA_DIR, 'businesses.json');
 const SUBSCRIPTIONS_PATH = path.join(DATA_DIR, 'subscriptions.json');
 const ANALYTICS_PATH = path.join(DATA_DIR, 'analytics_events.json');
@@ -95,23 +97,65 @@ function buildRealEstateSpatialGrid(items) {
 }
 
 function getCachedRealEstateItems() {
-    if (!fs.existsSync(REAL_ESTATE_PATH)) {
+    try {
+        // 1. 시·군·구별 분할 디렉터리(src/data/realestate) 우선 로드
+        if (fs.existsSync(REAL_ESTATE_DIR)) {
+            const files = fs.readdirSync(REAL_ESTATE_DIR).filter(f => f.endsWith('.json'));
+            if (files.length > 0) {
+                // 수정 시간 비교 (디렉터리 또는 인덱스 파일 기준)
+                let latestMtime = 0;
+                if (fs.existsSync(REAL_ESTATE_REGIONS_PATH)) {
+                    latestMtime = fs.statSync(REAL_ESTATE_REGIONS_PATH).mtimeMs;
+                } else {
+                    latestMtime = fs.statSync(REAL_ESTATE_DIR).mtimeMs;
+                }
+
+                if (cachedRealEstateItems && cachedRealEstateMtime === latestMtime) {
+                    return cachedRealEstateItems;
+                }
+
+                console.log(`[RealEstate Cache] 시·군·구별 분할 데이터(${files.length}개 파일) 메모리 캐시 로딩 시작...`);
+                const t0 = Date.now();
+                let combinedItems = [];
+                for (const file of files) {
+                    try {
+                        const filePath = path.join(REAL_ESTATE_DIR, file);
+                        const raw = fs.readFileSync(filePath, 'utf8');
+                        const part = JSON.parse(raw || '[]');
+                        if (Array.isArray(part)) {
+                            combinedItems = combinedItems.concat(part);
+                        }
+                    } catch (readErr) {
+                        console.warn(`[RealEstate Cache Warn] 파일 읽기 실패 (${file}):`, readErr.message);
+                    }
+                }
+                cachedRealEstateItems = combinedItems;
+                cachedRealEstateMtime = latestMtime;
+                realEstateSpatialGrid = buildRealEstateSpatialGrid(cachedRealEstateItems);
+                console.log(`[RealEstate Cache] ${cachedRealEstateItems.length.toLocaleString()}건 주택 데이터(총 ${files.length}개 지역) 및 공간 격자(${realEstateSpatialGrid.size}셀) 로드 완료 (${Date.now() - t0}ms)`);
+                return cachedRealEstateItems;
+            }
+        }
+
+        // 2. Fallback: 기존 단일 realestate_seoul.json 파일 로드
+        if (fs.existsSync(REAL_ESTATE_PATH)) {
+            const stat = fs.statSync(REAL_ESTATE_PATH);
+            if (cachedRealEstateItems && cachedRealEstateMtime === stat.mtimeMs) {
+                return cachedRealEstateItems;
+            }
+            console.log(`[RealEstate Cache Fallback] 단일 주택 데이터 메모리 캐시 로딩 시작 (크기: ${(stat.size / 1024 / 1024).toFixed(1)}MB)...`);
+            const t0 = Date.now();
+            const raw = fs.readFileSync(REAL_ESTATE_PATH, 'utf8');
+            cachedRealEstateItems = JSON.parse(raw || '[]');
+            cachedRealEstateMtime = stat.mtimeMs;
+            realEstateSpatialGrid = buildRealEstateSpatialGrid(cachedRealEstateItems);
+            console.log(`[RealEstate Cache Fallback] ${cachedRealEstateItems.length.toLocaleString()}건 주택 데이터 및 공간 격자(${realEstateSpatialGrid.size}셀) 로드 완료 (${Date.now() - t0}ms)`);
+            return cachedRealEstateItems;
+        }
+
         cachedRealEstateItems = [];
         realEstateSpatialGrid = new Map();
         return cachedRealEstateItems;
-    }
-    try {
-        const stat = fs.statSync(REAL_ESTATE_PATH);
-        if (cachedRealEstateItems && cachedRealEstateMtime === stat.mtimeMs) {
-            return cachedRealEstateItems;
-        }
-        console.log(`[RealEstate Cache] 주택 데이터 메모리 캐시 로딩 시작 (크기: ${(stat.size / 1024 / 1024).toFixed(1)}MB)...`);
-        const t0 = Date.now();
-        const raw = fs.readFileSync(REAL_ESTATE_PATH, 'utf8');
-        cachedRealEstateItems = JSON.parse(raw || '[]');
-        cachedRealEstateMtime = stat.mtimeMs;
-        realEstateSpatialGrid = buildRealEstateSpatialGrid(cachedRealEstateItems);
-        console.log(`[RealEstate Cache] ${cachedRealEstateItems.length.toLocaleString()}건 주택 데이터 및 공간 격자(${realEstateSpatialGrid.size}셀) 로드 완료 (${Date.now() - t0}ms)`);
     } catch (err) {
         console.error('[RealEstate Cache Error]:', err.message);
         if (!cachedRealEstateItems) cachedRealEstateItems = [];
@@ -124,7 +168,9 @@ function updateCachedRealEstateItems(newItems) {
     cachedRealEstateItems = newItems;
     realEstateSpatialGrid = buildRealEstateSpatialGrid(newItems);
     try {
-        if (fs.existsSync(REAL_ESTATE_PATH)) {
+        if (fs.existsSync(REAL_ESTATE_REGIONS_PATH)) {
+            cachedRealEstateMtime = fs.statSync(REAL_ESTATE_REGIONS_PATH).mtimeMs;
+        } else if (fs.existsSync(REAL_ESTATE_PATH)) {
             cachedRealEstateMtime = fs.statSync(REAL_ESTATE_PATH).mtimeMs;
         }
     } catch (e) {}
@@ -244,6 +290,38 @@ app.get('/api/realestate/stored', (req, res) => {
     }
 });
 
+// 1-1-1. GET /api/realestate/regions - Serve regions index metadata (시·군·구 목록 및 건수)
+app.get('/api/realestate/regions', (req, res) => {
+    try {
+        if (fs.existsSync(REAL_ESTATE_REGIONS_PATH)) {
+            const raw = fs.readFileSync(REAL_ESTATE_REGIONS_PATH, 'utf8');
+            return res.json(JSON.parse(raw));
+        }
+        return res.json([]);
+    } catch (e) {
+        console.error('Error reading real estate regions index:', e);
+        return res.status(500).json({ error: '지역 인덱스를 읽을 수 없습니다.' });
+    }
+});
+
+// 1-1-2. GET /api/realestate/region/:code - Serve specific region JSON data (시·군·구별 경량 데이터)
+app.get('/api/realestate/region/:code', (req, res) => {
+    try {
+        const code = req.params.code;
+        const fileName = code.endsWith('.json') ? code : `${code}.json`;
+        const filePath = path.join(REAL_ESTATE_DIR, fileName);
+
+        if (fs.existsSync(filePath)) {
+            const raw = fs.readFileSync(filePath, 'utf8');
+            return res.json(JSON.parse(raw));
+        }
+        return res.status(404).json({ error: '해당 지역 데이터를 찾을 수 없습니다.' });
+    } catch (e) {
+        console.error(`Error reading real estate region ${req.params.code}:`, e);
+        return res.status(500).json({ error: '지역 주택 데이터를 읽을 수 없습니다.' });
+    }
+});
+
 // 1-2. POST /api/realestate/stored - Save/update real estate JSON data
 app.post('/api/realestate/stored', (req, res) => {
     try {
@@ -258,15 +336,16 @@ app.post('/api/realestate/stored', (req, res) => {
             updatedAt: item.updatedAt || nowStr
         }));
         saveRealEstateJsonFiles(updatedItems);
-        return res.json({ success: true, count: updatedItems.length, message: '주택 데이터가 realestate_seoul.json 파일에 저장되었습니다.' });
+        return res.json({ success: true, count: updatedItems.length, message: '주택 데이터가 realestate_seoul.json 및 시·군·구별 파일에 저장되었습니다.' });
     } catch (e) {
         console.error('Error saving real estate data:', e);
         return res.status(500).json({ success: false, error: '주택 데이터 저장 중 오류가 발생했습니다.' });
     }
 });
 
-// 헬퍼: realestate_seoul.json 및 프론트엔드 복사본 파일 일괄 안전 저장
+// 헬퍼: realestate_seoul.json 및 시·군·구별 분할 파일 일괄 안전 저장
 function saveRealEstateJsonFiles(items) {
+    // 1. 단일 마스터 파일 저장 (호환성 유지)
     fs.writeFileSync(REAL_ESTATE_PATH, JSON.stringify(items, null, 2), 'utf8');
     const publicPath1 = path.join(__dirname, 'public', 'data', 'realestate_seoul.json');
     if (fs.existsSync(path.dirname(publicPath1))) {
@@ -276,6 +355,74 @@ function saveRealEstateJsonFiles(items) {
     if (fs.existsSync(path.dirname(publicPath2))) {
         fs.writeFileSync(publicPath2, JSON.stringify(items, null, 2), 'utf8');
     }
+
+    // 2. 시·군·구별 분할 파일 동기화
+    try {
+        const targetDirs = [
+            REAL_ESTATE_DIR,
+            path.join(__dirname, 'public', 'data', 'realestate'),
+            path.join(__dirname, 'public', 'src', 'data', 'realestate')
+        ];
+        targetDirs.forEach(dir => {
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        });
+
+        const regionMap = new Map();
+        for (const item of items) {
+            let sido = (item.sido || '경기도').trim();
+            let sigungu = (item.sigungu || '기타').trim();
+            let lawdCd = (item.lawdCd || '').trim();
+            if (sigungu === '고양시 덕양구') {
+                sigungu = '덕양구';
+                lawdCd = '41281';
+            }
+            if (!lawdCd && item.pnu && item.pnu.length === 19) {
+                lawdCd = item.pnu.substring(0, 5);
+            }
+            const groupKey = `${sido}_${sigungu}`;
+            if (!regionMap.has(groupKey)) {
+                regionMap.set(groupKey, { sido, sigungu, lawdCd: lawdCd || 'unknown', items: [] });
+            }
+            const group = regionMap.get(groupKey);
+            if ((group.lawdCd === 'unknown' || !group.lawdCd) && lawdCd) {
+                group.lawdCd = lawdCd;
+            }
+            group.items.push(item);
+        }
+
+        const indexList = [];
+        for (const [, group] of regionMap.entries()) {
+            const code = group.lawdCd !== 'unknown' ? group.lawdCd : group.sigungu;
+            const fileName = `${code}.json`;
+            indexList.push({
+                sido: group.sido,
+                sigungu: group.sigungu,
+                lawdCd: group.lawdCd,
+                fileName,
+                count: group.items.length
+            });
+            const jsonStr = JSON.stringify(group.items, null, 2);
+            targetDirs.forEach(dir => {
+                fs.writeFileSync(path.join(dir, fileName), jsonStr, 'utf8');
+            });
+        }
+
+        indexList.sort((a, b) => a.sigungu.localeCompare(b.sigungu, 'ko'));
+        const indexJson = JSON.stringify(indexList, null, 2);
+        const indexPaths = [
+            REAL_ESTATE_REGIONS_PATH,
+            path.join(__dirname, 'public', 'data', 'realestate_regions.json'),
+            path.join(__dirname, 'public', 'src', 'data', 'realestate_regions.json')
+        ];
+        indexPaths.forEach(p => {
+            if (fs.existsSync(path.dirname(p))) {
+                fs.writeFileSync(p, indexJson, 'utf8');
+            }
+        });
+    } catch (splitSyncErr) {
+        console.error('[RealEstate Split Save Error]:', splitSyncErr.message);
+    }
+
     updateCachedRealEstateItems(items);
 }
 
