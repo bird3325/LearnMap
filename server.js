@@ -51,6 +51,85 @@ function writeJsonFileSafe(filePath, data) {
     }
 }
 
+// =========================================================================
+// [초고속 성능 최적화] 주택 데이터 인메모리 캐시 및 공간 격자 인덱스 (Spatial Grid Index)
+// =========================================================================
+let cachedRealEstateItems = null;
+let cachedRealEstateMtime = 0;
+let realEstateSpatialGrid = new Map();
+const REAL_ESTATE_GRID_SIZE = 0.02; // 위경도 약 2km 단위 공간 격자 (반경 탐색 시 O(1)에 근접)
+
+function buildRealEstateSpatialGrid(items) {
+    const grid = new Map();
+    if (!Array.isArray(items)) return grid;
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (!item) continue;
+        const x = parseFloat(item.x || item.lng);
+        const y = parseFloat(item.y || item.lat);
+        if (isNaN(x) || isNaN(y)) continue;
+        
+        item._numX = x;
+        item._numY = y;
+        
+        let type = item.type;
+        if (!type) {
+            const n = item.name || '';
+            if (n.includes('빌라') || n.includes('연립') || n.includes('다세대')) type = 'rh';
+            else if (n.includes('주택') || n.includes('번지') || n.includes('단독') || n.includes('다가구')) type = 'sh';
+            else type = 'apt';
+        }
+        item._cleanType = type;
+
+        const cellX = Math.floor(x / REAL_ESTATE_GRID_SIZE);
+        const cellY = Math.floor(y / REAL_ESTATE_GRID_SIZE);
+        const key = `${cellY}_${cellX}`;
+        let cell = grid.get(key);
+        if (!cell) {
+            cell = [];
+            grid.set(key, cell);
+        }
+        cell.push(item);
+    }
+    return grid;
+}
+
+function getCachedRealEstateItems() {
+    if (!fs.existsSync(REAL_ESTATE_PATH)) {
+        cachedRealEstateItems = [];
+        realEstateSpatialGrid = new Map();
+        return cachedRealEstateItems;
+    }
+    try {
+        const stat = fs.statSync(REAL_ESTATE_PATH);
+        if (cachedRealEstateItems && cachedRealEstateMtime === stat.mtimeMs) {
+            return cachedRealEstateItems;
+        }
+        console.log(`[RealEstate Cache] 주택 데이터 메모리 캐시 로딩 시작 (크기: ${(stat.size / 1024 / 1024).toFixed(1)}MB)...`);
+        const t0 = Date.now();
+        const raw = fs.readFileSync(REAL_ESTATE_PATH, 'utf8');
+        cachedRealEstateItems = JSON.parse(raw || '[]');
+        cachedRealEstateMtime = stat.mtimeMs;
+        realEstateSpatialGrid = buildRealEstateSpatialGrid(cachedRealEstateItems);
+        console.log(`[RealEstate Cache] ${cachedRealEstateItems.length.toLocaleString()}건 주택 데이터 및 공간 격자(${realEstateSpatialGrid.size}셀) 로드 완료 (${Date.now() - t0}ms)`);
+    } catch (err) {
+        console.error('[RealEstate Cache Error]:', err.message);
+        if (!cachedRealEstateItems) cachedRealEstateItems = [];
+    }
+    return cachedRealEstateItems;
+}
+
+function updateCachedRealEstateItems(newItems) {
+    if (!Array.isArray(newItems)) return;
+    cachedRealEstateItems = newItems;
+    realEstateSpatialGrid = buildRealEstateSpatialGrid(newItems);
+    try {
+        if (fs.existsSync(REAL_ESTATE_PATH)) {
+            cachedRealEstateMtime = fs.statSync(REAL_ESTATE_PATH).mtimeMs;
+        }
+    } catch (e) {}
+}
+
 const SUPABASE_URL = 'https://khwzgqnwlknawggugznd.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtod3pncW53bGtuYXdnZ3Vnem5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDQzNDksImV4cCI6MjA5NTc4MDM0OX0.P2g3Y_MYV_ca8ZRpfAT93pnEzP4osYWc2tfyBHKb7v4';
 
@@ -157,11 +236,8 @@ function getNowFormatted() {
 // 1-1. GET /api/realestate/stored - Serve stored real estate JSON data
 app.get('/api/realestate/stored', (req, res) => {
     try {
-        if (fs.existsSync(REAL_ESTATE_PATH)) {
-            const data = fs.readFileSync(REAL_ESTATE_PATH, 'utf8');
-            return res.json(JSON.parse(data || '[]'));
-        }
-        return res.json([]);
+        const items = getCachedRealEstateItems();
+        return res.json(items);
     } catch (e) {
         console.error('Error reading real estate data:', e);
         return res.status(500).json({ error: '주택 데이터를 읽을 수 없습니다.' });
@@ -181,7 +257,7 @@ app.post('/api/realestate/stored', (req, res) => {
             createdAt: item.createdAt || nowStr,
             updatedAt: item.updatedAt || nowStr
         }));
-        fs.writeFileSync(REAL_ESTATE_PATH, JSON.stringify(updatedItems, null, 2), 'utf8');
+        saveRealEstateJsonFiles(updatedItems);
         return res.json({ success: true, count: updatedItems.length, message: '주택 데이터가 realestate_seoul.json 파일에 저장되었습니다.' });
     } catch (e) {
         console.error('Error saving real estate data:', e);
@@ -200,6 +276,7 @@ function saveRealEstateJsonFiles(items) {
     if (fs.existsSync(path.dirname(publicPath2))) {
         fs.writeFileSync(publicPath2, JSON.stringify(items, null, 2), 'utf8');
     }
+    updateCachedRealEstateItems(items);
 }
 
 // 건축물대장 전유부 API(getBrExposPubuseAreaInfo)를 통한 단지별 호실 전용면적 정밀 조회 헬퍼
@@ -469,11 +546,15 @@ if (!NATIONWIDE_LAWD_MAP['서울특별시']) {
             '상록구': '41271', '단원구': '41273',
             '안양시': ['41171', '41173'],
             '만안구': '41171', '동안구': '41173',
-            '부천시': '41190', '광명시': '41210', '평택시': '41220', '동두천시': '41250',
+            '부천시': ['41192', '41194', '41196'],
+            '원미구': '41192', '소사구': '41194', '오정구': '41196',
+            '광명시': '41210', '평택시': '41220', '동두천시': '41250',
             '과천시': '41290', '구리시': '41310', '남양주시': '41360', '오산시': '41370',
             '시흥시': '41390', '군포시': '41410', '의왕시': '41430', '하남시': '41450',
             '파주시': '41480', '이천시': '41500', '안성시': '41550', '김포시': '41570',
-            '화성시': '41590', '광주시': '41610', '양주시': '41630', '포천시': '41650',
+            '화성시': ['41591', '41593', '41595', '41597'],
+            '만세구': '41591', '효행구': '41593', '병점구': '41595', '동탄구': '41597',
+            '광주시': '41610', '양주시': '41630', '포천시': '41650',
             '여주시': '41670', '연천군': '41800', '가평군': '41820', '양평군': '41830', '의정부시': '41150'
         }
     };
@@ -487,6 +568,7 @@ const SUB_DISTRICT_MAP = {
     '안산시': ['상록구', '단원구'],
     '안양시': ['만안구', '동안구'],
     '부천시': ['원미구', '소사구', '오정구'],
+    '화성시': ['만세구', '효행구', '병점구', '동탄구'],
     '청주시': ['상당구', '서원구', '흥덕구', '청원구'],
     '천안시': ['동남구', '서북구'],
     '전주시': ['완산구', '덕진구'],
@@ -510,7 +592,16 @@ const KNOWN_DISTRICT_DONGS = {
     '기흥구': ['신갈동', '구갈동', '상갈동', '하갈동', '보라동', '지곡동', '공세동', '고매동', '농서동', '서천동', '영덕동', '언남동', '마북동', '청덕동', '동백동', '중동', '상하동', '보정동'],
     '처인구': ['김량장동', '역북동', '삼가동', '남동', '유방동', '고림동', '마평동', '운학동', '호동', '해곡동', '포곡읍', '모현읍', '이동읍', '남사읍', '원삼면', '백암면', '양지면'],
     '동안구': ['비산동', '관양동', '평촌동', '호계동'],
-    '만안구': ['안양동', '석수동', '박달동']
+    '만안구': ['안양동', '석수동', '박달동'],
+    '원미구': ['심곡동', '원미동', '소사동', '역곡동', '춘의동', '도당동', '약대동', '중동', '상동'],
+    '소사구': ['소사본동', '심곡본동', '범박동', '괴안동', '송내동', '옥길동', '계수동'],
+    '오정구': ['오정동', '여월동', '작동', '원종동', '고강동', '대장동', '삼정동', '내동'],
+    '부천시': ['심곡동', '원미동', '소사동', '역곡동', '춘의동', '도당동', '약대동', '중동', '상동', '소사본동', '심곡본동', '범박동', '괴안동', '송내동', '옥길동', '계수동', '오정동', '여월동', '작동', '원종동', '고강동', '대장동', '삼정동', '내동'],
+    '만세구': ['우정읍', '향남읍', '남양읍', '마도면', '송산면', '서신면', '팔탄면', '장안면', '양감면', '새솔동', '행정리', '상신리', '하길리', '남양리', '북양리', '조암리'],
+    '효행구': ['봉담읍', '매송면', '비봉면', '정남면', '기안동', '배양동', '동화리', '와우리', '수영리', '상리', '내리', '수기리'],
+    '병점구': ['진안동', '병점동', '반월동', '기산동', '안녕동', '송산동', '황계동', '반정동'],
+    '동탄구': ['반송동', '석우동', '청계동', '영천동', '중동', '오산동', '신동', '목동', '산척동', '장지동', '송동', '방교동', '금곡동', '능동', '여울동'],
+    '화성시': ['우정읍', '향남읍', '남양읍', '마도면', '송산면', '서신면', '팔탄면', '장안면', '양감면', '새솔동', '행정리', '상신리', '하길리', '남양리', '북양리', '조암리', '봉담읍', '매송면', '비봉면', '정남면', '기안동', '배양동', '동화리', '와우리', '수영리', '상리', '내리', '수기리', '진안동', '병점동', '반월동', '기산동', '안녕동', '송산동', '황계동', '반정동', '반송동', '석우동', '청계동', '영천동', '중동', '오산동', '신동', '목동', '산척동', '장지동', '송동', '방교동', '금곡동', '능동', '여울동']
 };
 
 function findParentCity(guName) {
@@ -549,8 +640,14 @@ function getLawdTargets(sido, sigungu) {
                 targets.push({ gu: sigungu, code: val });
             }
         } else {
-            // 더 긴 키를 우선 매칭 (예: '고양시 일산동구'가 입력되었을 때 '고양시'보다 '일산동구'가 정확히 우선 매칭되도록)
-            const sortedKeys = Object.keys(sidoMap).sort((a, b) => b.length - a.length);
+            // 더 긴 키를 우선 매칭하되, 길이가 같을 경우 단일 코드(세부구)를 복합시(배열)보다 우선 매칭
+            const sortedKeys = Object.keys(sidoMap).sort((a, b) => {
+                if (b.length !== a.length) return b.length - a.length;
+                const aIsArr = Array.isArray(sidoMap[a]);
+                const bIsArr = Array.isArray(sidoMap[b]);
+                if (aIsArr !== bIsArr) return aIsArr ? 1 : -1;
+                return 0;
+            });
             const foundKey = sortedKeys.find(k => sigungu.includes(k) || k.includes(sigungu));
             if (foundKey) {
                 const fVal = sidoMap[foundKey];
@@ -680,7 +777,25 @@ const DONG_CODES_MAP = {
     '향동동': '11500', '화정동': '11000', '행신동': '12400', '강매동': '12500',
     '토당동': '12000', '내곡동': '12100', '대장동': '12200', '신평동': '12300',
     '행주내동': '12600', '행주외동': '12700', '관산동': '10400', '내유동': '10500',
-    '고양동': '11600', '대자동': '11700', '벽제동': '11800', '선유동': '11900'
+    '고양동': '11600', '대자동': '11700', '벽제동': '11800', '선유동': '11900',
+    // 부천시 (원미구 / 소사구 / 오정구)
+    '원미동': '10100', '심곡동': '10200', '춘의동': '10300', '도당동': '10400',
+    '약대동': '10500', '소사동': '10600', '역곡동': '10700', '중동': '10800', '상동': '10900',
+    '소사본동': '10100', '심곡본동': '10200', '범박동': '10300', '괴안동': '10400',
+    '송내동': '10500', '옥길동': '10600', '계수동': '10700',
+    '오정동': '10100', '여월동': '10200', '작동': '10300', '원종동': '10400',
+    '고강동': '10500', '대장동': '10600', '삼정동': '10700', '내동': '10800',
+    // 화성시 (만세구 / 효행구 / 병점구 / 동탄구)
+    '새솔동': '10100', '우정읍': '25000', '향남읍': '25300', '남양읍': '25600',
+    '마도면': '31000', '송산면': '32000', '서신면': '33000', '팔탄면': '34000', '장안면': '35000', '양감면': '36000',
+    '배양동': '10100', '기안동': '10200', '봉담읍': '25000', '매송면': '31000', '비봉면': '32000', '정남면': '33000',
+    '동화리': '25024', '와우리': '25025', '수영리': '25023',
+    '진안동': '10100', '병점동': '10200', '기산동': '10400', '반월동': '10500',
+    '반정동': '10600', '황계동': '10700', '송산동': '10800', '안녕동': '10900',
+    '능동': '10100', '반송동': '10200', '석우동': '10300', '청계동': '10500',
+    '영천동': '10600', '중동': '10700', '신동': '10800', '목동': '10900',
+    '산척동': '11000', '장지동': '11100', '송동': '11200', '방교동': '11300',
+    '금곡동': '11400', '오산동': '11500', '여울동': '11500'
 };
 
 // 🌟 전역 주택 수집 중단 플래그 (1단계/2단계 실시간 수집 공통)
@@ -787,9 +902,15 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                     }
                 }
             } catch (e) {}
+            let fallbackBCode = null;
+            if (DONG_CODES_MAP[dongName]) {
+                const lawdTarget = lawdTargets.find(t => t.gu === guName);
+                const sCode = lawdTarget ? lawdTarget.code : '';
+                if (sCode) fallbackBCode = `${sCode}${DONG_CODES_MAP[dongName]}`;
+            }
             dongCoordMap.set(dKey, null);
-            dongBCodeMap.set(dKey, null);
-            return { coord: null, bCode: null };
+            dongBCodeMap.set(dKey, fallbackBCode);
+            return { coord: null, bCode: fallbackBCode };
         };
 
         // 🌟 [1단계] 건축HUB 표제부 API(국토교통부 건축물대장)를 통해 실제 주택 기본 정보(마스터) 일괄 수집
@@ -997,7 +1118,8 @@ app.post('/api/realestate/collect-master', async (req, res) => {
 
                                 const key = `${sido}_${gu}_${cleanName}`;
                                 const buildYear = (useAprDay && useAprDay.length >= 4) ? useAprDay.substring(0, 4) : ((pmsDay && pmsDay.length >= 4) ? pmsDay.substring(0, 4) : '');
-                                const fullAddr = (newPlatPlc || platPlc || `${sido} ${gu} ${dong}`).trim();
+                                const parentCity = findParentCity(gu);
+                                const fullAddr = (newPlatPlc || platPlc || `${sido} ${parentCity ? parentCity + ' ' : ''}${gu} ${dong}`).trim();
 
                                 if (!estateMap.has(key)) {
                                     let itemX = '';
@@ -4301,10 +4423,6 @@ app.get('/api/realestate/pins', async (req, res) => {
         return res.status(400).json({ error: '중심 좌표(x, y)가 필요합니다.' });
     }
 
-    const config = await readConfig();
-    const serviceKey = config.data_go_kr_key;
-    const kakaoAppKey = config.kakao_app_key;
-
     // 하버사인(Haversine) 구면 직선 거리 계산 함수 (미터 단위)
     function getHaversineDistance(lat1, lon1, lat2, lon2) {
         const R = 6371000;
@@ -4320,26 +4438,46 @@ app.get('/api/realestate/pins', async (req, res) => {
     const maxDistLimit = radius || 1000;
     const estateMap = new Map();
 
-    // 1. [1단계] 주택 기본 정보(마스터) DB (realestate_seoul.json)에서 반경 내에 있는 주택은 '모두' 추출
-    if (fs.existsSync(REAL_ESTATE_PATH)) {
-        try {
-            const storedItems = JSON.parse(fs.readFileSync(REAL_ESTATE_PATH, 'utf8') || '[]');
-            storedItems.forEach(item => {
-                let type = item.type;
-                if (!type) {
-                    const n = item.name || '';
-                    if (n.includes('빌라') || n.includes('연립') || n.includes('다세대')) type = 'rh';
-                    else if (n.includes('주택') || n.includes('번지') || n.includes('단독') || n.includes('다가구')) type = 'sh';
-                    else type = 'apt';
-                }
-                if (!typeList.includes('all') && !typeList.includes(type)) return;
+    // 1. [초고속] 메모리 캐시 및 공간 격자(Spatial Grid) 인덱스를 통한 마스터 DB 탐색
+    try {
+        getCachedRealEstateItems(); // 캐시 유효성 확인 및 핫 로드
 
-                const itemX = parseFloat(item.x || item.lng);
-                const itemY = parseFloat(item.y || item.lat);
+        // 반경 경계 상자(BBOX) 산출
+        const deltaLat = (maxDistLimit / 111000) * 1.05;
+        const latRad = centerY * (Math.PI / 180);
+        const cosLat = Math.cos(latRad);
+        const deltaLng = (maxDistLimit / (111000 * Math.max(cosLat, 0.1))) * 1.05;
 
-                if (!isNaN(itemX) && !isNaN(itemY)) {
-                    const dist = getHaversineDistance(centerY, centerX, itemY, itemX);
+        const minLat = centerY - deltaLat;
+        const maxLat = centerY + deltaLat;
+        const minLng = centerX - deltaLng;
+        const maxLng = centerX + deltaLng;
 
+        // 해당 영역에 겹치는 격자 셀 좌표 계산
+        const minCellY = Math.floor(minLat / REAL_ESTATE_GRID_SIZE);
+        const maxCellY = Math.floor(maxLat / REAL_ESTATE_GRID_SIZE);
+        const minCellX = Math.floor(minLng / REAL_ESTATE_GRID_SIZE);
+        const maxCellX = Math.floor(maxLng / REAL_ESTATE_GRID_SIZE);
+
+        for (let cy = minCellY; cy <= maxCellY; cy++) {
+            for (let cx = minCellX; cx <= maxCellX; cx++) {
+                const cell = realEstateSpatialGrid.get(`${cy}_${cx}`);
+                if (!cell) continue;
+
+                for (let i = 0; i < cell.length; i++) {
+                    const item = cell[i];
+                    const iy = item._numY;
+                    const ix = item._numX;
+
+                    // 1차 경계 상자 필터링 (가장 빠른 실수 비교)
+                    if (iy < minLat || iy > maxLat || ix < minLng || ix > maxLng) continue;
+
+                    // 주택 유형 필터링
+                    const type = item._cleanType || item.type || 'apt';
+                    if (!typeList.includes('all') && !typeList.includes(type)) continue;
+
+                    // 2차 하버사인 구면 정밀 거리 산출
+                    const dist = getHaversineDistance(centerY, centerX, iy, ix);
                     if (dist <= maxDistLimit) {
                         const typeName = type === 'apt' ? '아파트' : (type === 'rh' ? '연립·다세대' : (type === 'offi' ? '오피스텔' : '단독·다가구'));
                         let priceAmount = 0;
@@ -4373,8 +4511,8 @@ app.get('/api/realestate/pins', async (req, res) => {
                             sido: item.sido || '',
                             buildYear: item.buildYear || '',
                             householdCount: item.householdCount || 0,
-                            x: String(itemX),
-                            y: String(itemY),
+                            x: String(ix),
+                            y: String(iy),
                             distance: dist,
                             price_amount: priceAmount,
                             price_display: displayPrice,
@@ -4387,16 +4525,13 @@ app.get('/api/realestate/pins', async (req, res) => {
                         });
                     }
                 }
-            });
-        } catch (e) {
-            console.warn('[Realestate Pins] Master DB read error:', e.message);
+            }
         }
+    } catch (e) {
+        console.warn('[Realestate Pins] Spatial grid search error:', e.message);
     }
 
-    // 2. DB(마스터/실거래가) 구축 상태를 그대로 신뢰하여 반환 (1단계 마스터: 실거래 대기 / 2단계 동기화: 최신 실거래가)
-    // * 과거 실시간 오버라이드 로직을 제거하여 1단계와 2단계의 역할 구분을 명확히 하고 핀 응답 속도를 극대화합니다.
-
-
+    // 2. DB(마스터/실거래가) 구축 상태를 기반으로 정렬 후 즉시 반환
     const validItems = Array.from(estateMap.values());
     validItems.sort((a, b) => a.distance - b.distance);
 
@@ -5037,6 +5172,7 @@ app.post('/api/business/register', (req, res) => {
         }
 
         const newBizId = `biz_${Date.now()}`;
+        const addressDetail = (req.body.addressDetail || '').trim();
         const newBusiness = {
             id: newBizId,
             userId: req.body.userId || `usr_${Date.now()}`,
@@ -5047,6 +5183,9 @@ app.post('/api/business/register', (req, res) => {
             phone: phone.trim(),
             email: email.trim(),
             address: address.trim(),
+            addressDetail: addressDetail,
+            registeredAddress: address.trim(),
+            registeredAddressDetail: addressDetail,
             status: 'submitted', // draft -> submitted -> approved / rejected
             rejectionReason: '',
             academyProfile: {
@@ -5062,6 +5201,7 @@ app.post('/api/business/register', (req, res) => {
                 capacity: (req.body.capacity || '').trim(),
                 websiteUrl: (req.body.websiteUrl || '').trim(),
                 address: address.trim(),
+                addressDetail: addressDetail,
                 feeInfo: (feeInfo || '').trim()
             },
             createdAt: new Date().toISOString(),
@@ -5108,6 +5248,9 @@ app.put('/api/business/profile', (req, res) => {
         }
 
         if (academyProfile) {
+            if (!businesses[idx].registeredAddress && businesses[idx].address) {
+                businesses[idx].registeredAddress = businesses[idx].address;
+            }
             businesses[idx].academyProfile = {
                 ...businesses[idx].academyProfile,
                 ...academyProfile
@@ -5605,6 +5748,10 @@ app.get('*', (req, res) => {
 if (process.env.NODE_ENV !== 'production') {
     const server = app.listen(PORT, () => {
         console.log(`[Express Backend] Server running on port ${PORT}`);
+        // 백그라운드에서 주택 데이터 인메모리 캐시 및 공간 인덱스 사전 워밍업
+        setTimeout(() => {
+            getCachedRealEstateItems();
+        }, 100);
     });
 
     server.on('error', (err) => {

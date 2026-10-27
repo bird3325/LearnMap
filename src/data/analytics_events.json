@@ -177,5 +177,45 @@
       "area": "행신동"
     },
     "createdAt": "2026-10-26T13:07:42.298Z"
+  },
+  {
+    "id": "evt_1793061132321_p2lx",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "삼송힐스테이트",
+      "area": "신원동"
+    },
+    "createdAt": "2026-10-27T00:32:12.321Z"
+  },
+  {
+    "id": "evt_1793061752621_gfxt",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "삼송 동일스위트",
+      "area": "신원동"
+    },
+    "createdAt": "2026-10-27T00:42:32.621Z"
+  },
+  {
+    "id": "evt_1793061772117_fqqe",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "신원마을엘에이치3단지",
+      "area": "신원동"
+    },
+    "createdAt": "2026-10-27T00:42:52.117Z"
+  },
+  {
+    "id": "evt_1793077548919_ujzk",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "신원마을 호반베르디움 9단지",
+      "area": "신원동"
+    },
+    "createdAt": "2026-10-27T05:05:48.919Z"
   }
 ]

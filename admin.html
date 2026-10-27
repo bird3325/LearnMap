@@ -594,6 +594,19 @@
             margin-right: 6px;
         }
 
+        .region-stat-chip {
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        .region-stat-chip:hover {
+            border-color: #93c5fd !important;
+            transform: translateY(-1px);
+        }
+        .region-stat-chip:active {
+            transform: translateY(0);
+        }
+
         .nav-btn {
             display: inline-flex;
             align-items: center;
@@ -1111,6 +1124,31 @@
                         </div>
                     </div>
                         
+                    <!-- 6-1. Regional Collected Count Area (지역별 수집 현황) -->
+                    <div id="realEstateRegionStatsBox" style="background: #f8fafc; border: 1px solid var(--adm-border); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <strong style="font-size: 13px; color: var(--adm-text-main); display: flex; align-items: center; gap: 6px;">
+                                    <span>📍</span> 지역별 수집 현황
+                                </strong>
+                                <span id="realEstateRegionStatsSummaryBadge" style="font-size: 11.5px; font-weight: 600; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 2px 8px; border-radius: 9999px;">
+                                    지역별 수집 데이터를 불러오는 중...
+                                </span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--adm-text-muted);">
+                                <span>💡 지역 버튼 클릭 시 해당 지역으로 자동 필터링</span>
+                                <button type="button" id="btnResetRegionFilter" class="btn-secondary" style="padding: 2px 8px; font-size: 11px; height: 24px; border-radius: 4px; display: none;">
+                                    전체 보기 (필터 해제)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Sido & Sigungu Count Chips Container -->
+                        <div id="realEstateRegionStatsContainer" style="display: flex; flex-wrap: wrap; gap: 8px; max-height: 160px; overflow-y: auto; padding-right: 4px;">
+                            <div style="color: var(--adm-text-muted); font-size: 12px; padding: 6px 0;">지역별 수집 데이터를 분석 중입니다...</div>
+                        </div>
+                    </div>
+
                     <!-- Filters for Real Estate List -->
                     <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
                         <select class="form-control" id="realEstateRegionFilter" style="flex: 1; min-width: 120px; padding: 7px 10px; font-size: 12.5px;">

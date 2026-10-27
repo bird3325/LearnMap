@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>학업여지도 파트너 센터</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏢</text></svg>">
-    
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏢</text></svg>">
+
     <!-- Google Fonts Inter & Pretendard -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 
@@ -33,9 +37,9 @@
             --border-color: #e2e8f0;
             --radius-md: 10px;
             --radius-lg: 16px;
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
-            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.03);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
         }
 
         * {
@@ -273,8 +277,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* Cards & Grids */
@@ -308,9 +319,17 @@
             background: #e2e8f0;
         }
 
-        .metric-card.primary::before { background: var(--primary); }
-        .metric-card.success::before { background: var(--success); }
-        .metric-card.warning::before { background: var(--warning); }
+        .metric-card.primary::before {
+            background: var(--primary);
+        }
+
+        .metric-card.success::before {
+            background: var(--success);
+        }
+
+        .metric-card.warning::before {
+            background: var(--warning);
+        }
 
         .metric-info h4 {
             font-size: 13px;
@@ -400,10 +419,29 @@
             font-weight: 700;
         }
 
-        .badge-success { background: var(--success-light); color: var(--success); border: 1px solid #a7f3d0; }
-        .badge-primary { background: var(--primary-light); color: var(--primary); border: 1px solid var(--primary-border); }
-        .badge-warning { background: var(--warning-light); color: var(--warning); border: 1px solid #fde68a; }
-        .badge-danger { background: var(--danger-light); color: var(--danger); border: 1px solid #fecaca; }
+        .badge-success {
+            background: var(--success-light);
+            color: var(--success);
+            border: 1px solid #a7f3d0;
+        }
+
+        .badge-primary {
+            background: var(--primary-light);
+            color: var(--primary);
+            border: 1px solid var(--primary-border);
+        }
+
+        .badge-warning {
+            background: var(--warning-light);
+            color: var(--warning);
+            border: 1px solid #fde68a;
+        }
+
+        .badge-danger {
+            background: var(--danger-light);
+            color: var(--danger);
+            border: 1px solid #fecaca;
+        }
 
         /* Pricing Card Grid */
         .pricing-grid {
@@ -673,7 +711,7 @@
             color: #ffffff;
             padding: 14px 22px;
             border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
             font-size: 14px;
             font-weight: 600;
             z-index: 1000;
@@ -684,11 +722,19 @@
         }
 
         @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
     </style>
 </head>
+
 <body>
 
     <!-- 1. Top Navbar -->
@@ -736,13 +782,13 @@
                 <span>📊</span><span>사업자 대시보드</span>
             </button>
             <button class="tab-btn" data-tab="tab-pricing" onclick="openTab('tab-pricing')">
-                <span>💎</span><span>프리미엄 상품 & 구독</span>
+                <span>💎</span><span>상품 & 구독</span>
             </button>
             <button class="tab-btn" data-tab="tab-profile" onclick="openTab('tab-profile')">
-                <span>✏️</span><span id="tabProfileNavLabel">학원 프로필 관리</span>
+                <span>✏️</span><span id="tabProfileNavLabel">프로필 관리</span>
             </button>
             <button class="tab-btn" data-tab="tab-register" onclick="openTab('tab-register')">
-                <span>📝</span><span>신규 사업자 등록 신청</span>
+                <span>📝</span><span>사업자 등록 신청</span>
             </button>
         </div>
     </nav>
@@ -757,7 +803,8 @@
                 <div class="metric-card primary">
                     <div class="metric-info">
                         <h4>프로필 상세 조회</h4>
-                        <div class="metric-value"><span id="metricProfileViews">0</span><span class="unit">회</span></div>
+                        <div class="metric-value"><span id="metricProfileViews">0</span><span class="unit">회</span>
+                        </div>
                         <div class="metric-subtext">학부모가 상세 페이지를 확인한 횟수</div>
                     </div>
                     <div class="metric-icon">👁️</div>
@@ -784,7 +831,8 @@
                 <div class="metric-card warning">
                     <div class="metric-info">
                         <h4>1:1 상담 문의 접수</h4>
-                        <div class="metric-value"><span id="metricInquiriesCount">0</span><span class="unit">건</span></div>
+                        <div class="metric-value"><span id="metricInquiriesCount">0</span><span class="unit">건</span>
+                        </div>
                         <div class="metric-subtext">학부모가 전송한 입학/상담 요청</div>
                     </div>
                     <div class="metric-icon">💬</div>
@@ -813,19 +861,26 @@
                         </div>
                     </div>
                     <div class="panel-body">
-                        <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; margin-bottom: 16px;">
+                        <div
+                            style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; margin-bottom: 16px;">
                             <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">이용 상품</div>
-                            <div style="font-size: 17px; font-weight: 800; color: #0f172a;" id="dashSubProductName">학원 프리미엄 멤버십</div>
-                            <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
+                            <div style="font-size: 17px; font-weight: 800; color: #0f172a;" id="dashSubProductName">학원
+                                프리미엄 멤버십</div>
+                            <div
+                                style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
                                 <span style="font-size: 13px; color: var(--text-sub);">월 결제액</span>
-                                <span style="font-size: 15px; font-weight: 700; color: var(--primary);" id="dashSubAmount">29,000원</span>
+                                <span style="font-size: 15px; font-weight: 700; color: var(--primary);"
+                                    id="dashSubAmount">29,000원</span>
                             </div>
-                            <div style="margin-top: 6px; display: flex; align-items: center; justify-content: space-between;">
+                            <div
+                                style="margin-top: 6px; display: flex; align-items: center; justify-content: space-between;">
                                 <span style="font-size: 13px; color: var(--text-sub);">만료 예정일</span>
-                                <span style="font-size: 13px; font-weight: 600; color: #0f172a;" id="dashSubEndDate">2026-11-20</span>
+                                <span style="font-size: 13px; font-weight: 600; color: #0f172a;"
+                                    id="dashSubEndDate">2026-11-20</span>
                             </div>
                         </div>
-                        <button class="btn-action btn-secondary-act" onclick="openTab('tab-pricing')" style="font-size: 13px;">
+                        <button class="btn-action btn-secondary-act" onclick="openTab('tab-pricing')"
+                            style="font-size: 13px;">
                             구독 상품 변경 및 관리 ➔
                         </button>
                     </div>
@@ -872,7 +927,8 @@
                                 <li>학업여지도 일반 검색 목록 노출</li>
                                 <li>기본 조회수 확인</li>
                             </ul>
-                            <button class="btn-action btn-secondary-act" disabled style="opacity: 0.6; cursor: default;">
+                            <button class="btn-action btn-secondary-act" disabled
+                                style="opacity: 0.6; cursor: default;">
                                 현재 기본 적용됨
                             </button>
                         </div>
@@ -893,7 +949,8 @@
                                 <li>지도 마커 우선 가시성 지원</li>
                             </ul>
                             <div id="premiumSubActionArea">
-                                <button class="btn-action btn-primary-act" onclick="subscribePlan('prod_academy_premium')">
+                                <button class="btn-action btn-primary-act"
+                                    onclick="subscribePlan('prod_academy_premium')">
                                     🚀 월 29,000원으로 프리미엄 시작하기
                                 </button>
                             </div>
@@ -931,7 +988,8 @@
                                 <li>학업여지도 파트너 목록 기본 등록</li>
                                 <li>기본 조회수 확인</li>
                             </ul>
-                            <button class="btn-action btn-secondary-act" disabled style="opacity: 0.6; cursor: default;">
+                            <button class="btn-action btn-secondary-act" disabled
+                                style="opacity: 0.6; cursor: default;">
                                 현재 기본 적용됨
                             </button>
                         </div>
@@ -977,7 +1035,8 @@
                     </div>
 
                     <!-- 구독 안내 및 해지 정책 -->
-                    <div style="margin-top: 32px; padding: 20px; background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px; font-size: 13px; color: var(--text-sub); line-height: 1.6;">
+                    <div
+                        style="margin-top: 32px; padding: 20px; background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px; font-size: 13px; color: var(--text-sub); line-height: 1.6;">
                         <strong>📌 구독 및 결제 안내</strong>
                         <ul style="margin-top: 8px; padding-left: 18px;">
                             <li>결제는 30일 주기로 자동 갱신되며, 언제든 대시보드에서 위약금 없이 즉시 해지 신청이 가능합니다.</li>
@@ -997,7 +1056,8 @@
                         <h3 id="profHeaderTitle">✏️ 학원 상세 프로필 관리</h3>
                         <p id="profHeaderSub">학부모에게 노출되는 상세 정보 및 전문 분야를 정확하게 관리하세요.</p>
                     </div>
-                    <button class="btn-action btn-primary-act" onclick="saveProfile()" style="width: auto; padding: 10px 20px;">
+                    <button class="btn-action btn-primary-act" onclick="saveProfile()"
+                        style="width: auto; padding: 10px 20px;">
                         💾 변경사항 저장하기
                     </button>
                 </div>
@@ -1011,31 +1071,40 @@
                             </div>
                             <div class="form-group">
                                 <label>대표 연락처 <span class="req">*</span></label>
-                                <input type="tel" id="profPhone" class="form-control" placeholder="예: 02-1234-5678 또는 010-1234-5678" maxlength="14" oninput="handlePhoneInput(this, 'profPhoneError')" onblur="checkPhoneValidation(this, 'profPhoneError')">
-                                <div id="profPhoneError" style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
+                                <input type="tel" id="profPhone" class="form-control"
+                                    placeholder="예: 02-1234-5678 또는 010-1234-5678" maxlength="14"
+                                    oninput="handlePhoneInput(this, 'profPhoneError')"
+                                    onblur="checkPhoneValidation(this, 'profPhoneError')">
+                                <div id="profPhoneError"
+                                    style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
                             </div>
 
                             <div class="form-group">
                                 <label>🏷️ 구분 (학원 / 교습소) <span class="req">*</span></label>
-                                <input type="text" id="profInstitutionType" class="form-control" placeholder="예: 교습소, 종합학원, 보습·어학 전문 등">
+                                <input type="text" id="profInstitutionType" class="form-control"
+                                    placeholder="예: 교습소, 종합학원, 보습·어학 전문 등">
                             </div>
                             <div class="form-group">
                                 <label>🏛️ 관할 교육청</label>
-                                <input type="text" id="profEduOffice" class="form-control" placeholder="예: 관할 교육청 (정식 등록 인가) 또는 경기도고양교육지원청">
+                                <input type="text" id="profEduOffice" class="form-control"
+                                    placeholder="예: 관할 교육청 (정식 등록 인가) 또는 경기도고양교육지원청">
                             </div>
 
                             <div class="form-group">
                                 <label>📅 설립일</label>
-                                <input type="text" id="profFoundingDate" class="form-control" placeholder="예: 설립 및 정식 운영 중 또는 2021-03-15">
+                                <input type="text" id="profFoundingDate" class="form-control"
+                                    placeholder="예: 설립 및 정식 운영 중 또는 2021-03-15">
                             </div>
                             <div class="form-group">
                                 <label>👥 수용 정원 (동시 수용 기준)</label>
-                                <input type="text" id="profCapacity" class="form-control" placeholder="예: 수용 정원 기준 운영 (동시 수용 기준) 또는 30명">
+                                <input type="text" id="profCapacity" class="form-control"
+                                    placeholder="예: 수용 정원 기준 운영 (동시 수용 기준) 또는 30명">
                             </div>
 
                             <div class="form-group">
                                 <label>대표 교육 과목 (쉼표로 구분) <span class="req">*</span></label>
-                                <input type="text" id="profSubjects" class="form-control" placeholder="예: 수학, 수리논술, 입시종합">
+                                <input type="text" id="profSubjects" class="form-control"
+                                    placeholder="예: 수학, 수리논술, 입시종합">
                             </div>
                             <div class="form-group">
                                 <label>교육 대상 학년 (쉼표로 구분) <span class="req">*</span></label>
@@ -1044,55 +1113,86 @@
 
                             <div class="form-group full-width">
                                 <label>수업 및 지도 방식 특징</label>
-                                <input type="text" id="profClassMethod" class="form-control" placeholder="예: 반당 정원 6명 소수정예 밀착 오답 클리닉 운영">
+                                <input type="text" id="profClassMethod" class="form-control"
+                                    placeholder="예: 반당 정원 6명 소수정예 밀착 오답 클리닉 운영">
                             </div>
 
                             <div class="form-group full-width">
                                 <label>학원 소개글</label>
-                                <textarea id="profDescription" class="form-control" rows="4" placeholder="학원의 교육 철학, 강사진 구성, 합격 실적 등을 작성해주세요."></textarea>
+                                <textarea id="profDescription" class="form-control" rows="4"
+                                    placeholder="학원의 교육 철학, 강사진 구성, 합격 실적 등을 작성해주세요."></textarea>
                             </div>
 
                             <div class="form-group full-width">
-                                <label onclick="openKakaoPostcode()" style="cursor: pointer;">학원 상세 주소 <span class="req">*</span></label>
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                                    <label onclick="openKakaoPostcode()" style="cursor: pointer; margin-bottom: 0;">학원
+                                        상세 주소 <span class="req">*</span></label>
+                                    <label
+                                        style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; font-weight: 600; color: #475569; user-select: none;">
+                                        <input type="checkbox" id="chkSameAsBizAddress"
+                                            style="width: 16px; height: 16px; cursor: pointer;"
+                                            onchange="handleSameAsBizAddressChange(this.checked)">
+                                        <span>사업장 소재지 주소 동일</span>
+                                    </label>
+                                </div>
                                 <div style="display: flex; gap: 8px;">
-                                    <input type="text" id="profZonecode" class="form-control" placeholder="우편번호" style="width: 140px; flex-shrink: 0; cursor: pointer;" readonly onclick="openKakaoPostcode()">
-                                    <input type="text" id="profAddress" class="form-control" placeholder="기본 주소 (클릭하여 주소 검색)" style="flex: 1; cursor: pointer;" readonly onclick="openKakaoPostcode()">
+                                    <input type="text" id="profZonecode" class="form-control" placeholder="우편번호"
+                                        style="width: 140px; flex-shrink: 0; cursor: pointer;" readonly
+                                        onclick="openKakaoPostcode()">
+                                    <input type="text" id="profAddress" class="form-control"
+                                        placeholder="기본 주소 (클릭하여 주소 검색)" style="flex: 1; cursor: pointer;" readonly
+                                        onclick="openKakaoPostcode()">
                                 </div>
                                 <div style="margin-top: 8px;">
-                                    <input type="text" id="profAddressDetail" class="form-control" placeholder="상세 주소 (건물 층수, 동·호수 등 직접 입력)">
+                                    <input type="text" id="profAddressDetail" class="form-control"
+                                        placeholder="상세 주소 (건물 층수, 동·호수 등 직접 입력)">
                                 </div>
                             </div>
 
                             <!-- 학원 지도 표시 좌표 (위도·경도) 설정 영역: 위경도 텍스트 대신 카카오 지도 노출 -->
-                            <div class="form-group full-width" style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 16px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <div class="form-group full-width"
+                                style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 16px;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                     <div style="display: flex; align-items: center; gap: 6px;">
                                         <span style="font-size: 14px;">📍</span>
-                                        <label style="margin-bottom: 0; font-size: 13px; font-weight: 700; color: #0f172a;">학원 지도 표시 좌표 (위도·경도) 설정</label>
-                                        <span style="font-size: 11.5px; color: #64748b;">(학부모 지도 마커 핀 및 통학 거리 계산에 반영됩니다)</span>
+                                        <label
+                                            style="margin-bottom: 0; font-size: 13px; font-weight: 700; color: #0f172a;">학원
+                                            지도 표시 좌표 (위도·경도) 설정</label>
+                                        <span style="font-size: 11.5px; color: #64748b;">(학부모 지도 마커 핀 및 통학 거리 계산에
+                                            반영됩니다)</span>
                                     </div>
-                                    <button type="button" class="btn-action btn-secondary-act" onclick="convertAddressToCoords()"
-                                            style="width: auto; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 7px; cursor: pointer;">
+                                    <button type="button" class="btn-action btn-secondary-act"
+                                        onclick="convertAddressToCoords()"
+                                        style="width: auto; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 7px; cursor: pointer;">
                                         🔄 주소로 지도 위치 새로고침
                                     </button>
                                 </div>
                                 <!-- 카카오 지도 영역 -->
-                                <div id="academyCoordMap" style="width: 100%; height: 260px; border-radius: 8px; border: 1px solid var(--border-color); background: #f1f5f9; position: relative;"></div>
+                                <div id="academyCoordMap"
+                                    style="width: 100%; height: 260px; border-radius: 8px; border: 1px solid var(--border-color); background: #f1f5f9; position: relative;">
+                                </div>
                                 <!-- 숨겨진 위도/경도 필드 (데이터 전송 및 저장용) -->
                                 <input type="hidden" id="profLat">
                                 <input type="hidden" id="profLng">
-                                <div id="coordStatusMsg" style="font-size: 11.5px; color: #059669; font-weight: 600; margin-top: 8px; display: none;"></div>
-                                <div style="font-size: 11.5px; color: #64748b; margin-top: 4px;">💡 주소를 검색하면 지도에 학원 위치 마커가 자동 표시되며, 마커를 드래그하거나 지도를 클릭하여 위치를 조정할 수 있습니다.</div>
+                                <div id="coordStatusMsg"
+                                    style="font-size: 11.5px; color: #059669; font-weight: 600; margin-top: 8px; display: none;">
+                                </div>
+                                <div style="font-size: 11.5px; color: #64748b; margin-top: 4px;">💡 주소를 검색하면 지도에 학원 위치
+                                    마커가 자동 표시되며, 마커를 드래그하거나 지도를 클릭하여 위치를 조정할 수 있습니다.</div>
                             </div>
 
                             <div class="form-group full-width">
                                 <label>홈페이지 또는 블로그 URL</label>
-                                <input type="url" id="profWebsiteUrl" class="form-control" placeholder="https://blog.naver.com/...">
+                                <input type="url" id="profWebsiteUrl" class="form-control"
+                                    placeholder="https://blog.naver.com/...">
                             </div>
 
                             <div class="form-group full-width">
                                 <label>수강료 안내 (선택)</label>
-                                <input type="text" id="profFeeInfo" class="form-control" placeholder="예: 월 450,000원 ~ 650,000원 (주 2~3회 기준)">
+                                <input type="text" id="profFeeInfo" class="form-control"
+                                    placeholder="예: 월 450,000원 ~ 650,000원 (주 2~3회 기준)">
                             </div>
                         </div>
 
@@ -1109,18 +1209,25 @@
 
                             <div class="form-group">
                                 <label>중개사무소 개설등록번호 <span class="req">*</span></label>
-                                <input type="text" id="profReRegNo" class="form-control" placeholder="예: 11680-2021-00234">
+                                <input type="text" id="profReRegNo" class="form-control"
+                                    placeholder="예: 11680-2021-00234">
                             </div>
                             <div class="form-group">
                                 <label>대표 유선 전화번호 <span class="req">*</span></label>
-                                <input type="tel" id="profRePhone" class="form-control" placeholder="예: 02-555-8899" maxlength="14" oninput="handlePhoneInput(this, 'profRePhoneError')" onblur="checkPhoneValidation(this, 'profRePhoneError', '대표 유선 전화번호')">
-                                <div id="profRePhoneError" style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
+                                <input type="tel" id="profRePhone" class="form-control" placeholder="예: 02-555-8899"
+                                    maxlength="14" oninput="handlePhoneInput(this, 'profRePhoneError')"
+                                    onblur="checkPhoneValidation(this, 'profRePhoneError', '대표 유선 전화번호')">
+                                <div id="profRePhoneError"
+                                    style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
                             </div>
 
                             <div class="form-group">
                                 <label>상담 직통 휴대폰 번호</label>
-                                <input type="tel" id="profReMobile" class="form-control" placeholder="예: 010-3344-5566" maxlength="14" oninput="handlePhoneInput(this, 'profReMobileError')" onblur="checkMobileValidation(this, 'profReMobileError')">
-                                <div id="profReMobileError" style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
+                                <input type="tel" id="profReMobile" class="form-control" placeholder="예: 010-3344-5566"
+                                    maxlength="14" oninput="handlePhoneInput(this, 'profReMobileError')"
+                                    onblur="checkMobileValidation(this, 'profReMobileError')">
+                                <div id="profReMobileError"
+                                    style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
                             </div>
                             <div class="form-group">
                                 <label>전문 담당 행정동 / 지역 (쉼표 구분) <span class="req">*</span></label>
@@ -1129,55 +1236,76 @@
 
                             <div class="form-group full-width">
                                 <label>전문 중개 단지 / 주택 (쉼표 구분) <span class="req">*</span></label>
-                                <input type="text" id="profReComplexes" class="form-control" placeholder="예: 래미안대치팰리스, 대치우성1차, 대치선경, 대치동 다세대·연립">
+                                <input type="text" id="profReComplexes" class="form-control"
+                                    placeholder="예: 래미안대치팰리스, 대치우성1차, 대치선경, 대치동 다세대·연립">
                             </div>
 
                             <div class="form-group full-width">
                                 <label>주요 전문 학군 상담 주제 (쉼표 구분)</label>
-                                <input type="text" id="profReTopics" class="form-control" placeholder="예: 대청중 100% 배정 단지 매물, 안심 통학로 도보 5분 매물, 대치동 학원가 인접 실거래 매매·전세">
+                                <input type="text" id="profReTopics" class="form-control"
+                                    placeholder="예: 대청중 100% 배정 단지 매물, 안심 통학로 도보 5분 매물, 대치동 학원가 인접 실거래 매매·전세">
                             </div>
 
                             <div class="form-group full-width">
-                                <label onclick="openReKakaoPostcode()" style="cursor: pointer;">중개사무소 소재지 주소 <span class="req">*</span></label>
+                                <label onclick="openReKakaoPostcode()" style="cursor: pointer;">중개사무소 소재지 주소 <span
+                                        class="req">*</span></label>
                                 <div style="display: flex; gap: 8px;">
-                                    <input type="text" id="profReZonecode" class="form-control" placeholder="우편번호" style="width: 140px; flex-shrink: 0; cursor: pointer;" readonly onclick="openReKakaoPostcode()">
-                                    <input type="text" id="profReAddress" class="form-control" placeholder="기본 주소 (클릭하여 주소 검색)" style="flex: 1; cursor: pointer;" readonly onclick="openReKakaoPostcode()">
+                                    <input type="text" id="profReZonecode" class="form-control" placeholder="우편번호"
+                                        style="width: 140px; flex-shrink: 0; cursor: pointer;" readonly
+                                        onclick="openReKakaoPostcode()">
+                                    <input type="text" id="profReAddress" class="form-control"
+                                        placeholder="기본 주소 (클릭하여 주소 검색)" style="flex: 1; cursor: pointer;" readonly
+                                        onclick="openReKakaoPostcode()">
                                 </div>
                                 <div style="margin-top: 8px;">
-                                    <input type="text" id="profReAddressDetail" class="form-control" placeholder="상세 주소 (건물 층수, 동·호수 등 직접 입력)">
+                                    <input type="text" id="profReAddressDetail" class="form-control"
+                                        placeholder="상세 주소 (건물 층수, 동·호수 등 직접 입력)">
                                 </div>
                             </div>
 
                             <!-- 중개사무소 지도 표시 좌표 (위도·경도) 설정 영역: 위경도 텍스트 대신 카카오 지도 노출 -->
-                            <div class="form-group full-width" style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 16px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <div class="form-group full-width"
+                                style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 16px;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                     <div style="display: flex; align-items: center; gap: 6px;">
                                         <span style="font-size: 14px;">📍</span>
-                                        <label style="margin-bottom: 0; font-size: 13px; font-weight: 700; color: #0f172a;">중개사무소 지도 표시 좌표 (위도·경도) 설정</label>
-                                        <span style="font-size: 11.5px; color: #64748b;">(학부모 지도 마커 핀 및 단지 연계 노출에 반영됩니다)</span>
+                                        <label
+                                            style="margin-bottom: 0; font-size: 13px; font-weight: 700; color: #0f172a;">중개사무소
+                                            지도 표시 좌표 (위도·경도) 설정</label>
+                                        <span style="font-size: 11.5px; color: #64748b;">(학부모 지도 마커 핀 및 단지 연계 노출에
+                                            반영됩니다)</span>
                                     </div>
-                                    <button type="button" class="btn-action btn-secondary-act" onclick="convertReAddressToCoords()"
-                                            style="width: auto; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 7px; cursor: pointer;">
+                                    <button type="button" class="btn-action btn-secondary-act"
+                                        onclick="convertReAddressToCoords()"
+                                        style="width: auto; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 7px; cursor: pointer;">
                                         🔄 주소로 지도 위치 새로고침
                                     </button>
                                 </div>
                                 <!-- 카카오 지도 영역 -->
-                                <div id="reCoordMap" style="width: 100%; height: 260px; border-radius: 8px; border: 1px solid var(--border-color); background: #f1f5f9; position: relative;"></div>
+                                <div id="reCoordMap"
+                                    style="width: 100%; height: 260px; border-radius: 8px; border: 1px solid var(--border-color); background: #f1f5f9; position: relative;">
+                                </div>
                                 <!-- 숨겨진 위도/경도 필드 (데이터 전송 및 저장용) -->
                                 <input type="hidden" id="profReLat">
                                 <input type="hidden" id="profReLng">
-                                <div id="reCoordStatusMsg" style="font-size: 11.5px; color: #059669; font-weight: 600; margin-top: 8px; display: none;"></div>
-                                <div style="font-size: 11.5px; color: #64748b; margin-top: 4px;">💡 주소를 검색하면 지도에 중개사무소 위치 마커가 자동 표시되며, 마커를 드래그하거나 지도를 클릭하여 위치를 조정할 수 있습니다.</div>
+                                <div id="reCoordStatusMsg"
+                                    style="font-size: 11.5px; color: #059669; font-weight: 600; margin-top: 8px; display: none;">
+                                </div>
+                                <div style="font-size: 11.5px; color: #64748b; margin-top: 4px;">💡 주소를 검색하면 지도에 중개사무소
+                                    위치 마커가 자동 표시되며, 마커를 드래그하거나 지도를 클릭하여 위치를 조정할 수 있습니다.</div>
                             </div>
 
                             <div class="form-group full-width">
                                 <label>네이버 부동산 매물 / 블로그 URL</label>
-                                <input type="url" id="profReWebsiteUrl" class="form-control" placeholder="https://land.naver.com">
+                                <input type="url" id="profReWebsiteUrl" class="form-control"
+                                    placeholder="https://land.naver.com">
                             </div>
 
                             <div class="form-group full-width">
                                 <label>중개사무소 및 학군 전문성 소개글</label>
-                                <textarea id="profReDescription" class="form-control" rows="4" placeholder="학군 배정 노하우, 안심 통학로 매물 중개 경력 등을 자세히 기재해주세요."></textarea>
+                                <textarea id="profReDescription" class="form-control" rows="4"
+                                    placeholder="학군 배정 노하우, 안심 통학로 매물 중개 경력 등을 자세히 기재해주세요."></textarea>
                             </div>
                         </div>
                     </form>
@@ -1206,42 +1334,64 @@
                             </div>
                             <div class="form-group">
                                 <label>사업자 상호명 <span class="req">*</span></label>
-                                <input type="text" id="regName" class="form-control" placeholder="예: 대치 미래탐구 학원" required>
+                                <input type="text" id="regName" class="form-control" placeholder="예: 대치 미래탐구 학원"
+                                    required>
                             </div>
 
                             <div class="form-group">
                                 <label>대표자 또는 담당자 성명 <span class="req">*</span></label>
-                                <input type="text" id="regRepresentative" class="form-control" placeholder="예: 홍길동 원장" required>
+                                <input type="text" id="regRepresentative" class="form-control" placeholder="예: 홍길동 원장"
+                                    required>
                             </div>
                             <div class="form-group">
                                 <label>사업자 등록번호</label>
-                                <input type="text" id="regBizNumber" class="form-control" placeholder="예: 123-45-67890 (10자리)" maxlength="12" oninput="handleBizNumberInput(this, 'regBizNumberError')" onblur="checkBizNumberValidation(this, 'regBizNumberError')">
-                                <div id="regBizNumberError" style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
+                                <input type="text" id="regBizNumber" class="form-control"
+                                    placeholder="예: 123-45-67890 (10자리)" maxlength="12"
+                                    oninput="handleBizNumberInput(this, 'regBizNumberError')"
+                                    onblur="checkBizNumberValidation(this, 'regBizNumberError')">
+                                <div id="regBizNumberError"
+                                    style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
                             </div>
 
                             <div class="form-group">
                                 <label>대표 전화번호 <span class="req">*</span></label>
-                                <input type="tel" id="regPhone" class="form-control" placeholder="예: 02-1234-5678 또는 010-1234-5678" required maxlength="14" oninput="handlePhoneInput(this, 'regPhoneError')" onblur="checkPhoneValidation(this, 'regPhoneError', '대표 전화번호')">
-                                <div id="regPhoneError" style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
+                                <input type="tel" id="regPhone" class="form-control"
+                                    placeholder="예: 02-1234-5678 또는 010-1234-5678" required maxlength="14"
+                                    oninput="handlePhoneInput(this, 'regPhoneError')"
+                                    onblur="checkPhoneValidation(this, 'regPhoneError', '대표 전화번호')">
+                                <div id="regPhoneError"
+                                    style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
                             </div>
                             <div class="form-group">
                                 <label>이메일 주소 <span class="req">*</span></label>
-                                <input type="email" id="regEmail" class="form-control" placeholder="예: partner@academy.com" required oninput="handleEmailInput(this, 'regEmailError')" onblur="checkEmailValidation(this, 'regEmailError')">
-                                <div id="regEmailError" style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
+                                <input type="email" id="regEmail" class="form-control"
+                                    placeholder="예: partner@academy.com" required
+                                    oninput="handleEmailInput(this, 'regEmailError')"
+                                    onblur="checkEmailValidation(this, 'regEmailError')">
+                                <div id="regEmailError"
+                                    style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
                             </div>
 
                             <div class="form-group full-width">
-                                <label>사업장 소재지 주소 <span class="req">*</span></label>
-                                <input type="text" id="regAddress" class="form-control" placeholder="예: 서울특별시 강남구 대치동 123-45 3층" required>
+                                <label onclick="openRegKakaoPostcode()" style="cursor: pointer;">사업장 소재지 주소 <span
+                                        class="req">*</span></label>
+                                <input type="text" id="regAddress" class="form-control" placeholder="기본 주소 (클릭하여 주소 검색)"
+                                    required readonly onclick="openRegKakaoPostcode()" style="cursor: pointer;">
+                                <div style="margin-top: 8px;">
+                                    <input type="text" id="regAddressDetail" class="form-control" placeholder="상세 주소 (건물 층수, 동·호수 등 직접 입력)">
+                                </div>
                             </div>
 
                             <div class="form-group full-width">
                                 <label>주요 과목 및 교육 소개</label>
-                                <textarea id="regDescription" class="form-control" placeholder="주요 지도 과목, 대상 학년 및 특징을 간단히 기재해주세요."></textarea>
+                                <textarea id="regDescription" class="form-control"
+                                    placeholder="주요 지도 과목, 대상 학년 및 특징을 간단히 기재해주세요."></textarea>
                             </div>
 
-                            <div class="form-group full-width" style="background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid var(--border-color);">
-                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            <div class="form-group full-width"
+                                style="background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <label
+                                    style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 600;">
                                     <input type="checkbox" id="regConsent" required style="width: 16px; height: 16px;">
                                     [필수] 개인정보 수집 및 파트너 입점 심사 안내에 동의합니다.
                                 </label>
@@ -1311,7 +1461,7 @@
             try {
                 const res = await fetch(`/api/business/session?bizId=${currentBizId}`);
                 const data = await res.json();
-                
+
                 if (data.business) {
                     currentBiz = data.business;
                     currentSub = data.subscription;
@@ -1344,7 +1494,7 @@
         function renderHeaderAndBanner(biz, sub) {
             const isRe = biz.type === 'real_estate';
             document.getElementById('heroBizName').innerText = biz.name;
-            document.getElementById('heroBizSub').innerText = 
+            document.getElementById('heroBizSub').innerText =
                 `대표자: ${biz.representative} | 연락처: ${biz.phone} | ${biz.address}`;
 
             const pill = document.getElementById('heroStatusPill');
@@ -1534,8 +1684,8 @@
 
             if (tabLabel) tabLabel.innerText = isRe ? '부동산 프로필 관리' : '학원 프로필 관리';
             if (titleEl) titleEl.innerText = isRe ? '✏️ 부동산 중개업소 프로필 관리' : '✏️ 학원 상세 프로필 관리';
-            if (subEl) subEl.innerText = isRe 
-                ? '학부모에게 주택 단지 및 동네 이야기 하단에 노출되는 중개업소 정보와 전문 단지를 관리하세요.' 
+            if (subEl) subEl.innerText = isRe
+                ? '학부모에게 주택 단지 및 동네 이야기 하단에 노출되는 중개업소 정보와 전문 단지를 관리하세요.'
                 : '학부모에게 노출되는 학원 정보, 대표 과목, 지도 방식 및 수강료를 정확하게 관리하세요.';
 
             if (isRe) {
@@ -1593,7 +1743,7 @@
                     } else {
                         initOrUpdateReMap(37.5665, 126.9780, false);
                     }
-                }).catch(() => {});
+                }).catch(() => { });
             } else {
                 if (acaFields) acaFields.style.display = 'grid';
                 if (reFields) reFields.style.display = 'none';
@@ -1613,6 +1763,14 @@
                 document.getElementById('profZonecode').value = p.zonecode || '';
                 document.getElementById('profAddress').value = p.address || biz.address || '';
                 document.getElementById('profAddressDetail').value = p.addressDetail || '';
+
+                const chkSame = document.getElementById('chkSameAsBizAddress');
+                if (chkSame) {
+                    const bizAddr = (biz.registeredAddress || biz.address || '').trim();
+                    const curAddr = (document.getElementById('profAddress').value || '').trim();
+                    chkSame.checked = p.sameAsBizAddress === true ||
+                        (Boolean(bizAddr) && Boolean(curAddr) && curAddr === bizAddr);
+                }
                 const savedLat = (p.lat !== undefined && p.lat !== null && p.lat !== '') ? parseFloat(p.lat) : null;
                 const savedLng = (p.lng !== undefined && p.lng !== null && p.lng !== '') ? parseFloat(p.lng) : null;
                 document.getElementById('profLat').value = (savedLat !== null && !isNaN(savedLat)) ? savedLat : '';
@@ -1648,7 +1806,7 @@
                     } else {
                         initOrUpdateAcademyMap(37.5665, 126.9780, false);
                     }
-                }).catch(() => {});
+                }).catch(() => { });
             }
         }
 
@@ -1759,13 +1917,13 @@
                         draggable: true
                     });
 
-                    window.kakao.maps.event.addListener(academyMarker, 'dragend', function() {
+                    window.kakao.maps.event.addListener(academyMarker, 'dragend', function () {
                         const pos = academyMarker.getPosition();
                         updateCoordInputs(pos.getLat(), pos.getLng());
                     });
                 }
 
-                window.kakao.maps.event.addListener(academyMap, 'click', function(mouseEvent) {
+                window.kakao.maps.event.addListener(academyMap, 'click', function (mouseEvent) {
                     const latlng = mouseEvent.latLng;
                     if (!academyMarker) {
                         academyMarker = new window.kakao.maps.Marker({
@@ -1773,7 +1931,7 @@
                             map: academyMap,
                             draggable: true
                         });
-                        window.kakao.maps.event.addListener(academyMarker, 'dragend', function() {
+                        window.kakao.maps.event.addListener(academyMarker, 'dragend', function () {
                             const pos = academyMarker.getPosition();
                             updateCoordInputs(pos.getLat(), pos.getLng());
                         });
@@ -1792,7 +1950,7 @@
                             map: academyMap,
                             draggable: true
                         });
-                        window.kakao.maps.event.addListener(academyMarker, 'dragend', function() {
+                        window.kakao.maps.event.addListener(academyMarker, 'dragend', function () {
                             const pos = academyMarker.getPosition();
                             updateCoordInputs(pos.getLat(), pos.getLng());
                         });
@@ -1838,7 +1996,7 @@
             }
 
             new daum.Postcode({
-                oncomplete: async function(data) {
+                oncomplete: async function (data) {
                     const addr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
                     const zonecode = data.zonecode;
 
@@ -1858,10 +2016,12 @@
                     const addrEl = document.getElementById('profAddress');
                     const detailEl = document.getElementById('profAddressDetail');
                     const statusEl = document.getElementById('coordStatusMsg');
+                    const chkSame = document.getElementById('chkSameAsBizAddress');
 
                     if (zoneEl) zoneEl.value = zonecode;
                     if (addrEl) addrEl.value = fullBaseAddr;
                     if (detailEl) detailEl.focus();
+                    if (chkSame) chkSame.checked = false;
 
                     if (statusEl) {
                         statusEl.style.display = 'block';
@@ -1888,14 +2048,49 @@
             }).open();
         }
 
-        async function convertAddressToCoords() {
+        // --- 신규 사업자 등록 신청 시 사업장 소재지 주소 카카오 우편번호 팝업 ---
+        function openRegKakaoPostcode() {
+            if (typeof daum === 'undefined' || !daum.Postcode) {
+                alert('우편번호 서비스 스크립트를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+                return;
+            }
+
+            new daum.Postcode({
+                oncomplete: function (data) {
+                    const addr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
+                    let extraAddr = '';
+                    if (data.userSelectedType === 'R') {
+                        if (data.bname !== '' && /[동|로|가]$/g.test(data.bname)) {
+                            extraAddr += data.bname;
+                        }
+                        if (data.buildingName !== '' && data.apartment === 'Y') {
+                            extraAddr += (extraAddr !== '' ? ', ' + data.buildingName : data.buildingName);
+                        }
+                    }
+
+                    const fullBaseAddr = extraAddr ? `${addr} (${extraAddr})` : addr;
+                    const regAddrEl = document.getElementById('regAddress');
+                    const regDetailEl = document.getElementById('regAddressDetail');
+                    if (regAddrEl) {
+                        regAddrEl.value = fullBaseAddr;
+                    }
+                    if (regDetailEl) {
+                        regDetailEl.focus();
+                    }
+                }
+            }).open();
+        }
+
+        async function convertAddressToCoords(silent = false) {
             const addrEl = document.getElementById('profAddress');
             const statusEl = document.getElementById('coordStatusMsg');
             const addr = addrEl ? addrEl.value.trim() : '';
 
             if (!addr) {
-                alert('위치를 조회할 기본 주소를 먼저 입력하거나 주소 검색으로 선택해주세요.');
-                openKakaoPostcode();
+                if (!silent) {
+                    alert('위치를 조회할 기본 주소를 먼저 입력하거나 주소 검색으로 선택해주세요.');
+                    openKakaoPostcode();
+                }
                 return;
             }
 
@@ -1907,6 +2102,12 @@
 
             const cleanAddr = addr.replace(/\s*\([^)]*\)/g, '').trim();
             let geo = await geocodeAddress(cleanAddr);
+            if (!geo) {
+                const strippedAddr = cleanAddr.replace(/\s+(지하\s*)?\d+[층호].*$/i, '').trim();
+                if (strippedAddr && strippedAddr !== cleanAddr) {
+                    geo = await geocodeAddress(strippedAddr);
+                }
+            }
             if (!geo) {
                 geo = await geocodeAddress(addr);
             }
@@ -1924,7 +2125,82 @@
                     statusEl.style.color = '#dc2626';
                     statusEl.innerText = '❌ 해당 주소의 좌표를 찾을 수 없습니다. 지도 위를 직접 클릭하여 위치를 지정해주세요.';
                 }
-                alert('주소에 해당하는 좌표를 찾지 못했습니다.\n지도 위를 직접 클릭하여 학원 위치를 지정해주세요.');
+                if (!silent) {
+                    alert('주소에 해당하는 좌표를 찾지 못했습니다.\n지도 위를 직접 클릭하여 학원 위치를 지정해주세요.');
+                }
+            }
+        }
+
+        // --- 사업장 소재지 주소 동일 체크박스 핸들러 ---
+        async function handleSameAsBizAddressChange(isChecked) {
+            const zoneEl = document.getElementById('profZonecode');
+            const addrEl = document.getElementById('profAddress');
+            const detailEl = document.getElementById('profAddressDetail');
+            const statusEl = document.getElementById('coordStatusMsg');
+
+            if (isChecked) {
+                // 사업자 등록 신청 시의 사업장 소재지 주소 가져오기
+                let bizAddr = '';
+                let bizZone = '';
+                let bizDetail = '';
+
+                if (currentBiz) {
+                    bizAddr = (currentBiz.registeredAddress || currentBiz.address || '').trim();
+                    bizDetail = (currentBiz.registeredAddressDetail || currentBiz.addressDetail || '').trim();
+                    if (!bizDetail && currentBiz.academyProfile) {
+                        bizZone = (currentBiz.academyProfile.zonecode || '').trim();
+                        bizDetail = (currentBiz.academyProfile.addressDetail || '').trim();
+                    }
+                }
+                if (!bizAddr) {
+                    const regAddrInput = document.getElementById('regAddress');
+                    if (regAddrInput && regAddrInput.value.trim()) {
+                        bizAddr = regAddrInput.value.trim();
+                    }
+                }
+                if (!bizDetail) {
+                    const regDetailInput = document.getElementById('regAddressDetail');
+                    if (regDetailInput && regDetailInput.value.trim()) {
+                        bizDetail = regDetailInput.value.trim();
+                    }
+                }
+
+                if (!bizAddr) {
+                    showToast('사업자 등록 신청 시 입력된 사업장 소재지 주소가 없습니다.', '⚠️');
+                    const chk = document.getElementById('chkSameAsBizAddress');
+                    if (chk) chk.checked = false;
+                    return;
+                }
+
+                // 체크 해제 시 복원할 수 있도록 현재 입력값 보관
+                window._prevProfAddress = addrEl ? addrEl.value : '';
+                window._prevProfZonecode = zoneEl ? zoneEl.value : '';
+                window._prevProfAddressDetail = detailEl ? detailEl.value : '';
+
+                // 학원 상세 주소 필드에 사업장 소재지 주소 노출
+                if (addrEl) addrEl.value = bizAddr;
+                if (detailEl && bizDetail) detailEl.value = bizDetail;
+                if (zoneEl && bizZone) zoneEl.value = bizZone;
+
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.style.color = '#2563eb';
+                    statusEl.innerText = '🔍 사업장 소재지 주소로 지도 위치를 동기화하는 중입니다...';
+                }
+
+                // 주소 기반으로 지도 좌표 자동 변환 및 지도 위치 마커 동기화
+                await convertAddressToCoords(true);
+                showToast('사업장 소재지 주소가 학원 상세 주소에 동일하게 적용되었습니다!', '🏢');
+            } else {
+                // 체크 해제 시 이전 상태 복원
+                if (window._prevProfAddress !== undefined) {
+                    if (addrEl) addrEl.value = window._prevProfAddress;
+                    if (zoneEl) zoneEl.value = window._prevProfZonecode || '';
+                    if (detailEl) detailEl.value = window._prevProfAddressDetail || '';
+                    if (addrEl && addrEl.value) {
+                        await convertAddressToCoords(true);
+                    }
+                }
             }
         }
 
@@ -1973,13 +2249,13 @@
                         draggable: true
                     });
 
-                    window.kakao.maps.event.addListener(reMarker, 'dragend', function() {
+                    window.kakao.maps.event.addListener(reMarker, 'dragend', function () {
                         const pos = reMarker.getPosition();
                         updateReCoordInputs(pos.getLat(), pos.getLng());
                     });
                 }
 
-                window.kakao.maps.event.addListener(reMap, 'click', function(mouseEvent) {
+                window.kakao.maps.event.addListener(reMap, 'click', function (mouseEvent) {
                     const latlng = mouseEvent.latLng;
                     if (!reMarker) {
                         reMarker = new window.kakao.maps.Marker({
@@ -1987,7 +2263,7 @@
                             map: reMap,
                             draggable: true
                         });
-                        window.kakao.maps.event.addListener(reMarker, 'dragend', function() {
+                        window.kakao.maps.event.addListener(reMarker, 'dragend', function () {
                             const pos = reMarker.getPosition();
                             updateReCoordInputs(pos.getLat(), pos.getLng());
                         });
@@ -2006,7 +2282,7 @@
                             map: reMap,
                             draggable: true
                         });
-                        window.kakao.maps.event.addListener(reMarker, 'dragend', function() {
+                        window.kakao.maps.event.addListener(reMarker, 'dragend', function () {
                             const pos = reMarker.getPosition();
                             updateReCoordInputs(pos.getLat(), pos.getLng());
                         });
@@ -2031,7 +2307,7 @@
             }
 
             new daum.Postcode({
-                oncomplete: async function(data) {
+                oncomplete: async function (data) {
                     const addr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
                     const zonecode = data.zonecode;
 
@@ -2450,6 +2726,7 @@
                     zonecode: document.getElementById('profZonecode').value.trim(),
                     address: document.getElementById('profAddress').value.trim(),
                     addressDetail: document.getElementById('profAddressDetail').value.trim(),
+                    sameAsBizAddress: document.getElementById('chkSameAsBizAddress') ? document.getElementById('chkSameAsBizAddress').checked : false,
                     lat: (latVal !== null && !isNaN(latVal)) ? latVal : null,
                     lng: (lngVal !== null && !isNaN(lngVal)) ? lngVal : null,
                     websiteUrl: document.getElementById('profWebsiteUrl').value.trim(),
@@ -2483,8 +2760,8 @@
                 return;
             }
 
-            const planName = productId === 'prod_re_partner' 
-                ? '부동산 교육환경 파트너(월 99,000원)' 
+            const planName = productId === 'prod_re_partner'
+                ? '부동산 교육환경 파트너(월 99,000원)'
                 : (productId === 'prod_re_local' ? '부동산 지역 전문(월 49,000원)' : '학원 프리미엄 플랜(월 29,000원)');
 
             if (!confirm(`${planName}을(를) 결제 및 활성화하시겠습니까?`)) {
@@ -2587,6 +2864,9 @@
                 return;
             }
 
+            const baseAddr = document.getElementById('regAddress').value.trim();
+            const detailAddr = document.getElementById('regAddressDetail') ? document.getElementById('regAddressDetail').value.trim() : '';
+
             const payload = {
                 type: document.getElementById('regType').value,
                 name: document.getElementById('regName').value.trim(),
@@ -2594,7 +2874,8 @@
                 bizNumber: bizNumVal,
                 phone: phoneVal,
                 email: emailVal,
-                address: document.getElementById('regAddress').value.trim(),
+                address: baseAddr,
+                addressDetail: detailAddr,
                 description: document.getElementById('regDescription').value.trim()
             };
 
@@ -2633,4 +2914,5 @@
         });
     </script>
 </body>
+
 </html>

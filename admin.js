@@ -202,6 +202,7 @@ const SUB_DISTRICT_MAP = {
     '안산시': ['상록구', '단원구'],
     '안양시': ['만안구', '동안구'],
     '부천시': ['원미구', '소사구', '오정구'],
+    '화성시': ['만세구', '효행구', '병점구', '동탄구'],
     '청주시': ['상당구', '서원구', '흥덕구', '청원구'],
     '천안시': ['동남구', '서북구'],
     '전주시': ['완산구', '덕진구'],
@@ -2527,6 +2528,225 @@ function renderStoredRealEstateList() {
     }
 }
 
+// --- 지역별 수집된 실거래/주택 카운트 분석 및 렌더링 ---
+function renderRealEstateRegionStats() {
+    const container = document.getElementById('realEstateRegionStatsContainer');
+    const summaryBadge = document.getElementById('realEstateRegionStatsSummaryBadge');
+    const resetBtn = document.getElementById('btnResetRegionFilter');
+    if (!container) return;
+
+    if (!allStoredRealEstates || allStoredRealEstates.length === 0) {
+        container.innerHTML = '<div style="color: var(--adm-text-muted); font-size: 12px; padding: 6px 0;">수집된 주택 실거래 데이터가 없습니다.</div>';
+        if (summaryBadge) summaryBadge.innerText = '0개 지역 / 0건';
+        if (resetBtn) resetBtn.style.display = 'none';
+        return;
+    }
+
+    // 1. 시/도 및 시/군/구별 건수 집계
+    const totalCount = allStoredRealEstates.length;
+    const sidoStats = {};
+    let totalHasTrade = 0;
+
+    allStoredRealEstates.forEach(item => {
+        const sido = item.sido || '미분류';
+        let rawSigungu = item.sigungu || '';
+        if (!rawSigungu && item.address) {
+            const parts = item.address.split(' ');
+            if (parts.length >= 2) rawSigungu = parts[1];
+        }
+        if (!rawSigungu) rawSigungu = '기타';
+
+        // '고양시 덕양구' 같은 복합 주소 표준화
+        const cleanSigungu = rawSigungu.replace(/^[가-힣]+시\s+/, '');
+        const parentCity = getParentCity(cleanSigungu);
+        const displayName = (parentCity && parentCity !== cleanSigungu) ? `${parentCity} ${cleanSigungu}` : cleanSigungu;
+
+        const hasTrade = !isMissingTradeRealEstate(item);
+        if (hasTrade) totalHasTrade++;
+
+        if (!sidoStats[sido]) {
+            sidoStats[sido] = { total: 0, hasTrade: 0, sigungus: {} };
+        }
+        sidoStats[sido].total++;
+        if (hasTrade) sidoStats[sido].hasTrade++;
+
+        if (!sidoStats[sido].sigungus[displayName]) {
+            sidoStats[sido].sigungus[displayName] = {
+                name: displayName,
+                rawSigungu: cleanSigungu,
+                parentCity: parentCity,
+                sido: sido,
+                total: 0,
+                hasTrade: 0
+            };
+        }
+        sidoStats[sido].sigungus[displayName].total++;
+        if (hasTrade) sidoStats[sido].sigungus[displayName].hasTrade++;
+    });
+
+    const sidos = Object.keys(sidoStats).sort((a, b) => sidoStats[b].total - sidoStats[a].total);
+    let totalSigunguCount = 0;
+    sidos.forEach(s => totalSigunguCount += Object.keys(sidoStats[s].sigungus).length);
+
+    if (summaryBadge) {
+        summaryBadge.innerHTML = `총 <strong>${sidos.length}</strong>개 시·도 / <strong>${totalSigunguCount}</strong>개 지역 (총 <strong>${totalCount.toLocaleString()}</strong>건 | 실거래 매핑 <strong>${totalHasTrade.toLocaleString()}</strong>건)`;
+    }
+
+    const currentSido = realEstateRegionFilter ? realEstateRegionFilter.value : 'all';
+    const currentSigungu = realEstateSigunguFilter ? realEstateSigunguFilter.value : 'all';
+    const currentGu = realEstateGuFilter ? realEstateGuFilter.value : 'all';
+
+    if (resetBtn) {
+        resetBtn.style.display = (currentSido !== 'all' || currentSigungu !== 'all' || currentGu !== 'all') ? 'inline-block' : 'none';
+    }
+
+    let html = '';
+
+    // '전체' 칩
+    const isAllActive = currentSido === 'all';
+    html += `
+        <button type="button" class="region-stat-chip ${isAllActive ? 'active' : ''}" data-sido="all"
+            style="background: ${isAllActive ? '#1e40af' : '#ffffff'}; color: ${isAllActive ? '#ffffff' : '#1e293b'}; border: 1px solid ${isAllActive ? '#1e40af' : '#cbd5e1'}; border-radius: 6px; padding: 5px 11px; font-size: 11.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; transition: all 0.15s ease;">
+            <span>전체</span>
+            <span style="background: ${isAllActive ? 'rgba(255,255,255,0.25)' : '#f1f5f9'}; color: ${isAllActive ? '#ffffff' : '#047857'}; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 700;">${totalCount.toLocaleString()}건</span>
+        </button>
+    `;
+
+    // 시/도 칩들
+    sidos.forEach(sido => {
+        const stat = sidoStats[sido];
+        const isSidoActive = currentSido === sido && currentSigungu === 'all';
+        html += `
+            <button type="button" class="region-stat-chip ${isSidoActive ? 'active' : ''}" data-sido="${sido}" data-sigungu="all"
+                style="background: ${isSidoActive ? '#2563eb' : '#ffffff'}; color: ${isSidoActive ? '#ffffff' : '#334155'}; border: 1px solid ${isSidoActive ? '#2563eb' : '#cbd5e1'}; border-radius: 6px; padding: 5px 11px; font-size: 11.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; transition: all 0.15s ease;">
+                <span>🏢 ${sido}</span>
+                <span style="background: ${isSidoActive ? 'rgba(255,255,255,0.25)' : '#ecfdf5'}; color: ${isSidoActive ? '#ffffff' : '#065f46'}; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 700;">${stat.total.toLocaleString()}건</span>
+            </button>
+        `;
+    });
+
+    // 구분선
+    html += `<div style="width: 100%; height: 1px; background: #e2e8f0; margin: 3px 0;"></div>`;
+
+    // 세부 시/군/구 칩들
+    const allSigunguList = [];
+    sidos.forEach(sido => {
+        if (currentSido === 'all' || currentSido === sido) {
+            const sigungus = sidoStats[sido].sigungus;
+            Object.values(sigungus).forEach(sig => allSigunguList.push(sig));
+        }
+    });
+
+    allSigunguList.sort((a, b) => b.total - a.total);
+
+    allSigunguList.forEach(sig => {
+        let isChipActive = false;
+        if (currentSido === sig.sido) {
+            if (sig.parentCity && sig.parentCity !== sig.rawSigungu) {
+                if (currentSigungu === sig.parentCity && currentGu === sig.rawSigungu) {
+                    isChipActive = true;
+                }
+            } else {
+                if (currentSigungu === sig.rawSigungu) {
+                    isChipActive = true;
+                }
+            }
+        }
+
+        const tradePercent = sig.total > 0 ? Math.round((sig.hasTrade / sig.total) * 100) : 0;
+        const tradeBadgeColor = tradePercent >= 50 ? '#059669' : (tradePercent > 0 ? '#d97706' : '#64748b');
+
+        html += `
+            <button type="button" class="region-stat-chip ${isChipActive ? 'active' : ''}" 
+                data-sido="${sig.sido}" 
+                data-parent="${sig.parentCity || ''}" 
+                data-sigungu="${sig.rawSigungu}"
+                style="background: ${isChipActive ? '#eff6ff' : '#ffffff'}; color: ${isChipActive ? '#1d4ed8' : '#1e293b'}; border: 1px solid ${isChipActive ? '#2563eb' : '#e2e8f0'}; border-radius: 6px; padding: 5px 10px; font-size: 11.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s ease; box-shadow: ${isChipActive ? '0 0 0 1px #2563eb' : 'none'};">
+                <span style="font-weight: 600;">${sig.name}</span>
+                <span style="background: #f1f5f9; color: #0f172a; padding: 1px 5px; border-radius: 4px; font-weight: 700; font-size: 11px;">
+                    ${sig.total.toLocaleString()}건
+                </span>
+                <span style="font-size: 10px; color: ${tradeBadgeColor}; font-weight: 600;" title="실거래가 매핑 ${sig.hasTrade.toLocaleString()}건 (${tradePercent}%)">
+                    (${tradePercent}%)
+                </span>
+            </button>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+// 칩 클릭 시 해당 지역 자동 필터링 핸들러
+const realEstateRegionStatsContainer = document.getElementById('realEstateRegionStatsContainer');
+if (realEstateRegionStatsContainer) {
+    realEstateRegionStatsContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.region-stat-chip');
+        if (!btn) return;
+        const sido = btn.getAttribute('data-sido');
+        const parentCity = btn.getAttribute('data-parent');
+        const sigungu = btn.getAttribute('data-sigungu');
+
+        if (!sido || sido === 'all') {
+            if (realEstateRegionFilter) realEstateRegionFilter.value = 'all';
+            if (realEstateSigunguFilter) realEstateSigunguFilter.value = 'all';
+            if (realEstateGuFilter) realEstateGuFilter.value = 'all';
+            if (realEstateDongFilter) realEstateDongFilter.value = 'all';
+            updateRealEstateSigunguDropdown(true);
+            updateRealEstateGuDropdown(true);
+            updateRealEstateDongDropdown(true);
+            triggerRealEstateFilterRender();
+            renderRealEstateRegionStats();
+            return;
+        }
+
+        if (realEstateRegionFilter) realEstateRegionFilter.value = sido;
+        updateRealEstateSigunguDropdown(true);
+
+        if (!sigungu || sigungu === 'all') {
+            if (realEstateSigunguFilter) realEstateSigunguFilter.value = 'all';
+            if (realEstateGuFilter) realEstateGuFilter.value = 'all';
+            if (realEstateDongFilter) realEstateDongFilter.value = 'all';
+            updateRealEstateGuDropdown(true);
+            updateRealEstateDongDropdown(true);
+            triggerRealEstateFilterRender();
+            renderRealEstateRegionStats();
+            return;
+        }
+
+        if (parentCity && parentCity !== sigungu) {
+            if (realEstateSigunguFilter) realEstateSigunguFilter.value = parentCity;
+            updateRealEstateGuDropdown(true);
+            if (realEstateGuFilter) realEstateGuFilter.value = sigungu;
+            updateRealEstateDongDropdown(true);
+        } else {
+            if (realEstateSigunguFilter) realEstateSigunguFilter.value = sigungu;
+            updateRealEstateGuDropdown(true);
+            if (realEstateGuFilter) realEstateGuFilter.value = 'all';
+            updateRealEstateDongDropdown(true);
+        }
+
+        if (realEstateDongFilter) realEstateDongFilter.value = 'all';
+        triggerRealEstateFilterRender();
+        renderRealEstateRegionStats();
+    });
+}
+
+// 지역 필터 초기화 버튼 핸들러
+const btnResetRegionFilter = document.getElementById('btnResetRegionFilter');
+if (btnResetRegionFilter) {
+    btnResetRegionFilter.addEventListener('click', () => {
+        if (realEstateRegionFilter) realEstateRegionFilter.value = 'all';
+        if (realEstateSigunguFilter) realEstateSigunguFilter.value = 'all';
+        if (realEstateGuFilter) realEstateGuFilter.value = 'all';
+        if (realEstateDongFilter) realEstateDongFilter.value = 'all';
+        updateRealEstateSigunguDropdown(true);
+        updateRealEstateGuDropdown(true);
+        updateRealEstateDongDropdown(true);
+        triggerRealEstateFilterRender();
+        renderRealEstateRegionStats();
+    });
+}
+
 async function loadStoredRealEstate() {
     try {
         let res = await fetch('/api/realestate/stored');
@@ -2560,6 +2780,7 @@ async function loadStoredRealEstate() {
     updateRealEstateGuDropdown();
     updateRealEstateDongDropdown();
     renderStoredRealEstateList();
+    renderRealEstateRegionStats();
     if (typeof updateAdminKpiMetrics === 'function') updateAdminKpiMetrics(); // sync realestate kpi
 }
 
@@ -2578,6 +2799,7 @@ async function saveStoredRealEstate(list) {
     updateRealEstateGuDropdown();
     updateRealEstateDongDropdown();
     renderStoredRealEstateList();
+    renderRealEstateRegionStats();
 }
 
 const triggerRealEstateFilterRender = () => {
@@ -2597,6 +2819,7 @@ if (realEstateRegionFilter) {
         updateRealEstateGuDropdown(true);
         updateRealEstateDongDropdown(true);
         triggerRealEstateFilterRender();
+        renderRealEstateRegionStats();
     });
 }
 if (realEstateSigunguFilter) {
@@ -2608,6 +2831,7 @@ if (realEstateSigunguFilter) {
         updateRealEstateGuDropdown(true);
         updateRealEstateDongDropdown(true);
         triggerRealEstateFilterRender();
+        renderRealEstateRegionStats();
     });
 }
 if (realEstateGuFilter) {
@@ -2617,6 +2841,7 @@ if (realEstateGuFilter) {
 
         updateRealEstateDongDropdown(true);
         triggerRealEstateFilterRender();
+        renderRealEstateRegionStats();
     });
 }
 if (realEstateDongFilter) {

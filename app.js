@@ -25,6 +25,7 @@ const SUB_DISTRICT_MAP = {
     '안산시': ['상록구', '단원구'],
     '안양시': ['만안구', '동안구'],
     '부천시': ['원미구', '소사구', '오정구'],
+    '화성시': ['만세구', '효행구', '병점구', '동탄구'],
     '청주시': ['상당구', '서원구', '흥덕구', '청원구'],
     '천안시': ['동남구', '서북구'],
     '전주시': ['완산구', '덕진구'],
@@ -4199,6 +4200,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Global selector callback
     window.selectSchoolById = (schoolId) => {
+        if (typeof window.closeActiveAcademyClusterPopup === 'function') {
+            window.closeActiveAcademyClusterPopup();
+        }
+        if (typeof window.closeActiveHousingClusterPopup === 'function') {
+            window.closeActiveHousingClusterPopup();
+        }
         let school = currentLoadedSchools.find(s => String(s.school_id || s.id) === String(schoolId) || s.school_name === schoolId);
         if (!school && typeof schoolsDatabase !== 'undefined' && Array.isArray(schoolsDatabase)) {
             school = schoolsDatabase.find(s => String(s.school_id || s.id) === String(schoolId) || s.school_name === schoolId);
@@ -4255,6 +4262,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // 클릭 시 상세 정보 바인딩
         overlayEl.onclick = () => {
+            if (typeof window.closeActiveAcademyClusterPopup === 'function') {
+                window.closeActiveAcademyClusterPopup();
+            }
+            if (typeof window.closeActiveHousingClusterPopup === 'function') {
+                window.closeActiveHousingClusterPopup();
+            }
             window.selectSchoolById(school.school_id);
         };
 
@@ -4433,6 +4446,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 labelEl.style.top = `${yOffset}px`;
 
                 pinEl.addEventListener('click', () => {
+                    if (typeof window.closeActiveAcademyClusterPopup === 'function') {
+                        window.closeActiveAcademyClusterPopup();
+                    }
+                    if (typeof window.closeActiveHousingClusterPopup === 'function') {
+                        window.closeActiveHousingClusterPopup();
+                    }
                     const summary = orchestrator.selectSchool(school);
                     showSchoolDetails(summary, school);
                 });
@@ -6374,6 +6393,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 전역 지적 이동/줌 헬퍼 등록 (학원 카드에서 📍 거리/지도 버튼 클릭시 동작)
         window.focusAcademyLocationOnMap = function(lng, lat, name) {
+            if (typeof window.closeActiveAcademyClusterPopup === 'function') {
+                window.closeActiveAcademyClusterPopup();
+            }
+            if (typeof window.closeActiveHousingClusterPopup === 'function') {
+                window.closeActiveHousingClusterPopup();
+            }
             if (!lng || !lat) return;
             const numLng = parseFloat(lng);
             const numLat = parseFloat(lat);
@@ -6953,16 +6978,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 지도 상 주변 학원 마커(점 형태 & 마우스 오버 플로팅 라벨 & 클릭 시 상세) 업데이트
         window.academyMapOverlays = window.academyMapOverlays || [];
-        if (!window._academyClusterPopupDocListenerAttached) {
-            window._academyClusterPopupDocListenerAttached = true;
-            document.addEventListener('click', (e) => {
-                if (!e.target.closest('.academy-cluster-popup') && !e.target.closest('.academy-dot-container')) {
-                    if (typeof window.closeActiveAcademyClusterPopup === 'function') {
-                        window.closeActiveAcademyClusterPopup();
-                    }
-                }
-            });
-        }
+        // [로직 수정] 지도 드래그 시 플로팅 학원 리스트가 닫히지 않고, 우측 상단 닫기(X) 버튼을 클릭했을 때만 닫히도록 외부 클릭 자동 닫힘 제거
+
 
         function clearAcademyMapMarkers() {
             if (typeof window.closeActiveAcademyClusterPopup === 'function') {
@@ -7127,6 +7144,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const btnClosePopup = document.createElement('button');
                     btnClosePopup.type = 'button';
                     btnClosePopup.innerHTML = '&times;';
+                    btnClosePopup.setAttribute('aria-label', '닫기');
+                    btnClosePopup.title = '닫기';
                     btnClosePopup.style.cssText = 'background: none; border: none; font-size: 18px; font-weight: 700; color: #94a3b8; cursor: pointer; padding: 0 4px; line-height: 1; border-radius: 4px; transition: color 0.15s ease;';
                     btnClosePopup.onmouseover = () => btnClosePopup.style.color = '#0f172a';
                     btnClosePopup.onmouseout = () => btnClosePopup.style.color = '#94a3b8';
@@ -7241,6 +7260,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (typeof window.closeActiveAcademyClusterPopup === 'function') {
                         window.closeActiveAcademyClusterPopup();
                     }
+                    if (typeof window.closeActiveHousingClusterPopup === 'function') {
+                        window.closeActiveHousingClusterPopup();
+                    }
                     if (!clusterPopupEl) return;
                     isClusterPopupOpen = true;
                     clusterPopupEl.style.display = 'flex';
@@ -7298,11 +7320,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 containerEl.addEventListener('click', (e) => {
                     e.stopPropagation();
 
+                    if (typeof window.closeActiveHousingClusterPopup === 'function') {
+                        window.closeActiveHousingClusterPopup();
+                    }
+
                     if (count > 1) {
                         // 1) 클러스터로 묶여 있는 경우: 플로팅 바 토글 노출 및 사이드바 제외 가시 영역 중앙 정렬
                         if (isClusterPopupOpen) {
                             closeClusterPopup();
                         } else {
+                            if (typeof window.closeActiveAcademyClusterPopup === 'function') {
+                                window.closeActiveAcademyClusterPopup();
+                            }
                             openClusterPopup();
                             if (typeof window.checkAndAdjustMapForAcademyPin === 'function') {
                                 window.checkAndAdjustMapForAcademyPin(cluster.lng, cluster.lat);
@@ -7424,17 +7453,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const radInput = document.getElementById('academyMapRadiusFilter');
             const effectiveRadius = radius || btnRadius || window.currentAcademyRadius || window.currentHousingRadius || (radInput ? (parseInt(radInput.value, 10) || 1000) : 1000) || 1000;
 
-            if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
-                const geocoder = new window.kakao.maps.services.Geocoder();
+            if (window.kakao && window.kakao.maps) {
+                if (!window._realEstatePinsCache) {
+                    window._realEstatePinsCache = new Map();
+                }
                 const fetchAndRenderPins = async (lawdCd) => {
                     try {
-                        const res = await fetch(`/api/realestate/pins?lawd_cd=${lawdCd}&x=${sLng}&y=${sLat}&radius=${effectiveRadius}&type=${selectedType}`);
-                        if (reqSeq !== window.realEstateReqSeq) return;
-                        if (!res.ok) return;
+                        const cacheKey = `${sLng.toFixed(5)}_${sLat.toFixed(5)}_${effectiveRadius}_${selectedType}`;
+                        let data = window._realEstatePinsCache.get(cacheKey);
 
-                        const data = await res.json();
-                        if (reqSeq !== window.realEstateReqSeq) return;
-                        if (!data.items || !Array.isArray(data.items)) return;
+                        if (!data) {
+                            const res = await fetch(`/api/realestate/pins?lawd_cd=${lawdCd || ''}&x=${sLng}&y=${sLat}&radius=${effectiveRadius}&type=${selectedType}`);
+                            if (reqSeq !== window.realEstateReqSeq) return;
+                            if (!res.ok) return;
+
+                            data = await res.json();
+                            if (reqSeq !== window.realEstateReqSeq) return;
+                            if (data && Array.isArray(data.items)) {
+                                if (window._realEstatePinsCache.size > 60) {
+                                    window._realEstatePinsCache.delete(window._realEstatePinsCache.keys().next().value);
+                                }
+                                window._realEstatePinsCache.set(cacheKey, data);
+                            }
+                        }
+                        if (!data || !data.items || !Array.isArray(data.items)) return;
 
                         clearRealEstateMapMarkers();
 
@@ -7477,17 +7519,19 @@ document.addEventListener('DOMContentLoaded', () => {
                             window.applyHousingFiltersAndRender();
                         }
 
-                        // 2. 인접 주택 클러스터링 (16m 이내 동일 단지 또는 인접 주택)
+                        // 2. 인접 주택 클러스터링 (16m 이내 동일 단지 또는 인접 주택, 제곱근 연산 제거로 속도 최적화)
                         const housingClusters = [];
+                        const clusterDistSqThreshold = 256; // 16m * 16m = 256
                         validHousings.forEach(place => {
                             const lat = parseFloat(place.y);
                             const lng = parseFloat(place.x);
+                            const cosLatFactor = 88800 * Math.cos(lat * (Math.PI / 180));
                             let matchedCluster = null;
                             for (let i = 0; i < housingClusters.length; i++) {
                                 const c = housingClusters[i];
                                 const dy = (lat - c.lat) * 111000;
-                                const dx = (lng - c.lng) * 88800 * Math.cos(lat * (Math.PI / 180));
-                                if (Math.sqrt(dx * dx + dy * dy) <= 16) {
+                                const dx = (lng - c.lng) * cosLatFactor;
+                                if ((dx * dx + dy * dy) <= clusterDistSqThreshold) {
                                     matchedCluster = c;
                                     break;
                                 }
@@ -7663,6 +7707,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                     itemRow.addEventListener('click', (e) => {
                                         e.stopPropagation();
                                         closeClusterPopup();
+                                        if (typeof window.closeActiveAcademyClusterPopup === 'function') {
+                                            window.closeActiveAcademyClusterPopup();
+                                        }
                                         if (typeof window.openHousingDetailModal === 'function') {
                                             window.openHousingDetailModal(place);
                                         }
@@ -7770,6 +7817,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             containerEl.addEventListener('click', (e) => {
                                 e.stopPropagation();
 
+                                // 주택핀 클릭 시 열려 있는 플로팅 학원 리스트 닫기
+                                if (typeof window.closeActiveAcademyClusterPopup === 'function') {
+                                    window.closeActiveAcademyClusterPopup();
+                                }
+
                                 if (count > 1) {
                                     // 1) 클러스터로 묶여 있는 경우: 플로팅 바 토글 노출 및 사이드바 제외 가시 영역 중앙 정렬
                                     if (isClusterPopupOpen) {
@@ -7814,22 +7866,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 };
 
-                geocoder.coord2RegionCode(sLng, sLat, (result, status) => {
-                    if (reqSeq !== window.realEstateReqSeq) return;
-                    let lawdCd = '';
-                    if (status === window.kakao.maps.services.Status.OK && Array.isArray(result)) {
-                        const bcode = result.find(r => r.region_type === 'B') || result[0];
-                        if (bcode && bcode.code) {
-                            lawdCd = bcode.code.substring(0, 5);
-                        }
-                    }
-                    if (lawdCd) {
-                        fetchAndRenderPins(lawdCd);
-                    }
-                });
+                // 🌟 속도 최적화: 외부 카카오 지오코더를 대기하지 않고 즉각 핀을 조회 및 렌더링
+                fetchAndRenderPins('');
             }
         }
-        window.updateRealEstateMapMarkers = updateRealEstateMapMarkers;
+        let realEstateDebounceTimer = null;
+        function debouncedUpdateRealEstateMapMarkers(radius = 1000, immediate = false) {
+            if (immediate) {
+                if (realEstateDebounceTimer) clearTimeout(realEstateDebounceTimer);
+                realEstateDebounceTimer = null;
+                return updateRealEstateMapMarkers(radius);
+            }
+            if (realEstateDebounceTimer) clearTimeout(realEstateDebounceTimer);
+            realEstateDebounceTimer = setTimeout(() => {
+                updateRealEstateMapMarkers(radius);
+            }, 60);
+        }
+        window.updateRealEstateMapMarkers = debouncedUpdateRealEstateMapMarkers;
 
         // 주택 표시 토글 및 주택 유형 필터 변경 이벤트 바인딩
         const reToggleCheck = document.getElementById('showRealEstateMapCheckbox');
@@ -13372,6 +13425,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Observe changes to update Save Favorite Button state
     const originalSelectSchool = orchestrator.selectSchool;
     orchestrator.selectSchool = function(school) {
+        if (typeof window.closeActiveAcademyClusterPopup === 'function') {
+            window.closeActiveAcademyClusterPopup();
+        }
+        if (typeof window.closeActiveHousingClusterPopup === 'function') {
+            window.closeActiveHousingClusterPopup();
+        }
         const res = originalSelectSchool.call(orchestrator, school);
         setTimeout(() => {
             const favs = JSON.parse(localStorage.getItem('favoriteSchools') || '[]');
@@ -17881,6 +17940,10 @@ window.getHousingNeighborhood = function(place) {
 
 window.openHousingDetailModal = function(placeOrName) {
     if (!placeOrName) return;
+
+    if (typeof window.closeActiveAcademyClusterPopup === 'function') {
+        window.closeActiveAcademyClusterPopup();
+    }
 
     let place = null;
     let propName = '';
