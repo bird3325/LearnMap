@@ -2057,8 +2057,10 @@ const realEstateDongFilter = document.getElementById('realEstateDongFilter');
 const realEstateTypeFilter = document.getElementById('realEstateTypeFilter');
 const realEstateAreaFilter = document.getElementById('realEstateAreaFilter');
 const realEstateTradeFilter = document.getElementById('realEstateTradeFilter');
+const realEstateCoordFilter = document.getElementById('realEstateCoordFilter');
 const realEstateSearchInput = document.getElementById('realEstateSearchInput');
 const btnRetryMissingTrades = document.getElementById('btnRetryMissingTrades');
+const btnRepairCoordinates = document.getElementById('btnRepairCoordinates');
 
 let allStoredRealEstates = [];
 
@@ -2322,6 +2324,16 @@ function getFilteredRealEstates() {
         }
     }
 
+    // Filter by Coordinate Precision Status (정밀 검증 완료 / 임시·미검증 좌표)
+    const selectedCoord = realEstateCoordFilter ? realEstateCoordFilter.value : 'all';
+    if (selectedCoord !== 'all') {
+        if (selectedCoord === 'unverified') {
+            filtered = filtered.filter(item => !item.isPreciseCoord || !item.kakaoEnriched);
+        } else if (selectedCoord === 'precise') {
+            filtered = filtered.filter(item => item.isPreciseCoord && item.kakaoEnriched);
+        }
+    }
+
     // Filter by Search Query (name, address, area, kaptCode, or pnu, whitespace-tolerant)
     if (searchQuery !== '') {
         const cleanQuery = searchQuery.toLowerCase().replace(/\s+/g, '');
@@ -2460,6 +2472,11 @@ function renderStoredRealEstateList() {
             ? `<span style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; padding: 1.5px 6px; border-radius: 4px; font-weight: bold; margin-left: 4px; font-size: 10px;" title="국토교통부 실거래 신고 내역이 아직 없거나 대기 중인 상태입니다.">⚠️ 실거래 대기</span>`
             : '';
 
+        const isPrecise = !!(item.isPreciseCoord && item.kakaoEnriched);
+        const coordBadge = isPrecise
+            ? `<span style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 1.5px 6px; border-radius: 4px; font-weight: bold; margin-left: 4px; font-size: 10px;" title="카카오 로컬 API로 검증된 정밀 건물 옥상 좌표입니다.">📍 정밀 좌표</span>`
+            : `<span style="background: #fffbeb; color: #b45309; border: 1px solid #fde68a; padding: 1.5px 6px; border-radius: 4px; font-weight: bold; margin-left: 4px; font-size: 10px;" title="동 중심 난수 또는 미검증 임시 좌표입니다. '좌표 교정'을 눌러 실제 건물 위치로 교정할 수 있습니다.">⚠️ 임시 좌표</span>`;
+
         const areaDisplay = isMissingArea
             ? `<span style="color: #e11d48; font-weight: 600;">- (공공데이터 지연 누락)</span>`
             : (item.area || '-');
@@ -2472,6 +2489,8 @@ function renderStoredRealEstateList() {
             ? `<button class="btn-retry-single-trade" data-id="${item.id || ''}" data-name="${encodeURIComponent(item.name || '')}" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 2px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 600;" title="국토교통부에서 이 단지의 최신 실거래가를 단독 재수집합니다.">🔄 실거래 재수집</button>`
             : '';
 
+        const repairSingleCoordBtn = `<button class="btn-repair-single-coord" data-id="${item.id || ''}" data-name="${encodeURIComponent(item.name || '')}" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 2px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 600;" title="카카오 로컬 API를 호출하여 이 주택의 실제 건물 옥상 좌표로 즉시 정밀 교정합니다.">📍 좌표 교정</button>`;
+
         return `
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.05); padding: 8px 4px;">
                 <div style="flex: 1; padding-right: 10px;">
@@ -2482,6 +2501,7 @@ function renderStoredRealEstateList() {
                         ${item.kaptCode ? `<span style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 1.5px 6px; border-radius: 4px; font-weight: bold; margin-left: 4px; font-size: 10px;" title="K-APT 표준 단지코드">🏢 K-APT: ${item.kaptCode}</span>` : ''}
                         ${item.pnu ? `<span style="background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; padding: 1.5px 5px; border-radius: 4px; margin-left: 4px; font-size: 10px; font-family: monospace;" title="고유필지번호(PNU: ${item.pnu})">PNU</span>` : ''}
                         ${item.buildYear ? `<span style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 1.5px 5px; border-radius: 4px; margin-left: 4px; font-size: 10px; font-weight: 600;" title="준공년도">🏗️ ${item.buildYear}년</span>` : ''}
+                        ${coordBadge}
                         ${missingBadge}
                         ${missingTradeBadge}
                     </div>
@@ -2497,6 +2517,7 @@ function renderStoredRealEstateList() {
                     <div style="font-weight: 700; color: ${isMissingTrade ? '#d97706' : '#059669'}; font-size: 12.5px;">${item.price || '시세 정보'}</div>
                     <div style="font-size: 11px; color: var(--text-muted);">${item.tradeDate && item.tradeDate !== '-' ? '기준/거래: ' + item.tradeDate : '<span style="color: #d97706;">실거래 미수집</span>'}</div>
                     <div style="display: flex; gap: 4px; align-items: center; margin-top: 2px; flex-wrap: wrap; justify-content: flex-end;">
+                        ${repairSingleCoordBtn}
                         ${retrySingleTradeBtn}
                         ${retrySingleBtn}
                         <button class="btn-delete-single-estate" data-key="${encodeURIComponent(itemKey)}" data-name="${encodeURIComponent(item.name || '')}" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; padding: 2px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 600;">🗑️ 삭제</button>
@@ -2856,6 +2877,9 @@ if (realEstateAreaFilter) {
 if (realEstateTradeFilter) {
     realEstateTradeFilter.addEventListener('change', triggerRealEstateFilterRender);
 }
+if (realEstateCoordFilter) {
+    realEstateCoordFilter.addEventListener('change', triggerRealEstateFilterRender);
+}
 if (realEstateSearchInput) {
     realEstateSearchInput.addEventListener('input', triggerRealEstateFilterRender);
 }
@@ -2932,6 +2956,43 @@ if (storedRealEstateListContainer) {
                     showAlert(`[${name}] 통신 오류: ` + err.message);
                     retryTradeBtn.disabled = false;
                     retryTradeBtn.innerText = '🔄 실거래 재수집';
+                }
+            })();
+            return;
+        }
+
+        // 1-3) 단일 주택 정밀 좌표 교정 버튼 클릭
+        const repairCoordBtn = e.target.closest('.btn-repair-single-coord');
+        if (repairCoordBtn) {
+            const id = repairCoordBtn.getAttribute('data-id');
+            const name = decodeURIComponent(repairCoordBtn.getAttribute('data-name') || '주택');
+            repairCoordBtn.disabled = true;
+            repairCoordBtn.innerText = '교정 중...';
+
+            (async () => {
+                try {
+                    const res = await fetch('/api/realestate/repair-coord-single', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id })
+                    });
+                    const result = await res.json();
+                    if (result.success && result.item) {
+                        const idx = allStoredRealEstates.findIndex(item => item.id === id);
+                        if (idx !== -1) {
+                            allStoredRealEstates[idx] = result.item;
+                        }
+                        showAlert(`[${name}] 정밀 좌표 교정 완료!\n📍 실제 위치: [${result.item.x}, ${result.item.y}]\n🏠 도로명: ${result.item.address}`);
+                        renderStoredRealEstateList();
+                    } else {
+                        showAlert(`[${name}] 정밀 좌표 교정 실패: ` + (result.message || '카카오 주소 검색 결과가 없습니다.'));
+                        repairCoordBtn.disabled = false;
+                        repairCoordBtn.innerText = '📍 좌표 교정';
+                    }
+                } catch (err) {
+                    showAlert(`[${name}] 통신 오류: ` + err.message);
+                    repairCoordBtn.disabled = false;
+                    repairCoordBtn.innerText = '📍 좌표 교정';
                 }
             })();
             return;
@@ -3086,6 +3147,62 @@ if (btnRetryMissingAreas) {
             } finally {
                 btnRetryMissingAreas.disabled = false;
                 btnRetryMissingAreas.innerHTML = originalText;
+            }
+        });
+    });
+}
+
+// Batch Repair Coordinates Button Handler (일괄 정밀 좌표 교정)
+if (btnRepairCoordinates) {
+    btnRepairCoordinates.addEventListener('click', () => {
+        const selectedRegion = realEstateRegionFilter ? realEstateRegionFilter.value : 'all';
+        const selectedSigungu = realEstateSigunguFilter ? realEstateSigunguFilter.value : 'all';
+        const selectedGu = realEstateGuFilter ? realEstateGuFilter.value : 'all';
+
+        const unverifiedItems = allStoredRealEstates.filter(item => {
+            if (!isItemMatchingLocation(item, selectedRegion, selectedSigungu, selectedGu)) return false;
+            return !item.isPreciseCoord || !item.kakaoEnriched;
+        });
+
+        if (unverifiedItems.length === 0) {
+            showAlert('선택된 조건에서 미검증 임시 좌표 주택이 없습니다. 모든 주택이 정밀 건물 좌표로 등록되어 있습니다! 🎉');
+            return;
+        }
+
+        let regionNotice = '전체 지역';
+        if (selectedRegion !== 'all') {
+            regionNotice = selectedRegion;
+            if (selectedSigungu !== 'all') regionNotice += ` ${selectedSigungu}`;
+            if (selectedGu !== 'all') regionNotice += ` ${selectedGu}`;
+        }
+
+        showConfirm(`[${regionNotice}] 임시 좌표(동 중심 난수)로 등록되어 있거나 미검증된 주택 총 ${unverifiedItems.length}곳의 좌표를 카카오 정밀 지오코딩 API로 실제 건물 위치로 일괄 교정하시겠습니까?\n(API 제한 방지를 위해 초당 30회 이내로 안전하게 순차 진행됩니다)`, async () => {
+            btnRepairCoordinates.disabled = true;
+            const originalText = btnRepairCoordinates.innerHTML;
+            btnRepairCoordinates.innerText = `📍 좌표 교정 진행 중...`;
+
+            try {
+                const res = await fetch('/api/realestate/repair-coords', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sido: selectedRegion !== 'all' ? selectedRegion : undefined,
+                        sigungu: selectedGu !== 'all' ? selectedGu : (selectedSigungu !== 'all' ? selectedSigungu : undefined),
+                        mode: 'unverified'
+                    })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showAlert(`주택 좌표 일괄 정밀 교정 완료!\n- 대상 주택: ${result.totalTarget || 0}곳\n- 정밀 매핑 성공: ${result.updatedCount || 0}곳\n- 미매칭/유지: ${result.failedCount || 0}곳`);
+                    await loadStoredRealEstate();
+                } else {
+                    showAlert('좌표 교정 중 오류 발생: ' + (result.message || result.error));
+                }
+            } catch (err) {
+                showAlert('좌표 교정 요청 실패: ' + err.message);
+            } finally {
+                btnRepairCoordinates.disabled = false;
+                btnRepairCoordinates.innerHTML = originalText;
             }
         });
     });

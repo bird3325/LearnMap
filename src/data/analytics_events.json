@@ -217,5 +217,65 @@
       "area": "신원동"
     },
     "createdAt": "2026-10-27T05:05:48.919Z"
+  },
+  {
+    "id": "evt_1793152987776_2o8h",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "작동 427-5번지 주택",
+      "area": "작동"
+    },
+    "createdAt": "2026-10-28T02:03:07.776Z"
+  },
+  {
+    "id": "evt_1793152997187_35mw",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "작동 19-7번지 주택",
+      "area": "작동"
+    },
+    "createdAt": "2026-10-28T02:03:17.187Z"
+  },
+  {
+    "id": "evt_1793153004269_lh7m",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "헤브니아 5차",
+      "area": "여월동"
+    },
+    "createdAt": "2026-10-28T02:03:24.269Z"
+  },
+  {
+    "id": "evt_1793153020946_iv5z",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "블루 힐",
+      "area": "여월동"
+    },
+    "createdAt": "2026-10-28T02:03:40.946Z"
+  },
+  {
+    "id": "evt_1793161624289_a4tj",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "삼성베스트빌",
+      "area": "심곡동"
+    },
+    "createdAt": "2026-10-28T04:27:04.289Z"
+  },
+  {
+    "id": "evt_1793164252716_v2ml",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "더 그레이스",
+      "area": "소사본동"
+    },
+    "createdAt": "2026-10-28T05:10:52.716Z"
   }
 ]

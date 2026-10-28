@@ -1015,7 +1015,7 @@
                                     <div style="display: flex; justify-content: space-between; align-items: center;">
                                         <span style="font-size: 11.5px; color: #475569; font-weight: 600;">주택 유형 선택</span>
                                         <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">
-                                            <input type="checkbox" id="reTypeAllCheckbox" checked style="width: 13px; height: 13px; accent-color: #2563eb; cursor: pointer;">
+                                            <input type="checkbox" id="reTypeAllCheckbox" style="width: 13px; height: 13px; accent-color: #2563eb; cursor: pointer;">
                                             전체
                                         </label>
                                     </div>
@@ -1025,19 +1025,19 @@
                                             아파트
                                         </label>
                                         <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: #334155; font-weight: 500; cursor: pointer; user-select: none;">
-                                            <input type="checkbox" id="reTypeRhCheckbox" class="re-type-item-checkbox" value="rh" checked style="width: 13px; height: 13px; accent-color: #2563eb; cursor: pointer;">
+                                            <input type="checkbox" id="reTypeRhCheckbox" class="re-type-item-checkbox" value="rh" style="width: 13px; height: 13px; accent-color: #2563eb; cursor: pointer;">
                                             연립·다세대
                                         </label>
                                         <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: #334155; font-weight: 500; cursor: pointer; user-select: none;">
-                                            <input type="checkbox" id="reTypeShCheckbox" class="re-type-item-checkbox" value="sh" checked style="width: 13px; height: 13px; accent-color: #2563eb; cursor: pointer;">
+                                            <input type="checkbox" id="reTypeShCheckbox" class="re-type-item-checkbox" value="sh" style="width: 13px; height: 13px; accent-color: #2563eb; cursor: pointer;">
                                             단독·다가구
                                         </label>
                                         <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: #334155; font-weight: 500; cursor: pointer; user-select: none;">
-                                            <input type="checkbox" id="reTypeOffiCheckbox" class="re-type-item-checkbox" value="offi" checked style="width: 13px; height: 13px; accent-color: #2563eb; cursor: pointer;">
+                                            <input type="checkbox" id="reTypeOffiCheckbox" class="re-type-item-checkbox" value="offi" style="width: 13px; height: 13px; accent-color: #2563eb; cursor: pointer;">
                                             오피스텔
                                         </label>
                                     </div>
-                                    <input type="hidden" id="realEstateTypeFilter" value="all">
+                                    <input type="hidden" id="realEstateTypeFilter" value="apt">
                                 </div>
 
                                 <!-- 노출 반경 범위(학원, 주택) -->
@@ -1415,10 +1415,10 @@
                     style="position: sticky; top: 0; z-index: 20; background: #ffffff; display: flex; justify-content: space-between; align-items: center; padding: 6px 0 10px 0; margin-bottom: 10px; gap: 8px; border-bottom: 1px solid #f1f5f9; flex-shrink: 0;">
                     <div id="housingTypeChips" class="hide-scrollbar draggable-scroll-content"
                         style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; -ms-overflow-style: none; flex: 1; align-items: center; cursor: grab; scroll-behavior: smooth; -webkit-overflow-scrolling: touch;">
-                        <button class="housing-chip active" data-type="all"
-                            style="padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid #1e293b; background: #1e293b; color: #ffffff; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">전체</button>
-                        <button class="housing-chip" data-type="apt"
-                            style="padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">아파트</button>
+                        <button class="housing-chip" data-type="all"
+                            style="padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">전체</button>
+                        <button class="housing-chip active" data-type="apt"
+                            style="padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid #1e293b; background: #1e293b; color: #ffffff; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">아파트</button>
                         <button class="housing-chip" data-type="rh"
                             style="padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">연립·다세대</button>
                         <button class="housing-chip" data-type="sh"

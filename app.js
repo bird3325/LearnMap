@@ -7488,6 +7488,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             const lat = parseFloat(place.y);
                             if (isNaN(lng) || isNaN(lat)) return;
 
+                            // 🌟 선택된 주택 유형 필터링 (다세대/다가구/아파트 엄격 분리)
+                            if (selectedType && selectedType !== 'all') {
+                                const allowedTypes = selectedType.split(',').map(s => s.trim().toLowerCase());
+                                const pType = (place.type || 'apt').toLowerCase();
+                                if (!allowedTypes.includes(pType)) return;
+                            }
+
                             // 하버사인(Haversine) 구면 공식으로 정확한 학교와의 거리(미터) 산출
                             const dist = (typeof calculateAcademyDistance === 'function')
                                 ? calculateAcademyDistance(sLat, sLng, lat, lng)
@@ -7508,6 +7515,35 @@ document.addEventListener('DOMContentLoaded', () => {
                             validHousings.push(place);
                         });
 
+                        // 🌟 [중복 노출 완벽 차단] 동일 주소 및 동일 좌표 중복 정밀 디둡
+                        const dedupMap = new Map();
+                        validHousings.forEach(place => {
+                            const pType = (place.type || 'apt').toLowerCase();
+                            const cleanAddr = (place.address || '').trim().replace(/\s+/g, ' ');
+                            let dupKey;
+                            if (cleanAddr.length >= 8 && (/\d+(?:-\d+)?(?:번지)?$/.test(cleanAddr) || /\s\d+(?:-\d+)?(?:\s|$)/.test(cleanAddr))) {
+                                dupKey = `addr_${pType}_${cleanAddr}`;
+                            } else if (place.dong && place.name) {
+                                dupKey = `dong_${pType}_${place.dong}_${place.name}`;
+                            } else {
+                                dupKey = `coord_${pType}_${parseFloat(place.x).toFixed(5)}_${parseFloat(place.y).toFixed(5)}`;
+                            }
+
+                            if (dedupMap.has(dupKey)) {
+                                const exist = dedupMap.get(dupKey);
+                                const isCurHasPrice = place.price_amount > 0 || (place.price_display && !place.price_display.includes('실거래 대기'));
+                                const isExistHasPrice = exist.price_amount > 0 || (exist.price_display && !exist.price_display.includes('실거래 대기'));
+                                if (!isExistHasPrice && isCurHasPrice) {
+                                    dedupMap.set(dupKey, place);
+                                }
+                            } else {
+                                dedupMap.set(dupKey, place);
+                            }
+                        });
+                        const finalValidHousings = Array.from(dedupMap.values());
+                        validHousings.length = 0;
+                        finalValidHousings.forEach(p => validHousings.push(p));
+
                         // 주택 사이드바 및 상세 정보용 전체 데이터 저장 및 리스트 업데이트
                         window.allFetchedHousings = validHousings;
                         const hSchoolNameEl = document.getElementById('housingSchoolName');
@@ -7519,7 +7555,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             window.applyHousingFiltersAndRender();
                         }
 
-                        // 2. [초고속 최적화] 스마트 적응형 공간 그리드 클러스터링 (성곡초 등 과밀 지역 렉 완전 해결)
+                        // 2. [초고속 최적화] 스마트 적응형 공간 그리드 클러스터링 (주택 유형별 독립 클러스터링 적용)
                         const totalHousingCount = validHousings.length;
                         const mapLevel = (mapObj && typeof mapObj.getLevel === 'function') ? mapObj.getLevel() : 3;
 
@@ -7534,7 +7570,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         const clusterDistSqThreshold = baseClusterDist * baseClusterDist;
 
-                        // 공간 격자(Spatial Grid Bucket)를 활용한 O(N) 초고속 클러스터링
+                        // 🌟 주택 유형(apt, rh, sh, offi)별로 격자를 완전 분리하여 서로 다른 유형이 섞이지 않도록 클러스터링
                         const housingClusters = [];
                         const gridCellSize = Math.max(baseClusterDist / 111000, 0.0001);
                         const clusterGrid = new Map();
@@ -7548,12 +7584,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                             const gy = Math.floor(lat / gridCellSize);
                             const gx = Math.floor(lng / lngCellSize);
+                            const pType = (place.type || 'apt').toLowerCase();
 
                             let matchedCluster = null;
                             outerGridLoop:
                             for (let dy = -1; dy <= 1; dy++) {
                                 for (let dx = -1; dx <= 1; dx++) {
-                                    const bucket = clusterGrid.get(`${gy + dy}_${gx + dx}`);
+                                    // 🌟 유형(pType)을 격자 키에 포함하여 동일 유형끼리만 클러스터링
+                                    const bucket = clusterGrid.get(`${pType}_${gy + dy}_${gx + dx}`);
                                     if (bucket) {
                                         for (let i = 0; i < bucket.length; i++) {
                                             const c = bucket[i];
@@ -7574,10 +7612,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const newCluster = {
                                     lat: lat,
                                     lng: lng,
+                                    type: pType,
                                     items: [place]
                                 };
                                 housingClusters.push(newCluster);
-                                const cellKey = `${gy}_${gx}`;
+                                const cellKey = `${pType}_${gy}_${gx}`;
                                 let b = clusterGrid.get(cellKey);
                                 if (!b) {
                                     b = [];
@@ -7648,16 +7687,17 @@ document.addEventListener('DOMContentLoaded', () => {
                             containerEl.style.cssText = 'position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 950;' + shiftStyle;
 
                             // 주택 유형별 색상 및 아이콘 지정
+                            const clusterType = cluster.type || (primaryPlace && primaryPlace.type) || 'apt';
                             let badgeBg = '#2563EB'; // 아파트 (블루)
                             let iconSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="#ffffff" style="display:block;"><path d="M19 2H5a2 2 0 0 0-2 2v17a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V4a2 2 0 0 0-2-2zm-8 16H7v-2.5h4V18zm0-4.5H7V11h4v2.5zm0-4.5H7V6.5h4V9zm6 9h-4v-2.5h4V18zm0-4.5h-4V11h4v2.5zm0-4.5h-4V6.5h4V9z"/></svg>';
 
-                            if (primaryPlace.type === 'rh') {
+                            if (clusterType === 'rh') {
                                 badgeBg = '#EA580C'; // 연립/다세대
                                 iconSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="#ffffff" style="display:block;"><path d="M12 2.5L2 9.5v1.5h2v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V11h2V9.5L12 2.5zm-2 16.5H6.5v-3H10v3zm0-5H6.5v-3H10v3zm7.5 5H14v-3h3.5v3zm0-5H14v-3h3.5v3z"/></svg>';
-                            } else if (primaryPlace.type === 'sh') {
+                            } else if (clusterType === 'sh') {
                                 badgeBg = '#059669'; // 단독/다가구
                                 iconSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="#ffffff" style="display:block;"><path d="M19 9.3V4h-3v2.7L12 2.5 2 11.5h3V21a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V11.5h3L19 9.3zM10 18H7v-4h3v4zm7 0h-4v-5h4v5z"/></svg>';
-                            } else if (primaryPlace.type === 'offi') {
+                            } else if (clusterType === 'offi') {
                                 badgeBg = '#0284C7'; // 오피스텔
                                 iconSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="#ffffff" style="display:block;"><path d="M11 2H3a1 1 0 0 0-1 1v18a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1zm-2 15H5v-2h4v2zm0-4H5v-2h4v2zm0-4H5V7h4v2zm0-4H5V3.5h4V5zm12 4h-7v12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V10a1 1 0 0 0-1-1zm-1 10h-4v-2h4v2zm0-3.5h-4v-2h4v2zm0-3.5h-4v-2h4v2z"/></svg>';
                             }
@@ -7677,7 +7717,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 badgeEl.innerHTML = iconSvg;
 
                                 const propName = primaryPlace.name || '주택 단지';
-                                const typeName = primaryPlace.type_name || '주택';
+                                const typeName = primaryPlace.type_name || (clusterType === 'apt' ? '아파트' : (clusterType === 'rh' ? '연립·다세대' : (clusterType === 'offi' ? '오피스텔' : '단독·다가구')));
                                 const rawPrice = primaryPlace.short_price || primaryPlace.price_display || '';
                                 const hasPrice = rawPrice && rawPrice !== '기본정보' && !rawPrice.includes('기본 정보') && !rawPrice.includes('실거래 대기');
                                 const priceStr = hasPrice ? rawPrice : '';
@@ -7686,7 +7726,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 // 인접 주택 클러스터 배지 (아이콘 + 수량)
                                 badgeEl.style.cssText = `display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 24px; padding: 0 6px; background: ${badgeBg}; color: #ffffff; border: 2px solid #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.35); transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); flex-shrink: 0; font-size: 11px; font-weight: 800; gap: 3px;`;
                                 badgeEl.innerHTML = `${iconSvg}<span>${count}</span>`;
-                                floatingLabelEl.innerHTML = `🏢 인접 주택 밀집 (${count}개) <span style="font-size:10px; opacity:0.8; font-weight:normal;">클릭하여 목록 보기</span>`;
+                                const clusterLabelTitle = clusterType === 'apt' ? '🏢 아파트 단지 밀집' : (clusterType === 'rh' ? '🏘️ 연립·다세대 밀집' : (clusterType === 'sh' ? '🏠 단독·다가구 밀집' : '🏬 오피스텔 밀집'));
+                                floatingLabelEl.innerHTML = `${clusterLabelTitle} (${count}개) <span style="font-size:10px; opacity:0.8; font-weight:normal;">클릭하여 목록 보기</span>`;
                             }
 
                             // 🌟 [핵심 최적화: Lazy Popup Builder] 클릭하기 전에는 수천 개의 팝업 DOM을 만들지 않고 클릭 시 최초 1회만 동적 조립!
@@ -7702,10 +7743,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                                 const popupHeader = document.createElement('div');
                                 popupHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px 14px 8px 14px; background: #f8fafc; border-bottom: 1px solid #f1f5f9;';
+                                const popupTypeTitle = clusterType === 'apt' ? '아파트 단지 목록' : (clusterType === 'rh' ? '연립·다세대 목록' : (clusterType === 'sh' ? '단독·다가구 목록' : '오피스텔 목록'));
+                                const popupIcon = clusterType === 'apt' ? '🏢' : (clusterType === 'rh' ? '🏘️' : (clusterType === 'sh' ? '🏠' : '🏬'));
                                 popupHeader.innerHTML = `
                                     <div style="display: flex; align-items: center; gap: 6px;">
-                                        <span style="font-size: 14px;">🏢</span>
-                                        <strong style="font-size: 13px; font-weight: 800; color: #0f172a;">인접 주택 단지 목록</strong>
+                                        <span style="font-size: 14px;">${popupIcon}</span>
+                                        <strong style="font-size: 13px; font-weight: 800; color: #0f172a;">인접 ${popupTypeTitle}</strong>
                                         <span style="background: #dbeafe; color: #2563eb; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 10px;">${count}개</span>
                                     </div>
                                 `;
@@ -18975,6 +19018,8 @@ function createHousingCard(place) {
     const address = place.address || '';
     const distMeters = place.distance || 0;
     const distText = distMeters > 0 ? (distMeters < 1000 ? `${distMeters}m` : `${(distMeters / 1000).toFixed(1)}km`) : '반경 내';
+    const walkMinutes = distMeters > 0 ? Math.max(1, Math.round(distMeters / 65)) : 0;
+    const walkText = walkMinutes > 0 ? ` · 🚶 도보 ${walkMinutes}분` : '';
 
     // 주택 유형별 뱃지 컬러
     let badgeBg = '#eff6ff';
@@ -19033,7 +19078,7 @@ function createHousingCard(place) {
             <button onclick="event.stopPropagation(); window.focusHousingLocationOnMap('${place.x}', '${place.y}', '${safePropName}');"
                     style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 3px;"
                     title="지도에서 위치 확인">
-                📍 ${distText}
+                📍 ${distText}${walkText}
             </button>
         </div>
 
@@ -19087,10 +19132,10 @@ function applyHousingFiltersAndRender() {
     const sortMode = sortFilterEl ? sortFilterEl.value : 'distance';
     const nameFilter = nameFilterEl ? nameFilterEl.value.trim().toLowerCase() : '';
 
-    let activeTypeChip = 'all';
+    let activeTypeChip = 'apt';
     const activeChipBtn = document.querySelector('#housingTypeChips .housing-chip.active');
     if (activeChipBtn) {
-        activeTypeChip = activeChipBtn.getAttribute('data-type') || 'all';
+        activeTypeChip = activeChipBtn.getAttribute('data-type') || 'apt';
     }
 
     const items = window.allFetchedHousings || [];
@@ -19286,6 +19331,27 @@ function initHousingSidebarEvents() {
             const chipType = chip.getAttribute('data-type');
             if (typeSelect && chipType) {
                 typeSelect.value = chipType;
+            }
+            const hiddenTypeEl = document.getElementById('realEstateTypeFilter');
+            if (hiddenTypeEl && chipType) {
+                hiddenTypeEl.value = chipType;
+            }
+            // 지도 주택 유형 체크박스 상태 양방향 동기화
+            const itemCheckboxes = document.querySelectorAll('.re-type-item-checkbox');
+            const allCb = document.getElementById('reTypeAllCheckbox');
+            if (itemCheckboxes.length > 0) {
+                if (chipType === 'all') {
+                    if (allCb) allCb.checked = true;
+                    itemCheckboxes.forEach(cb => { cb.checked = true; });
+                } else {
+                    if (allCb) allCb.checked = false;
+                    itemCheckboxes.forEach(cb => {
+                        cb.checked = (cb.value === chipType);
+                    });
+                }
+            }
+            if (typeof window.updateRealEstateMapMarkers === 'function') {
+                window.updateRealEstateMapMarkers();
             }
             applyHousingFiltersAndRender();
         };

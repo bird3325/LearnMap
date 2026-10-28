@@ -1115,6 +1115,9 @@
                             <button class="btn-secondary" id="btnRetryMissingAreas" style="padding: 7px 14px; font-size: 12.5px; background: #fffbeb; color: #b45309; border-color: #fde68a; font-weight: 600;" title="공공데이터포털 트래픽 지연으로 전용면적이 누락된 단지들의 호실별 면적을 일괄 재수집합니다.">
                                 🔄 누락 면적 일괄 재수집
                             </button>
+                            <button class="btn-secondary" id="btnRepairCoordinates" style="padding: 7px 14px; font-size: 12.5px; background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; font-weight: 600;" title="임시 좌표(동 중심 난수)로 등록되어 있거나 미검증된 주택들을 카카오 정밀 지오코딩 API로 실제 건물 위치로 일괄 교정합니다.">
+                                📍 주택 좌표 정밀 교정
+                            </button>
                             <button class="btn-secondary" id="btnDeleteFilteredRealEstate" style="padding: 7px 14px; font-size: 12.5px; background: #fff1f2; color: #e11d48; border-color: #fecdd3; font-weight: 600;">
                                 🗑️ 선택 삭제
                             </button>
@@ -1198,6 +1201,11 @@
                             <option value="all">실거래 상태 전체</option>
                             <option value="has_trade">💰 실거래가 수집 완료</option>
                             <option value="missing_trade">⚠️ 실거래 대기 / 누락</option>
+                        </select>
+                        <select class="form-control" id="realEstateCoordFilter" style="flex: 1; min-width: 125px; padding: 7px 10px; font-size: 12.5px;">
+                            <option value="all">좌표 상태 전체</option>
+                            <option value="unverified">⚠️ 정밀 미검증 / 임시 좌표</option>
+                            <option value="precise">📍 정밀 좌표 검증 완료</option>
                         </select>
                         <input type="text" id="realEstateSearchInput" class="form-control" placeholder="건물명 또는 주소 검색..." style="flex: 2; min-width: 160px; padding: 7px 12px; font-size: 12.5px;">
                     </div>

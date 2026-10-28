@@ -1,0 +1,17 @@
+# Vercel Deployment Ignore Rules
+# 무료 플랜 250MB Serverless Function 용량 제한 준수 및 정적 빌드 최적화
+
+# 테스트 및 스크래치 스크립트
+scratch/
+docs/
+*.txt
+*.md
+.agents/
+
+# 백엔드 중복 대용량 원본 파일 (시·군·구 분할 파일 src/data/realestate/*.json 사용)
+src/data/realestate_seoul.json
+
+# 프론트엔드 public 디렉터리 내 중복 대용량 데이터
+public/src/
+public/data/realestate/
+public/data/realestate_seoul.json

@@ -3,7 +3,30 @@
   "builds": [
     {
       "src": "server.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 60,
+        "includeFiles": [
+          "src/data/realestate/*.json",
+          "src/data/schools_seoul.json",
+          "src/data/korea-administrative-district.json",
+          "src/data/realestate_regions.json",
+          "src/data/lawd_code_map.json",
+          "src/data/businesses.json",
+          "src/data/subscriptions.json",
+          "src/data/analytics_events.json",
+          "src/data/inquiries.json",
+          "config.json"
+        ],
+        "excludeFiles": [
+          "public/**",
+          "dist/**",
+          "scratch/**",
+          "docs/**",
+          "*.txt",
+          "src/data/realestate_seoul.json"
+        ]
+      }
     },
     {
       "src": "package.json",
