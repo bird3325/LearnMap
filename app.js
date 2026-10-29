@@ -2633,11 +2633,92 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dongRatingCheckbox) {
         dongRatingCheckbox.addEventListener('change', () => {
             if (dongRatingCheckbox.checked) {
+                // 1. 통학로 및 안전 레이어 초기화
+                if (typeof resetSafeCommute === 'function') resetSafeCommute();
+
+                // 2. 선택된 학교 핀 선택 해제 및 사이드바/모달 복귀
+                const btnDeselectSchool = document.getElementById('btnDeselectSchool');
+                if (btnDeselectSchool) {
+                    btnDeselectSchool.click();
+                } else {
+                    if (typeof orchestrator !== 'undefined' && orchestrator.state) orchestrator.state.selectedSchool = null;
+                    if (typeof highlightSelectedPin === 'function') highlightSelectedPin(null);
+                    if (typeof clearMapLayers === 'function') clearMapLayers();
+                    if (schoolCard) schoolCard.style.display = 'none';
+                    if (childFormCard) childFormCard.style.display = 'none';
+                    if (diagnosisResultCard) diagnosisResultCard.style.display = 'none';
+                    if (welcomeCard) welcomeCard.style.display = 'block';
+                    const serviceInquiryCardEl = document.getElementById('serviceInquiryCard');
+                    if (serviceInquiryCardEl) serviceInquiryCardEl.style.display = 'block';
+                }
+                if (typeof orchestrator !== 'undefined' && orchestrator.state) orchestrator.state.selectedSchool = null;
+                window.currentSelectedSchool = null;
+                window.selectedTargetSchool = null;
+
+                // 3. 통학 분석 범위 원(commuteCircle) 및 중심 마커 초기화
+                commuteCenter = null;
+                if (typeof commuteCircle !== 'undefined' && commuteCircle) {
+                    commuteCircle.setMap(null);
+                    commuteCircle = null;
+                }
+                if (typeof commuteCenterMarker !== 'undefined' && commuteCenterMarker) {
+                    commuteCenterMarker.setMap(null);
+                    commuteCenterMarker = null;
+                }
+                if (typeof updateCommuteCircle === 'function') {
+                    updateCommuteCircle();
+                }
+
+                // 4. 지도 상 주변 학원 핀(마커/오버레이) 및 학원 반경 영역(Circle) 초기화
+                if (typeof window.clearAcademyMapMarkers === 'function') {
+                    window.clearAcademyMapMarkers();
+                }
+                if (Array.isArray(window.academyMapOverlays)) {
+                    window.academyMapOverlays.forEach(ov => ov && ov.setMap(null));
+                }
+                window.academyMapOverlays = [];
+                window.allFetchedAcademies = [];
+
+                if (window.academyRadiusCircle) {
+                    window.academyRadiusCircle.setMap(null);
+                    window.academyRadiusCircle = null;
+                }
+
+                // 개별 학원 클릭 임시 핀 제거
+                if (window.tempAddressMarker) {
+                    window.tempAddressMarker.setMap(null);
+                    window.tempAddressMarker = null;
+                }
+                if (window.tempAddressInfoWindow) {
+                    if (typeof window.tempAddressInfoWindow.close === 'function') window.tempAddressInfoWindow.close();
+                    else if (typeof window.tempAddressInfoWindow.setMap === 'function') window.tempAddressInfoWindow.setMap(null);
+                    window.tempAddressInfoWindow = null;
+                }
+                if (typeof window.clearAcademyMarker === 'function') {
+                    window.clearAcademyMarker();
+                }
+                if (typeof window.clearRealEstateMapMarkers === 'function') {
+                    window.realEstateReqSeq = (window.realEstateReqSeq || 0) + 1;
+                    window.clearRealEstateMapMarkers();
+                }
+
+                // 학원 사이드바 닫기
+                const academySidebar = document.getElementById('academySidebar');
+                if (academySidebar && academySidebar.style.display !== 'none') {
+                    if (typeof window.toggleAcademySidebar === 'function') {
+                        window.toggleAcademySidebar();
+                    } else {
+                        academySidebar.style.display = 'none';
+                        const appContainer = document.querySelector('.app-container');
+                        if (appContainer) appContainer.classList.remove('academy-open');
+                    }
+                }
+
+                // 5. 히트맵 렌더링 및 지도 핀들 제거
                 renderDistrictRatings();
-                // 히트맵 시 지도 핀들 임시 제거
                 mapMarkers.forEach(item => {
                     if (item.marker) item.marker.setMap(null);
-                    else item.setMap(null);
+                    else if (typeof item.setMap === 'function') item.setMap(null);
                 });
                 mapMarkers = [];
                 if (clusterer) clusterer.clear();
@@ -3804,16 +3885,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const minSpecialAdmission = parseFloat(document.getElementById('filterMinSpecialAdmission').value);
         const maxViolence = parseFloat(document.getElementById('filterMaxViolence').value);
 
+        const activeSelectedSchool = (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) || window.currentSelectedSchool || null;
+        const activeSelectedId = activeSelectedSchool ? String(activeSelectedSchool.school_id || activeSelectedSchool.id) : null;
+
         let filtered = schools.filter(school => {
             if (!school.lat || !school.lng) return false;
 
-            // 1. Region Filter
-            if (selectedRegion !== 'all' && school.region !== selectedRegion) {
+            const isSelectedSchool = Boolean(activeSelectedId && String(school.school_id || school.id) === activeSelectedId);
+
+            // 1. Region Filter (선택된 학교는 지역 경계 이동 시에도 제외하지 않음)
+            if (!isSelectedSchool && selectedRegion !== 'all' && school.region !== selectedRegion) {
                 return false;
             }
 
-            // 2. School Type Filter
-            if (orchestrator.state.filters.schoolType !== 'all' && school.school_type !== typeLabel) {
+            // 2. School Type Filter (선택된 학교는 제외하지 않음)
+            if (!isSelectedSchool && orchestrator.state.filters.schoolType !== 'all' && school.school_type !== typeLabel) {
                 return false;
             }
 
@@ -3834,8 +3920,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const avgPrev2 = Math.round((avgPrev1 - y2Change) * 10) / 10;
             school.trendData = [avgPrev2, avgPrev1, school.weightedAvg];
 
-            // 클러스터 모드일 때는 세부 성적 및 기타 필터를 건너뜀 (전체 학교 개요 파악 목적)
-            if (!isClusterMode) {
+            // 클러스터 모드이거나 현재 선택된 학교일 때는 세부 필터에 의해 사라지지 않도록 건너뜀
+            if (!isClusterMode && !isSelectedSchool) {
                 // 3. 3년 연속 우상향 필터
                 if (showTrendUpward) {
                     const isUpward = (avgPrev2 <= avgPrev1) && (avgPrev1 <= school.weightedAvg);
@@ -3897,7 +3983,7 @@ document.addEventListener('DOMContentLoaded', () => {
             school.envScore = envScore;
             school.envScoresDetails = { scoreScore, teacherScore, safetyScore, budgetScore };
 
-            if (!isClusterMode) {
+            if (!isClusterMode && !isSelectedSchool) {
                 // 5. 프로필별 성향 추천 필터 (balanced 등 개선 조건 완화)
                 if (profile === 'academic') {
                     if (school.weightedAvg < 75) return false;
@@ -3955,9 +4041,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const dongRatingCheckbox = document.getElementById('dongRatingCheckbox');
         if (dongRatingCheckbox && dongRatingCheckbox.checked) {
             renderDistrictRatings();
-            mapMarkers.forEach(marker => marker.setMap(null));
+            mapMarkers.forEach(item => {
+                if (item.marker) item.marker.setMap(null);
+                else if (typeof item.setMap === 'function') item.setMap(null);
+            });
             mapMarkers = [];
             if (clusterer) clusterer.clear();
+            const pinsContainer = document.getElementById('pinsContainer');
+            if (pinsContainer) pinsContainer.innerHTML = '';
+            if (typeof window.clearAcademyMapMarkers === 'function') window.clearAcademyMapMarkers();
+            if (typeof window.clearRealEstateMapMarkers === 'function') window.clearRealEstateMapMarkers();
             return;
         } else {
             clearDistrictRatings();
@@ -4102,13 +4195,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         logDiagnostic(`[_renderMapForRegion] 개별 핀 모드 (지역: ${selectedRegion})`);
 
-        // 공통 필터 적용
-        let filtered = filterSchools(schoolsDatabase, selectedRegion, typeLabel);
+        // 공통 필터 적용 (개별 핀 모드는 화면 경계(bounds)로 필터링하므로 시/도 경계에서도 핀이 끊기지 않도록 'all' 적용)
+        let filtered = filterSchools(schoolsDatabase, 'all', typeLabel);
 
-        // Boundary Check (화면에 보이는 범위 내만 표시)
+        const selectedSchoolObj = (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) || window.currentSelectedSchool || null;
+        const selectedSchoolId = selectedSchoolObj ? String(selectedSchoolObj.school_id || selectedSchoolObj.id) : null;
+
+        // Boundary Check (화면에 보이는 범위 내만 표시하되, 선택된 학교 핀은 경계에서도 사라지지 않도록 항상 유지)
         // 맵 외곽선 부분에 있는 마커가 픽셀 오차 및 패딩 문제로 잘리지 않도록 0.01도의 여유 버퍼(Padding)를 둠.
         const buffer = 0.01;
         filtered = filtered.filter(school => {
+            if (selectedSchoolId && String(school.school_id || school.id) === selectedSchoolId) return true;
             const latIn = school.lat >= (sw.getLat() - buffer) && school.lat <= (ne.getLat() + buffer);
             const lngIn = school.lng >= (sw.getLng() - buffer) && school.lng <= (ne.getLng() + buffer);
             return latIn && lngIn;
@@ -4117,6 +4214,15 @@ document.addEventListener('DOMContentLoaded', () => {
         logDiagnostic(`[onMapAction] 현재 지도 영역 내 학교 수: ${filtered.length}개`);
 
         filtered = filtered.slice(0, 150); // Prevent overlay flooding (30 -> 150개로 상향하여 핀 유실 방지)
+
+        // 선택된 학교가 150개 제한이나 경계 조건으로 누락되지 않도록 보장
+        if (selectedSchoolObj && selectedSchoolId && !filtered.some(s => String(s.school_id || s.id) === selectedSchoolId)) {
+            const matchedInDb = (typeof schoolsDatabase !== 'undefined' && Array.isArray(schoolsDatabase))
+                ? schoolsDatabase.find(s => String(s.school_id || s.id) === selectedSchoolId)
+                : null;
+            filtered.unshift(matchedInDb || selectedSchoolObj);
+        }
+
         currentLoadedSchools = filtered;
         renderPins(filtered, false);
         updateSafetyGuideLayers(orchestrator.state.selectedSchool);
@@ -4415,8 +4521,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let centered = false;
         
+        // 선택된 학교가 존재할 경우 지역/화면 경계에서도 핀이 사라지지 않도록 목록에 포함 보장
+        const activeSelectedSchool = (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) || window.currentSelectedSchool || null;
+        const activeSelectedId = activeSelectedSchool ? String(activeSelectedSchool.school_id || activeSelectedSchool.id) : null;
+        if (activeSelectedSchool && activeSelectedId && !schools.some(s => String(s.school_id || s.id) === activeSelectedId)) {
+            const matchedInDb = (typeof schoolsDatabase !== 'undefined' && Array.isArray(schoolsDatabase))
+                ? schoolsDatabase.find(s => String(s.school_id || s.id) === activeSelectedId)
+                : null;
+            schools = [matchedInDb || activeSelectedSchool, ...schools];
+        }
+
         // Reconcile markers to prevent flickering
-        const newSchoolIds = new Set(schools.map(s => s.school_id));
+        const newSchoolIds = new Set(schools.map(s => String(s.school_id || s.id)));
         const keepMarkers = [];
         const removeMarkers = [];
 
@@ -4426,9 +4542,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 removeMarkers.push(item);
                 return;
             }
-            if (newSchoolIds.has(item.id)) {
+            const itemIdStr = String(item.id);
+            if (newSchoolIds.has(itemIdStr) || (activeSelectedId && itemIdStr === activeSelectedId)) {
                 // 기존 마커 유지 및 색상 클래스 동적 갱신, data-school-id 누락 방지 설정
-                const school = schools.find(s => s.school_id === item.id);
+                const school = schools.find(s => String(s.school_id || s.id) === itemIdStr);
                 if (school && item.content) {
                     const pin = item.content.querySelector('.school-pin');
                     if (pin) {
@@ -4460,7 +4577,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const coords = new kakao.maps.LatLng(school.lat, school.lng);
                 
                 // 마커가 없을 때만 신규 생성
-                const existing = mapMarkers.find(item => item.id === school.school_id);
+                const existing = mapMarkers.find(item => String(item.id) === String(school.school_id || school.id));
                 if (!existing) {
                     const marker = createMarkerObject(school, coords);
                     mapMarkers.push({
@@ -7051,6 +7168,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!mapObj || !window.kakao || !window.kakao.maps) return;
 
             clearAcademyMapMarkers();
+
+            // 동 단위 학군 레이팅 히트맵 활성화 시 학원 핀 및 반경 영역 표시 안 함
+            const dongRatingCb = document.getElementById('dongRatingCheckbox');
+            if (dongRatingCb && dongRatingCb.checked) return;
 
             // 클러스터 줌 단계(레벨 7 이상)에서는 학원 핀을 표시하지 않음
             if (typeof mapObj.getLevel === 'function' && mapObj.getLevel() >= 7) {
@@ -13667,6 +13788,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnDeselectSchool) {
         btnDeselectSchool.addEventListener('click', () => {
             orchestrator.state.selectedSchool = null;
+            window.currentSelectedSchool = null;
+            window.selectedTargetSchool = null;
             if (typeof highlightSelectedPin === 'function') highlightSelectedPin(null);
             if (typeof clearMapLayers === 'function') clearMapLayers();
             if (schoolCard) schoolCard.style.display = 'none';
