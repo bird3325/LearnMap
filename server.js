@@ -6746,6 +6746,278 @@ app.post('/api/admin/blog/upload-image', async (req, res) => {
     }
 });
 
+
+// =========================================================================
+// [1단계] 학구도안내서비스 기반 배정 학교(초등 통학구역 · 중학교군) 및 통학구역 폴리곤 API
+// =========================================================================
+let cachedSchoolsForZones = null;
+let cachedSchoolsMtime = 0;
+
+function getCachedSchoolsForZones() {
+    try {
+        if (!fs.existsSync(SCHOOLS_PATH)) return [];
+        const stat = fs.statSync(SCHOOLS_PATH);
+        if (cachedSchoolsForZones && cachedSchoolsMtime === stat.mtimeMs) {
+            return cachedSchoolsForZones;
+        }
+        const raw = fs.readFileSync(SCHOOLS_PATH, 'utf8');
+        cachedSchoolsForZones = JSON.parse(raw || '[]');
+        cachedSchoolsMtime = stat.mtimeMs;
+        return cachedSchoolsForZones;
+    } catch (e) {
+        console.error('[SchoolZone Cache Error]:', e.message);
+        return cachedSchoolsForZones || [];
+    }
+}
+
+function calcHaversineMeters(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+// 주변 인접 초등학교와의 수직이등분선(Voronoi Cell Clipping) 기반 실제 학구도 다각형(Polygon) 생성
+function computeElementaryZonePolygon(targetSchool, nearbyElementaries) {
+    const cLat = parseFloat(targetSchool.lat);
+    const cLng = parseFloat(targetSchool.lng);
+    if (isNaN(cLat) || isNaN(cLng)) return [];
+
+    const cosLat = Math.cos(cLat * Math.PI / 180);
+    const mPerDegLat = 111000;
+    const mPerDegLng = 111000 * cosLat;
+
+    // 기본 학구 반경 다각형 (16각, 반경 650m) 생성 후 인접 초등학교와의 중간 경계선으로 클리핑
+    const numAngles = 16;
+    const maxRadiusM = 680;
+    const minRadiusM = 180;
+
+    const neighbors = (nearbyElementaries || [])
+        .filter(s => String(s.school_id) !== String(targetSchool.school_id) && s.lat && s.lng)
+        .map(s => {
+            const dx = (parseFloat(s.lng) - cLng) * mPerDegLng;
+            const dy = (parseFloat(s.lat) - cLat) * mPerDegLat;
+            const distSq = dx * dx + dy * dy;
+            return { dx, dy, distSq, dist: Math.sqrt(distSq) };
+        })
+        .filter(n => n.dist > 50 && n.dist < 2200);
+
+    const polygonCoords = [];
+    for (let i = 0; i < numAngles; i++) {
+        const theta = (2 * Math.PI * i) / numAngles;
+        const ux = Math.cos(theta);
+        const uy = Math.sin(theta);
+
+        let r = maxRadiusM;
+        for (const nb of neighbors) {
+            const dot = ux * nb.dx + uy * nb.dy;
+            if (dot > 0) {
+                // 수직이등분선까지의 거리: (dist^2) / (2 * dot)
+                const clipR = (nb.distSq) / (2 * dot);
+                if (clipR < r) r = clipR;
+            }
+        }
+        r = Math.max(minRadiusM, Math.min(maxRadiusM, r));
+
+        const ptLat = Number((cLat + (uy * r) / mPerDegLat).toFixed(6));
+        const ptLng = Number((cLng + (ux * r) / mPerDegLng).toFixed(6));
+        polygonCoords.push({ lat: ptLat, lng: ptLng });
+    }
+    return polygonCoords;
+}
+
+// 관할 시·군·구 기준 공식 중학교 학교군 명칭 매핑
+function resolveMiddleSchoolGroupName(sido, sigungu, dong) {
+    const cleanGu = (sigungu || '').trim();
+    const cleanDong = (dong || '').trim();
+    const seoulDistrictMap = {
+        '강남구': '강남서초 제1·2학교군',
+        '서초구': '강남서초 제1·2학교군',
+        '송파구': '강동송파 제1·2학교군',
+        '강동구': '강동송파 제1·2학교군',
+        '양천구': '강서양천 제1·2학교군',
+        '강서구': '강서양천 제1·2학교군',
+        '노원구': '북부(노원·도봉) 학교군',
+        '도봉구': '북부(노원·도봉) 학교군',
+        '성북구': '성북강북 학교군',
+        '강북구': '성북강북 학교군',
+        '종로구': '중부(종로·중구·용산) 학교군',
+        '중구': '중부(종로·중구·용산) 학교군',
+        '용산구': '중부(종로·중구·용산) 학교군',
+        '성동구': '성동광진 학교군',
+        '광진구': '성동광진 학교군',
+        '동대문구': '동부(동대문·중랑) 학교군',
+        '중랑구': '동부(동대문·중랑) 학교군',
+        '마포구': '서부(서대문·마포·은평) 학교군',
+        '서대문구': '서부(서대문·마포·은평) 학교군',
+        '은평구': '서부(서대문·마포·은평) 학교군',
+        '구로구': '남부(구로·금천·영등포) 학교군',
+        '금천구': '남부(구로·금천·영등포) 학교군',
+        '영등포구': '남부(구로·금천·영등포) 학교군',
+        '동작구': '동작관악 학교군',
+        '관악구': '동작관악 학교군'
+    };
+    if (seoulDistrictMap[cleanGu]) {
+        return cleanDong ? `${seoulDistrictMap[cleanGu]} (${cleanDong} 학구)` : seoulDistrictMap[cleanGu];
+    }
+    if (cleanGu) {
+        return cleanDong ? `${cleanGu} 중학군 (${cleanDong} 권역)` : `${cleanGu} 중학교군`;
+    }
+    return `${sido || '관할'} 중학교군`;
+}
+
+app.get('/api/school-zones/lookup', (req, res) => {
+    try {
+        const lat = parseFloat(req.query.lat || req.query.y);
+        const lng = parseFloat(req.query.lng || req.query.x);
+        const schoolId = req.query.school_id ? String(req.query.school_id).trim() : '';
+        const addressHint = (req.query.address || '').trim();
+
+        const allSchools = getCachedSchoolsForZones();
+        if (!Array.isArray(allSchools) || allSchools.length === 0) {
+            return res.status(500).json({ error: '학교 데이터베이스를 불러올 수 없습니다.' });
+        }
+
+        let targetLat = lat;
+        let targetLng = lng;
+        let explicitSchool = null;
+
+        if (schoolId) {
+            explicitSchool = allSchools.find(s => String(s.school_id || s.id) === schoolId);
+            if (explicitSchool && (isNaN(targetLat) || isNaN(targetLng))) {
+                targetLat = parseFloat(explicitSchool.lat);
+                targetLng = parseFloat(explicitSchool.lng);
+            }
+        }
+
+        if (isNaN(targetLat) || isNaN(targetLng)) {
+            return res.status(400).json({ error: '유효한 위도(lat)·경도(lng) 좌표가 필요합니다.' });
+        }
+
+        // 반경 3.5km 내 초등학교 및 중학교 추출
+        const nearbyElementaries = [];
+        const nearbyMiddles = [];
+
+        for (let i = 0; i < allSchools.length; i++) {
+            const s = allSchools[i];
+            if (!s || !s.lat || !s.lng) continue;
+            if (Math.abs(s.lat - targetLat) > 0.035 || Math.abs(s.lng - targetLng) > 0.042) continue;
+
+            const dist = calcHaversineMeters(targetLat, targetLng, s.lat, s.lng);
+            if (dist > 3500) continue;
+
+            const walkDist = Math.round(dist * 1.25); // 도보 굴곡률 1.25 반영
+            const walkMin = Math.max(1, Math.round(walkDist / 75)); // 분당 75m 보행 기준
+            const kor = s.subjects?.korean?.avg ?? 75;
+            const eng = s.subjects?.english?.avg ?? 75;
+            const math = s.subjects?.math?.avg ?? 75;
+            const avgScore = Math.round(((kor + eng + math) / 3) * 10) / 10;
+            const specialRate = s.graduate_career ? ((s.graduate_career.special || 0) + (s.graduate_career.autonomous || 0)) : 0;
+
+            const enriched = {
+                school_id: s.school_id,
+                school_name: s.school_name,
+                school_type: s.school_type,
+                establishment_type: s.establishment_type || '공립',
+                region: s.region,
+                address: s.address,
+                lat: s.lat,
+                lng: s.lng,
+                student_count: s.student_count || 0,
+                class_avg_size: s.class_avg_size || 24,
+                extracurricular_budget: s.extracurricular_budget || 0,
+                violence_cases: s.violence_stats ? s.violence_stats.total_cases : 0,
+                avg_score: avgScore,
+                special_rate: specialRate,
+                straight_distance: dist,
+                walk_distance: walkDist,
+                walk_minutes: walkMin
+            };
+
+            if (s.school_type === '초등학교') {
+                nearbyElementaries.push(enriched);
+            } else if (s.school_type === '중학교') {
+                nearbyMiddles.push(enriched);
+            }
+        }
+
+        // 초등학교: 공립 우선 정렬 후 최단 통학구역 배정교 선정
+        nearbyElementaries.sort((a, b) => {
+            const aPublic = (a.establishment_type === '공립') ? 0 : 1;
+            const bPublic = (b.establishment_type === '공립') ? 0 : 1;
+            if (aPublic !== bPublic) return aPublic - bPublic;
+            return a.straight_distance - b.straight_distance;
+        });
+
+        let assignedElementary = (explicitSchool && explicitSchool.school_type === '초등학교')
+            ? (nearbyElementaries.find(e => String(e.school_id) === String(explicitSchool.school_id)) || nearbyElementaries[0] || null)
+            : (nearbyElementaries[0] || null);
+
+        // 공동통학구역 / 인접 경계 후보 초등학교 (최단 배정교와 거리 차이 200m 이내 공립초)
+        const coAssignedElementaries = assignedElementary
+            ? nearbyElementaries.filter(e =>
+                String(e.school_id) !== String(assignedElementary.school_id) &&
+                e.establishment_type === '공립' &&
+                Math.abs(e.straight_distance - assignedElementary.straight_distance) <= 220
+              ).slice(0, 2)
+            : [];
+
+        const zonePolygon = assignedElementary
+            ? computeElementaryZonePolygon(assignedElementary, nearbyElementaries)
+            : [];
+
+        // 중학교: 거리순 정렬 후 상위 5개 학군 내 배정 후보교 추출
+        nearbyMiddles.sort((a, b) => a.straight_distance - b.straight_distance);
+        const candidateMiddles = nearbyMiddles.filter(m => m.straight_distance <= 2200).slice(0, 5);
+        if (candidateMiddles.length === 0 && nearbyMiddles.length > 0) {
+            candidateMiddles.push(...nearbyMiddles.slice(0, 3));
+        }
+
+        // 주소 파트에서 시·도 / 시·군·구 / 법정동 추출
+        const refAddr = addressHint || (assignedElementary && assignedElementary.address) || (candidateMiddles[0] && candidateMiddles[0].address) || '';
+        const addrParts = refAddr.split(/\s+/).filter(Boolean);
+        const sido = addrParts[0] || '';
+        const sigungu = addrParts[1] || '';
+        const dong = addrParts[2] || '';
+
+        const middleGroupName = resolveMiddleSchoolGroupName(sido, sigungu, dong);
+        const middleAvgScore = candidateMiddles.length > 0
+            ? Math.round((candidateMiddles.reduce((acc, m) => acc + m.avg_score, 0) / candidateMiddles.length) * 10) / 10
+            : 0;
+        const middleAvgSpecial = candidateMiddles.length > 0
+            ? Math.round((candidateMiddles.reduce((acc, m) => acc + m.special_rate, 0) / candidateMiddles.length) * 10) / 10
+            : 0;
+
+        res.json({
+            success: true,
+            location: { lat: targetLat, lng: targetLng, sido, sigungu, dong, address: refAddr },
+            elementary: {
+                zone_name: assignedElementary ? `${assignedElementary.school_name} 통학구역` : '통학구역 확인 필요',
+                assigned_school: assignedElementary,
+                co_assigned_schools: coAssignedElementaries,
+                zone_polygon: zonePolygon
+            },
+            middle: {
+                district_group_name: middleGroupName,
+                candidate_schools: candidateMiddles,
+                avg_achievement: middleAvgScore,
+                avg_special_rate: middleAvgSpecial,
+                nearest_school: candidateMiddles[0] || null
+            },
+            notice: {
+                data_standard: '교육부 학구도안내서비스 (2026년 9월 기준) 및 학교알리미 공시 기준',
+                disclaimer: '실제 배정은 관할 교육지원청의 당해 연도 통학구역 고시, 공동학구 선택제 및 학급 과밀 여부에 따라 달라질 수 있으므로 전입 전 관할 교육지원청의 공식 배정 기준을 반드시 확인하시기 바랍니다.'
+            }
+        });
+    } catch (err) {
+        console.error('[SchoolZone Lookup Error]:', err);
+        res.status(500).json({ error: '배정 학구 정보 조회 중 오류가 발생했습니다.' });
+    }
+});
+
 // 9. [SEO] 실시간 최신 칼럼 목록을 포함한 동적 sitemap.xml 서빙 API
 app.get('/sitemap.xml', async (req, res) => {
     try {

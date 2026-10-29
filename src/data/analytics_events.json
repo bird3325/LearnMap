@@ -297,5 +297,45 @@
       "area": "신원동"
     },
     "createdAt": "2026-10-28T07:24:13.466Z"
+  },
+  {
+    "id": "evt_1793277350429_wy3f",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "신원마을 5단지 우림필유아파트",
+      "area": "신원동"
+    },
+    "createdAt": "2026-10-29T12:35:50.429Z"
+  },
+  {
+    "id": "evt_1793277354091_tzvc",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "고양삼송 동일스위트 1차",
+      "area": "신원동"
+    },
+    "createdAt": "2026-10-29T12:35:54.091Z"
+  },
+  {
+    "id": "evt_1793277374133_23df",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "신원마을4단지",
+      "area": "신원동"
+    },
+    "createdAt": "2026-10-29T12:36:14.133Z"
+  },
+  {
+    "id": "evt_1793277532672_iy5b",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "신원마을4단지",
+      "area": "신원동"
+    },
+    "createdAt": "2026-10-29T12:38:52.672Z"
   }
 ]

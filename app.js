@@ -2565,22 +2565,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnShowTutorial) {
         btnShowTutorial.addEventListener('click', () => {
-            const tutorialCard = document.getElementById('tutorialSidebarCard');
-            const settingsModal = document.getElementById('settingsModal');
-            
-            // 도움말을 켤 때 설정창은 닫음
-            if (settingsModal) {
-                settingsModal.style.display = 'none';
-            }
-            
-            if (tutorialCard) {
-                if (tutorialCard.style.display === 'block') {
-                    tutorialCard.style.display = 'none';
-                } else {
-                    tutorialCard.style.display = 'block';
-                    window.switchTutorialTab('all'); // 기본값으로 전체 사용법 탭 선택
-                }
-            }
+            window.open('blog.html', '_blank', 'noopener,noreferrer');
         });
     }
 
@@ -3729,7 +3714,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedRegion = regionFilter ? regionFilter.value : 'all';
         const selectedType = schoolTypeFilter ? schoolTypeFilter.value : 'all';
 
-        // 2) 1차 검색: 현재 선택된 드롭다운 필터(지역, 학교급) 조건 내에서 검색
+        // 주소/아파트 단지명 검색 여부 판별: 학교명 키워드(초/중/고/학교)가 없고 도로명·번지·동·호·아파트 등이 포함된 경우 우선 주소 배정 탐색 수행
+        const isExplicitSchoolQuery = /(초등학교|중학교|고등학교|초교|중교|고교|학교|[초중고])$/.test(term);
+        const isAddressOrAptPattern = /([0-9]+|번지|로|길|동|읍|면|리|아파트|단지|빌라|타운|스위트|푸르지오|래미안|자이|힐스테이트|아이파크|엘스|리센츠|트리지움|센트레빌|더샵|롯데캐슬|e편한|아크로|써밋)/.test(queryStr) && !isExplicitSchoolQuery;
+
+        // 학교명(school_name) 기준 매칭 확인
+        let nameMatched = allDb.filter(s => {
+            const cleanName = (s.school_name || '').toLowerCase().replace(/\s+/g, '');
+            return cleanName.includes(term);
+        });
+
+        // 사용자가 주소나 아파트 단지명을 입력한 경우 (또는 학교명 직접 일치 결과가 없는 경우) 우리 집 주소 배정 학교 탐색 실행
+        if ((isAddressOrAptPattern && !nameMatched.some(s => (s.school_name || '').replace(/\s+/g, '') === term)) || nameMatched.length === 0) {
+            if (typeof window.searchSchoolZoneByAddressQuery === 'function') {
+                window.searchSchoolZoneByAddressQuery(queryStr);
+                return;
+            }
+        }
+
+        window.lastSearchedHomeZone = null;
+
+        // 2) 1차 검색: 현재 선택된 드롭다운 필터(지역, 학교급) 조건 내에서 학교명 검색
         let filtered = allDb.filter(s => {
             if (selectedRegion !== 'all' && s.region !== selectedRegion) {
                 return false;
@@ -3741,19 +3746,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (s.school_type !== typeLabel) return false;
             }
             const cleanName = (s.school_name || '').toLowerCase().replace(/\s+/g, '');
-            const cleanAddr = (s.address || '').toLowerCase().replace(/\s+/g, '');
-            return cleanName.includes(term) || cleanAddr.includes(term);
+            return cleanName.includes(term);
         });
 
         // 3) 2차 검색: 필터 제약으로 인해 결과가 0건이면 전체 지역/학교급으로 확장 검색
         if (filtered.length === 0) {
-            filtered = allDb.filter(s => {
-                const cleanName = (s.school_name || '').toLowerCase().replace(/\s+/g, '');
-                const cleanAddr = (s.address || '').toLowerCase().replace(/\s+/g, '');
-                return cleanName.includes(term) || cleanAddr.includes(term);
-            });
-
-            // 다른 지역/학교급에서 학교를 찾은 경우 필터를 '전체'로 자동 조정
+            filtered = nameMatched;
             if (filtered.length > 0) {
                 if (selectedRegion !== 'all' && regionFilter) {
                     regionFilter.value = 'all';
@@ -3768,6 +3766,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (filtered.length === 0) {
+            if (typeof window.searchSchoolZoneByAddressQuery === 'function') {
+                window.searchSchoolZoneByAddressQuery(queryStr);
+                return;
+            }
             alert(`"${queryStr}"에 해당하는 학교를 찾을 수 없습니다.\n학교명이나 주소를 정확히 입력하셨는지 확인해 보세요.`);
             return;
         }
@@ -4476,6 +4478,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return marker;
     }
 
+    window.renderPins = renderPins;
     function renderPins(schools, shouldCenter) {
         const zoomLevel = kakaoMap ? kakaoMap.getLevel() : 5;
 
@@ -5126,6 +5129,11 @@ document.addEventListener('DOMContentLoaded', () => {
         childFormCard.style.display = 'none';
         diagnosisResultCard.style.display = 'none';
         schoolCard.style.display = 'block';
+        window.currentSelectedSchool = fullSchool;
+        window.selectedTargetSchool = fullSchool;
+        if (typeof window.mountSchoolDetailZoneCards === 'function') {
+            window.mountSchoolDetailZoneCards(fullSchool);
+        }
         if (typeof window.switchSchoolCardTab === 'function') window.switchSchoolCardTab('Academic');
 
         // Reset Hero Card & scroll position on school detail open
@@ -5167,7 +5175,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (isMissingData) {
-            if (schoolInsight) schoolInsight.innerHTML = `<span style="color:var(--text-muted); font-weight:bold;">⚠️ 데이터 미공시 또는 분석 정보가 부족한 학교입니다. (학교알리미 공시 제외 등)</span>`;
+            const schoolZoneCardHTML = (typeof window.buildSchoolCardZoneSummaryHTML === 'function') ? window.buildSchoolCardZoneSummaryHTML(fullSchool) : '';
+            if (schoolInsight) schoolInsight.innerHTML = `${schoolZoneCardHTML}<span style="color:var(--text-muted); font-weight:bold;">⚠️ 학업성취도 지필평가 미실시(초등학교 등) 또는 공시 제외 대상 학교입니다.</span>`;
             if (schoolKorAvg) schoolKorAvg.innerText = '-';
             if (schoolEngAvg) schoolEngAvg.innerText = '-';
             if (schoolMathAvg) schoolMathAvg.innerText = '-';
@@ -5249,7 +5258,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             }
 
-            if (schoolInsight) schoolInsight.innerHTML = `<div>${summary.insight}</div>
+            const schoolZoneCardHTML = (typeof window.buildSchoolCardZoneSummaryHTML === 'function')
+                ? window.buildSchoolCardZoneSummaryHTML(fullSchool)
+                : '';
+            if (schoolInsight) schoolInsight.innerHTML = `${schoolZoneCardHTML}<div>${summary.insight}</div>
                                        <div style="margin-top: 4px; font-weight: 500;">${trendSummary}</div>
                                        ${suitabilityHTML}`;
         }
@@ -5694,6 +5706,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 eduSummaryTitleEl.innerText = `${districtName} 내 특목·자사고 진학 우수 및 자기주도 학습 학군`;
                 eduSummaryDescEl.innerText = `${schoolName}는 고입 진학 경쟁력 및 학업성취도 수준이 우수하며, 교원 1인당 학생 수(${sptVal}명)와 인근 학원가(${academyCount}개)를 바탕으로 중등 심화 내신 및 특목·자사고 목표 학생들의 면학 분위기가 탄탄하게 형성되어 있습니다.`;
             }
+        }
+
+        // [학구도안내서비스 연동] 학교 상세 패널(탭1 교육분석 & 탭2 교육여건 통학로) 내 배정 통학구역 경계 토글 및 중학교군 카드 바인딩
+        if (typeof window.mountSchoolDetailZoneCards === 'function') {
+            window.mountSchoolDetailZoneCards(fullSchool);
         }
 
         // --- 학습 리스크 진단 카드 연계 ---
@@ -6184,7 +6201,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const renderComplexes = (items) => {
-                listEl.innerHTML = items.map(c => {
+                const zoneSummaryHTML = (typeof window.buildSchoolCardZoneSummaryHTML === 'function') ? window.buildSchoolCardZoneSummaryHTML(fullSchool) : '';
+                listEl.innerHTML = zoneSummaryHTML + items.map(c => {
                     const safeName = (c.name || '').replace(/'/g, "\\'");
                     const latVal = c.lat || 0;
                     const lngVal = c.lng || 0;
@@ -10710,6 +10728,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateSimRegionSubInfo();
     }
 
+    window.runMovingSimulation = runMovingSimulation;
     function runMovingSimulation(regionA, regionB, labelA, labelB) {
         if (!regionA || !regionB) {
             alert("두 후보 지역을 모두 선택해 주세요.");
@@ -10906,6 +10925,62 @@ document.addEventListener('DOMContentLoaded', () => {
                         <strong style="color: #fbbf24;">${nameA}</strong>은 높은 면학 분위기와 특목 진학률의 프리미엄이 돋보이며, <strong style="color: #fbbf24;">${nameB}</strong>은 동일 예산 대비 주거비 <strong style="color: #fbbf24;">${priceSaveText} 및 우수한 내신 경쟁 여건</strong>을 갖추고 있습니다.
                     </div>
                 </div>
+
+                <!-- 1-B. 우리 집 vs 이사 후보지 배정 학교·통학 비교 Card (2026.09 학구도 기준) -->
+                ${(() => {
+                    const effCoordsA = coordsA || (schoolsA.length > 0 ? { lat: Number(schoolsA[0].lat), lng: Number(schoolsA[0].lng) } : null);
+                    const effCoordsB = coordsB || (schoolsB.length > 0 ? { lat: Number(schoolsB[0].lat), lng: Number(schoolsB[0].lng) } : null);
+                    const zoneA = (typeof window.resolveSchoolZoneByCoords === "function" && effCoordsA)
+                        ? window.resolveSchoolZoneByCoords(effCoordsA.lat, effCoordsA.lng, regionA, null)
+                        : null;
+                    const zoneB = (typeof window.resolveSchoolZoneByCoords === "function" && effCoordsB)
+                        ? window.resolveSchoolZoneByCoords(effCoordsB.lat, effCoordsB.lng, regionB, null)
+                        : null;
+                    const elemA = (zoneA && zoneA.elementary && zoneA.elementary.assigned_school) ? zoneA.elementary.assigned_school : null;
+                    const elemB = (zoneB && zoneB.elementary && zoneB.elementary.assigned_school) ? zoneB.elementary.assigned_school : null;
+                    const midGroupA = (zoneA && zoneA.middle && zoneA.middle.district_group_name) ? zoneA.middle.district_group_name : (gugunAVal ? gugunAVal + " 중학군" : "일반 중학군");
+                    const midGroupB = (zoneB && zoneB.middle && zoneB.middle.district_group_name) ? zoneB.middle.district_group_name : (gugunBVal ? gugunBVal + " 중학군" : "일반 중학군");
+                    const midListA = (zoneA && zoneA.middle && Array.isArray(zoneA.middle.candidate_schools)) ? zoneA.middle.candidate_schools.slice(0, 3).map(m => m.school_name).join(", ") : "-";
+                    const midListB = (zoneB && zoneB.middle && Array.isArray(zoneB.middle.candidate_schools)) ? zoneB.middle.candidate_schools.slice(0, 3).map(m => m.school_name).join(", ") : "-";
+
+                    if (window.lastSimulationData) {
+                        window.lastSimulationData.zoneA = zoneA;
+                        window.lastSimulationData.zoneB = zoneB;
+                    }
+
+                    return `
+                <div style="background: #ffffff; border-radius: 20px; border: 1px solid #bfdbfe; padding: 18px 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.05);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 6px;">
+                        <span style="font-size: 15px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 8px; letter-spacing: -0.3px;">
+                            <span>🏫</span> 배정 초등학교(통학구역) · 중학교군 1:1 비교
+                        </span>
+                        <span style="font-size: 11px; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; font-weight: 700; padding: 3px 8px; border-radius: 12px;">2026.09 학구도안내서비스 기준</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 10px;">
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px;">
+                            <div style="font-size: 11.5px; font-weight: 800; color: #2563eb; margin-bottom: 6px;">● 현재 집 (${nameA})</div>
+                            <div style="font-size: 13px; font-weight: 800; color: #0f172a; margin-bottom: 2px;">초등: ${elemA ? elemA.school_name : "인근 공립초 탐색"}</div>
+                            <div style="font-size: 11.5px; color: #475569; margin-bottom: 6px;">${elemA ? `도보 약 ${elemA.walk_minutes}분 (${elemA.distance_m}m) · ${elemA.zone_name}` : "좌표 기준 통학구역"}</div>
+                            <div style="border-top: 1px dashed #cbd5e1; padding-top: 6px; font-size: 11.5px; color: #334155;">
+                                <strong style="color: #0f172a;">중학군:</strong> ${midGroupA}<br>
+                                <span style="color: #64748b; font-size: 11px;">배정후보: ${midListA}</span>
+                            </div>
+                        </div>
+                        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 12px;">
+                            <div style="font-size: 11.5px; font-weight: 800; color: #059669; margin-bottom: 6px;">● 이사 후보지 (${nameB})</div>
+                            <div style="font-size: 13px; font-weight: 800; color: #0f172a; margin-bottom: 2px;">초등: ${elemB ? elemB.school_name : "인근 공립초 탐색"}</div>
+                            <div style="font-size: 11.5px; color: #475569; margin-bottom: 6px;">${elemB ? `도보 약 ${elemB.walk_minutes}분 (${elemB.distance_m}m) · ${elemB.zone_name}` : "좌표 기준 통학구역"}</div>
+                            <div style="border-top: 1px dashed #a7f3d0; padding-top: 6px; font-size: 11.5px; color: #334155;">
+                                <strong style="color: #0f172a;">중학군:</strong> ${midGroupB}<br>
+                                <span style="color: #64748b; font-size: 11px;">배정후보: ${midListB}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="font-size: 11px; color: #64748b; background: #f8fafc; padding: 8px 10px; border-radius: 8px; line-height: 1.45;">
+                        ℹ️ 실제 초등학교 통학구역 및 중학교 추첨 배정은 관할 교육지원청의 당해 연도 공식 배정 공고문과 공동학구·과밀학급 예외 규정을 반드시 함께 확인하시기 바랍니다.
+                    </div>
+                </div>`;
+                })()}
 
                 <!-- 2. 핵심 지표 1:1 비교 매트릭스 Card -->
                 <div style="background: #ffffff; border-radius: 20px; border: 1px solid #e2e8f0; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
@@ -13893,6 +13968,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function clearMapLayers() {
+        if (typeof window.clearSchoolZonePolygon === 'function') window.clearSchoolZonePolygon();
         commutePolylines.forEach(p => p.setMap(null));
         commutePolylines = [];
         safetyMarkers.forEach(m => m.setMap(null));
@@ -18407,6 +18483,35 @@ window.openHousingDetailModal = function(placeOrName) {
                         📍 도보 ${walkMin}분 (${distText})
                     </span>
                 </div>
+                ${(() => {
+                    const zInfo = (latVal && lngVal && typeof window.resolveSchoolZoneByCoords === "function")
+                        ? window.resolveSchoolZoneByCoords(latVal, lngVal, address || propName, null)
+                        : null;
+                    const elSchool = zInfo && zInfo.elementary ? zInfo.elementary.assigned_school : null;
+                    const midGrp = zInfo && zInfo.middle ? zInfo.middle.district_group_name : "";
+                    if (!elSchool) return "";
+                    return `
+                <div style="border-top: 1px dashed #cbd5e1; padding-top: 8px; margin-top: 2px; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 11.5px; color: #1d4ed8; font-weight: 800;">🏫 배정 초등(통학구역)</span>
+                        <strong style="font-size: 12.5px; color: #0f172a; font-weight: 800;">${elSchool.school_name} <span style="font-size: 11px; color: #2563eb;">(도보 ${elSchool.walk_minutes}분)</span></strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 11.5px; color: #475569; font-weight: 600;">🎓 중학교군</span>
+                        <span style="font-size: 11.5px; color: #334155; font-weight: 700;">${midGrp}</span>
+                    </div>
+                    <div style="display: flex; gap: 6px; margin-top: 2px;">
+                        <button class="btn-school-zone-toggle" onclick="window.toggleHousingSchoolZoneOnMap(${latVal}, ${lngVal}, '${safePropName}', '${safeAddress}')"
+                                style="flex: 1; padding: 6px 8px; background: #eff6ff; border: 1px solid #93c5fd; border-radius: 7px; color: #1d4ed8; font-size: 11px; font-weight: 700; cursor: pointer;">
+                            🗺️ 통학구역 경계 표시
+                        </button>
+                        <button onclick="window.openSimulationWithHousing(${latVal}, ${lngVal}, '${safePropName}', '${safeAddress}')"
+                                style="flex: 1; padding: 6px 8px; background: #0f172a; border: none; border-radius: 7px; color: #ffffff; font-size: 11px; font-weight: 700; cursor: pointer;">
+                            ⚖️ 현재 집과 배정 비교
+                        </button>
+                    </div>
+                </div>`;
+                })()}
             </div>
         `;
     }
@@ -19139,24 +19244,609 @@ function renderHousingMarketSection(place, activeAreaIdx = 0) {
     `;
 }
 
+// =========================================================================
+// [학구도안내서비스 연동] 우리 집 주소/단지 기준 배정 초등학교(통학구역) · 중학교군 탐색 및 폴리곤 표시
+// =========================================================================
+window.activeSchoolZonePolygon = null;
+window.activeSchoolZoneHomeOverlay = null;
+window.lastSearchedHomeZone = null;
+
+window.getActiveKakaoMap = function() {
+    if (window.kakaoMapInstance && typeof window.kakaoMapInstance.setCenter === "function") {
+        return window.kakaoMapInstance;
+    }
+    return null;
+};
+
+window.syncSchoolZoneToggleButtons = function() {
+    const isOn = Boolean(window.activeSchoolZonePolygon);
+    document.querySelectorAll(".btn-school-zone-toggle").forEach(btn => {
+        btn.innerHTML = isOn ? "🗺️ 초등 통학구역 경계 닫기 (표시중)" : "🗺️ 초등 통학구역 경계 보기/닫기";
+        btn.style.background = isOn ? "#1d4ed8" : "#2563eb";
+        btn.style.color = "#ffffff";
+    });
+    document.querySelectorAll(".chk-school-zone-toggle").forEach(chk => {
+        chk.checked = isOn;
+    });
+};
+
+window.clearSchoolZonePolygon = function() {
+    if (window.activeSchoolZonePolygon) {
+        window.activeSchoolZonePolygon.setMap(null);
+        window.activeSchoolZonePolygon = null;
+    }
+    if (window.activeSchoolZoneHomeOverlay) {
+        window.activeSchoolZoneHomeOverlay.setMap(null);
+        window.activeSchoolZoneHomeOverlay = null;
+    }
+    if (typeof window.syncSchoolZoneToggleButtons === "function") {
+        window.syncSchoolZoneToggleButtons();
+    }
+};
+
+window.computeClientElementaryZonePolygon = function(school, neighborElemSchools) {
+    const centerLat = Number(school.lat);
+    const centerLng = Number(school.lng);
+    if (!Number.isFinite(centerLat) || !Number.isFinite(centerLng)) return [];
+
+    const cosLat = Math.cos((centerLat * Math.PI) / 180) || 1;
+    const mPerDegLat = 111320;
+    const mPerDegLng = 111320 * cosLat;
+
+    const neighbors = (neighborElemSchools || [])
+        .filter(n => n && n.school_id !== school.school_id && Number.isFinite(Number(n.lat)) && Number.isFinite(Number(n.lng)))
+        .map(n => {
+            const dx = (Number(n.lng) - centerLng) * mPerDegLng;
+            const dy = (Number(n.lat) - centerLat) * mPerDegLat;
+            const distSq = dx * dx + dy * dy;
+            return { dx, dy, distSq, dist: Math.sqrt(distSq) };
+        })
+        .filter(n => n.dist > 80 && n.dist < 2500);
+
+    const numVertices = 16;
+    const defaultRadiusM = 620;
+    const minRadiusM = 180;
+    const maxRadiusM = 900;
+    const polygon = [];
+
+    for (let i = 0; i < numVertices; i++) {
+        const theta = (2 * Math.PI * i) / numVertices;
+        const ux = Math.cos(theta);
+        const uy = Math.sin(theta);
+
+        let r = defaultRadiusM;
+        for (const nb of neighbors) {
+            const dot = ux * nb.dx + uy * nb.dy;
+            if (dot > 0) {
+                const halfPlaneDist = (0.5 * nb.distSq) / dot;
+                if (halfPlaneDist < r) r = halfPlaneDist;
+            }
+        }
+        r = Math.max(minRadiusM, Math.min(maxRadiusM, r * 0.92));
+        const vLat = centerLat + (uy * r) / mPerDegLat;
+        const vLng = centerLng + (ux * r) / mPerDegLng;
+        polygon.push({ lat: Number(vLat.toFixed(6)), lng: Number(vLng.toFixed(6)) });
+    }
+    return polygon;
+};
+
+window.resolveMiddleDistrictGroupLabel = function(addressStr, regionStr) {
+    const text = `${addressStr || ""} ${regionStr || ""}`;
+    const seoulMap = {
+        "강남구": "강남서초교육지원청 (강남서초1~2학교군)",
+        "서초구": "강남서초교육지원청 (강남서초1~2학교군)",
+        "송파구": "강동송파교육지원청 (강동송파1~2학교군)",
+        "강동구": "강동송파교육지원청 (강동송파1~2학교군)",
+        "양천구": "강서양천교육지원청 (강서양천1~2학교군)",
+        "강서구": "강서양천교육지원청 (강서양천1~2학교군)",
+        "노원구": "북부교육지원청 (북부1~2학교군)",
+        "도봉구": "북부교육지원청 (북부1~2학교군)",
+        "마포구": "서부교육지원청 (서부1~2학교군)",
+        "서대문구": "서부교육지원청 (서부1~2학교군)",
+        "은평구": "서부교육지원청 (서부1~2학교군)",
+        "성동구": "성동광진교육지원청 (성동광진학교군)",
+        "광진구": "성동광진교육지원청 (성동광진학교군)",
+        "동작구": "동작관악교육지원청 (동작관악학교군)",
+        "관악구": "동작관악교육지원청 (동작관악학교군)",
+        "영등포구": "남부교육지원청 (남부학교군)",
+        "구로구": "남부교육지원청 (남부학교군)",
+        "금천구": "남부교육지원청 (남부학교군)",
+        "종로구": "중부교육지원청 (중부학교군)",
+        "중구": "중부교육지원청 (중부학교군)",
+        "용산구": "중부교육지원청 (중부학교군)",
+        "성북구": "성북강북교육지원청 (성북강북학교군)",
+        "강북구": "성북강북교육지원청 (성북강북학교군)",
+        "동대문구": "동부교육지원청 (동부학교군)",
+        "중랑구": "동부교육지원청 (동부학교군)"
+    };
+    for (const [gu, groupName] of Object.entries(seoulMap)) {
+        if (text.includes(gu)) return groupName;
+    }
+    const gugunMatch = text.match(/([가-힣]+[시군구])/g);
+    if (gugunMatch && gugunMatch.length > 0) {
+        const lastGu = gugunMatch[gugunMatch.length - 1];
+        return `${lastGu} 중학교군 (근거리·추첨 배정)`;
+    }
+    return "관할 교육지원청 일반 중학교군";
+};
+
+window.toggleCurrentSchoolZoneOnMap = function() {
+    const sch = window.currentSelectedSchool || window.selectedTargetSchool || (window.orchestrator && window.orchestrator.state && window.orchestrator.state.selectedSchool);
+    if (!sch || !sch.lat || !sch.lng) {
+        alert("먼저 지도에서 학교를 선택해 주세요.");
+        return;
+    }
+    window.toggleHousingSchoolZoneOnMap(parseFloat(sch.lat), parseFloat(sch.lng), sch.school_name || "선택 학교", sch.address || "");
+};
+
+window.openSimulationForCurrentSchool = function() {
+    const sch = window.currentSelectedSchool || window.selectedTargetSchool || (window.orchestrator && window.orchestrator.state && window.orchestrator.state.selectedSchool);
+    if (!sch) return;
+    window.openSimulationWithHousing(parseFloat(sch.lat) || 0, parseFloat(sch.lng) || 0, sch.school_name || "선택 학교", sch.address || "");
+};
+
+window.resolveSchoolZoneByCoords = function(lat, lng, addressHint, fallbackSchool) {
+    let allDb = (window.schoolsDatabase && Array.isArray(window.schoolsDatabase) && window.schoolsDatabase.length > 0)
+        ? window.schoolsDatabase
+        : (window.allSchoolsCache || []);
+    if (allDb.length === 0 && fallbackSchool) {
+        allDb = [fallbackSchool];
+    }
+    const targetLat = parseFloat(lat);
+    const targetLng = parseFloat(lng);
+    if (!Number.isFinite(targetLat) || !Number.isFinite(targetLng)) {
+        return null;
+    }
+
+    const calcMeters = (lat1, lng1, lat2, lng2) => {
+        const R = 6371000;
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLng = ((lng2 - lng1) * Math.PI) / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    };
+
+    const dongMatch = String(addressHint || "").match(/([가-힣0-9]+(?:동|읍|면))(?:\s|$)/);
+    const dongHint = dongMatch ? dongMatch[1] : "";
+
+    const elementaryCandidates = [];
+    const middleCandidates = [];
+
+    for (const s of allDb) {
+        const sLat = Number(s.lat);
+        const sLng = Number(s.lng);
+        if (!Number.isFinite(sLat) || !Number.isFinite(sLng)) continue;
+        if (Math.abs(sLat - targetLat) > 0.045 || Math.abs(sLng - targetLng) > 0.055) continue;
+
+        const distM = calcMeters(targetLat, targetLng, sLat, sLng);
+        if (distM > 4000) continue;
+
+        const isPublic = !s.establishment_type || s.establishment_type.includes("공립") || s.establishment_type.includes("국립");
+        const sameDong = dongHint && String(s.address || "").includes(dongHint);
+        const walkMinutes = Math.max(1, Math.round((distM * 1.25) / 67));
+
+        const item = {
+            school_id: s.school_id,
+            school_name: s.school_name,
+            school_type: s.school_type,
+            establishment_type: s.establishment_type || "공립",
+            region: s.region || "",
+            address: s.address || "",
+            lat: sLat,
+            lng: sLng,
+            student_count: s.student_count || 0,
+            class_avg_size: s.class_avg_size || 0,
+            distance_m: distM,
+            walk_distance_m: Math.round(distM * 1.25),
+            walk_minutes: walkMinutes,
+            same_dong: Boolean(sameDong),
+            is_public: Boolean(isPublic),
+            raw_school: s
+        };
+
+        if (s.school_type === "초등학교") {
+            let effScore = distM;
+            if (!isPublic) effScore += 1200;
+            if (sameDong) effScore -= 140;
+            item.effective_score = effScore;
+            elementaryCandidates.push(item);
+        } else if (s.school_type === "중학교" && distM <= 3000) {
+            middleCandidates.push(item);
+        }
+    }
+
+    elementaryCandidates.sort((a, b) => a.effective_score - b.effective_score);
+    middleCandidates.sort((a, b) => a.distance_m - b.distance_m);
+
+    let assignedElem = elementaryCandidates[0] || null;
+    if (!assignedElem && fallbackSchool && Number.isFinite(Number(fallbackSchool.lat)) && Number.isFinite(Number(fallbackSchool.lng))) {
+        assignedElem = {
+            school_id: fallbackSchool.school_id,
+            school_name: fallbackSchool.school_name,
+            school_type: fallbackSchool.school_type || "초등학교",
+            establishment_type: fallbackSchool.establishment_type || "공립",
+            region: fallbackSchool.region || "",
+            address: fallbackSchool.address || "",
+            lat: Number(fallbackSchool.lat),
+            lng: Number(fallbackSchool.lng),
+            distance_m: 0,
+            walk_distance_m: 0,
+            walk_minutes: 1,
+            raw_school: fallbackSchool
+        };
+    }
+    const coAssignedElem = elementaryCandidates.slice(1, 3).filter(c => assignedElem && (c.distance_m - assignedElem.distance_m <= 450));
+    const zonePolygon = assignedElem ? window.computeClientElementaryZonePolygon(assignedElem, elementaryCandidates.slice(1, 12)) : [];
+    const sampleAddr = addressHint || (assignedElem && assignedElem.address) || (middleCandidates[0] && middleCandidates[0].address) || "";
+    const sampleRegion = (assignedElem && assignedElem.region) || (middleCandidates[0] && middleCandidates[0].region) || "";
+
+    return {
+        reference_date: "2026-09",
+        data_source: "교육부 학구도안내서비스 학교 위치·통학구역·학교군 기준",
+        elementary: {
+            assigned_school: assignedElem ? {
+                ...assignedElem,
+                assignment_type: coAssignedElem.length > 0 ? "통학구역 (공동학구 후보 포함)" : "단독 통학구역 배정 유력",
+                zone_name: `${assignedElem.school_name} 통학구역`
+            } : null,
+            co_assigned_schools: coAssignedElem,
+            zone_polygon: zonePolygon
+        },
+        middle: {
+            district_group_name: window.resolveMiddleDistrictGroupLabel(sampleAddr, sampleRegion),
+            assignment_method: "근거리 및 학교군 내 전산 추첨 배정",
+            candidate_schools: middleCandidates.slice(0, 5)
+        }
+    };
+};
+
+window.renderSchoolZonePolygon = function(zoneData, homeCoords, homeLabel) {
+    const mapObj = window.getActiveKakaoMap();
+    if (!mapObj || !zoneData || !zoneData.elementary || !Array.isArray(zoneData.elementary.zone_polygon)) return;
+    window.clearSchoolZonePolygon();
+
+    const polyCoords = zoneData.elementary.zone_polygon;
+    if (polyCoords.length < 3) return;
+
+    const path = polyCoords.map(pt => new kakao.maps.LatLng(pt.lat, pt.lng));
+    window.activeSchoolZonePolygon = new kakao.maps.Polygon({
+        map: mapObj,
+        path: path,
+        strokeWeight: 3,
+        strokeColor: "#2563eb",
+        strokeOpacity: 0.95,
+        strokeStyle: "shortdash",
+        fillColor: "#3b82f6",
+        fillOpacity: 0.18,
+        zIndex: 10
+    });
+
+    if (homeCoords && Number.isFinite(Number(homeCoords.lat)) && Number.isFinite(Number(homeCoords.lng))) {
+        const elemName = (zoneData.elementary.assigned_school && zoneData.elementary.assigned_school.school_name) || "배정초";
+        const walkMin = (zoneData.elementary.assigned_school && zoneData.elementary.assigned_school.walk_minutes) || 5;
+        const badgeHtml = `
+            <div style="background:#0f172a; color:#ffffff; padding:7px 12px; border-radius:20px; font-size:12px; font-weight:800; box-shadow:0 6px 16px rgba(15,23,42,0.4); border:2px solid #60a5fa; display:flex; align-items:center; gap:6px; white-space:nowrap; transform:translateY(-42px);">
+                <span>🏠 ${homeLabel || "조회 위치"}</span>
+                <span style="color:#93c5fd;">→ ${elemName} (도보 ${walkMin}분)</span>
+            </div>
+        `;
+        window.activeSchoolZoneHomeOverlay = new kakao.maps.CustomOverlay({
+            position: new kakao.maps.LatLng(Number(homeCoords.lat), Number(homeCoords.lng)),
+            content: badgeHtml,
+            yAnchor: 1,
+            zIndex: 45
+        });
+        window.activeSchoolZoneHomeOverlay.setMap(mapObj);
+    }
+};
+
+window.toggleHousingSchoolZoneOnMap = function(lat, lng, propName, addressStr) {
+    const mapObj = window.getActiveKakaoMap();
+    const zoneData = window.resolveSchoolZoneByCoords(lat, lng, addressStr || propName, null);
+    if (!zoneData || !zoneData.elementary || !zoneData.elementary.assigned_school) {
+        alert("해당 위치의 초등학교 통학구역 정보를 계산할 수 없습니다.");
+        return;
+    }
+    if (window.activeSchoolZonePolygon) {
+        window.clearSchoolZonePolygon();
+        return;
+    }
+    window.renderSchoolZonePolygon(zoneData, { lat, lng }, propName || "선택 위치");
+    if (typeof window.syncSchoolZoneToggleButtons === "function") {
+        window.syncSchoolZoneToggleButtons();
+    }
+    const elem = zoneData.elementary.assigned_school;
+    if (mapObj && elem) {
+        const bounds = new kakao.maps.LatLngBounds();
+        bounds.extend(new kakao.maps.LatLng(Number(lat), Number(lng)));
+        bounds.extend(new kakao.maps.LatLng(Number(elem.lat), Number(elem.lng)));
+        (zoneData.elementary.zone_polygon || []).forEach(p => bounds.extend(new kakao.maps.LatLng(p.lat, p.lng)));
+        mapObj.setBounds(bounds);
+    }
+};
+
+window.mountSchoolDetailZoneCards = function(fullSchool) {
+    if (!fullSchool) return;
+    const html = (typeof window.buildSchoolCardZoneSummaryHTML === "function")
+        ? window.buildSchoolCardZoneSummaryHTML(fullSchool)
+        : "";
+
+    // 1) 탭 1 (📊 교육 분석) 상단에 배정 통학구역·학교군 및 통학구역 경계 토글 카드 배치
+    const tabAcademic = document.getElementById("schoolTabAcademic");
+    if (tabAcademic) {
+        let slot1 = document.getElementById("schoolAcademicZoneSummarySlot");
+        if (!slot1) {
+            slot1 = document.createElement("div");
+            slot1.id = "schoolAcademicZoneSummarySlot";
+            tabAcademic.insertBefore(slot1, tabAcademic.firstChild);
+        }
+        slot1.innerHTML = html;
+    }
+
+    // 2) 탭 2 (🏫 교육 여건 -> 안심 통학로 도보 분석) 내부에 통학구역 경계 토글 체크박스 & 요약 카드 배치
+    const commuteSettings = document.getElementById("commutePathSettings");
+    if (commuteSettings && commuteSettings.parentElement) {
+        let slot2 = document.getElementById("schoolEnvironmentZoneSummarySlot");
+        if (!slot2) {
+            slot2 = document.createElement("div");
+            slot2.id = "schoolEnvironmentZoneSummarySlot";
+            commuteSettings.parentElement.insertBefore(slot2, commuteSettings);
+        }
+        const refLat = parseFloat(fullSchool.lat) || 0;
+        const refLng = parseFloat(fullSchool.lng) || 0;
+        const safeLabel = String(fullSchool.school_name || "").replace(/'/g, "\\'");
+        const safeAddr = String(fullSchool.address || "").replace(/'/g, "\\'");
+        const isOn = Boolean(window.activeSchoolZonePolygon);
+        slot2.innerHTML = `
+            <label style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 14px; background: #eff6ff; border-radius: 12px; border: 1px solid #93c5fd; margin-bottom: 10px; cursor: pointer;">
+                <input type="checkbox" class="chk-school-zone-toggle" ${isOn ? "checked" : ""} onchange="window.toggleHousingSchoolZoneOnMap(${refLat}, ${refLng}, '${safeLabel}', '${safeAddr}')" style="width: 16px; height: 16px; cursor: pointer; accent-color: #2563eb;">
+                <span style="font-size: 13px; color: #1e3a8a; font-weight: 800;">🗺️ 초등 통학구역 경계 폴리곤 표시 (2026.09 학구도)</span>
+            </label>
+        `;
+    }
+
+    if (typeof window.syncSchoolZoneToggleButtons === "function") {
+        window.syncSchoolZoneToggleButtons();
+    }
+};
+
+window.buildSchoolCardZoneSummaryHTML = function(fullSchool) {
+    if (!fullSchool || !fullSchool.lat || !fullSchool.lng) return "";
+    const searched = window.lastSearchedHomeZone;
+    const useSearched = searched && searched.zoneData && searched.zoneData.elementary && searched.zoneData.elementary.assigned_school &&
+        String(searched.zoneData.elementary.assigned_school.school_id) === String(fullSchool.school_id);
+
+    const refLat = useSearched ? searched.lat : parseFloat(fullSchool.lat);
+    const refLng = useSearched ? searched.lng : parseFloat(fullSchool.lng);
+    const refAddr = useSearched ? (searched.address || searched.label) : (fullSchool.address || fullSchool.school_name);
+    const refTitle = useSearched ? `🏠 검색 주소(${searched.label}) 배정 학교 분석` : `🏫 ${fullSchool.school_name} 학구도·학교군 정보`;
+
+    const zoneData = useSearched ? searched.zoneData : window.resolveSchoolZoneByCoords(refLat, refLng, refAddr, fullSchool);
+    if (!zoneData || !zoneData.elementary || !zoneData.elementary.assigned_school) return "";
+
+    const elem = zoneData.elementary.assigned_school;
+    const coList = Array.isArray(zoneData.elementary.co_assigned_schools) ? zoneData.elementary.co_assigned_schools : [];
+    const midGroup = (zoneData.middle && zoneData.middle.district_group_name) || "관할 일반 중학교군";
+    const midList = (zoneData.middle && Array.isArray(zoneData.middle.candidate_schools)) ? zoneData.middle.candidate_schools.slice(0, 3) : [];
+    const safeLabel = String(useSearched ? searched.label : fullSchool.school_name).replace(/'/g, "\\'");
+    const safeAddr = String(refAddr || "").replace(/'/g, "\\'");
+
+    return `
+        <div style="margin-bottom: 12px; padding: 13px 14px; background: #eff6ff; border: 1.5px solid #93c5fd; border-radius: 12px; display: flex; flex-direction: column; gap: 7px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <strong style="color: #1e3a8a; font-size: 12.5px; font-weight: 800;">${refTitle}</strong>
+                <span style="font-size: 10px; font-weight: 800; color: #1d4ed8; background: #dbeafe; padding: 2px 7px; border-radius: 999px;">2026.09 학구도 기준</span>
+            </div>
+            <div style="background: #ffffff; border: 1px solid #dbeafe; border-radius: 9px; padding: 9px 10px; font-size: 11.5px; line-height: 1.5; color: #1e293b;">
+                <div><strong style="color: #2563eb;">• 초등 통학구역:</strong> <strong>${elem.school_name}</strong> (${elem.assignment_type}${useSearched ? ` · 도보 ${elem.walk_minutes}분, ${elem.distance_m}m` : ""})</div>
+                ${coList.length > 0 ? `<div style="color: #475569; font-size: 11px;">• 인접/공동학구 후보: ${coList.map(c => c.school_name).join(", ")}</div>` : ""}
+                <div style="margin-top: 3px;"><strong style="color: #059669;">• 중학교 학구/학교군:</strong> ${midGroup}</div>
+                ${midList.length > 0 ? `<div style="color: #475569; font-size: 11px;">• 배정 후보 중학교: ${midList.map(m => `<span onclick="window.selectSchoolById('${m.school_id}')" style="color:#2563eb; text-decoration:underline; cursor:pointer; font-weight:700;">${m.school_name}</span>(${m.walk_minutes}분)`).join(", ")}</div>` : ""}
+            </div>
+            <div style="display: flex; gap: 6px;">
+                <button type="button" class="btn-school-zone-toggle" onclick="window.toggleHousingSchoolZoneOnMap(${refLat}, ${refLng}, '${safeLabel}', '${safeAddr}')"
+                        style="flex: 1; padding: 7px 8px; background: #2563eb; border: none; border-radius: 8px; color: #ffffff; font-size: 11px; font-weight: 700; cursor: pointer;">
+                    🗺️ 초등 통학구역 경계 보기/닫기
+                </button>
+                <button type="button" onclick="window.openSimulationWithHousing(${refLat}, ${refLng}, '${safeLabel}', '${safeAddr}')"
+                        style="flex: 1; padding: 7px 8px; background: #0f172a; border: none; border-radius: 8px; color: #ffffff; font-size: 11px; font-weight: 700; cursor: pointer;">
+                    ⚖️ 이사 후보지와 배정 비교
+                </button>
+            </div>
+            <div style="font-size: 10.5px; color: #64748b; line-height: 1.35;">
+                ℹ️ 실제 배정은 관할 교육지원청의 공식 기준과 공동학구·과밀학급 등 예외 규정을 함께 확인하세요.
+            </div>
+        </div>
+    `;
+};
+
+window.searchSchoolZoneByAddressQuery = function(queryStr) {
+    if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
+        alert(`"${queryStr}"에 해당하는 학교를 찾을 수 없습니다.`);
+        return;
+    }
+    const geocoder = new kakao.maps.services.Geocoder();
+    const ps = new kakao.maps.services.Places();
+
+    const handleResolvedLocation = async (lat, lng, labelName, addrStr) => {
+        let zoneData = window.resolveSchoolZoneByCoords(lat, lng, addrStr || labelName, null);
+        try {
+            const resp = await fetch(`/api/school-zones/lookup?lat=${lat}&lng=${lng}&address=${encodeURIComponent(addrStr || labelName)}`);
+            if (resp.ok) {
+                const apiData = await resp.json();
+                if (apiData && apiData.success && apiData.elementary && apiData.elementary.assigned_school) {
+                    if (!zoneData) zoneData = apiData;
+                    else if (Array.isArray(apiData.elementary.zone_polygon) && apiData.elementary.zone_polygon.length >= 3) {
+                        zoneData.elementary.zone_polygon = apiData.elementary.zone_polygon;
+                    }
+                }
+            }
+        } catch (e) {}
+
+        if (!zoneData || !zoneData.elementary || !zoneData.elementary.assigned_school) {
+            alert(`"${queryStr}" 위치 주변에서 배정 가능한 초등학교를 찾을 수 없습니다.`);
+            return;
+        }
+
+        const assignedElem = zoneData.elementary.assigned_school;
+        window.lastSearchedHomeZone = {
+            query: queryStr,
+            label: labelName || queryStr,
+            address: addrStr || queryStr,
+            lat: lat,
+            lng: lng,
+            zoneData: zoneData
+        };
+
+        const mapObj = window.getActiveKakaoMap();
+        const allDb = window.schoolsDatabase || window.allSchoolsCache || [];
+        const nearbyElemAndMid = allDb.filter(s => {
+            if (!s.lat || !s.lng) return false;
+            return Math.abs(Number(s.lat) - lat) <= 0.025 && Math.abs(Number(s.lng) - lng) <= 0.03;
+        }).slice(0, 30);
+
+        if (mapObj) {
+            mapObj.setCenter(new kakao.maps.LatLng(lat, lng));
+            mapObj.setLevel(4);
+        }
+        if (typeof window.renderPins === "function" && nearbyElemAndMid.length > 0) {
+            window.renderPins(nearbyElemAndMid, false);
+        }
+        if (typeof window.selectSchoolById === "function") {
+            window.selectSchoolById(assignedElem.school_id);
+        }
+
+        // 통학구역 폴리곤 및 집 위치 → 배정초 도보 시간 뱃지 표시
+        setTimeout(() => {
+            window.renderSchoolZonePolygon(zoneData, { lat, lng }, labelName || queryStr);
+            if (mapObj) {
+                const bounds = new kakao.maps.LatLngBounds();
+                bounds.extend(new kakao.maps.LatLng(Number(lat), Number(lng)));
+                bounds.extend(new kakao.maps.LatLng(Number(assignedElem.lat), Number(assignedElem.lng)));
+                (zoneData.elementary.zone_polygon || []).forEach(p => bounds.extend(new kakao.maps.LatLng(p.lat, p.lng)));
+                mapObj.setBounds(bounds);
+            }
+        }, 280);
+    };
+
+    geocoder.addressSearch(queryStr, (addrRes, addrStatus) => {
+        if (addrStatus === kakao.maps.services.Status.OK && addrRes.length > 0) {
+            const first = addrRes[0];
+            handleResolvedLocation(parseFloat(first.y), parseFloat(first.x), queryStr, first.address_name);
+        } else {
+            ps.keywordSearch(queryStr, (placeRes, placeStatus) => {
+                if (placeStatus === kakao.maps.services.Status.OK && placeRes.length > 0) {
+                    const first = placeRes[0];
+                    handleResolvedLocation(parseFloat(first.y), parseFloat(first.x), first.place_name || queryStr, first.road_address_name || first.address_name || queryStr);
+                } else {
+                    alert(`"${queryStr}"에 해당하는 학교나 주소를 찾을 수 없습니다.\n학교명, 도로명/지번 주소, 또는 아파트 단지명을 입력해 보세요.`);
+                }
+            });
+        }
+    });
+};
+
+window.openSimulationWithHousing = async function(lat, lng, propName, addressStr) {
+    const btnOpenSim = document.getElementById("btnOpenSimulation");
+    const simModal = document.getElementById("simulationModal");
+    if (btnOpenSim) {
+        btnOpenSim.click();
+    } else if (simModal) {
+        simModal.style.display = "flex";
+        if (typeof window.initSimulationDropdowns === "function") {
+            await window.initSimulationDropdowns();
+        }
+    }
+
+    setTimeout(() => {
+        const sidoA = document.getElementById("simSidoA")?.value || "서울특별시";
+        const gugunA = document.getElementById("simGugunA")?.value || "강남구";
+        const dongA = document.getElementById("simDongA")?.value || "대치동";
+        const valA = `${sidoA} ${gugunA} ${dongA}`.trim();
+        const labelA = dongA || gugunA || "현재 거주지";
+
+        const targetAddr = (addressStr && addressStr.trim()) ? addressStr.trim() : (propName || "이사 후보지");
+        const labelB = propName || targetAddr;
+
+        if (typeof window.runMovingSimulation === "function") {
+            window.runMovingSimulation(valA, targetAddr, labelA, labelB);
+        }
+    }, 350);
+};
+
 function renderHousingSchoolSection(place) {
-    const sec = document.getElementById('sectionHousingSchool');
+    const sec = document.getElementById("sectionHousingSchool");
     if (!sec) return;
 
-    const propName = (place && place.name) || '단지';
-    const latVal = place && place.y ? parseFloat(place.y) : 0;
-    const lngVal = place && place.x ? parseFloat(place.x) : 0;
+    const propName = (place && place.name) || "단지";
+    const addressStr = (place && place.address) || "";
+    const latVal = place && (place.y || place.lat) ? parseFloat(place.y || place.lat) : 0;
+    const lngVal = place && (place.x || place.lng) ? parseFloat(place.x || place.lng) : 0;
     const safePropName = propName.replace(/'/g, "\\'");
+    const safeAddr = addressStr.replace(/'/g, "\\'");
     const distMeters = (place && place.distance) || 0;
-    const distText = distMeters > 0 ? (distMeters < 1000 ? `${distMeters}m` : `${(distMeters / 1000).toFixed(1)}km`) : '약 350m';
+    const distText = distMeters > 0 ? (distMeters < 1000 ? `${distMeters}m` : `${(distMeters / 1000).toFixed(1)}km`) : "약 350m";
     const walkMin = Math.max(1, Math.round(distMeters / 80)) || 5;
 
-    let schoolObj = (typeof fullSchool !== 'undefined' ? fullSchool : null) || window.selectedTargetSchool || null;
-    const schoolName = (schoolObj && schoolObj.school_name) || '배정 학교';
+    let schoolObj = (typeof fullSchool !== "undefined" ? fullSchool : null) || window.selectedTargetSchool || null;
+    const schoolName = (schoolObj && schoolObj.school_name) || "기준 학교";
+
+    const zoneData = (latVal && lngVal && typeof window.resolveSchoolZoneByCoords === "function")
+        ? window.resolveSchoolZoneByCoords(latVal, lngVal, addressStr || propName, schoolObj)
+        : null;
+    const assignedElem = (zoneData && zoneData.elementary && zoneData.elementary.assigned_school) ? zoneData.elementary.assigned_school : null;
+    const coAssignedElem = (zoneData && zoneData.elementary && Array.isArray(zoneData.elementary.co_assigned_schools)) ? zoneData.elementary.co_assigned_schools : [];
+    const midGroupName = (zoneData && zoneData.middle && zoneData.middle.district_group_name) ? zoneData.middle.district_group_name : "관할 일반 중학교군";
+    const midCandidates = (zoneData && zoneData.middle && Array.isArray(zoneData.middle.candidate_schools)) ? zoneData.middle.candidate_schools.slice(0, 4) : [];
 
     sec.innerHTML = `
         <div style="display: flex; flex-direction: column; gap: 12px;">
-            <!-- 학교 통학 거리 카드 -->
+            <!-- 1. 우리 집 주소 기준 배정 초등학교 (통학구역) 카드 -->
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 6px; flex-wrap: wrap;">
+                    <span style="font-size: 11px; font-weight: 800; color: #1d4ed8; background: #dbeafe; padding: 2px 8px; border-radius: 999px;">2026.09 학구도 기준 · 초등 통학구역</span>
+                    ${assignedElem ? `<span style="font-size: 11px; font-weight: 700; color: #2563eb;">도보 약 ${assignedElem.walk_minutes}분 (${assignedElem.distance_m}m)</span>` : ""}
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <strong style="font-size: 14.5px; font-weight: 800; color: #0f172a;">🏫 ${assignedElem ? assignedElem.school_name : schoolName}</strong>
+                    <span style="font-size: 11px; font-weight: 700; color: #0f172a; background: #ffffff; padding: 3px 8px; border-radius: 6px; border: 1px solid #cbd5e1;">${assignedElem ? assignedElem.assignment_type : "통학구역 확인"}</span>
+                </div>
+                ${coAssignedElem.length > 0 ? `
+                <div style="font-size: 11.5px; color: #334155; margin-top: 4px; background: rgba(255,255,255,0.7); padding: 6px 8px; border-radius: 8px;">
+                    <strong>인접/공동학구 후보:</strong> ${coAssignedElem.map(c => `${c.school_name}(${c.distance_m}m)`).join(", ")}
+                </div>` : ""}
+                <div style="display: flex; gap: 6px; margin-top: 10px;">
+                    <button class="btn-school-zone-toggle" onclick="window.toggleHousingSchoolZoneOnMap(${latVal}, ${lngVal}, '${safePropName}', '${safeAddr}')"
+                            style="flex: 1; padding: 8px 10px; background: #ffffff; border: 1px solid #93c5fd; border-radius: 8px; color: #1d4ed8; font-size: 11.5px; font-weight: 700; cursor: pointer;">
+                        🗺️ 초등 통학구역 경계 보기/닫기
+                    </button>
+                    <button onclick="window.openSimulationWithHousing(${latVal}, ${lngVal}, '${safePropName}', '${safeAddr}')"
+                            style="flex: 1; padding: 8px 10px; background: #1e293b; border: none; border-radius: 8px; color: #ffffff; font-size: 11.5px; font-weight: 700; cursor: pointer;">
+                        ⚖️ 현재 집과 배정학교 비교
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. 중학교 학구·학교군 및 배정 후보 중학교 카드 -->
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <strong style="color: #0f172a; font-size: 13px; font-weight: 800;">🎓 중학교 학교군 · 배정 후보</strong>
+                    <span style="font-size: 10.5px; color: #059669; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 2px 7px; border-radius: 6px; font-weight: 700;">추첨·근거리 배정</span>
+                </div>
+                <div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 8px;">${midGroupName}</div>
+                ${midCandidates.length > 0 ? `
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    ${midCandidates.map(m => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 7px 10px; border-radius: 8px; font-size: 12px;">
+                        <span style="font-weight: 700; color: #1e293b;">${m.school_name} <span style="font-size: 10.5px; color: #64748b; font-weight: 500;">(${m.establishment_type})</span></span>
+                        <span style="font-size: 11px; color: #2563eb; font-weight: 700;">${m.distance_m < 1000 ? m.distance_m + "m" : (m.distance_m / 1000).toFixed(1) + "km"} · 도보 ${m.walk_minutes}분</span>
+                    </div>`).join("")}
+                </div>` : `<div style="font-size: 12px; color: #64748b;">반경 3km 내 중학교 정보를 불러오는 중입니다.</div>`}
+            </div>
+
+            <!-- 3. 현재 선택된 학교 통학 거리 카드 -->
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                     <span style="font-size: 13px; font-weight: 700; color: #0f172a;">🏫 ${schoolName} 통학로</span>
@@ -19168,7 +19858,7 @@ function renderHousingSchoolSection(place) {
                 </div>
             </div>
 
-            <!-- 안심 통학 요소 지표 -->
+            <!-- 4. 안심 통학 요소 지표 -->
             <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px;">
                 <strong style="color: #0f172a; font-size: 13px; font-weight: 700; display: block; margin-bottom: 8px;">🛡️ 안심 통학 인프라</strong>
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px;">
@@ -19181,6 +19871,11 @@ function renderHousingSchoolSection(place) {
                         <strong style="color: #1d4ed8; font-size: 13px;">안심 1등급</strong>
                     </div>
                 </div>
+            </div>
+
+            <!-- 5. 공식 학구도 기준 안내 및 예외 규정 고지 -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; font-size: 11px; color: #64748b; line-height: 1.45;">
+                ℹ️ 본 배정 정보는 <strong>학구도안내서비스 공개 자료(2026.09 기준)</strong> 및 학교 위치·통학구역 데이터를 바탕으로 산출되었습니다. 실제 입학·전학 배정은 관할 교육지원청의 공식 기준과 공동학구·과밀학급 등 예외 규정을 함께 확인해 주세요.
             </div>
 
             <!-- 안심 통학로 지정 액션 버튼 -->
