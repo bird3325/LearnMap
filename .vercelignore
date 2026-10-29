@@ -10,6 +10,8 @@ docs/
 
 # 백엔드 중복 대용량 원본 파일 (시·군·구 분할 파일 src/data/realestate/*.json 사용)
 src/data/realestate_seoul.json
+**/realestate_seoul.json
+*realestate_seoul.json
 
 # 프론트엔드 public 디렉터리 내 중복 대용량 데이터
 public/src/

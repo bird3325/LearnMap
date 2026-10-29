@@ -26,7 +26,9 @@ if (!process.env.VERCEL) {
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 const DATA_DIR = path.join(__dirname, 'src', 'data');
 const SCHOOLS_PATH = path.join(DATA_DIR, 'schools_seoul.json');
-const REAL_ESTATE_PATH = path.join(DATA_DIR, 'realestate_seoul.json');
+// Vercel Serverless Function 빌더(@vercel/nft)의 235MB 대용량 파일 강제 번들링 방지 (경량 분할 파일 src/data/realestate/*.json 활용)
+const REAL_ESTATE_RAW_FILE = ['realestate', 'seoul.json'].join('_');
+const REAL_ESTATE_PATH = path.join(DATA_DIR, REAL_ESTATE_RAW_FILE);
 const REAL_ESTATE_DIR = path.join(DATA_DIR, 'realestate');
 const REAL_ESTATE_REGIONS_PATH = path.join(DATA_DIR, 'realestate_regions.json');
 const BUSINESSES_PATH = path.join(DATA_DIR, 'businesses.json');
@@ -543,8 +545,8 @@ async function geocodeKakaoPrecise(item, kakaoKey) {
 
 // 헬퍼: realestate_seoul.json 및 시·군·구별 분할 파일 일괄 안전 저장
 function saveRealEstateJsonFiles(items) {
-    // 1. 단일 마스터 파일 저장 (호환성 유지)
-    fs.writeFileSync(REAL_ESTATE_PATH, JSON.stringify(items, null, 2), 'utf8');
+    // 1. 단일 마스터 파일 저장 (호환성 유지 및 Vercel 250MB 용량 보호를 위한 컴팩트 Minify 저장)
+    fs.writeFileSync(REAL_ESTATE_PATH, JSON.stringify(items), 'utf8');
 
     // 2. 시·군·구별 분할 파일 동기화 (오직 src/data/realestate 에만 저장하여 번들 팽창 방지)
     try {
@@ -586,7 +588,7 @@ function saveRealEstateJsonFiles(items) {
                 fileName,
                 count: group.items.length
             });
-            const jsonStr = JSON.stringify(group.items, null, 2);
+            const jsonStr = JSON.stringify(group.items);
             fs.writeFileSync(path.join(REAL_ESTATE_DIR, fileName), jsonStr, 'utf8');
         }
 
@@ -3987,7 +3989,7 @@ app.post('/api/admin/update', (req, res) => {
     }
 
     try {
-        fs.writeFileSync(SCHOOLS_PATH, JSON.stringify(schools, null, 2), 'utf8');
+        fs.writeFileSync(SCHOOLS_PATH, JSON.stringify(schools), 'utf8');
         console.log(`[Server] 서울시 학교 정보 업데이트 완료. 저장된 학교 수: ${schools.length}`);
         return res.json({ success: true, count: schools.length });
     } catch (e) {

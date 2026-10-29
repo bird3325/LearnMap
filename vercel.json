@@ -25,7 +25,8 @@
           "scratch/**",
           "docs/**",
           "*.txt",
-          "src/data/realestate_seoul.json"
+          "src/data/realestate_seoul.json",
+          "**/realestate_seoul.json"
         ]
       }
     },
@@ -37,6 +38,14 @@
       }
     }
   ],
+  "build": {
+    "env": {
+      "VERCEL_SUPPORT_LARGE_FUNCTIONS": "1"
+    }
+  },
+  "env": {
+    "VERCEL_SUPPORT_LARGE_FUNCTIONS": "1"
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
