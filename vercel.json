@@ -16,6 +16,7 @@
           "src/data/subscriptions.json",
           "src/data/analytics_events.json",
           "src/data/inquiries.json",
+          "src/data/blog_posts.json",
           "config.json"
         ],
         "excludeFiles": [
@@ -40,6 +41,10 @@
     {
       "source": "/api/(.*)",
       "destination": "/server.js"
+    },
+    {
+      "source": "/blog",
+      "destination": "/blog.html"
     },
     {
       "source": "/(.*)",

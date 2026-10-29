@@ -277,5 +277,25 @@
       "area": "소사본동"
     },
     "createdAt": "2026-10-28T05:10:52.716Z"
+  },
+  {
+    "id": "evt_1793171928445_jane",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "고양삼송 동일스위트 1차",
+      "area": "신원동"
+    },
+    "createdAt": "2026-10-28T07:18:48.445Z"
+  },
+  {
+    "id": "evt_1793172253466_ahr3",
+    "businessId": "biz_demo_daechi_re_04",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "고양삼송 동일스위트 1차",
+      "area": "신원동"
+    },
+    "createdAt": "2026-10-28T07:24:13.466Z"
   }
 ]

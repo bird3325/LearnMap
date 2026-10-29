@@ -130,6 +130,9 @@ adminMenuButtons.forEach(btn => {
         if (targetAttr.includes('businessManagementCard') && typeof loadBusinessManagement === 'function') {
             loadBusinessManagement();
         }
+        if (targetAttr.includes('blogManagementCard') && typeof loadBlogManagement === 'function') {
+            loadBlogManagement();
+        }
         if ((targetAttr.includes('realestateMasterCard') || targetAttr.includes('storedRealEstateCard')) && typeof loadStoredRealEstate === 'function') {
             if (Array.isArray(allStoredRealEstates) && allStoredRealEstates.length > 0) {
                 renderStoredRealEstateList();
@@ -4219,6 +4222,1154 @@ if (btnRefreshBizList) {
     });
 }
 
+// ==============================================================================
+// 블로그 & 학군 칼럼 관리 로직 (Admin Blog Management)
+// ==============================================================================
+let allAdminBlogPosts = [];
+
+function normalizeAdminPost(item) {
+    if (!item) return item;
+    return {
+        ...item,
+        id: String(item.id),
+        slug: item.slug || String(item.id),
+        title: item.title || '',
+        category: item.category || '학군 분석',
+        summary: item.summary || '',
+        content: item.content || '',
+        thumbnail: item.thumbnail || '',
+        tags: Array.isArray(item.tags) ? item.tags : (typeof item.tags === 'string' ? item.tags.split(',').map(t => t.trim()).filter(Boolean) : []),
+        author: item.author || '학업여지도 리서치팀',
+        authorRole: item.authorRole || item.author_role || '수석연구원',
+        readTime: item.readTime || item.read_time || '4분',
+        views: Number(item.views) || 0,
+        likes: Number(item.likes) || 0,
+        createdAt: item.createdAt || item.created_at || new Date().toISOString(),
+        updatedAt: item.updatedAt || item.updated_at || new Date().toISOString(),
+        isPublished: item.isPublished !== undefined ? item.isPublished : (item.is_published !== undefined ? item.is_published : true),
+        relatedSchools: Array.isArray(item.relatedSchools) ? item.relatedSchools : (Array.isArray(item.related_schools) ? item.related_schools : [])
+    };
+}
+
+async function loadBlogManagement() {
+    const container = document.getElementById('adminBlogListContainer');
+    if (container) {
+        container.innerHTML = '<div style="text-align: center; color: var(--adm-text-muted); padding: 30px;">게시글 목록을 불러오는 중...</div>';
+    }
+
+    try {
+        const res = await fetch('/api/blog/posts?admin=true');
+        if (res.ok) {
+            const raw = await res.json();
+            allAdminBlogPosts = Array.isArray(raw) ? raw.map(normalizeAdminPost) : [];
+            renderAdminBlogTable();
+            return;
+        }
+    } catch (err) {
+        console.warn('[Admin Blog] /api/blog/posts API 호출 실패, 정적 파일 폴백 시도:', err);
+    }
+
+    try {
+        const resStatic = await fetch('/src/data/blog_posts.json');
+        if (resStatic.ok) {
+            const raw = await resStatic.json();
+            allAdminBlogPosts = Array.isArray(raw) ? raw.map(normalizeAdminPost) : [];
+            renderAdminBlogTable();
+            return;
+        }
+    } catch (e) {
+        console.error('[Admin Blog] 게시글 로드 실패:', e);
+    }
+
+    if (container) {
+        container.innerHTML = '<div style="text-align: center; color: #dc2626; padding: 30px;">게시글 데이터를 불러올 수 없습니다.</div>';
+    }
+}
+window.loadBlogManagement = loadBlogManagement;
+
+function renderAdminBlogTable() {
+    const container = document.getElementById('adminBlogListContainer');
+    if (!container) return;
+
+    const catFilter = document.getElementById('adminBlogCategoryFilter')?.value || 'all';
+    const searchQuery = (document.getElementById('adminBlogSearchInput')?.value || '').trim().toLowerCase();
+
+    let list = [...allAdminBlogPosts];
+    if (catFilter !== 'all') {
+        list = list.filter(p => p.category === catFilter);
+    }
+    if (searchQuery) {
+        list = list.filter(p => {
+            const t = (p.title || '').toLowerCase();
+            const s = (p.summary || '').toLowerCase();
+            const tags = Array.isArray(p.tags) ? p.tags.join(' ').toLowerCase() : '';
+            return t.includes(searchQuery) || s.includes(searchQuery) || tags.includes(searchQuery);
+        });
+    }
+
+    if (list.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--adm-text-muted); padding: 30px;">등록된 칼럼/게시글이 없습니다. [새 칼럼 작성] 버튼을 눌러 등록해 보세요.</div>';
+        return;
+    }
+
+    let html = `
+        <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--adm-border); color: var(--adm-text-muted); font-size: 11.5px; text-transform: uppercase;">
+                    <th style="padding: 10px 8px;">게시글</th>
+                    <th style="padding: 10px 8px; width: 110px;">카테고리</th>
+                    <th style="padding: 10px 8px; width: 120px;">작성자</th>
+                    <th style="padding: 10px 8px; width: 90px;">지표</th>
+                    <th style="padding: 10px 8px; width: 100px;">작성일</th>
+                    <th style="padding: 10px 8px; width: 80px;">상태</th>
+                    <th style="padding: 10px 8px; width: 140px; text-align: center;">관리</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    list.forEach(post => {
+        const dateStr = post.createdAt ? post.createdAt.split('T')[0] : '-';
+        const isPub = post.isPublished !== false;
+        const pubBadge = isPub
+            ? '<span style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 700;">발행중</span>'
+            : '<span style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 700;">임시보관</span>';
+
+        html += `
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                <td style="padding: 12px 8px;">
+                    <div style="font-weight: 700; color: #0f172a; margin-bottom: 3px;">${post.title}</div>
+                    <div style="font-size: 11.5px; color: var(--adm-text-muted); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;">${post.summary || ''}</div>
+                </td>
+                <td style="padding: 12px 8px;">
+                    <span style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600;">${post.category || '기타'}</span>
+                </td>
+                <td style="padding: 12px 8px; color: #334155;">
+                    <div>${post.author || '연구팀'}</div>
+                    <div style="font-size: 11px; color: var(--adm-text-muted);">${post.authorRole || ''}</div>
+                </td>
+                <td style="padding: 12px 8px; font-size: 11.5px; color: #475569;">
+                    <div>👁️ ${post.views || 0}</div>
+                    <div>❤️ ${post.likes || 0}</div>
+                </td>
+                <td style="padding: 12px 8px; color: var(--adm-text-muted);">${dateStr}</td>
+                <td style="padding: 12px 8px;">${pubBadge}</td>
+                <td style="padding: 12px 8px; text-align: center;">
+                    <div style="display: flex; gap: 4px; justify-content: center;">
+                        <button onclick="window.editBlogPostAdmin('${post.id}')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px;">수정</button>
+                        <a href="/blog#${post.id}" target="_blank" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; text-decoration: none;">보기</a>
+                        <button onclick="window.deleteBlogPostAdmin('${post.id}', '${encodeURIComponent(post.title)}')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #dc2626; border-color: #fecaca; background: #fff5f5;">삭제</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+let currentAttachedBlogImages = [];
+
+// 탭 구분 텍스트(TSV - 엑셀, 스프레드시트)를 마크다운 표로 변환
+function convertTsvToMarkdownTable(tsvText) {
+    if (!tsvText) return '';
+    const lines = tsvText.trim().split('\n').map(l => l.replace(/\r/g, ''));
+    if (lines.length === 0) return tsvText;
+
+    let md = '';
+    const headerCells = lines[0].split('\t').map(c => c.trim() || ' ');
+    const colCount = headerCells.length;
+
+    md += '| ' + headerCells.join(' | ') + ' |\n';
+    md += '| ' + headerCells.map(() => '---').join(' | ') + ' |\n';
+
+    for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const cells = lines[i].split('\t').map(c => c.trim() || ' ');
+        while (cells.length < colCount) cells.push(' ');
+        md += '| ' + cells.slice(0, colCount).join(' | ') + ' |\n';
+    }
+    return md;
+}
+
+// 클립보드 HTML(워드, 웹문서, 노션, ChatGPT)을 안전하고 정갈한 마크다운으로 변환
+function htmlToMarkdown(htmlStr) {
+    if (!htmlStr || !htmlStr.trim()) return '';
+
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlStr, 'text/html');
+        const body = doc.body;
+        if (!body) return htmlStr;
+
+        // 불필요한 스크립트, 스타일, 메타 태그 제거
+        const junk = body.querySelectorAll('script, style, meta, link, noscript, svg');
+        junk.forEach(el => el.remove());
+
+        function walk(node) {
+            if (!node) return '';
+
+            if (node.nodeType === Node.TEXT_NODE) {
+                return node.nodeValue;
+            }
+
+            if (node.nodeType !== Node.ELEMENT_NODE) return '';
+
+            const tag = node.tagName.toLowerCase();
+            let inner = '';
+            node.childNodes.forEach(c => {
+                inner += walk(c);
+            });
+
+            switch (tag) {
+                case 'h1':
+                    return `\n\n# ${inner.trim()}\n\n`;
+                case 'h2':
+                    return `\n\n## ${inner.trim()}\n\n`;
+                case 'h3':
+                    return `\n\n### ${inner.trim()}\n\n`;
+                case 'h4':
+                case 'h5':
+                case 'h6':
+                    return `\n\n### ${inner.trim()}\n\n`;
+                case 'strong':
+                case 'b':
+                    return inner.trim() ? `**${inner.trim()}**` : '';
+                case 'em':
+                case 'i':
+                    return inner.trim() ? `*${inner.trim()}*` : '';
+                case 'u':
+                case 'ins':
+                    return inner.trim() ? `<u>${inner.trim()}</u>` : '';
+                case 's':
+                case 'strike':
+                case 'del':
+                    return inner.trim() ? `~~${inner.trim()}~~` : '';
+                case 'a':
+                    const href = node.getAttribute('href') || '';
+                    const title = inner.trim() || href;
+                    return href ? `[${title}](${href})` : title;
+                case 'img':
+                    const src = node.getAttribute('src') || '';
+                    const alt = node.getAttribute('alt') || '이미지';
+                    return src ? `\n\n![${alt}](${src})\n\n` : '';
+                case 'blockquote':
+                    return `\n\n> ${inner.trim().replace(/\n/g, '\n> ')}\n\n`;
+                case 'hr':
+                    return '\n\n---\n\n';
+                case 'br':
+                    return '\n';
+                case 'p':
+                case 'div':
+                    return inner.trim() ? `\n\n${inner.trim()}\n\n` : '';
+                case 'ul':
+                    return `\n\n${inner.trim()}\n\n`;
+                case 'ol':
+                    return `\n\n${inner.trim()}\n\n`;
+                case 'li': {
+                    const parent = node.parentElement ? node.parentElement.tagName.toLowerCase() : 'ul';
+                    if (parent === 'ol') {
+                        const idx = Array.from(node.parentElement.children).indexOf(node) + 1;
+                        return `\n${idx}. ${inner.trim()}`;
+                    } else {
+                        return `\n* ${inner.trim()}`;
+                    }
+                }
+                case 'pre':
+                    return `\n\n\`\`\`\n${inner.trim()}\n\`\`\`\n\n`;
+                case 'code':
+                    if (node.parentElement && node.parentElement.tagName.toLowerCase() === 'pre') {
+                        return inner;
+                    }
+                    return inner.trim() ? `\`${inner.trim()}\`` : '';
+                case 'table': {
+                    const rows = Array.from(node.querySelectorAll('tr'));
+                    if (rows.length === 0) return '';
+                    let mdTable = '\n\n';
+                    let isFirst = true;
+                    let numCols = 0;
+                    rows.forEach(r => {
+                        const cells = Array.from(r.querySelectorAll('th, td'));
+                        if (cells.length === 0) return;
+                        if (isFirst) {
+                            numCols = cells.length;
+                            mdTable += '| ' + cells.map(c => c.textContent.trim().replace(/\|/g, '\\|') || ' ').join(' | ') + ' |\n';
+                            mdTable += '| ' + cells.map(() => '---').join(' | ') + ' |\n';
+                            isFirst = false;
+                        } else {
+                            const cTexts = cells.map(c => c.textContent.trim().replace(/\|/g, '\\|') || ' ');
+                            while (cTexts.length < numCols) cTexts.push(' ');
+                            mdTable += '| ' + cTexts.slice(0, numCols).join(' | ') + ' |\n';
+                        }
+                    });
+                    return mdTable + '\n';
+                }
+                default:
+                    return inner;
+            }
+        }
+
+        let result = walk(body);
+        result = result.replace(/\n{3,}/g, '\n\n').trim();
+        return result;
+    } catch (e) {
+        console.warn('[htmlToMarkdown] 파싱 오류, 원문 반환:', e);
+        return htmlStr;
+    }
+}
+
+function renderMarkdownAdminPreview(md) {
+    if (!md) return '<p style="color: #94a3b8; font-style: italic;">작성된 본문 내용이 없습니다.</p>';
+    let html = md
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    // Headings
+    html = html.replace(/^### (.*$)/gim, '<h3 style="font-size: 16px; font-weight: 700; color: #1e293b; margin: 18px 0 8px;">$1</h3>');
+    html = html.replace(/^## (.*$)/gim, '<h2 style="font-size: 18px; font-weight: 800; color: #0f172a; margin: 22px 0 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">$1</h2>');
+    html = html.replace(/^# (.*$)/gim, '<h1 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 24px 0 12px;">$1</h1>');
+
+    // Horizontal Rule
+    html = html.replace(/^---$/gim, '<hr style="border: none; height: 1px; background: #e2e8f0; margin: 20px 0;">');
+
+    // Blockquotes
+    html = html.replace(/^\> (.*$)/gim, '<blockquote style="background: #f8fafc; border-left: 4px solid #2563eb; padding: 10px 14px; margin: 14px 0; border-radius: 0 8px 8px 0; color: #334155; font-size: 13.5px;">$1</blockquote>');
+
+    // Images: ![alt](url)
+    html = html.replace(/!\[(.*?)\]\((.*?)\)/gim, '<figure style="margin: 16px 0; text-align: center;"><img src="$2" alt="$1" style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: inline-block;" loading="lazy"><figcaption style="font-size: 12px; color: #64748b; margin-top: 6px;">$1</figcaption></figure>');
+
+    // Links: [text](url)
+    html = html.replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: underline; font-weight: 600;">$1</a>');
+
+    // Bold
+    html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
+
+    // Italic
+    html = html.replace(/\*(.*?)\*/gim, '<em>$1</em>');
+
+    // Strikethrough
+    html = html.replace(/~~(.*?)~~/gim, '<del>$1</del>');
+
+    // Lists
+    html = html.replace(/^\* (.*$)/gim, '<li style="margin-bottom: 4px;">$1</li>');
+    html = html.replace(/^\d+\. (.*$)/gim, '<li style="margin-bottom: 4px;">$1</li>');
+    html = html.replace(/(<li.*?>.*?<\/li>(\s*<li.*?>.*?<\/li>)*)/gim, '<ul style="margin: 10px 0 14px 20px; padding: 0;">$1</ul>');
+
+    // Tables: basic markdown table parsing
+    const lines = html.split('\n');
+    let inTable = false;
+    let tableHtml = '';
+    const newLines = [];
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith('|') && line.endsWith('|')) {
+            const cells = line.split('|').slice(1, -1).map(c => c.trim());
+            const isSeparator = cells.every(c => /^[-:]+$/.test(c));
+
+            if (!inTable) {
+                inTable = true;
+                tableHtml = '<div style="overflow-x: auto; margin: 16px 0;"><table style="width: 100%; border-collapse: collapse; font-size: 13px;"><thead><tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">';
+                cells.forEach(c => {
+                    tableHtml += `<th style="padding: 8px 12px; text-align: left; font-weight: 700; border: 1px solid #e2e8f0;">${c}</th>`;
+                });
+                tableHtml += '</tr></thead><tbody>';
+            } else if (isSeparator) {
+                // separator line, skip
+            } else {
+                tableHtml += '<tr style="border-bottom: 1px solid #e2e8f0;">';
+                cells.forEach(c => {
+                    tableHtml += `<td style="padding: 8px 12px; border: 1px solid #e2e8f0;">${c}</td>`;
+                });
+                tableHtml += '</tr>';
+            }
+        } else {
+            if (inTable) {
+                tableHtml += '</tbody></table></div>';
+                newLines.push(tableHtml);
+                inTable = false;
+                tableHtml = '';
+            }
+            newLines.push(lines[i]);
+        }
+    }
+    if (inTable) {
+        tableHtml += '</tbody></table></div>';
+        newLines.push(tableHtml);
+    }
+    html = newLines.join('\n');
+
+    // Paragraphs
+    const paragraphs = html.split(/\n{2,}/);
+    html = paragraphs.map(p => {
+        p = p.trim();
+        if (!p) return '';
+        if (p.startsWith('<h') || p.startsWith('<ul>') || p.startsWith('<blockquote') || p.startsWith('<hr') || p.startsWith('<div') || p.startsWith('<figure')) {
+            return p;
+        }
+        return `<p style="margin-bottom: 12px;">${p.replace(/\n/g, '<br>')}</p>`;
+    }).join('\n');
+
+    return html;
+}
+
+function insertMarkdownAtCursor(prefix, suffix, defaultPlaceholder = '') {
+    const textarea = document.getElementById('blogPostContent');
+    if (!textarea) return;
+
+    textarea.focus();
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = textarea.value.substring(start, end) || defaultPlaceholder;
+
+    const replacement = prefix + selectedText + suffix;
+    textarea.setRangeText(replacement, start, end, 'end');
+
+    const newPos = start + prefix.length + selectedText.length;
+    textarea.setSelectionRange(start + prefix.length, newPos);
+
+    updateBlogEditorCharCount();
+}
+
+function setBlogEditorMode(mode) {
+    const writePane = document.getElementById('blogEditorWritePane');
+    const previewPane = document.getElementById('blogEditorPreviewPane');
+    const previewContent = document.getElementById('blogEditorPreviewContent');
+    const tabWrite = document.getElementById('btnBlogEditorTabWrite');
+    const tabPreview = document.getElementById('btnBlogEditorTabPreview');
+    const textarea = document.getElementById('blogPostContent');
+
+    if (mode === 'preview') {
+        if (writePane) writePane.style.display = 'none';
+        if (previewPane) previewPane.style.display = 'block';
+        if (tabWrite) {
+            tabWrite.style.background = 'transparent';
+            tabWrite.style.color = '#64748b';
+            tabWrite.style.fontWeight = '600';
+        }
+        if (tabPreview) {
+            tabPreview.style.background = '#ffffff';
+            tabPreview.style.color = '#1e293b';
+            tabPreview.style.fontWeight = '700';
+        }
+        if (previewContent && textarea) {
+            previewContent.innerHTML = renderMarkdownAdminPreview(textarea.value);
+        }
+    } else {
+        if (writePane) writePane.style.display = 'block';
+        if (previewPane) previewPane.style.display = 'none';
+        if (tabWrite) {
+            tabWrite.style.background = '#ffffff';
+            tabWrite.style.color = '#1e293b';
+            tabWrite.style.fontWeight = '700';
+        }
+        if (tabPreview) {
+            tabPreview.style.background = 'transparent';
+            tabPreview.style.color = '#64748b';
+            tabPreview.style.fontWeight = '600';
+        }
+        if (textarea) textarea.focus();
+    }
+}
+
+function updateThumbnailPreview(url) {
+    const preview = document.getElementById('blogThumbnailPreview');
+    if (!preview) return;
+    if (url && url.trim()) {
+        preview.style.display = 'block';
+        preview.style.backgroundImage = `url('${url.trim()}')`;
+    } else {
+        preview.style.display = 'none';
+        preview.style.backgroundImage = 'none';
+    }
+}
+
+function updateBlogEditorCharCount() {
+    const textarea = document.getElementById('blogPostContent');
+    const counter = document.getElementById('blogEditorCharCount');
+    if (!textarea || !counter) return;
+    const len = textarea.value.length;
+    const estMin = Math.max(1, Math.ceil(len / 450));
+    counter.textContent = `${len.toLocaleString()}자 (약 ${estMin}분 분량)`;
+}
+
+function renderAttachedBlogImages() {
+    const container = document.getElementById('blogAttachedImagesContainer');
+    const list = document.getElementById('blogAttachedImagesList');
+    const countEl = document.getElementById('blogAttachedCount');
+    if (!container || !list) return;
+
+    if (!currentAttachedBlogImages || currentAttachedBlogImages.length === 0) {
+        container.style.display = 'none';
+        list.innerHTML = '';
+        if (countEl) countEl.textContent = '0';
+        return;
+    }
+
+    container.style.display = 'block';
+    if (countEl) countEl.textContent = String(currentAttachedBlogImages.length);
+    list.innerHTML = '';
+
+    currentAttachedBlogImages.forEach((img, idx) => {
+        const item = document.createElement('div');
+        item.style.cssText = 'display: flex; flex-direction: column; width: 150px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; overflow: hidden; font-size: 11.5px; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0,0,0,0.06); transition: transform 0.15s ease;';
+
+        const sizeStr = img.size ? ` (${(img.size / 1024).toFixed(0)}KB)` : '';
+
+        item.innerHTML = `
+            <div style="position: relative; width: 100%; height: 90px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                <img src="${img.url}" alt="${img.name || '첨부 이미지'}" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;" title="클릭하여 원본 보기">
+                <button type="button" class="btn-delete-img" title="이미지 제거" style="position: absolute; top: 4px; right: 4px; background: rgba(15, 23, 42, 0.7); border: none; border-radius: 50%; color: white; width: 20px; height: 20px; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center;">
+                    ✕
+                </button>
+            </div>
+            <div style="padding: 6px 8px; display: flex; flex-direction: column; gap: 4px;">
+                <div style="font-weight: 700; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px;" title="${img.name || img.filename}">
+                    ${img.name || img.filename}${sizeStr}
+                </div>
+                <div style="display: flex; gap: 4px;">
+                    <button type="button" class="btn-insert-again" title="본문 커서 위치에 이미지 태그 재삽입" style="flex: 1; background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; border-radius: 4px; padding: 3px 0; cursor: pointer; font-size: 10.5px; font-weight: 600;">
+                        + 본문 삽입
+                    </button>
+                    <button type="button" class="btn-set-thumb" title="이 이미지를 대표 썸네일로 지정" style="background: #fef3c7; border: 1px solid #fde68a; color: #92400e; border-radius: 4px; padding: 3px 6px; cursor: pointer; font-size: 10.5px; font-weight: 600;">
+                        👑 썸네일
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // 원본 이미지 클릭 시 새 탭 열기
+        item.querySelector('img').addEventListener('click', () => {
+            window.open(img.url, '_blank');
+        });
+
+        item.querySelector('.btn-insert-again').addEventListener('click', () => {
+            insertMarkdownAtCursor(`\n\n![${img.name || '이미지'}](${img.url})\n\n`, '');
+        });
+        item.querySelector('.btn-set-thumb').addEventListener('click', () => {
+            const thumbInput = document.getElementById('blogPostThumbnail');
+            if (thumbInput) thumbInput.value = img.url;
+            updateThumbnailPreview(img.url);
+            alert('대표 썸네일로 지정되었습니다.');
+        });
+        item.querySelector('.btn-delete-img').addEventListener('click', () => {
+            currentAttachedBlogImages.splice(idx, 1);
+            renderAttachedBlogImages();
+        });
+
+        list.appendChild(item);
+    });
+}
+
+async function uploadBlogImageFile(file, isThumbnail = false) {
+    if (!file) return;
+    if (!file.type || !file.type.startsWith('image/')) {
+        alert('이미지 파일(PNG, JPG, WebP, GIF, SVG 등)만 업로드할 수 있습니다.');
+        return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+        alert('이미지 파일 크기는 최대 15MB까지 업로드 가능합니다.');
+        return;
+    }
+
+    const statusEl = document.getElementById('blogEditorStatusMessage');
+    if (statusEl) {
+        statusEl.innerHTML = `<span style="color: #2563eb; font-weight: 600;">⏳ "${file.name}" 이미지 업로드 중...</span>`;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => {
+        if (statusEl) statusEl.innerHTML = '<span style="color: #dc2626;">❌ 파일 읽기에 실패했습니다.</span>';
+    };
+    reader.onload = async (e) => {
+        const base64Data = e.target.result;
+        try {
+            const res = await fetch('/api/admin/blog/upload-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    filename: file.name,
+                    data: base64Data,
+                    contentType: file.type
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || '업로드 응답 실패');
+            }
+
+            const data = await res.json();
+            if (!data.success || !data.url) {
+                throw new Error(data.error || '이미지 URL 발급 실패');
+            }
+
+            if (isThumbnail) {
+                const thumbInput = document.getElementById('blogPostThumbnail');
+                if (thumbInput) thumbInput.value = data.url;
+                updateThumbnailPreview(data.url);
+                if (statusEl) statusEl.innerHTML = `<span style="color: #059669; font-weight: 600;">✓ 대표 썸네일 이미지가 업로드되었습니다.</span>`;
+            } else {
+                insertMarkdownAtCursor(`\n\n![${data.originalName || '칼럼 이미지'}](${data.url})\n\n`, '');
+
+                currentAttachedBlogImages.push({
+                    url: data.url,
+                    filename: data.filename,
+                    name: data.originalName || file.name,
+                    size: data.size
+                });
+                renderAttachedBlogImages();
+
+                const previewContent = document.getElementById('blogEditorPreviewContent');
+                const textarea = document.getElementById('blogPostContent');
+                if (previewContent && textarea) {
+                    previewContent.innerHTML = renderMarkdownAdminPreview(textarea.value);
+                }
+
+                const thumbInput = document.getElementById('blogPostThumbnail');
+                if (thumbInput && !thumbInput.value.trim()) {
+                    thumbInput.value = data.url;
+                    updateThumbnailPreview(data.url);
+                }
+
+                if (statusEl) {
+                    statusEl.innerHTML = `<span style="color: #059669; font-weight: 700;">🖼️ "${data.originalName}" 이미지가 첨부되어 하단 갤러리에 표시되었습니다! ([👁️ 마크다운 미리보기]에서 확인 가능)</span>`;
+                    setTimeout(() => {
+                        if (statusEl) statusEl.innerHTML = '<span>💡 웹페이지/워드 글을 그냥 붙여넣으면 마크다운으로 자동 변환됩니다.</span>';
+                    }, 5000);
+                }
+            }
+        } catch (err) {
+            console.error('[Blog Image Upload Error]:', err);
+            if (statusEl) statusEl.innerHTML = `<span style="color: #dc2626; font-weight: 600;">❌ 업로드 실패: ${err.message}</span>`;
+            alert('이미지 업로드에 실패했습니다: ' + err.message);
+        }
+    };
+    reader.readAsDataURL(file);
+}
+
+window.openNewBlogPostModal = function() {
+    const modal = document.getElementById('blogPostEditorModal');
+    if (!modal) return;
+    document.getElementById('blogEditorModalTitle').textContent = '✍️ 새 칼럼 작성';
+    document.getElementById('editBlogPostId').value = '';
+    document.getElementById('blogPostTitle').value = '';
+    document.getElementById('blogPostCategory').value = '학군 분석';
+    document.getElementById('blogPostAuthor').value = '학업여지도 리서치팀';
+    document.getElementById('blogPostReadTime').value = '4분';
+    document.getElementById('blogPostThumbnail').value = '';
+    updateThumbnailPreview('');
+    document.getElementById('blogPostSummary').value = '';
+    document.getElementById('blogPostTags').value = '';
+    document.getElementById('blogPostContent').value = '';
+    document.getElementById('blogPostIsPublished').checked = true;
+
+    currentAttachedBlogImages = [];
+    renderAttachedBlogImages();
+    setBlogEditorMode('write');
+    updateBlogEditorCharCount();
+
+    const statusEl = document.getElementById('blogEditorStatusMessage');
+    if (statusEl) statusEl.innerHTML = '<span>💡 이미지 첨부(파일 선택, 드래그&드롭, Ctrl+V 캡처 붙여넣기 지원)</span>';
+
+    modal.style.display = 'flex';
+};
+
+window.editBlogPostAdmin = function(postId) {
+    const post = allAdminBlogPosts.find(p => p.id === postId);
+    if (!post) return;
+    const modal = document.getElementById('blogPostEditorModal');
+    if (!modal) return;
+
+    document.getElementById('blogEditorModalTitle').textContent = '✍️ 칼럼 수정';
+    document.getElementById('editBlogPostId').value = post.id;
+    document.getElementById('blogPostTitle').value = post.title || '';
+    document.getElementById('blogPostCategory').value = post.category || '학군 분석';
+    document.getElementById('blogPostAuthor').value = post.author || '학업여지도 리서치팀';
+    document.getElementById('blogPostReadTime').value = post.readTime || '4분';
+    document.getElementById('blogPostThumbnail').value = post.thumbnail || '';
+    updateThumbnailPreview(post.thumbnail || '');
+    document.getElementById('blogPostSummary').value = post.summary || '';
+    document.getElementById('blogPostTags').value = Array.isArray(post.tags) ? post.tags.join(', ') : '';
+    document.getElementById('blogPostContent').value = post.content || '';
+    document.getElementById('blogPostIsPublished').checked = post.isPublished !== false;
+
+    // 본문 내용에서 마크다운 이미지 정규식으로 기등록된 이미지 감지 및 복원
+    const detectedImages = [];
+    if (Array.isArray(post.images) && post.images.length > 0) {
+        detectedImages.push(...post.images);
+    }
+    const imgRegex = /!\[(.*?)\]\((.*?)\)/g;
+    let match;
+    while ((match = imgRegex.exec(post.content || '')) !== null) {
+        const alt = match[1];
+        const url = match[2];
+        if (!detectedImages.some(img => img.url === url)) {
+            detectedImages.push({ url, name: alt || '이미지', filename: url.split('/').pop() });
+        }
+    }
+    currentAttachedBlogImages = detectedImages;
+    renderAttachedBlogImages();
+    setBlogEditorMode('write');
+    updateBlogEditorCharCount();
+
+    modal.style.display = 'flex';
+};
+
+window.closeBlogEditorModal = function() {
+    const modal = document.getElementById('blogPostEditorModal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.openBlogFullPreviewModal = function() {
+    const title = (document.getElementById('blogPostTitle').value || '').trim();
+    const category = document.getElementById('blogPostCategory').value || '학군 분석';
+    const author = (document.getElementById('blogPostAuthor').value || '학업여지도 리서치팀').trim();
+    const authorRole = (document.getElementById('blogPostAuthorRole') ? document.getElementById('blogPostAuthorRole').value : '') || '수석연구원';
+    const readTime = (document.getElementById('blogPostReadTime').value || '4분').trim();
+    const thumbnail = (document.getElementById('blogPostThumbnail').value || '').trim();
+    const tagsStr = (document.getElementById('blogPostTags').value || '').trim();
+    const content = (document.getElementById('blogPostContent').value || '').trim();
+    const isPublished = document.getElementById('blogPostIsPublished').checked;
+
+    if (!title) {
+        alert('미리보기를 확인하려면 먼저 칼럼 제목을 입력해 주세요.');
+        document.getElementById('blogPostTitle').focus();
+        return;
+    }
+    if (!content) {
+        alert('미리보기를 확인하려면 먼저 본문 내용을 입력해 주세요.');
+        document.getElementById('blogPostContent').focus();
+        return;
+    }
+
+    const modal = document.getElementById('blogPostFullPreviewModal');
+    if (!modal) return;
+
+    // 데이터 바인딩
+    document.getElementById('fullPreviewTitle').textContent = title;
+    document.getElementById('fullPreviewCategory').textContent = category;
+    document.getElementById('fullPreviewAuthor').textContent = author;
+    document.getElementById('fullPreviewAuthorRole').textContent = authorRole;
+    document.getElementById('fullPreviewDate').textContent = new Date().toISOString().slice(0, 10).replace(/-/g, '.');
+    document.getElementById('fullPreviewReadTime').textContent = `⏱️ ${readTime} 분량`;
+
+    // 썸네일 배너 (본문 상세 내용과 중복 방지를 위해 상세 보기 상단 노출 비활성화)
+    const thumbWrap = document.getElementById('fullPreviewThumbnailWrap');
+    if (thumbWrap) {
+        thumbWrap.style.display = 'none';
+    }
+
+    // 본문 마크다운 파싱 렌더링
+    document.getElementById('fullPreviewBody').innerHTML = renderMarkdownAdminPreview(content);
+
+    // 태그 목록 렌더링
+    const tagsWrap = document.getElementById('fullPreviewTagsWrap');
+    const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) : [];
+    if (tags.length > 0) {
+        tagsWrap.style.display = 'flex';
+        tagsWrap.innerHTML = tags.map(t => `<span style="background: #f1f5f9; color: #475569; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 20px; border: 1px solid #e2e8f0;">#${t}</span>`).join('');
+    } else {
+        tagsWrap.style.display = 'none';
+        tagsWrap.innerHTML = '';
+    }
+
+    // 공개 상태 안내
+    const statusText = document.getElementById('fullPreviewPublishStatus');
+    if (isPublished) {
+        statusText.style.color = '#059669';
+        statusText.textContent = '✓ 저장 시 사용자에게 즉시 공개(발행)됩니다.';
+    } else {
+        statusText.style.color = '#d97706';
+        statusText.textContent = '⚠️ 현재 임시저장 상태로 저장됩니다. (사용자 화면에 비공개)';
+    }
+
+    modal.style.display = 'flex';
+};
+
+window.closeBlogFullPreviewModal = function() {
+    const modal = document.getElementById('blogPostFullPreviewModal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.saveBlogPostAdmin = async function() {
+    const id = document.getElementById('editBlogPostId').value;
+    const title = document.getElementById('blogPostTitle').value.trim();
+    const category = document.getElementById('blogPostCategory').value;
+    const author = document.getElementById('blogPostAuthor').value.trim();
+    const readTime = document.getElementById('blogPostReadTime').value.trim();
+    const thumbnail = document.getElementById('blogPostThumbnail').value.trim();
+    const summary = document.getElementById('blogPostSummary').value.trim();
+    const tagsStr = document.getElementById('blogPostTags').value.trim();
+    const content = document.getElementById('blogPostContent').value.trim();
+    const isPublished = document.getElementById('blogPostIsPublished').checked;
+
+    if (!title) {
+        alert('칼럼 제목을 입력해 주세요.');
+        return;
+    }
+    if (!content) {
+        alert('본문 내용을 입력해 주세요.');
+        return;
+    }
+
+    const payload = {
+        title,
+        category,
+        author,
+        readTime,
+        thumbnail,
+        summary,
+        tags: tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) : [],
+        content,
+        isPublished,
+        images: currentAttachedBlogImages
+    };
+
+    const isEdit = !!id;
+    const url = isEdit ? `/api/admin/blog/posts/${id}` : '/api/admin/blog/posts';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    try {
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            alert(isEdit ? '칼럼이 수정되었습니다.' : '새 칼럼이 등록되었습니다.');
+            window.closeBlogEditorModal();
+            loadBlogManagement();
+        } else {
+            const err = await res.json().catch(() => ({}));
+            alert('저장에 실패했습니다: ' + (err.error || '서버 오류'));
+        }
+    } catch (e) {
+        console.error('[Admin Blog Save Error]:', e);
+        alert('서버와 통신 중 오류가 발생했습니다.');
+    }
+};
+
+window.deleteBlogPostAdmin = async function(postId, encodedTitle) {
+    const title = decodeURIComponent(encodedTitle);
+    if (!confirm(`정말로 "${title}" 칼럼을 삭제하시겠습니까?`)) {
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/admin/blog/posts/${postId}`, {
+            method: 'DELETE'
+        });
+        if (res.ok) {
+            alert('칼럼이 삭제되었습니다.');
+            loadBlogManagement();
+        } else {
+            alert('삭제에 실패했습니다.');
+        }
+    } catch (e) {
+        alert('삭제 요청 중 서버 오류가 발생했습니다.');
+    }
+};
+
+function initBlogAdminEvents() {
+    const btnNew = document.getElementById('btnOpenNewPostModal');
+    if (btnNew) btnNew.addEventListener('click', window.openNewBlogPostModal);
+
+    const btnClose = document.getElementById('btnCloseBlogEditorModal');
+    if (btnClose) btnClose.addEventListener('click', window.closeBlogEditorModal);
+
+    const btnCancel = document.getElementById('btnCancelBlogEditor');
+    if (btnCancel) btnCancel.addEventListener('click', window.closeBlogEditorModal);
+
+    const btnSave = document.getElementById('btnSaveBlogPost');
+    if (btnSave) btnSave.addEventListener('click', window.saveBlogPostAdmin);
+
+    const filter = document.getElementById('adminBlogCategoryFilter');
+    if (filter) filter.addEventListener('change', renderAdminBlogTable);
+
+    const searchInput = document.getElementById('adminBlogSearchInput');
+    if (searchInput) searchInput.addEventListener('input', renderAdminBlogTable);
+
+    const btnSearch = document.getElementById('btnSearchBlogPosts');
+    if (btnSearch) btnSearch.addEventListener('click', renderAdminBlogTable);
+
+    const btnRefresh = document.getElementById('btnRefreshBlogPosts');
+    if (btnRefresh) btnRefresh.addEventListener('click', loadBlogManagement);
+
+    // 툴바 포맷팅 버튼 이벤트 바인딩
+    document.querySelectorAll('.blog-tool-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const action = btn.dataset.action;
+            switch (action) {
+                case 'h2':
+                    insertMarkdownAtCursor('\n## ', '\n', '소제목');
+                    break;
+                case 'h3':
+                    insertMarkdownAtCursor('\n### ', '\n', '소제목');
+                    break;
+                case 'bold':
+                    insertMarkdownAtCursor('**', '**', '굵은 텍스트');
+                    break;
+                case 'italic':
+                    insertMarkdownAtCursor('*', '*', '기울임 텍스트');
+                    break;
+                case 'underline':
+                    insertMarkdownAtCursor('<u>', '</u>', '밑줄 텍스트');
+                    break;
+                case 'strike':
+                    insertMarkdownAtCursor('~~', '~~', '취소선 텍스트');
+                    break;
+                case 'quote':
+                    insertMarkdownAtCursor('\n> ', '\n', '인용 문구를 입력하세요');
+                    break;
+                case 'ul':
+                    insertMarkdownAtCursor('\n* ', '\n', '목록 항목');
+                    break;
+                case 'ol':
+                    insertMarkdownAtCursor('\n1. ', '\n', '순서 항목');
+                    break;
+                case 'hr':
+                    insertMarkdownAtCursor('\n\n---\n\n', '');
+                    break;
+                case 'table':
+                    insertMarkdownAtCursor('\n| 구분 | 분석 항목 | 평가 및 비고 |\n| --- | --- | --- |\n| 1. 학업성취도 | 국영수 보통학력 이상 92% | 최상위권 유지 |\n| 2. 특목고 진학 | 과고 5명, 외고 12명 배출 | 전년 대비 15% 상승 |\n\n', '');
+                    break;
+                case 'link':
+                    const linkUrl = prompt('연결할 웹사이트 링크(URL)를 입력하세요:', 'https://');
+                    if (linkUrl && linkUrl.trim()) {
+                        insertMarkdownAtCursor('[', `](${linkUrl.trim()})`, '링크 텍스트');
+                    }
+                    break;
+            }
+        });
+    });
+
+    // 탭 모드 전환
+    const tabWrite = document.getElementById('btnBlogEditorTabWrite');
+    if (tabWrite) tabWrite.addEventListener('click', () => setBlogEditorMode('write'));
+
+    const tabPreview = document.getElementById('btnBlogEditorTabPreview');
+    if (tabPreview) tabPreview.addEventListener('click', () => setBlogEditorMode('preview'));
+
+    // 글자 수 실시간 카운터
+    const contentTextarea = document.getElementById('blogPostContent');
+    if (contentTextarea) {
+        contentTextarea.addEventListener('input', updateBlogEditorCharCount);
+
+        // 클립보드 붙여넣기 (Ctrl+V) 스마트 변환 (이미지 업로드 + HTML/서식/표 -> 마크다운 자동 변환)
+        contentTextarea.addEventListener('paste', (e) => {
+            const clipboardData = e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData);
+            if (!clipboardData) return;
+
+            // 1) 클립보드에 이미지 파일이 있는지 확인 (화면 캡처 스크린샷 등)
+            const items = clipboardData.items;
+            if (items) {
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type && items[i].type.indexOf('image') !== -1) {
+                        const file = items[i].getAsFile();
+                        if (file) {
+                            e.preventDefault();
+                            uploadBlogImageFile(file, false);
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // 2) 클립보드에 서식 HTML(웹페이지, 워드, 노션, ChatGPT 출력 등)이 있는지 확인
+            const html = clipboardData.getData('text/html');
+            const plainText = clipboardData.getData('text/plain');
+
+            if (html && html.trim()) {
+                const md = htmlToMarkdown(html);
+                // HTML 변환 결과에 마크다운 서식이나 구조가 포함되어 있거나 일반 텍스트와 다를 경우 마크다운으로 자동 대체
+                if (md && md.trim() && (md !== plainText.trim() || md.includes('#') || md.includes('**') || md.includes('|') || md.includes('![') || md.includes('* '))) {
+                    e.preventDefault();
+                    insertMarkdownAtCursor(md, '');
+
+                    // 본문 내 이미지 마크다운 자동 감지 및 첨부 목록 등록
+                    const imgRegex = /!\[(.*?)\]\((.*?)\)/g;
+                    let m;
+                    let hasNewImg = false;
+                    while ((m = imgRegex.exec(md)) !== null) {
+                        const alt = m[1];
+                        const url = m[2];
+                        if (!currentAttachedBlogImages.some(img => img.url === url)) {
+                            currentAttachedBlogImages.push({ url, name: alt || '이미지', filename: url.split('/').pop() });
+                            hasNewImg = true;
+                        }
+                    }
+                    if (hasNewImg) renderAttachedBlogImages();
+
+                    const statusEl = document.getElementById('blogEditorStatusMessage');
+                    if (statusEl) {
+                        statusEl.innerHTML = '<span style="color: #4338ca; font-weight: 700;">⚡ 복사한 글의 서식과 표가 마크다운으로 자동 변환되었습니다! [👁️ 마크다운 미리보기]에서 확인하세요.</span>';
+                        setTimeout(() => {
+                            if (statusEl) statusEl.innerHTML = '<span>💡 웹페이지/워드/노션 글을 그대로 붙여넣으면 마크다운으로 자동 변환됩니다.</span>';
+                        }, 5000);
+                    }
+                    return;
+                }
+            }
+
+            // 3) 엑셀/스프레드시트에서 복사한 탭(TSV) 분할 표인 경우 마크다운 표로 자동 변환
+            if (plainText && plainText.includes('\t') && plainText.includes('\n')) {
+                const lines = plainText.trim().split('\n');
+                if (lines.length >= 2 && lines.some(l => l.includes('\t'))) {
+                    e.preventDefault();
+                    const mdTable = convertTsvToMarkdownTable(plainText);
+                    insertMarkdownAtCursor('\n\n' + mdTable + '\n\n', '');
+                    const statusEl = document.getElementById('blogEditorStatusMessage');
+                    if (statusEl) {
+                        statusEl.innerHTML = '<span style="color: #4338ca; font-weight: 700;">📊 스프레드시트 데이터가 마크다운 표로 자동 변환되었습니다!</span>';
+                    }
+                    return;
+                }
+            }
+        });
+    }
+
+    // 마크다운 자동 변환 버튼 (기존 입력 텍스트 또는 클립보드 서식 일괄 변환)
+    const btnConvertMd = document.getElementById('btnConvertHtmlToMd');
+    if (btnConvertMd && contentTextarea) {
+        btnConvertMd.addEventListener('click', () => {
+            const currentVal = contentTextarea.value;
+            if (!currentVal.trim()) {
+                alert('변환할 본문 내용이 없습니다. 웹문서나 워드에서 복사한 글을 붙여넣으신 후 클릭하세요.');
+                return;
+            }
+
+            let converted = currentVal;
+            // 1. 혹시 HTML 태그가 포함되어 있다면 HTML -> 마크다운 변환
+            if (/<[a-z][\s\S]*>/i.test(currentVal)) {
+                converted = htmlToMarkdown(currentVal);
+            } else if (currentVal.includes('\t') && currentVal.includes('\n')) {
+                // 2. 탭 구분 표(TSV)가 있다면 표 변환
+                converted = convertTsvToMarkdownTable(currentVal);
+            }
+
+            if (converted !== currentVal) {
+                contentTextarea.value = converted;
+                updateBlogEditorCharCount();
+                alert('마크다운 문법으로 변환되었습니다! 상단 [👁️ 마크다운 미리보기] 탭에서 확인해 보세요.');
+            } else {
+                alert('이미 마크다운 형식으로 작성되어 있거나 추가 변환이 필요하지 않은 텍스트입니다.');
+            }
+        });
+    }
+
+    // 본문 이미지 파일 첨부 버튼
+    const btnInsertImg = document.getElementById('btnInsertBlogImage');
+    const contentImgInput = document.getElementById('blogContentImageFileInput');
+    if (btnInsertImg && contentImgInput) {
+        btnInsertImg.addEventListener('click', () => contentImgInput.click());
+        contentImgInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                Array.from(e.target.files).forEach(f => uploadBlogImageFile(f, false));
+                contentImgInput.value = '';
+            }
+        });
+    }
+
+    // 외부 이미지 URL 직접 삽입 버튼
+    const btnInsertUrl = document.getElementById('btnInsertBlogImageUrl');
+    if (btnInsertUrl) {
+        btnInsertUrl.addEventListener('click', () => {
+            const url = prompt('삽입할 이미지 URL을 입력하세요:');
+            if (url && url.trim()) {
+                const alt = prompt('이미지 설명(대체 텍스트)을 입력하세요:', '칼럼 이미지') || '칼럼 이미지';
+                insertMarkdownAtCursor(`\n\n![${alt.trim()}](${url.trim()})\n\n`, '');
+                currentAttachedBlogImages.push({ url: url.trim(), name: alt.trim(), filename: url.split('/').pop() });
+                renderAttachedBlogImages();
+            }
+        });
+    }
+
+    // 대표 썸네일 업로드 버튼
+    const btnUploadThumb = document.getElementById('btnUploadThumbnail');
+    const thumbFileInput = document.getElementById('blogThumbnailFileInput');
+    if (btnUploadThumb && thumbFileInput) {
+        btnUploadThumb.addEventListener('click', () => thumbFileInput.click());
+        thumbFileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                uploadBlogImageFile(e.target.files[0], true);
+                thumbFileInput.value = '';
+            }
+        });
+    }
+
+    const thumbTextInput = document.getElementById('blogPostThumbnail');
+    if (thumbTextInput) {
+        thumbTextInput.addEventListener('input', () => updateThumbnailPreview(thumbTextInput.value));
+    }
+
+    // 드래그 앤 드롭 파일 첨부 지원
+    const writePane = document.getElementById('blogEditorWritePane');
+    const dropOverlay = document.getElementById('blogEditorDropOverlay');
+    if (writePane && dropOverlay) {
+        let dragCounter = 0;
+        writePane.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            dragCounter++;
+            dropOverlay.style.display = 'flex';
+        });
+        writePane.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+        writePane.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dragCounter--;
+            if (dragCounter <= 0) {
+                dragCounter = 0;
+                dropOverlay.style.display = 'none';
+            }
+        });
+        writePane.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragCounter = 0;
+            dropOverlay.style.display = 'none';
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                Array.from(e.dataTransfer.files).forEach(f => uploadBlogImageFile(f, false));
+            }
+        });
+    }
+
+    // 등록 전 최종 미리보기 모달 버튼 이벤트
+    const btnOpenFullPreview = document.getElementById('btnOpenBlogFullPreview');
+    if (btnOpenFullPreview) {
+        btnOpenFullPreview.addEventListener('click', window.openBlogFullPreviewModal);
+    }
+
+    const btnCloseFullPreview = document.getElementById('btnCloseBlogFullPreview');
+    if (btnCloseFullPreview) {
+        btnCloseFullPreview.addEventListener('click', window.closeBlogFullPreviewModal);
+    }
+
+    const btnBackEditor = document.getElementById('btnBackToEditor');
+    if (btnBackEditor) {
+        btnBackEditor.addEventListener('click', window.closeBlogFullPreviewModal);
+    }
+
+    const btnConfirmSave = document.getElementById('btnConfirmAndSaveBlogPost');
+    if (btnConfirmSave) {
+        btnConfirmSave.addEventListener('click', async () => {
+            window.closeBlogFullPreviewModal();
+            await window.saveBlogPostAdmin();
+        });
+    }
+
+    const fullPreviewModal = document.getElementById('blogPostFullPreviewModal');
+    if (fullPreviewModal) {
+        fullPreviewModal.addEventListener('click', (e) => {
+            if (e.target === fullPreviewModal) window.closeBlogFullPreviewModal();
+        });
+    }
+}
+
 // Initial load on script execution if DOM ready
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
     initAdminAuth();
@@ -4227,6 +5378,7 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
     loadStoredRealEstate();
     loadUsers();
     loadBusinessManagement();
+    initBlogAdminEvents();
 } else {
     window.addEventListener('DOMContentLoaded', () => {
         initAdminAuth();
@@ -4235,6 +5387,7 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
         loadStoredRealEstate();
         loadUsers();
         loadBusinessManagement();
+        initBlogAdminEvents();
     });
 }
 

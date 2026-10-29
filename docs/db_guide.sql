@@ -133,3 +133,48 @@ CREATE POLICY "Allow public insert access" ON public.simulation_scraps FOR INSER
 CREATE POLICY "Allow public update access" ON public.simulation_scraps FOR UPDATE USING (true);
 CREATE POLICY "Allow public delete access" ON public.simulation_scraps FOR DELETE USING (true);
 
+-- 7. 블로그 & 학군 칼럼 테이블 (blog_posts)
+CREATE TABLE IF NOT EXISTS public.blog_posts (
+    id TEXT PRIMARY KEY,
+    slug TEXT UNIQUE,
+    title TEXT NOT NULL,
+    category VARCHAR(50) NOT NULL DEFAULT '학군 분석',
+    summary TEXT,
+    content TEXT NOT NULL,
+    thumbnail TEXT,
+    images JSONB DEFAULT '[]'::jsonb,
+    tags JSONB DEFAULT '[]'::jsonb,
+    author VARCHAR(100) DEFAULT '학업여지도 리서치팀',
+    author_role VARCHAR(100) DEFAULT '수석연구원',
+    read_time VARCHAR(30) DEFAULT '4분',
+    views INTEGER DEFAULT 0,
+    likes INTEGER DEFAULT 0,
+    is_published BOOLEAN DEFAULT true,
+    related_schools JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 기존 blog_posts 테이블에 images 컬럼 마이그레이션
+ALTER TABLE public.blog_posts ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
+
+CREATE INDEX IF NOT EXISTS idx_blog_posts_category ON public.blog_posts (category);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_created_at ON public.blog_posts (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_views ON public.blog_posts (views DESC);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_is_published ON public.blog_posts (is_published);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_tags ON public.blog_posts USING gin (tags);
+
+ALTER TABLE public.blog_posts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public can view published blog posts" ON public.blog_posts;
+DROP POLICY IF EXISTS "Allow anon full access for blog management" ON public.blog_posts;
+
+CREATE POLICY "Public can view published blog posts"
+    ON public.blog_posts FOR SELECT USING (is_published = true OR auth.role() = 'authenticated');
+
+CREATE POLICY "Allow anon full access for blog management"
+    ON public.blog_posts FOR ALL USING (true) WITH CHECK (true);
+
+GRANT ALL ON TABLE public.blog_posts TO anon;
+GRANT ALL ON TABLE public.blog_posts TO authenticated;
+GRANT ALL ON TABLE public.blog_posts TO service_role;
+

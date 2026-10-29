@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- 메인 학업여지도 지도 페이지 -->
+  <url>
+    <loc>https://learnmap.co.kr/index.html</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- 학업여지도 칼럼 & 리서치 블로그 메인 -->
+  <url>
+    <loc>https://learnmap.co.kr/blog.html</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- 파트너 센터 비즈니스 소개 -->
+  <url>
+    <loc>https://learnmap.co.kr/business.html</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- 주요 분석 칼럼 1: 강남·서초 학군 분석 리포트 -->
+  <url>
+    <loc>https://learnmap.co.kr/blog.html?id=post-gangnam-seocho-2026</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- 주요 분석 칼럼 2: 고교학점제 전면도입 입시 전략 가이드 -->
+  <url>
+    <loc>https://learnmap.co.kr/blog.html?id=post-highschool-credit-strategy</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- 주요 분석 칼럼 3: 2026 특목·자사고 vs 일반고 선택 가이드 -->
+  <url>
+    <loc>https://learnmap.co.kr/blog.html?id=post-special-purpose-highschool</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>

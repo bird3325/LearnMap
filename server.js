@@ -14,6 +14,10 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(express.json({ limit: '50mb' })); // Allow large payloads for bulk school data
+// 첨부 이미지 정적 서빙
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // 로컬 개발 환경에서만 정적 파일 서빙 (Vercel 배포 시에는 Vercel CDN이 dist 정적 자산을 서빙하므로 람다 번들 비대화 방지)
 if (!process.env.VERCEL) {
     app.use(express.static(path.join(__dirname)));
@@ -29,6 +33,7 @@ const BUSINESSES_PATH = path.join(DATA_DIR, 'businesses.json');
 const SUBSCRIPTIONS_PATH = path.join(DATA_DIR, 'subscriptions.json');
 const ANALYTICS_PATH = path.join(DATA_DIR, 'analytics_events.json');
 const INQUIRIES_PATH = path.join(DATA_DIR, 'inquiries.json');
+const BLOG_POSTS_PATH = path.join(DATA_DIR, 'blog_posts.json');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -71,13 +76,44 @@ function classifyHousingType(item) {
     const rawN = (item.rawName || item.name || '').trim();
     const purps = `${item.mainPurps || item.mainPurpsCdNm || ''} ${item.etcPurps || ''}`.trim();
     const flr = parseInt(item.grndFlrCnt || item.flr, 10) || 0;
+    const kapt = item.kaptCode || item.kapt_code || '';
+    const hCnt = parseInt(item.householdCount || item.households, 10) || 0;
+    const dCnt = parseInt(item.totalDongCnt || item.dongs, 10) || 0;
 
     // 1. 오피스텔 (최우선)
     if (cleanN.includes('오피스텔') || rawN.includes('오피스텔') || purps.includes('오피스텔') || item.type === 'offi') {
         return 'offi';
     }
 
-    // 2. 건축물대장 공식 주용도/기타용도가 명시된 경우 (공공 데이터 수집 시 최우선 반영)
+    // 2. [공식 검증 1] 한국부동산원 공식 공동주택(아파트) 단지코드(kaptCode)가 있는 경우 무조건 아파트!
+    if (kapt) {
+        return 'apt';
+    }
+
+    // 3. [공식 검증 2] 대단지 아파트 구조 (세대수 100세대 이상 또는 2개 동 이상)
+    if (hCnt >= 100 || dCnt >= 2) {
+        return 'apt';
+    }
+
+    // 4. [공식 검증 3] 아파트 명시 키워드 및 대한민국 주요 아파트 브랜드
+    const isAptExplicit = cleanN.includes('아파트') || rawN.includes('아파트') || cleanN.includes('APT') || cleanN.includes('apt') || cleanN.endsWith('단지');
+    const isMajorAptBrand = /(?:동일스위트|동일하이빌|스위첸|kcc스위첸|베르디움|호반베르디움|호반써밋|호반|푸르지오|자이|래미안|힐스테이트|아이파크|롯데캐슬|더샵|e편한세상|이편한세상|위브|두산위브|센트레빌|우미린|중흥|중흥s클래스|대방|대방디엠시티|포레나|SK뷰|skview|휴먼시아|주공|브라운스톤|하늘채|어울림|금호어울림|꿈에그린|한화꿈에그린|데시앙|반도유보라|유보라|모아미래도|골드클래스|대원칸타빌|칸타빌|한라비발디|비발디|쌍용예가|풍림아이원|아이원|루첸|서희스타힐스|스타힐스|한양수자인|수자인|이안|동문굿모닝힐|굿모닝힐|파밀리에|신동아파밀리에|리가|코아루|센트럴파크|더퍼스트|센트럴단지|마을|타운|맨션)/i.test(cleanN);
+
+    // 단지명 끝이 차수(예: 1차, 2차)인 경우 (예: '고양삼송 동일스위트 1차', '대성센트레빌 2차')
+    const isNumberedApart = /(?:\d+차|\d+단지)$/.test(cleanN);
+
+    if (isAptExplicit) {
+        if (cleanN.endsWith('빌라') || cleanN.endsWith('연립') || cleanN.endsWith('다세대')) return 'rh';
+        return 'apt';
+    }
+
+    if (isMajorAptBrand || isNumberedApart) {
+        if (!/(?:빌라|연립|다세대)$/i.test(cleanN)) {
+            return 'apt';
+        }
+    }
+
+    // 5. 건축물대장 공식 주용도/기타용도가 명시된 경우
     if (purps) {
         if (purps.includes('다세대') || purps.includes('연립')) {
             return 'rh';
@@ -85,47 +121,30 @@ function classifyHousingType(item) {
         if (purps.includes('단독') || purps.includes('다가구') || purps.includes('상가주택')) {
             return 'sh';
         }
-        if (purps.includes('아파트') && !/(?:빌라|연립|다세대|타운하우스|맨션)/i.test(cleanN)) {
+        if (purps.includes('아파트') && !/(?:빌라|연립|다세대|타운하우스)/i.test(cleanN)) {
             return 'apt';
         }
     }
 
-    // 3. 다세대/연립/빌라 명시 키워드
-    const isVillaKeyword = /(?:빌라|연립|다세대|맨션|하이츠|빌리지|타운하우스|아트빌|에스빌|베스트타운|파크뷰|그린빌|노블리안|하임|홈스|스테이|스위트|캐슬빌|샤인빌|골드빌|파인하우스|포근애|베르네|여림채|라비앙|하우스|펠리스|팰리스|팰리체|벨리체|아우름|리안|헤리티지|골드스톤|모던하우스|드림하우스|뷰테크|다빈치|솔베이|오스카|아델|팰리|노블|더홈|예다움|라움|에이원|소산|삼진|동남|럭키|대하|행복아름|대림아트|보원|부민|현대타운|신풍|도양|인화|유원|한일|두리|로얄|서광|백산|신성|빌\b|홈\b)/i.test(cleanN);
+    // 6. 다세대/연립/빌라 명시 키워드 (순수 빌라/연립 전용)
+    const isVillaKeyword = /(?:빌라|연립|다세대|타운하우스|아트빌|에스빌|베스트타운|그린빌|노블리안|하임|홈스|스테이|캐슬빌|샤인빌|골드빌|파인하우스|포근애|베르네|여림채|라비앙|하우스|팰리체|벨리체|아우름|리안|골드스톤|모던하우스|드림하우스|뷰테크|다빈치|솔베이|오스카|아델|팰리|노블|더홈|예다움|라움|에이원|소산|대하|행복아름|대림아트|보원|부민|도양|인화|두리|빌\b|홈\b)/i.test(cleanN);
 
-    // 4. 아파트 명시 키워드
-    const isAptExplicit = cleanN.includes('아파트') || rawN.includes('아파트') || cleanN.includes('APT') || cleanN.includes('apt') || cleanN.endsWith('단지');
-    const isMajorAptBrand = /(?:휴먼시아|주공|브라운스톤|래미안|자이|푸르지오|힐스테이트|e편한세상|이편한세상|롯데캐슬|아이파크|더샵|위브|센트레빌|우미린|호반|중흥|대방|두산위브|포레나|SK뷰|skview)/i.test(cleanN);
-
-    // 4-1. 이름에 '아파트'가 명시되어 있는 경우
-    if (isAptExplicit) {
-        if (cleanN.endsWith('빌라') || cleanN.endsWith('연립') || cleanN.endsWith('다세대')) return 'rh';
-        return 'apt';
-    }
-
-    // 4-2. 빌라/다세대 키워드가 포함된 경우 -> 무조건 rh (아파트 명칭 없는 더샵하우스, 팰리스 등은 rh)
     if (isVillaKeyword) {
         return 'rh';
     }
 
-    // 4-3. 아파트 브랜드명이 있고 빌라 키워드가 없는 경우
-    if (isMajorAptBrand) {
-        return 'apt';
-    }
-
-    // 4-4. 순수 지번 주택 (예: '여월동 8-20번지 주택') 및 단독/다가구/원룸/상가주택
+    // 7. 순수 지번 주택 및 단독/다가구/원룸/상가주택
     if (cleanN.includes('번지') || cleanN.includes('단독') || cleanN.includes('다가구') || cleanN.includes('원룸') || cleanN.includes('상가') || cleanN.endsWith('상가')) {
         return 'sh';
     }
 
-    // 4-5. 명칭이 있는 일반 주택 (예: '연성주택', '보령주택', '화창주택', '대진주택', '오한주택')
+    // 8. 명칭이 있는 일반 주택
     if (cleanN.endsWith('주택')) {
-        // 전국 행정구역명(동/읍/면/리/가)+주택 또는 지번 주택은 단독·다가구(sh)
         if (/(?:[가-힣]+(?:동|읍|면|리|\d+가)|번지)\s*주택/.test(cleanN)) return 'sh';
         return 'rh';
     }
 
-    // 4-6. 층수 기준
+    // 9. 층수 기준 (5층 이상은 건축법상 아파트)
     if (flr >= 5) return 'apt';
     if (flr > 0 && flr <= 4) return 'rh';
 
@@ -526,25 +545,12 @@ async function geocodeKakaoPrecise(item, kakaoKey) {
 function saveRealEstateJsonFiles(items) {
     // 1. 단일 마스터 파일 저장 (호환성 유지)
     fs.writeFileSync(REAL_ESTATE_PATH, JSON.stringify(items, null, 2), 'utf8');
-    const publicPath1 = path.join(__dirname, 'public', 'data', 'realestate_seoul.json');
-    if (fs.existsSync(path.dirname(publicPath1))) {
-        fs.writeFileSync(publicPath1, JSON.stringify(items, null, 2), 'utf8');
-    }
-    const publicPath2 = path.join(__dirname, 'public', 'src', 'data', 'realestate_seoul.json');
-    if (fs.existsSync(path.dirname(publicPath2))) {
-        fs.writeFileSync(publicPath2, JSON.stringify(items, null, 2), 'utf8');
-    }
 
-    // 2. 시·군·구별 분할 파일 동기화
+    // 2. 시·군·구별 분할 파일 동기화 (오직 src/data/realestate 에만 저장하여 번들 팽창 방지)
     try {
-        const targetDirs = [
-            REAL_ESTATE_DIR,
-            path.join(__dirname, 'public', 'data', 'realestate'),
-            path.join(__dirname, 'public', 'src', 'data', 'realestate')
-        ];
-        targetDirs.forEach(dir => {
-            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        });
+        if (!fs.existsSync(REAL_ESTATE_DIR)) {
+            fs.mkdirSync(REAL_ESTATE_DIR, { recursive: true });
+        }
 
         const regionMap = new Map();
         for (const item of items) {
@@ -581,23 +587,12 @@ function saveRealEstateJsonFiles(items) {
                 count: group.items.length
             });
             const jsonStr = JSON.stringify(group.items, null, 2);
-            targetDirs.forEach(dir => {
-                fs.writeFileSync(path.join(dir, fileName), jsonStr, 'utf8');
-            });
+            fs.writeFileSync(path.join(REAL_ESTATE_DIR, fileName), jsonStr, 'utf8');
         }
 
         indexList.sort((a, b) => a.sigungu.localeCompare(b.sigungu, 'ko'));
         const indexJson = JSON.stringify(indexList, null, 2);
-        const indexPaths = [
-            REAL_ESTATE_REGIONS_PATH,
-            path.join(__dirname, 'public', 'data', 'realestate_regions.json'),
-            path.join(__dirname, 'public', 'src', 'data', 'realestate_regions.json')
-        ];
-        indexPaths.forEach(p => {
-            if (fs.existsSync(path.dirname(p))) {
-                fs.writeFileSync(p, indexJson, 'utf8');
-            }
-        });
+        fs.writeFileSync(REAL_ESTATE_REGIONS_PATH, indexJson, 'utf8');
     } catch (splitSyncErr) {
         console.error('[RealEstate Split Save Error]:', splitSyncErr.message);
     }
@@ -2171,8 +2166,8 @@ app.post('/api/realestate/collect-master', async (req, res) => {
         const finalList = cleanedList;
         const wasStopped = isStopped();
 
-        sendLog(`💾 [DB 파일 동기화] realestate_seoul.json 및 배포용 DB 저장 중 (총 ${finalList.length.toLocaleString()}건)...`, 96);
-        fs.writeFileSync(REAL_ESTATE_PATH, JSON.stringify(finalList, null, 2), 'utf8');
+        sendLog(`💾 [DB 파일 동기화] realestate_seoul.json 및 시·군·구별 분할 DB 저장 중 (총 ${finalList.length.toLocaleString()}건)...`, 96);
+        saveRealEstateJsonFiles(finalList);
 
         // public 복사본 동기화
         const publicPath1 = path.join(__dirname, 'public', 'data', 'realestate_seoul.json');
@@ -6266,6 +6261,560 @@ app.get('/api/admin/subscriptions', (req, res) => {
 // Serve admin.html on /admin
 app.get(['/admin', '/admin/'], (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+// ==============================================================================
+// 학업여지도 칼럼 & 리서치 블로그 (Supabase DB 연동 및 API)
+// ==============================================================================
+
+// DB 레코드 -> 클라이언트 표준 형식 변환 헬퍼
+function mapDbRowToBlogPost(row) {
+    if (!row) return null;
+    return {
+        id: String(row.id),
+        slug: row.slug || String(row.id),
+        title: row.title || '',
+        category: row.category || '학군 분석',
+        summary: row.summary || '',
+        content: row.content || '',
+        thumbnail: row.thumbnail || '',
+        tags: Array.isArray(row.tags) ? row.tags : (typeof row.tags === 'string' ? row.tags.split(',').map(t => t.trim()).filter(Boolean) : []),
+        author: row.author || '학업여지도 리서치팀',
+        authorRole: row.author_role || row.authorRole || '수석연구원',
+        readTime: row.read_time || row.readTime || '4분',
+        views: Number(row.views) || 0,
+        likes: Number(row.likes) || 0,
+        createdAt: row.created_at || row.createdAt || new Date().toISOString(),
+        updatedAt: row.updated_at || row.updatedAt || new Date().toISOString(),
+        isPublished: row.is_published !== undefined ? row.is_published : (row.isPublished !== undefined ? row.isPublished : true),
+        relatedSchools: Array.isArray(row.related_schools) ? row.related_schools : (Array.isArray(row.relatedSchools) ? row.relatedSchools : []),
+        images: Array.isArray(row.images) ? row.images : []
+    };
+}
+
+// 1. Supabase에서 글 목록 조회 헬퍼
+async function fetchBlogPostsFromDb(filters = {}) {
+    try {
+        let url = `${SUPABASE_URL}/rest/v1/blog_posts?select=*`;
+
+        if (filters.admin !== 'true') {
+            url += `&is_published=eq.true`;
+        }
+        if (filters.category && filters.category !== 'all') {
+            url += `&category=eq.${encodeURIComponent(filters.category)}`;
+        }
+        if (filters.sort === 'popular') {
+            url += `&order=views.desc,created_at.desc`;
+        } else if (filters.sort === 'likes') {
+            url += `&order=likes.desc,created_at.desc`;
+        } else {
+            url += `&order=created_at.desc`;
+        }
+
+        const response = await fetch(url, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            return Array.isArray(data) ? data.map(mapDbRowToBlogPost) : [];
+        } else {
+            const errText = await response.text();
+            console.warn('[Supabase Blog Query Warning]:', response.status, errText);
+            return null; // DB 테이블 미생성 또는 에러 시 fallback
+        }
+    } catch (err) {
+        console.warn('[Supabase Blog Connection Error]:', err.message);
+        return null;
+    }
+}
+
+// 2. Supabase에서 단일 글 조회 헬퍼
+async function fetchBlogPostByIdFromDb(id) {
+    try {
+        const url = `${SUPABASE_URL}/rest/v1/blog_posts?id=eq.${encodeURIComponent(id)}&select=*`;
+        const response = await fetch(url, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data && data.length > 0) {
+                return mapDbRowToBlogPost(data[0]);
+            }
+        }
+        return null;
+    } catch (err) {
+        console.warn('[Supabase Blog Get Error]:', err.message);
+        return null;
+    }
+}
+
+// 3. Supabase 조회수 증가 (PATCH)
+async function incrementBlogPostViewInDb(id, currentViews = 0) {
+    try {
+        const nextViews = currentViews + 1;
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/blog_posts?id=eq.${encodeURIComponent(id)}`, {
+            method: 'PATCH',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({ views: nextViews })
+        });
+        if (response.ok) {
+            const data = await response.json();
+            return data && data.length > 0 ? data[0].views : nextViews;
+        }
+    } catch (err) {
+        console.warn('[Supabase Blog View Increment Warning]:', err.message);
+    }
+    return null;
+}
+
+// 4. Supabase 새 글 등록 (INSERT)
+async function insertBlogPostToDb(post) {
+    try {
+        const dbPayload = {
+            id: post.id,
+            slug: post.slug || post.id,
+            title: post.title,
+            category: post.category,
+            summary: post.summary || '',
+            content: post.content || '',
+            thumbnail: post.thumbnail || '',
+            tags: Array.isArray(post.tags) ? post.tags : [],
+            author: post.author || '학업여지도 리서치팀',
+            author_role: post.authorRole || '수석연구원',
+            read_time: post.readTime || '4분',
+            views: 0,
+            likes: 0,
+            is_published: post.isPublished !== false,
+            related_schools: Array.isArray(post.relatedSchools) ? post.relatedSchools : [],
+            images: Array.isArray(post.images) ? post.images : [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/blog_posts`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(dbPayload)
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            return data && data.length > 0 ? mapDbRowToBlogPost(data[0]) : mapDbRowToBlogPost(dbPayload);
+        } else {
+            const err = await response.text();
+            console.warn('[Supabase Blog Insert Warning]:', response.status, err);
+            return null;
+        }
+    } catch (err) {
+        console.warn('[Supabase Blog Insert Exception]:', err.message);
+        return null;
+    }
+}
+
+// 5. Supabase 글 수정 (PATCH)
+async function updateBlogPostInDb(id, updateData) {
+    try {
+        const dbPayload = {
+            updated_at: new Date().toISOString()
+        };
+        if (updateData.title !== undefined) dbPayload.title = updateData.title;
+        if (updateData.category !== undefined) dbPayload.category = updateData.category;
+        if (updateData.summary !== undefined) dbPayload.summary = updateData.summary;
+        if (updateData.content !== undefined) dbPayload.content = updateData.content;
+        if (updateData.thumbnail !== undefined) dbPayload.thumbnail = updateData.thumbnail;
+        if (updateData.tags !== undefined) dbPayload.tags = Array.isArray(updateData.tags) ? updateData.tags : [];
+        if (updateData.author !== undefined) dbPayload.author = updateData.author;
+        if (updateData.authorRole !== undefined || updateData.author_role !== undefined) {
+            dbPayload.author_role = updateData.authorRole || updateData.author_role;
+        }
+        if (updateData.readTime !== undefined || updateData.read_time !== undefined) {
+            dbPayload.read_time = updateData.readTime || updateData.read_time;
+        }
+        if (updateData.isPublished !== undefined || updateData.is_published !== undefined) {
+            dbPayload.is_published = updateData.isPublished !== undefined ? updateData.isPublished : updateData.is_published;
+        }
+        if (updateData.relatedSchools !== undefined || updateData.related_schools !== undefined) {
+            dbPayload.related_schools = updateData.relatedSchools || updateData.related_schools;
+        }
+        if (updateData.images !== undefined) {
+            dbPayload.images = Array.isArray(updateData.images) ? updateData.images : [];
+        }
+
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/blog_posts?id=eq.${encodeURIComponent(id)}`, {
+            method: 'PATCH',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(dbPayload)
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            return data && data.length > 0 ? mapDbRowToBlogPost(data[0]) : null;
+        }
+    } catch (err) {
+        console.warn('[Supabase Blog Update Warning]:', err.message);
+    }
+    return null;
+}
+
+// 6. Supabase 글 삭제 (DELETE)
+async function deleteBlogPostFromDb(id) {
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/blog_posts?id=eq.${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        return response.ok;
+    } catch (err) {
+        console.warn('[Supabase Blog Delete Warning]:', err.message);
+        return false;
+    }
+}
+
+// 1. 블로그 페이지 서빙 (/blog, /blog/)
+app.get(['/blog', '/blog/'], (req, res) => {
+    res.sendFile(path.join(__dirname, 'blog.html'));
+});
+
+// 2. 블로그 글 목록 조회 (Supabase DB 우선 조회)
+app.get('/api/blog/posts', async (req, res) => {
+    try {
+        const { category, search, sort, admin } = req.query;
+
+        // 1) Supabase DB 조회 시도
+        let posts = await fetchBlogPostsFromDb({ category, sort, admin });
+
+        // 2) DB 미생성/연결 실패 시 로컬 파일 폴백
+        if (posts === null) {
+            console.log('[Blog API] Supabase DB 미응답 -> 로컬 JSON 저장소에서 조회합니다.');
+            posts = readJsonFileSafe(BLOG_POSTS_PATH, []);
+            if (admin !== 'true') {
+                posts = posts.filter(p => p.isPublished !== false && p.is_published !== false);
+            }
+            if (category && category !== 'all') {
+                posts = posts.filter(p => p.category === category);
+            }
+            if (sort === 'popular') {
+                posts.sort((a, b) => (b.views || 0) - (a.views || 0));
+            } else if (sort === 'likes') {
+                posts.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+            } else {
+                posts.sort((a, b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at));
+            }
+        }
+
+        // 검색 필터 적용
+        if (search && search.trim()) {
+            const q = search.trim().toLowerCase();
+            posts = posts.filter(p => {
+                const titleMatch = (p.title || '').toLowerCase().includes(q);
+                const summaryMatch = (p.summary || '').toLowerCase().includes(q);
+                const contentMatch = (p.content || '').toLowerCase().includes(q);
+                const tagMatch = Array.isArray(p.tags) && p.tags.some(t => t.toLowerCase().includes(q));
+                return titleMatch || summaryMatch || contentMatch || tagMatch;
+            });
+        }
+
+        res.json(posts);
+    } catch (err) {
+        console.error('[Blog API Error] GET /api/blog/posts:', err);
+        res.status(500).json({ error: '게시글 목록을 불러오는 중 오류가 발생했습니다.' });
+    }
+});
+
+// 3. 단일 게시글 상세 조회
+app.get('/api/blog/posts/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // DB 조회 시도
+        let post = await fetchBlogPostByIdFromDb(id);
+        if (!post) {
+            const posts = readJsonFileSafe(BLOG_POSTS_PATH, []);
+            post = posts.find(p => p.id === id || p.slug === id);
+        }
+
+        if (!post) {
+            return res.status(404).json({ error: '게시글을 찾을 수 없습니다.' });
+        }
+        res.json(mapDbRowToBlogPost(post));
+    } catch (err) {
+        console.error('[Blog API Error] GET /api/blog/posts/:id:', err);
+        res.status(500).json({ error: '게시글 조회 중 오류가 발생했습니다.' });
+    }
+});
+
+// 4. 조회수 증가
+app.post('/api/blog/posts/:id/view', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let posts = readJsonFileSafe(BLOG_POSTS_PATH, []);
+        const localPost = posts.find(p => p.id === id);
+        const currentViews = localPost ? (localPost.views || 0) : 0;
+
+        // Supabase DB 업데이트 시도
+        const dbViews = await incrementBlogPostViewInDb(id, currentViews);
+
+        // 로컬 파일 동기화
+        if (localPost) {
+            localPost.views = dbViews !== null ? dbViews : currentViews + 1;
+            writeJsonFileSafe(BLOG_POSTS_PATH, posts);
+        }
+
+        res.json({ success: true, views: dbViews !== null ? dbViews : currentViews + 1 });
+    } catch (err) {
+        res.status(500).json({ error: '조회수 갱신 중 오류가 발생했습니다.' });
+    }
+});
+
+// 5. [관리자] 게시글 생성 (Supabase DB 저장)
+app.post('/api/admin/blog/posts', async (req, res) => {
+    try {
+        const { title, category, summary, content, thumbnail, tags, author, authorRole, readTime, isPublished, relatedSchools, images } = req.body;
+        if (!title || !title.trim()) {
+            return res.status(400).json({ error: '제목은 필수 입력 항목입니다.' });
+        }
+
+        const now = new Date().toISOString();
+        const newPost = {
+            id: `post-${Date.now()}`,
+            slug: `post-${Date.now()}`,
+            title: title.trim(),
+            category: category || '학군 분석',
+            summary: summary || '',
+            content: content || '',
+            thumbnail: thumbnail || '',
+            tags: Array.isArray(tags) ? tags : (typeof tags === 'string' ? tags.split(',').map(t => t.trim()).filter(Boolean) : []),
+            author: author || '학업여지도 리서치팀',
+            authorRole: authorRole || '수석연구원',
+            readTime: readTime || '4분',
+            views: 0,
+            likes: 0,
+            createdAt: now,
+            updatedAt: now,
+            isPublished: isPublished !== false,
+            relatedSchools: Array.isArray(relatedSchools) ? relatedSchools : [],
+            images: Array.isArray(images) ? images : []
+        };
+
+        // 1) Supabase DB Insert 시도
+        const dbInserted = await insertBlogPostToDb(newPost);
+
+        // 2) 로컬 파일 백업 동기화
+        const posts = readJsonFileSafe(BLOG_POSTS_PATH, []);
+        posts.unshift(dbInserted || newPost);
+        writeJsonFileSafe(BLOG_POSTS_PATH, posts);
+
+        res.json({ success: true, post: dbInserted || newPost, dbSynced: !!dbInserted });
+    } catch (err) {
+        console.error('[Blog API Error] POST /api/admin/blog/posts:', err);
+        res.status(500).json({ error: '게시글 등록에 실패했습니다.' });
+    }
+});
+
+// 6. [관리자] 게시글 수정 (Supabase DB 반영)
+app.put('/api/admin/blog/posts/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = req.body;
+
+        // 1) Supabase DB Update 시도
+        const dbUpdated = await updateBlogPostInDb(id, updateData);
+
+        // 2) 로컬 파일 백업 동기화
+        const posts = readJsonFileSafe(BLOG_POSTS_PATH, []);
+        const idx = posts.findIndex(p => p.id === id);
+        if (idx !== -1) {
+            posts[idx] = {
+                ...posts[idx],
+                ...updateData,
+                id,
+                updatedAt: new Date().toISOString()
+            };
+            writeJsonFileSafe(BLOG_POSTS_PATH, posts);
+        }
+
+        res.json({ success: true, post: dbUpdated || (idx !== -1 ? posts[idx] : null), dbSynced: !!dbUpdated });
+    } catch (err) {
+        console.error('[Blog API Error] PUT /api/admin/blog/posts/:id:', err);
+        res.status(500).json({ error: '게시글 수정에 실패했습니다.' });
+    }
+});
+
+// 7. [관리자] 게시글 삭제 (Supabase DB 반영)
+app.delete('/api/admin/blog/posts/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // 1) Supabase DB Delete 시도
+        const dbDeleted = await deleteBlogPostFromDb(id);
+
+        // 2) 로컬 파일 백업 동기화
+        let posts = readJsonFileSafe(BLOG_POSTS_PATH, []);
+        posts = posts.filter(p => p.id !== id);
+        writeJsonFileSafe(BLOG_POSTS_PATH, posts);
+
+        res.json({ success: true, message: '게시글이 삭제되었습니다.', dbSynced: dbDeleted });
+    } catch (err) {
+        console.error('[Blog API Error] DELETE /api/admin/blog/posts/:id:', err);
+        res.status(500).json({ error: '게시글 삭제에 실패했습니다.' });
+    }
+});
+
+// 8. [관리자] 블로그 칼럼 본문/썸네일 이미지 첨부 및 업로드 API
+app.post('/api/admin/blog/upload-image', async (req, res) => {
+    try {
+        const { filename, data, contentType } = req.body;
+        if (!data) {
+            return res.status(400).json({ error: '업로드할 이미지 데이터가 없습니다.' });
+        }
+
+        let matches = typeof data === 'string' ? data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/) : null;
+        let mimeType = contentType || (matches ? matches[1] : 'image/png');
+        let base64Content = matches ? matches[2] : data;
+        let buffer = Buffer.from(base64Content, 'base64');
+
+        let ext = '.png';
+        if (mimeType.includes('jpeg') || mimeType.includes('jpg')) ext = '.jpg';
+        else if (mimeType.includes('webp')) ext = '.webp';
+        else if (mimeType.includes('gif')) ext = '.gif';
+        else if (mimeType.includes('svg')) ext = '.svg';
+        else if (filename && path.extname(filename)) ext = path.extname(filename);
+
+        const safeBaseName = filename ? path.basename(filename, path.extname(filename)).replace(/[^a-zA-Z0-9가-힣_-]/g, '_').slice(0, 30) : 'image';
+        const uniqueFilename = `blog_${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${safeBaseName}${ext}`;
+
+        const publicUploadsDir = path.join(__dirname, 'public', 'uploads', 'blog');
+        const rootUploadsDir = path.join(__dirname, 'uploads', 'blog');
+        const distUploadsDir = path.join(__dirname, 'dist', 'uploads', 'blog');
+
+        [publicUploadsDir, rootUploadsDir].forEach(dir => {
+            if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir, { recursive: true });
+            }
+        });
+        if (fs.existsSync(path.join(__dirname, 'dist')) && !fs.existsSync(distUploadsDir)) {
+            try { fs.mkdirSync(distUploadsDir, { recursive: true }); } catch (e) {}
+        }
+
+        fs.writeFileSync(path.join(publicUploadsDir, uniqueFilename), buffer);
+        fs.writeFileSync(path.join(rootUploadsDir, uniqueFilename), buffer);
+        if (fs.existsSync(distUploadsDir)) {
+            try { fs.writeFileSync(path.join(distUploadsDir, uniqueFilename), buffer); } catch (e) {}
+        }
+
+        const publicUrl = `/uploads/blog/${uniqueFilename}`;
+
+        res.json({
+            success: true,
+            url: publicUrl,
+            filename: uniqueFilename,
+            originalName: filename || uniqueFilename,
+            size: buffer.length,
+            mimeType
+        });
+    } catch (err) {
+        console.error('[Blog Upload API Error]:', err);
+        res.status(500).json({ error: '이미지 업로드 처리에 실패했습니다: ' + err.message });
+    }
+});
+
+// 9. [SEO] 실시간 최신 칼럼 목록을 포함한 동적 sitemap.xml 서빙 API
+app.get('/sitemap.xml', async (req, res) => {
+    try {
+        const domain = (req.headers['x-forwarded-host'] || req.headers.host || 'learnmap.co.kr').split(':')[0];
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+        const baseUrl = `${protocol}://${domain}`;
+
+        // 1) 기본 필수 정적 페이지들
+        const staticPages = [
+            { loc: `${baseUrl}/index.html`, priority: '1.0', changefreq: 'daily', lastmod: new Date().toISOString().slice(0, 10) },
+            { loc: `${baseUrl}/blog.html`, priority: '0.9', changefreq: 'daily', lastmod: new Date().toISOString().slice(0, 10) },
+            { loc: `${baseUrl}/business.html`, priority: '0.7', changefreq: 'monthly', lastmod: '2026-10-29' }
+        ];
+
+        // 2) 발행된 최신 블로그 칼럼 목록 로드
+        let blogPosts = [];
+        try {
+            // DB 또는 로컬 JSON에서 칼럼 로드 시도
+            if (supabase) {
+                const { data } = await supabase.from('blog_posts').select('*').eq('is_published', true).order('created_at', { ascending: false });
+                if (data && data.length > 0) {
+                    blogPosts = data.map(mapDbRowToBlogPost);
+                }
+            }
+        } catch (_) {}
+
+        if (blogPosts.length === 0 && fs.existsSync(BLOG_POSTS_PATH)) {
+            try {
+                const raw = fs.readFileSync(BLOG_POSTS_PATH, 'utf8');
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    blogPosts = parsed.filter(p => p.isPublished !== false);
+                }
+            } catch (_) {}
+        }
+
+        // 칼럼 상세 URL 매핑
+        const postUrls = blogPosts.map(post => {
+            const lastmod = (post.updatedAt || post.createdAt || new Date().toISOString()).slice(0, 10);
+            return {
+                loc: `${baseUrl}/blog.html?id=${encodeURIComponent(post.id || post.slug)}`,
+                priority: '0.8',
+                changefreq: 'weekly',
+                lastmod
+            };
+        });
+
+        // 3) XML 빌드
+        const allUrls = [...staticPages, ...postUrls];
+        const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${allUrls.map(u => `  <url>
+    <loc>${u.loc}</loc>
+    <lastmod>${u.lastmod}</lastmod>
+    <changefreq>${u.changefreq}</changefreq>
+    <priority>${u.priority}</priority>
+  </url>`).join('\n')}
+</urlset>`;
+
+        res.set('Content-Type', 'application/xml');
+        res.send(xmlContent);
+    } catch (err) {
+        console.error('[Sitemap Error]:', err);
+        // 에러 시 public/sitemap.xml 정적 파일 서빙
+        const fallbackPath = path.join(__dirname, 'public', 'sitemap.xml');
+        if (fs.existsSync(fallbackPath)) {
+            res.sendFile(fallbackPath);
+        } else {
+            res.status(500).send('Sitemap generation failed');
+        }
+    }
 });
 
 // Fallback to serve index.html for unknown SPA routes

@@ -1,0 +1,14 @@
+# robots.txt for 학업여지도 (LearnMap)
+# 모든 검색엔진 크롤러 허용 및 관리자 페이지 수집 제외
+
+User-agent: *
+Allow: /
+Allow: /blog.html
+Allow: /business.html
+Allow: /uploads/
+Disallow: /admin.html
+Disallow: /api/admin/
+Disallow: /scratch/
+
+# 사이트맵 경로 안내 (도메인 연결 시 실제 도메인으로 자동 대응)
+Sitemap: /sitemap.xml

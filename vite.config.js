@@ -56,6 +56,10 @@ function utf8HeadersPlugin() {
           const query = req.url.includes('?') ? '?' + req.url.split('?')[1] : '';
           req.url = '/business.html' + query;
         }
+        if (cleanUrl === '/blog' || cleanUrl === '/blog/') {
+          const query = req.url.includes('?') ? '?' + req.url.split('?')[1] : '';
+          req.url = '/blog.html' + query;
+        }
 
         const origSetHeader = res.setHeader;
         res.setHeader = function (name, val) {
@@ -109,7 +113,8 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         admin: resolve(__dirname, 'admin.html'),
-        business: resolve(__dirname, 'business.html')
+        business: resolve(__dirname, 'business.html'),
+        blog: resolve(__dirname, 'blog.html')
       }
     }
   }

@@ -62,7 +62,7 @@
         <!-- Top Right Floating Settings / Auth Login Button -->
         <button id="btnOpenSettings" class="floating-action-btn" style="position: absolute; right: 74px; top: 24px;"
             data-title="회원가입 / 로그인 설정" aria-label="로그인 및 설정"
-            onclick="const s = document.getElementById('settingsModal'); const nm = document.getElementById('neisModal'); if (nm) nm.style.display = 'none'; const t = document.getElementById('tutorialSidebarCard'); if (t) t.style.display = 'none'; const sb = document.querySelector('.sidebar-section'); if (sb && sb.style.display === 'none' && typeof toggleSidebar === 'function') toggleSidebar(); s.style.display = s.style.display === 'none' ? 'block' : 'none'; if (typeof updateAuthUI === 'function') updateAuthUI();">
+            onclick="if(typeof window.toggleSettingsModal === 'function') window.toggleSettingsModal(); else { const s = document.getElementById('settingsModal'); const nm = document.getElementById('neisModal'); if (nm) nm.style.display = 'none'; const t = document.getElementById('tutorialSidebarCard'); if (t) t.style.display = 'none'; const sb = document.querySelector('.sidebar-section'); if (sb && sb.style.display === 'none' && typeof toggleSidebar === 'function') toggleSidebar(); s.style.display = s.style.display === 'none' ? 'block' : 'none'; if (typeof updateAuthUI === 'function') updateAuthUI(); }">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>

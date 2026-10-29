@@ -538,7 +538,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Supabase DB 자녀 프로필 및 성적 데이터 동기화 (user_neis_profiles & user_student_grades)
-    async function loadChildProfilesFromSupabase() {
+    async function loadChildProfilesFromSupabase(options = {}) {
         try {
             const userId = await getEffectiveUserId();
             const url = `${DB_SUPABASE_URL}/rest/v1/user_neis_profiles?user_id=eq.${userId}&select=*,user_student_grades(*)&order=created_at.asc`;
@@ -633,8 +633,8 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.removeItem('learnmap_child_profiles');
 
             refreshChildSelectUI();
-            if (typeof window.centerMapOnChildSchool === 'function') {
-                window.centerMapOnChildSchool();
+            if (options && options.centerMap === true && typeof window.centerMapOnChildSchool === 'function') {
+                window.centerMapOnChildSchool(false);
             }
         } catch (err) {
             console.error('DB 자녀 목록 동기화 오류:', err);
@@ -642,7 +642,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.loadChildProfilesFromSupabase = loadChildProfilesFromSupabase;
 
-    function centerMapOnChildSchool() {
+    function centerMapOnChildSchool(force = false) {
         let currentUser = (typeof authService !== 'undefined' && authService.getCurrentUser) ? authService.getCurrentUser() : null;
         if (!currentUser) {
             try {
@@ -650,6 +650,15 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch(e) {}
         }
         if (!currentUser || localStorage.getItem('learnmap_logged_out')) {
+            return false;
+        }
+
+        // 설정 모달이 열려 있거나, 이미 학교가 선택되어 활성화된 상태라면 사용자 탐색 상태 보존 (강제 옵션이 아닐 때)
+        const settingsModal = document.getElementById('settingsModal');
+        const isSettingsOpen = settingsModal && (settingsModal.style.display !== 'none' && settingsModal.style.display !== '');
+        const isSchoolSelected = !!(window.selectedTargetSchool || (typeof orchestrator !== 'undefined' && orchestrator.state?.selectedSchool));
+
+        if (!force && (isSettingsOpen || isSchoolSelected)) {
             return false;
         }
 
@@ -742,15 +751,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const targetId = targetSchool.school_id || targetSchool.id;
-            if (typeof window.selectSchoolById === 'function') {
-                window.selectSchoolById(targetId);
-            } else if (typeof orchestrator !== 'undefined' && typeof orchestrator.selectSchool === 'function') {
-                const summary = orchestrator.selectSchool(targetSchool);
-                if (typeof showSchoolDetails === 'function') {
-                    showSchoolDetails(summary, targetSchool);
-                }
-                if (typeof highlightSelectedPin === 'function') {
-                    highlightSelectedPin(targetId);
+            if (!isSettingsOpen) {
+                if (typeof window.selectSchoolById === 'function') {
+                    window.selectSchoolById(targetId);
+                } else if (typeof orchestrator !== 'undefined' && typeof orchestrator.selectSchool === 'function') {
+                    const summary = orchestrator.selectSchool(targetSchool);
+                    if (typeof showSchoolDetails === 'function') {
+                        showSchoolDetails(summary, targetSchool);
+                    }
+                    if (typeof highlightSelectedPin === 'function') {
+                        highlightSelectedPin(targetId);
+                    }
                 }
             }
 
@@ -2138,18 +2149,56 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 설정 모달이 열릴 때 Supabase 데이터를 기준으로 동기화
+    // 설정/마이페이지 모달 토글 및 안전한 동기화 함수 (학교 선택 상태에 영향 주지 않고 해당 카드 위에 노출)
+    window.toggleSettingsModal = async function() {
+        if (window.__isTogglingSettingsModal) return;
+        window.__isTogglingSettingsModal = true;
+        setTimeout(() => { window.__isTogglingSettingsModal = false; }, 300);
+
+        const s = document.getElementById('settingsModal');
+        if (!s) return;
+
+        const isCurrentlyOpen = (s.style.display !== 'none' && s.style.display !== '');
+        if (isCurrentlyOpen) {
+            s.style.display = 'none';
+            return;
+        }
+
+        // 다른 모달(NEIS, 튜토리얼) 닫기
+        const nm = document.getElementById('neisModal');
+        if (nm) nm.style.display = 'none';
+        const t = document.getElementById('tutorialSidebarCard');
+        if (t) t.style.display = 'none';
+
+        // 사이드바가 닫혀있다면 사이드바 열기
+        const sb = document.querySelector('.sidebar-section');
+        const container = document.querySelector('.app-container');
+        if (sb && (sb.style.display === 'none' || (container && !container.classList.contains('sidebar-open'))) && typeof toggleSidebar === 'function') {
+            toggleSidebar();
+        }
+
+        // 설정 모달 열기 및 스크롤 최상단 정렬 (선택된 학교 카드 위에 깨끗하게 노출)
+        s.style.display = 'block';
+        if (sb) sb.scrollTop = 0;
+
+        if (typeof updateAuthUI === 'function') updateAuthUI();
+        if (typeof loadChildProfilesFromSupabase === 'function') {
+            await loadChildProfilesFromSupabase({ centerMap: false });
+        }
+        if (typeof updateMypageComparisonUI === 'function') {
+            updateMypageComparisonUI();
+        }
+        if (typeof updateMypageSimulationUI === 'function') {
+            updateMypageSimulationUI();
+        }
+    };
+
     const btnOpenSettings = document.getElementById('btnOpenSettings');
     if (btnOpenSettings) {
-        btnOpenSettings.addEventListener('click', async () => {
-            await loadChildProfilesFromSupabase();
-            if (typeof updateMypageComparisonUI === 'function') {
-                updateMypageComparisonUI();
-            }
-            if (typeof updateMypageSimulationUI === 'function') {
-                updateMypageSimulationUI();
-            }
-        });
+        btnOpenSettings.onclick = (e) => {
+            if (e) e.preventDefault();
+            window.toggleSettingsModal();
+        };
     }
 
     // 자녀 성적 저장 및 DB 동기화 버튼 클릭 이벤트 (PC/모바일 공용)
@@ -8009,6 +8058,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const reTypeItemChecks = document.querySelectorAll('.re-type-item-checkbox');
         const reTypeSelect = document.getElementById('realEstateTypeFilter');
 
+        // 초기 진입 시 아파트만 체크되도록 명시적 보장 (브라우저 폼 복원 방지)
+        if (reTypeAllCheck) reTypeAllCheck.checked = false;
+        const reAptCb = document.getElementById('reTypeAptCheckbox');
+        if (reAptCb) reAptCb.checked = true;
+        const reRhCb = document.getElementById('reTypeRhCheckbox');
+        if (reRhCb) reRhCb.checked = false;
+        const reShCb = document.getElementById('reTypeShCheckbox');
+        if (reShCb) reShCb.checked = false;
+        const reOffiCb = document.getElementById('reTypeOffiCheckbox');
+        if (reOffiCb) reOffiCb.checked = false;
+        if (reTypeSelect) reTypeSelect.value = 'apt';
+
         const handleReFilterChange = () => {
             const radInput = document.getElementById('academyMapRadiusFilter');
             const radVal = window.currentAcademyRadius || (radInput ? parseInt(radInput.value, 10) : 1000) || 1000;
@@ -11661,11 +11722,11 @@ document.addEventListener('DOMContentLoaded', () => {
             'showAcademyMapCheckbox': true,
             'academyMapRadiusFilter': 1000,
             'showRealEstateMapCheckbox': true,
-            'reTypeAllCheckbox': true,
+            'reTypeAllCheckbox': false,
             'reTypeAptCheckbox': true,
-            'reTypeRhCheckbox': true,
-            'reTypeShCheckbox': true,
-            'reTypeOffiCheckbox': true,
+            'reTypeRhCheckbox': false,
+            'reTypeShCheckbox': false,
+            'reTypeOffiCheckbox': false,
             'childGradeFilter': 'middle',
             'childScoreFilter': 'mid',
             'childTendencyFilter': 'balanced'
