@@ -25,7 +25,14 @@
     "sigungu": "강북구",
     "lawdCd": "11305",
     "fileName": "11305.json",
-    "count": 7117
+    "count": 7105
+  },
+  {
+    "sido": "서울특별시",
+    "sigungu": "강서구",
+    "lawdCd": "11500",
+    "fileName": "11500.json",
+    "count": 10489
   },
   {
     "sido": "경기도",
@@ -33,6 +40,13 @@
     "lawdCd": "41290",
     "fileName": "41290.json",
     "count": 724
+  },
+  {
+    "sido": "서울특별시",
+    "sigungu": "관악구",
+    "lawdCd": "11620",
+    "fileName": "11620.json",
+    "count": 7768
   },
   {
     "sido": "경기도",
@@ -47,6 +61,20 @@
     "lawdCd": "41610",
     "fileName": "41610.json",
     "count": 8549
+  },
+  {
+    "sido": "서울특별시",
+    "sigungu": "광진구",
+    "lawdCd": "11215",
+    "fileName": "11215.json",
+    "count": 5145
+  },
+  {
+    "sido": "서울특별시",
+    "sigungu": "구로구",
+    "lawdCd": "11530",
+    "fileName": "11530.json",
+    "count": 2176
   },
   {
     "sido": "경기도",
@@ -68,6 +96,13 @@
     "lawdCd": "41113",
     "fileName": "41113.json",
     "count": 10519
+  },
+  {
+    "sido": "서울특별시",
+    "sigungu": "금천구",
+    "lawdCd": "11545",
+    "fileName": "11545.json",
+    "count": 1707
   },
   {
     "sido": "경기도",

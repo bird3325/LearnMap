@@ -8,5 +8,15 @@
     "avatarUrl": "",
     "accessToken": "demo_access_token_learnmap",
     "createdAt": "2026-09-28T04:28:59.401Z"
+  },
+  {
+    "id": "a117b1ea-0f64-4340-b3e8-61cb24d04972",
+    "email": "bird3325@daum.net",
+    "name": "조민기",
+    "role": "parent",
+    "provider": "kakao",
+    "avatarUrl": "http://k.kakaocdn.net/dn/dV4SyJ/btrT5TMQ2O1/N1sWUGlC3sj4UNKbKx0aE0/img_640x640.jpg",
+    "accessToken": "vIQXMMz75onPb6ZLJx_AjQrOI0NPqysuAAAAAQoNGVMAAAGhixmWHC2N1GIgzv2p",
+    "createdAt": "2026-10-30T04:37:53.455Z"
   }
 ]

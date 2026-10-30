@@ -7,6 +7,13 @@ import http from 'http';
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
+process.on('uncaughtException', (err) => {
+    console.warn('[Server Warning] uncaughtException:', err.message);
+});
+process.on('unhandledRejection', (reason) => {
+    console.warn('[Server Warning] unhandledRejection:', reason && reason.message ? reason.message : reason);
+});
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -99,18 +106,23 @@ function classifyHousingType(item) {
 
     // 4. [공식 검증 3] 아파트 명시 키워드 및 대한민국 주요 아파트 브랜드
     const isAptExplicit = cleanN.includes('아파트') || rawN.includes('아파트') || cleanN.includes('APT') || cleanN.includes('apt') || cleanN.endsWith('단지');
-    const isMajorAptBrand = /(?:동일스위트|동일하이빌|스위첸|kcc스위첸|베르디움|호반베르디움|호반써밋|호반|푸르지오|자이|래미안|힐스테이트|아이파크|롯데캐슬|더샵|e편한세상|이편한세상|위브|두산위브|센트레빌|우미린|중흥|중흥s클래스|대방|대방디엠시티|포레나|SK뷰|skview|휴먼시아|주공|브라운스톤|하늘채|어울림|금호어울림|꿈에그린|한화꿈에그린|데시앙|반도유보라|유보라|모아미래도|골드클래스|대원칸타빌|칸타빌|한라비발디|비발디|쌍용예가|풍림아이원|아이원|루첸|서희스타힐스|스타힐스|한양수자인|수자인|이안|동문굿모닝힐|굿모닝힐|파밀리에|신동아파밀리에|리가|코아루|센트럴파크|더퍼스트|센트럴단지|마을|타운|맨션)/i.test(cleanN);
+    const isMajorAptBrand = /(?:동일스위트|동일하이빌|스위첸|kcc스위첸|베르디움|호반베르디움|호반써밋|호반|푸르지오|자이|래미안|힐스테이트|아이파크|롯데캐슬|더샵|e편한세상|이편한세상|위브|두산위브|센트레빌|우미린|중흥|중흥s클래스|대방|대방디엠시티|포레나|SK뷰|skview|휴먼시아|주공|브라운스톤|하늘채|어울림|금호어울림|꿈에그린|한화꿈에그린|데시앙|반도유보라|유보라|모아미래도|골드클래스|대원칸타빌|칸타빌|한라비발디|비발디|쌍용예가|풍림아이원|아이원|루첸|서희스타힐스|스타힐스|한양수자인|수자인|이안|동문굿모닝힐|굿모닝힐|파밀리에|신동아파밀리에|리가|코아루|센트럴파크|더퍼스트|센트럴단지|마을|타운)/i.test(cleanN);
 
     // 단지명 끝이 차수(예: 1차, 2차)인 경우 (예: '고양삼송 동일스위트 1차', '대성센트레빌 2차')
     const isNumberedApart = /(?:\d+차|\d+단지)$/.test(cleanN);
 
+    // 순수 지번/괄호 지번 형태의 명칭(예: (1617-21), 1617-21, 185-5)은 대단지 아파트가 아닌 단독·다가구/지번 주택
+    if (/^\(?\d+(?:-\d+)?\)?$/.test(cleanN) || /^\d+(?:-\d+)?번지?$/.test(cleanN) || !/[가-힣A-Za-z]/.test(cleanN)) {
+        return 'sh';
+    }
+
     if (isAptExplicit) {
-        if (cleanN.endsWith('빌라') || cleanN.endsWith('연립') || cleanN.endsWith('다세대')) return 'rh';
+        if (cleanN.endsWith('빌라') || cleanN.endsWith('연립') || cleanN.endsWith('다세대') || cleanN.includes('맨션')) return 'rh';
         return 'apt';
     }
 
     if (isMajorAptBrand || isNumberedApart) {
-        if (!/(?:빌라|연립|다세대)$/i.test(cleanN)) {
+        if (!/(?:빌라|연립|다세대|맨션)$/i.test(cleanN)) {
             return 'apt';
         }
     }
@@ -123,13 +135,13 @@ function classifyHousingType(item) {
         if (purps.includes('단독') || purps.includes('다가구') || purps.includes('상가주택')) {
             return 'sh';
         }
-        if (purps.includes('아파트') && !/(?:빌라|연립|다세대|타운하우스)/i.test(cleanN)) {
+        if (purps.includes('아파트') && !/(?:빌라|연립|다세대|타운하우스|맨션)/i.test(cleanN)) {
             return 'apt';
         }
     }
 
     // 6. 다세대/연립/빌라 명시 키워드 (순수 빌라/연립 전용)
-    const isVillaKeyword = /(?:빌라|연립|다세대|타운하우스|아트빌|에스빌|베스트타운|그린빌|노블리안|하임|홈스|스테이|캐슬빌|샤인빌|골드빌|파인하우스|포근애|베르네|여림채|라비앙|하우스|팰리체|벨리체|아우름|리안|골드스톤|모던하우스|드림하우스|뷰테크|다빈치|솔베이|오스카|아델|팰리|노블|더홈|예다움|라움|에이원|소산|대하|행복아름|대림아트|보원|부민|도양|인화|두리|빌\b|홈\b)/i.test(cleanN);
+    const isVillaKeyword = /(?:빌라|연립|다세대|타운하우스|맨션|아트빌|에스빌|베스트타운|그린빌|노블리안|하임|홈스|스테이|캐슬빌|샤인빌|골드빌|파인하우스|포근애|베르네|여림채|라비앙|하우스|팰리체|벨리체|아우름|리안|골드스톤|모던하우스|드림하우스|뷰테크|다빈치|솔베이|오스카|아델|팰리|노블|더홈|예다움|라움|에이원|소산|대하|행복아름|대림아트|보원|부민|도양|인화|두리|빌\b|홈\b)/i.test(cleanN);
 
     if (isVillaKeyword) {
         return 'rh';
@@ -1027,6 +1039,8 @@ function isValidBjdong(dong) {
 function cleanComplexName(rawName) {
     if (!rawName || typeof rawName !== 'string') return '';
     let name = rawName.replace(/\s+/g, ' ').trim();
+    // 선두에 붙은 지번 괄호(예: (1073-6)아름맨션 -> 아름맨션) 제거
+    name = name.replace(/^\(\s*\d+(?:-\d+)?\s*\)\s*/, '').trim();
     // 특수문자, 하이픈(--), 숫자만 있거나 한글/영문이 없는 무효한 이름 배제
     if (/^[-_.+=*#@!~?\/\\|\s0-9]+$/.test(name) || name.includes('--') || !/[가-힣A-Za-z]/.test(name)) {
         return '';
@@ -1546,8 +1560,34 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                                 const dong = getTag('umdNm') || getTag('법정동');
                                 const jibun = getTag('jibun') || getTag('지번');
                                 let rawName = getTag(ep.nameTag) || getTag('단지') || '';
-                                let name = (rawName || '').trim();
+                                let name = (rawName || '').replace(/^\(\s*\d+(?:-\d+)?\s*\)\s*/, '').trim();
+
+                                // 🌟 [비정상 지번명 정제]: "(208-21)", "1617-21" 등 번지만 온 경우 표준 주택 명칭으로 변환
+                                const isJibunOnly = !name || /^\(?\d+(?:-\d+)?\)?$/.test(name) || /^\d+(?:-\d+)?번지?$/.test(name) || !/[가-힣A-Za-z]/.test(name);
+                                if (isJibunOnly) {
+                                    const cleanJibun = (jibun || (rawName || '').replace(/[()]/g, '')).trim();
+                                    if (dong && cleanJibun) {
+                                        name = `${dong} ${cleanJibun}번지 주택`;
+                                    } else if (cleanJibun) {
+                                        name = `${cleanJibun}번지 주택`;
+                                    } else if (dong) {
+                                        name = `${dong} 주택`;
+                                    } else {
+                                        name = '일반주택';
+                                    }
+                                }
                                 if (!name || isNonResidential(name)) continue;
+
+                                let finalHousingType = ep.type;
+                                if (ep.type === 'apt') {
+                                    if (isJibunOnly || name.includes('주택') || name.includes('번지')) {
+                                        finalHousingType = 'sh';
+                                    } else if (name.includes('맨션') || name.includes('빌라') || name.includes('연립') || name.includes('다세대') || name.includes('하우스')) {
+                                        finalHousingType = 'rh';
+                                    }
+                                } else if (ep.type === 'rh' && (name.includes('단독') || name.includes('다가구'))) {
+                                    finalHousingType = 'sh';
+                                }
 
                                 const key = `${sido}_${gu}_${name}`;
                                 if (!estateMap.has(key)) {
@@ -1575,9 +1615,9 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                                     const fullAddr = `${sido} ${gu} ${dong || ''} ${jibun || ''}`.trim();
 
                                     const newEstate = {
-                                        id: `master-trade-${ep.type}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                                        id: `master-trade-${finalHousingType}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
                                         name,
-                                        type: ep.type,
+                                        type: finalHousingType,
                                         sido,
                                         sigungu: gu,
                                         dong: dong || '',
@@ -2469,13 +2509,13 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
                             const jibun = getTag('jibun') || getTag('지번');
                             const houseType = getTag('houseType') || '단독';
                             let rawName = getTag(ep.nameTag) || getTag('aptNm') || getTag('mhouseNm') || getTag('offiNm') || getTag('연립다세대') || getTag('단지');
-                            let name = (rawName || '').trim();
+                            let name = (rawName || '').replace(/^\(\s*\d+(?:-\d+)?\s*\)\s*/, '').trim();
 
                             // 🌟 [비정상 지번명 정제]: "(463-2)", "463-2", "(15-24)" 처럼 괄호 번지만 온 경우 표준 한글 명칭으로 변환
-                            const isJibunName = !name || /^\(?\d+(?:-\d+)?\)?$/.test(name) || /^\d+(?:-\d+)?번지?$/.test(name);
+                            const isJibunName = !name || /^\(?\d+(?:-\d+)?\)?$/.test(name) || /^\d+(?:-\d+)?번지?$/.test(name) || !/[가-힣A-Za-z]/.test(name);
                             if (isJibunName) {
-                                const cleanJibun = (jibun || name.replace(/[()]/g, '')).trim();
-                                const typeLabel = ep.type === 'apt' ? '아파트' : (ep.type === 'rh' ? '빌라' : (ep.type === 'offi' ? '오피스텔' : `${houseType}주택`));
+                                const cleanJibun = (jibun || (rawName || '').replace(/[()]/g, '')).trim();
+                                const typeLabel = ep.type === 'rh' ? '빌라' : (ep.type === 'offi' ? '오피스텔' : (ep.type === 'apt' && !isJibunName ? '아파트' : `${houseType}주택`));
                                 if (dong && cleanJibun) {
                                     name = `${dong} ${cleanJibun}번지 ${typeLabel}`;
                                 } else if (cleanJibun) {
@@ -2546,6 +2586,14 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
                             }
 
                             if (existing) {
+                                // 🌟 기존 등록된 명칭이 지번 번호(예: (1617-21))이거나 선두 괄호가 남아있는 경우 올바른 이름으로 교정
+                                if (/^\(\s*\d+(?:-\d+)?\s*\)/.test(existing.name) || /^\(?\d+(?:-\d+)?\)?$/.test(existing.name) || !/[가-힣A-Za-z]/.test(existing.name)) {
+                                    existing.name = name;
+                                }
+                                // 🌟 아파트로 오분류된 맨션/빌라/다세대/지번 주택의 유형(Type) 자동 교정
+                                if (existing.type === 'apt' && (existing.name.includes('맨션') || existing.name.includes('빌라') || existing.name.includes('다세대') || existing.name.includes('연립') || existing.name.includes('주택') || existing.name.includes('번지'))) {
+                                    existing.type = (existing.name.includes('맨션') || existing.name.includes('빌라') || existing.name.includes('다세대') || existing.name.includes('연립')) ? 'rh' : 'sh';
+                                }
                                 if (!existing.pnu && tradePnu) {
                                     existing.pnu = tradePnu;
                                     pnuMap.set(tradePnu, existing);
@@ -2872,7 +2920,7 @@ async function fetchTradeForSingleEstate(estate, serviceKey) {
                     const dong = getTag('umdNm') || getTag('법정동');
                     const jibun = getTag('jibun') || getTag('지번');
                     const houseType = getTag('houseType') || '단독';
-                    let name = getTag(ep.nameTag) || getTag('aptNm') || getTag('mhouseNm') || getTag('offiNm') || getTag('연립다세대') || getTag('단지');
+                    let name = (getTag(ep.nameTag) || getTag('aptNm') || getTag('mhouseNm') || getTag('offiNm') || getTag('연립다세대') || getTag('단지') || '').replace(/^\(\s*\d+(?:-\d+)?\s*\)\s*/, '').trim();
                     if (!name && ep.type === 'sh') {
                         name = dong && jibun ? `${dong} ${jibun} ${houseType}주택` : `${dong} ${houseType}주택`;
                         name = name.replace(/\s+/g, ' ').trim();
@@ -3147,7 +3195,7 @@ app.post('/api/realestate/retry-missing-trades', async (req, res) => {
                             const dong = getTag('umdNm') || getTag('법정동');
                             const jibun = getTag('jibun') || getTag('지번');
                             const houseType = getTag('houseType') || '단독';
-                            let name = getTag(ep.nameTag) || getTag('aptNm') || getTag('mhouseNm') || getTag('offiNm') || getTag('연립다세대') || getTag('단지');
+                            let name = (getTag(ep.nameTag) || getTag('aptNm') || getTag('mhouseNm') || getTag('offiNm') || getTag('연립다세대') || getTag('단지') || '').replace(/^\(\s*\d+(?:-\d+)?\s*\)\s*/, '').trim();
                             if (!name && ep.type === 'sh') {
                                 name = dong && jibun ? `${dong} ${jibun} ${houseType}주택` : `${dong} ${houseType}주택`;
                                 name = name.replace(/\s+/g, ' ').trim();
@@ -3652,7 +3700,7 @@ function writeUsers(users) {
 }
 
 app.post('/api/auth/register', async (req, res) => {
-    const { email, password, name, role } = req.body;
+    const { email, password, name } = req.body;
     if (!email || !password || !name) {
         return res.status(400).json({ success: false, message: '모든 필수 항목을 입력해 주세요.' });
     }
@@ -3675,7 +3723,7 @@ app.post('/api/auth/register', async (req, res) => {
                 email: cleanEmail,
                 password_hash: password,
                 name: cleanName,
-                role: role || 'parent',
+                role: 'parent',
                 is_active: true
             })
         });
@@ -3701,15 +3749,20 @@ app.post('/api/auth/register', async (req, res) => {
         email: cleanEmail,
         password: password,
         name: cleanName,
-        role: role || 'parent',
+        role: 'parent',
         createdAt: new Date().toISOString()
     };
 
     users.push(newUser);
     writeUsers(users);
 
-    const sessionUser = { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role };
-    return res.json({ success: true, user: sessionUser, message: '회원가입이 완료되었습니다. 학교 진단 및 성적 분석을 시작하세요.' });
+    const sessionUser = {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role
+    };
+    return res.json({ success: true, user: sessionUser, message: '회원가입이 완료되었습니다. 학교 진단 및 마이페이지 서비스를 이용하세요.' });
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -5636,6 +5689,157 @@ app.get('/api/business/session', (req, res) => {
     } catch (err) {
         console.error('Business Session Error:', err);
         return res.status(500).json({ error: '사업자 정보를 가져오는 중 오류가 발생했습니다.' });
+    }
+});
+
+// [파트너 가입 전용] 사업자 신청 상태 및 승인 여부 조회
+app.get('/api/business/check-approval', (req, res) => {
+    try {
+        const email = (req.query.email || '').trim().toLowerCase();
+        const bizNumber = (req.query.bizNumber || '').replace(/[^0-9]/g, '');
+
+        if (!email && !bizNumber) {
+            return res.status(400).json({ error: '조회할 사업자 이메일 또는 사업자등록번호가 필요합니다.' });
+        }
+
+        const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+        let found = null;
+        if (bizNumber) {
+            found = businesses.find(b => (b.bizNumber || '').replace(/[^0-9]/g, '') === bizNumber);
+        }
+        if (!found && email) {
+            found = businesses.find(b => (b.email || '').trim().toLowerCase() === email);
+        }
+
+        if (!found) {
+            return res.json({
+                exists: false,
+                status: 'none',
+                message: '신청된 사업자 정보가 없습니다. 먼저 파트너 센터에서 사업자 등록을 신청해 주세요.'
+            });
+        }
+
+        return res.json({
+            exists: true,
+            status: found.status, // 'submitted', 'approved', 'rejected', 'suspended'
+            businessId: found.id,
+            name: found.name,
+            representative: found.representative,
+            email: found.email,
+            bizNumber: found.bizNumber,
+            type: found.type,
+            rejectionReason: found.rejectionReason || '',
+            message: found.status === 'approved'
+                ? '사업자 승인이 완료된 파트너입니다.'
+                : (found.status === 'submitted' ? '관리자 심사 대기 중인 사업자입니다.' : '심사가 반려되었거나 보류된 사업자입니다.')
+        });
+    } catch (err) {
+        console.error('Check Business Approval Error:', err);
+        return res.status(500).json({ error: '사업자 승인 조회 중 오류가 발생했습니다.' });
+    }
+});
+
+// [마이페이지 전용] 사업자 등록 승인 완료된 일반 회원을 파트너 회원으로 업그레이드
+app.post('/api/auth/upgrade-partner', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(200).json({ success: false, message: '이메일 정보가 필요합니다.' });
+        }
+
+        const cleanEmail = email.trim().toLowerCase();
+        const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+        const matched = businesses.find(b => (b.email || '').trim().toLowerCase() === cleanEmail);
+
+        if (!matched) {
+            return res.status(200).json({
+                success: false,
+                needApplication: true,
+                message: '신청된 사업자 정보가 없습니다. 파트너 센터에서 사업자 등록을 먼저 신청해 주세요.'
+            });
+        }
+
+        if (matched.status === 'submitted' || matched.status === 'pending') {
+            return res.status(200).json({
+                success: false,
+                isPending: true,
+                message: '사업자 등록 신청이 접수되어 관리자 심사 진행 중입니다. 승인 완료 후 파트너 회원으로 자동 전환됩니다.'
+            });
+        }
+
+        if (matched.status === 'rejected') {
+            return res.status(200).json({
+                success: false,
+                isRejected: true,
+                message: `사업자 신청이 반려되었습니다. (사유: ${matched.rejectionReason || '서류 보완 필요'}) 파트너 센터에서 확인해 주세요.`
+            });
+        }
+
+        if (matched.status !== 'approved') {
+            return res.status(200).json({
+                success: false,
+                message: '사업자 승인이 아직 완료되지 않았습니다.'
+            });
+        }
+
+        // 1. users.json 내 사용자 정보 갱신
+        const users = readUsers();
+        let user = users.find(u => u.email.toLowerCase() === cleanEmail);
+        if (!user) {
+            user = {
+                id: 'user_' + Date.now(),
+                email: cleanEmail,
+                name: matched.name || '파트너 회원',
+                role: 'partner',
+                businessId: matched.id,
+                bizName: matched.name,
+                bizNumber: matched.bizNumber,
+                createdAt: new Date().toISOString()
+            };
+            users.push(user);
+        } else {
+            user.role = 'partner';
+            user.businessId = matched.id;
+            user.bizName = matched.name;
+            user.bizNumber = matched.bizNumber;
+        }
+        writeUsers(users);
+
+        // 2. Supabase DB users 테이블 동기화 (가능한 경우)
+        try {
+            await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(cleanEmail)}`, {
+                method: 'PATCH',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    role: 'partner'
+                })
+            });
+        } catch (sbErr) {
+            console.warn('Supabase partner role sync warning:', sbErr.message);
+        }
+
+        const sessionUser = {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: 'partner',
+            businessId: matched.id,
+            bizName: matched.name
+        };
+
+        return res.json({
+            success: true,
+            user: sessionUser,
+            business: matched,
+            message: `'${matched.name}' 사업자 승인 확인이 완료되어 파트너 회원으로 정식 전환되었습니다!`
+        });
+    } catch (err) {
+        console.error('Upgrade Partner Error:', err);
+        return res.status(500).json({ success: false, message: '파트너 전환 처리 중 서버 오류가 발생했습니다.' });
     }
 });
 

@@ -40,7 +40,7 @@ export class AuthService {
     /**
      * 회원 가입 (Supabase DB 연동 + 로컬 백업)
      */
-    async register({ email, password, passwordConfirm, name, role = 'parent' }) {
+    async register({ email, password, passwordConfirm, name, role = 'parent', bizNumber }) {
         const cleanName = (name || '').trim();
         const cleanEmail = (email || '').trim().toLowerCase();
         const rawPassword = password || '';
@@ -80,7 +80,49 @@ export class AuthService {
             }
         }
 
-        const validRole = ['parent', 'student', 'admin'].includes(role) ? role : 'parent';
+        const validRole = ['parent', 'student', 'partner', 'admin'].includes(role) ? role : 'parent';
+
+        // 5. 파트너 회원 가입 시 사전 사업자 승인 상태 검증
+        let partnerBiz = null;
+        if (validRole === 'partner') {
+            try {
+                const queryParam = bizNumber ? `bizNumber=${encodeURIComponent(bizNumber)}&email=${encodeURIComponent(cleanEmail)}` : `email=${encodeURIComponent(cleanEmail)}`;
+                const checkRes = await fetch(`/api/business/check-approval?${queryParam}`);
+                if (checkRes.ok) {
+                    const checkData = await checkRes.json();
+                    if (!checkData.exists) {
+                        return {
+                            success: false,
+                            needPartnerApplication: true,
+                            message: '파트너 회원은 먼저 학업여지도 파트너 센터에서 사업자 등록 신청 후 승인이 완료되어야 회원가입이 가능합니다.'
+                        };
+                    }
+                    if (checkData.status === 'submitted') {
+                        return {
+                            success: false,
+                            isPendingApproval: true,
+                            message: '사업자 등록 신청이 접수되어 승인 심사 진행 중입니다. 관리자 승인이 완료된 후 회원가입을 완료하실 수 있습니다.'
+                        };
+                    }
+                    if (checkData.status === 'rejected') {
+                        return {
+                            success: false,
+                            message: `사업자 등록 신청이 반려되었습니다. (사유: ${checkData.rejectReason || '서류 보완 필요'}) 파트너 센터에서 확인 후 재신청해 주세요.`
+                        };
+                    }
+                    if (checkData.status !== 'approved') {
+                        return {
+                            success: false,
+                            needPartnerApplication: true,
+                            message: '사업자 등록 승인이 완료되지 않았습니다. 파트너 센터에서 상태를 확인해 주세요.'
+                        };
+                    }
+                    partnerBiz = checkData.business;
+                }
+            } catch (err) {
+                console.warn('Partner approval check error:', err);
+            }
+        }
 
         // 1. Supabase users 테이블에서 중복 계정 여부 확인
         try {
@@ -171,15 +213,26 @@ export class AuthService {
         }
 
         // 회원가입 성공 시 세션 저장 및 즉시 로그인 처리
-        const sessionUser = { id: createdUserId, email: cleanEmail, name: cleanName, role: validRole };
+        const sessionUser = {
+            id: createdUserId,
+            email: cleanEmail,
+            name: cleanName,
+            role: validRole,
+            businessId: partnerBiz ? partnerBiz.id : undefined,
+            bizName: partnerBiz ? partnerBiz.name : undefined
+        };
         try {
             localStorage.setItem(this.userStorageKey, JSON.stringify(sessionUser));
         } catch (e) {}
 
+        const successMsg = validRole === 'partner'
+            ? '파트너 회원가입이 성공적으로 완료되었습니다! 학업여지도 파트너 서비스를 이용하실 수 있습니다.'
+            : '회원가입이 완료되었습니다. 학교 진단 및 성적 분석을 시작하세요.';
+
         return { 
             success: true, 
             user: sessionUser, 
-            message: '회원가입이 완료되었습니다. 학교 진단 및 성적 분석을 시작하세요.' 
+            message: successMsg 
         };
     }
 

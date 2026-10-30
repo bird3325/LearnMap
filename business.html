@@ -765,12 +765,12 @@
     <section class="hero-banner">
         <div class="hero-banner-inner">
             <div class="hero-title">
-                <h2 id="heroBizName">대치 탑클래스 수학학원</h2>
-                <p id="heroBizSub">대표자: 김학원 | 사업자등록번호: 123-45-67890 | 서울 강남구 대치동</p>
+                <h2 id="heroBizName">학업여지도 파트너 센터</h2>
+                <p id="heroBizSub">학원 및 부동산 사업자 전용 파트너십 포털입니다. 사업자 등록 신청 후 이용하실 수 있습니다.</p>
             </div>
-            <div class="hero-status-pill" id="heroStatusPill">
-                <span class="indicator"></span>
-                <span id="heroStatusText">프리미엄 구독 이용 중</span>
+            <div class="hero-status-pill" id="heroStatusPill" style="background: rgba(148, 163, 184, 0.2); border-color: #94a3b8;">
+                <span class="indicator" style="background: #94a3b8;"></span>
+                <span id="heroStatusText">미등록 (신청 필요)</span>
             </div>
         </div>
     </section>
@@ -1417,7 +1417,8 @@
     </div>
 
     <script>
-        let currentBizId = 'biz_demo_daechi_math_01';
+        const urlParamsInit = new URLSearchParams(window.location.search);
+        let currentBizId = urlParamsInit.get('bizId') || null;
         let currentBiz = null;
         let currentSub = null;
         let chartInstance = null;
@@ -1459,25 +1460,61 @@
 
         async function loadSession() {
             try {
-                const res = await fetch(`/api/business/session?bizId=${currentBizId}`);
+                const queryStr = currentBizId ? `?bizId=${currentBizId}` : '';
+                const res = await fetch(`/api/business/session${queryStr}`);
                 const data = await res.json();
+
+                const selector = document.getElementById('bizSelector');
 
                 if (data.business) {
                     currentBiz = data.business;
                     currentSub = data.subscription;
+                    currentBizId = currentBiz.id;
                     renderHeaderAndBanner(currentBiz, currentSub);
                     populateProfileForm(currentBiz);
                     loadDashboard(currentBiz.id);
-                }
 
-                // 사업자 전환 셀렉터 바인딩
-                const selector = document.getElementById('bizSelector');
-                if (data.allBusinesses && data.allBusinesses.length > 0) {
-                    selector.innerHTML = data.allBusinesses.map(b => {
-                        const icon = b.type === 'real_estate' ? '🏠 [부동산] ' : '🏫 [학원] ';
-                        const stat = b.status === 'approved' ? '승인' : '대기';
-                        return `<option value="${b.id}" ${b.id === currentBizId ? 'selected' : ''}>${icon}${b.name} (${stat})</option>`;
-                    }).join('');
+                    if (data.allBusinesses && data.allBusinesses.length > 0) {
+                        selector.innerHTML = data.allBusinesses.map(b => {
+                            const icon = b.type === 'real_estate' ? '🏠 [부동산] ' : '🏫 [학원] ';
+                            const stat = b.status === 'approved' ? '승인' : '대기';
+                            return `<option value="${b.id}" ${b.id === currentBizId ? 'selected' : ''}>${icon}${b.name} (${stat})</option>`;
+                        }).join('');
+                    }
+                } else {
+                    // 등록된 사업자가 없거나 선택되지 않은 빈 상태 (목업 제거 대응)
+                    currentBiz = null;
+                    currentSub = null;
+                    document.getElementById('heroBizName').innerText = '학업여지도 파트너 센터';
+                    document.getElementById('heroBizSub').innerText = '학원 및 부동산 사업자 전용 파트너십 포털입니다. 사업자 등록 신청 후 이용하실 수 있습니다.';
+                    const pill = document.getElementById('heroStatusPill');
+                    const pillText = document.getElementById('heroStatusText');
+                    if (pill) {
+                        pill.style.background = 'rgba(148, 163, 184, 0.2)';
+                        pill.style.borderColor = '#94a3b8';
+                    }
+                    if (pillText) pillText.innerText = '미등록 (신청 필요)';
+
+                    // 지표 0으로 초기화
+                    document.getElementById('metricProfileViews').innerText = '0';
+                    document.getElementById('metricImpressions').innerText = '0';
+                    document.getElementById('metricPhoneClicks').innerText = '0';
+                    document.getElementById('metricInquiriesCount').innerText = '0';
+                    document.getElementById('dashSubProductName').innerText = '구독 상품 없음';
+                    document.getElementById('dashSubAmount').innerText = '0원';
+                    document.getElementById('dashSubEndDate').innerText = '-';
+                    renderChart([]);
+                    renderInquiries([]);
+
+                    if (selector) {
+                        selector.innerHTML = '<option value="">등록된 사업자 없음</option>';
+                    }
+
+                    // 사업자가 없는 경우 자동으로 사업자 등록 신청 탭으로 전환
+                    const urlParams = new URLSearchParams(window.location.search);
+                    if (!urlParams.get('tab')) {
+                        openTab('tab-register');
+                    }
                 }
             } catch (err) {
                 console.error(err);
@@ -2888,7 +2925,7 @@
 
                 const data = await res.json();
                 if (data.success) {
-                    alert('신규 사업자 등록 신청이 접수되었습니다!\n관리자 검수 후 대시보드가 활성화됩니다.');
+                    alert('신규 사업자 등록 신청이 정상 접수되었습니다!\n관리자 승인 완료 후 동일한 사업자 이메일로 학업여지도에서 파트너 회원가입을 완료하시면 파트너 센터와 모든 전용 기능을 정식 이용하실 수 있습니다.');
                     currentBizId = data.business.id;
                     document.getElementById('newBizForm').reset();
                     const pErr = document.getElementById('regPhoneError');
@@ -2911,6 +2948,21 @@
         // 초기 로드
         document.addEventListener('DOMContentLoaded', () => {
             loadSession();
+
+            // URL 파라미터 기반 탭 열기 (예: /business?tab=register)
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const requestedTab = urlParams.get('tab');
+                if (requestedTab === 'register' || requestedTab === 'tab-register') {
+                    openTab('tab-register');
+                } else if (requestedTab === 'pricing' || requestedTab === 'tab-pricing') {
+                    openTab('tab-pricing');
+                } else if (requestedTab === 'profile' || requestedTab === 'tab-profile') {
+                    openTab('tab-profile');
+                }
+            } catch (e) {
+                console.warn('URL 파라미터 탭 파싱 오류:', e);
+            }
         });
     </script>
 </body>

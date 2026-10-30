@@ -2259,10 +2259,42 @@ const DEFAULT_SAMPLE_REAL_ESTATES = [
     { id: 're-10', name: '서초롯데캐슬프레지던트', type: 'offi', sido: '서울특별시', sigungu: '서초구', address: '서울특별시 서초구 서초동 1303-34', price: '9억 8,000만원', tradeDate: '2026-02-01', area: '58.40㎡', source: '마스터/실거래가' }
 ];
 
+function formatEstateDisplayName(item) {
+    if (!item) return '';
+    let name = (item.name || '').trim();
+    // 선두의 괄호 지번 제거 (예: (1073-6)아름맨션 -> 아름맨션)
+    if (/^\(\s*\d+(?:-\d+)?\s*\)/.test(name)) {
+        const stripped = name.replace(/^\(\s*\d+(?:-\d+)?\s*\)\s*/, '').trim();
+        if (stripped && /[가-힣A-Za-z]/.test(stripped)) {
+            return stripped;
+        }
+    }
+    // 순수 지번만 있는 경우 (예: (1617-21), 1617-21, (185-5)) -> 표준 지번 주택명으로 포맷
+    if (/^\(?\d+(?:-\d+)?\)?$/.test(name) || /^\d+(?:-\d+)?번지?$/.test(name) || !/[가-힣A-Za-z]/.test(name)) {
+        const cleanJibun = (item.bun ? `${parseInt(item.bun, 10)}${item.ji && parseInt(item.ji, 10) > 0 ? '-' + parseInt(item.ji, 10) : ''}` : name.replace(/[()]/g, '')).trim();
+        const typeLabel = item.type === 'rh' ? '빌라' : '주택';
+        if (item.dong && cleanJibun) {
+            return `${item.dong} ${cleanJibun}번지 ${typeLabel}`;
+        }
+        if (item.address) {
+            const addrParts = item.address.split(' ');
+            const lastPart = addrParts[addrParts.length - 1];
+            return `${item.dong || addrParts[addrParts.length - 2] || ''} ${cleanJibun || lastPart}번지 ${typeLabel}`.trim();
+        }
+        return `${cleanJibun}번지 ${typeLabel}`;
+    }
+    return name;
+}
+
 function getTypeName(type, name = '') {
-    if (type === 'apt' && name) {
-        if (name.includes('빌라') || name.includes('연립') || name.includes('다세대')) return '🏡 연립·다세대';
-        if (name.includes('주택') || name.includes('번지') || name.includes('단독') || name.includes('다가구')) return '🏠 단독·다가구';
+    const cleanN = (name || '').trim();
+    if (cleanN) {
+        if (cleanN.includes('맨션') || cleanN.includes('빌라') || cleanN.includes('연립') || cleanN.includes('다세대') || cleanN.includes('하우스')) {
+            return '🏡 연립·다세대';
+        }
+        if (cleanN.includes('주택') || cleanN.includes('번지') || cleanN.includes('단독') || cleanN.includes('다가구') || /^\(?\d+(?:-\d+)?\)?$/.test(cleanN) || !/[가-힣A-Za-z]/.test(cleanN)) {
+            return '🏠 단독·다가구';
+        }
     }
     switch (type) {
         case 'apt': return '🏢 아파트';
@@ -2498,8 +2530,11 @@ function renderStoredRealEstateList() {
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.05); padding: 8px 4px;">
                 <div style="flex: 1; padding-right: 10px;">
                     <div>
-                        <strong style="color: var(--deep-blue); font-size: 13px;">${index + 1}. ${item.name}</strong>
-                        <span style="font-size: 11px; color: var(--text-muted); margin-left: 4px;">(${getTypeName(item.type, item.name)})</span>
+                        ${(() => {
+                            const dispName = formatEstateDisplayName(item);
+                            return `<strong style="color: var(--deep-blue); font-size: 13px;">${index + 1}. ${dispName}</strong>
+                        <span style="font-size: 11px; color: var(--text-muted); margin-left: 4px;">(${getTypeName(item.type, dispName)})</span>`;
+                        })()}
                         <span style="background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 6px; font-size: 10px;">${item.source || '마스터 DB'}</span>
                         ${item.kaptCode ? `<span style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 1.5px 6px; border-radius: 4px; font-weight: bold; margin-left: 4px; font-size: 10px;" title="K-APT 표준 단지코드">🏢 K-APT: ${item.kaptCode}</span>` : ''}
                         ${item.pnu ? `<span style="background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; padding: 1.5px 5px; border-radius: 4px; margin-left: 4px; font-size: 10px; font-family: monospace;" title="고유필지번호(PNU: ${item.pnu})">PNU</span>` : ''}

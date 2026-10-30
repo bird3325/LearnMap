@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node -e \"import('fs').then(fs => { fs.mkdirSync('public/data', {recursive: true}); fs.copyFileSync('src/data/korea-administrative-district.json', 'public/data/korea-administrative-district.json'); if(fs.existsSync('src/data/schools_seoul.json')) { fs.copyFileSync('src/data/schools_seoul.json', 'public/data/schools_seoul.json'); } console.log('Assets sync complete'); })\"",
+    "prebuild": "node -e \"import('fs').then(fs => { fs.mkdirSync('public/data', {recursive: true}); fs.copyFileSync('src/data/korea-administrative-district.json', 'public/data/korea-administrative-district.json'); if(fs.existsSync('src/data/schools_seoul.json')) { fs.copyFileSync('src/data/schools_seoul.json', 'public/data/schools_seoul.json'); } if(fs.existsSync('src/data/edu_culture_resources.json')) { fs.copyFileSync('src/data/edu_culture_resources.json', 'public/data/edu_culture_resources.json'); } console.log('Assets sync complete'); })\"",
     "build": "npm run prebuild && vite build",
     "start": "node server.js",
     "update-violence": "node add_violence_stats.js && npm run prebuild"
