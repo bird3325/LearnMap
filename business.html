@@ -265,6 +265,7 @@
             padding: 32px 24px 60px;
             width: 100%;
             flex: 1;
+            position: relative;
         }
 
         .tab-content {
@@ -732,7 +733,110 @@
                 opacity: 1;
             }
         }
-    </style>
+    
+        /* 4-1. 교육 상권 분석 탭 전용 컴포넌트 스타일 */
+        .market-radius-group {
+            display: inline-flex;
+            gap: 4px;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 8px;
+        }
+        .btn-market-rad {
+            border: none;
+            background: transparent;
+            padding: 6px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-sub);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-market-rad.active {
+            background: #ffffff;
+            color: var(--primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .market-table-wrap {
+            max-height: 380px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+        .market-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .market-table th {
+            background: #f8fafc;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-sub);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .market-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            color: var(--text-color);
+        }
+        .market-table tr:hover td {
+            background: #f8fafc;
+        }
+        .badge-school-elem { background: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 4px; font-size: 11.5px; font-weight: 600; }
+        .badge-school-mid { background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 11.5px; font-weight: 600; }
+        .badge-school-high { background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px; font-size: 11.5px; font-weight: 600; }
+        .subject-bar-wrap {
+            margin-bottom: 12px;
+        }
+        .subject-bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .subject-progress-bg {
+            width: 100%;
+            height: 8px;
+            background: #f1f5f9;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .subject-progress-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 4px;
+            transition: width 0.4s ease;
+        }
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #marketPrintReportArea, #marketPrintReportArea * {
+                visibility: visible;
+            }
+            #marketPrintReportArea {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                display: block !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+                padding: 24px;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+
+</style>
 </head>
 
 <body>
@@ -756,7 +860,6 @@
                     </select>
                 </div>
                 <a href="/" class="btn-link">🗺️ 학부모 지도 보기 ↗</a>
-                <a href="/admin" class="btn-link" style="color: #64748b;">⚙️ 관리자 콘솔</a>
             </div>
         </div>
     </header>
@@ -781,6 +884,9 @@
             <button class="tab-btn active" data-tab="tab-dashboard" onclick="openTab('tab-dashboard')">
                 <span>📊</span><span>사업자 대시보드</span>
             </button>
+            <button class="tab-btn" data-tab="tab-market" onclick="openTab('tab-market')">
+                <span>🧭</span><span>교육 상권 분석</span>
+            </button>
             <button class="tab-btn" data-tab="tab-pricing" onclick="openTab('tab-pricing')">
                 <span>💎</span><span>상품 & 구독</span>
             </button>
@@ -795,6 +901,302 @@
 
     <!-- 4. Main Body Content -->
     <main class="main-body">
+
+        <!-- 비인증 사업자 가우시안 블러 잠금 오버레이 레이어 -->
+        <div id="unauthGaussianOverlay"
+            style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; min-height: 600px; background: rgba(248, 250, 252, 0.75); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 80; justify-content: center; align-items: flex-start; padding-top: 80px; box-sizing: border-box;">
+            <div
+                style="background: #ffffff; width: 92%; max-width: 480px; border-radius: 20px; box-shadow: 0 20px 45px rgba(15, 23, 42, 0.16); border: 1px solid #e2e8f0; padding: 36px 30px; text-align: center;">
+                <div
+                    style="width: 64px; height: 64px; background: #fef2f2; border: 1px solid #fee2e2; border-radius: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 30px; margin-bottom: 20px;">
+                    🔒
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <span id="unauthOverlayBadge"
+                        style="display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 12px; background: #fee2e2; color: #dc2626; margin-bottom: 8px;">
+                        사업자 인증 필요
+                    </span>
+                    <h3 id="unauthOverlayTitle" style="margin: 0; font-size: 19px; font-weight: 800; color: #0f172a;">
+                        사업자 인증 후 사용 가능합니다
+                    </h3>
+                </div>
+                <p id="unauthOverlayMsg"
+                    style="margin: 0 0 26px; font-size: 14px; color: #475569; line-height: 1.65; word-break: keep-all;">
+                    사업자 대시보드, 교육상권분석, 상품 구독, 프로필 관리 메뉴는 사업자 등록 신청 및 관리자 인증(승인) 완료 후 정상 이용하실 수 있습니다.
+                </p>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button type="button" id="unauthOverlayBtn" class="btn-action btn-primary-act"
+                        onclick="openTab('tab-register')"
+                        style="width: 100%; padding: 13px 20px; font-size: 14.5px; font-weight: 700; border-radius: 10px;">
+                        📝 사업자 등록 신청(인증)하기 →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 1-2: 학원 교육 상권 분석 (기획서 4-1: 8대 학원 사업자 서비스 구현) -->
+        <div id="tab-market" class="tab-content">
+            <!-- 상권 분석 헤더 & 컨트롤 -->
+            <div class="panel" style="margin-bottom: 24px;">
+                <div class="panel-body" style="padding: 20px 24px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: gap: 16px;">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <h3 id="marketBizName" style="margin: 0; font-size: 20px; font-weight: 700;">학원 교육 상권 분석</h3>
+                                <span class="badge" style="background: #e0f2fe; color: #0369a1; font-weight: 700;">4-1 핵심 서비스</span>
+                            </div>
+                            <p id="marketBizAddress" style="margin: 0; font-size: 13.5px; color: var(--text-muted);">
+                                학원 주변 배후 학교·학생 수, 반경별 경쟁 학원 및 상권 매력도를 종합 분석합니다.
+                            </p>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <!-- 4-1-(4). 반경별 분석 토글 -->
+                            <div class="market-radius-group">
+                                <button type="button" class="btn-market-rad" data-radius="500" onclick="loadMarketAnalysis(500)">500m (도보 7분)</button>
+                                <button type="button" class="btn-market-rad active" data-radius="1000" onclick="loadMarketAnalysis(1000)">1km (표준)</button>
+                                <button type="button" class="btn-market-rad" data-radius="2000" onclick="loadMarketAnalysis(2000)">2km (광역)</button>
+                            </div>
+                            <!-- 4-1-(2). 학원 위치 및 지도 노출 -->
+                            <button id="btnOpenMapLocation" class="btn-action btn-secondary-act" style="padding: 8px 14px; font-size: 13px;" onclick="openAcademyOnParentMap()">
+                                🗺️ 지도에서 위치 확인 ↗
+                            </button>
+                            <!-- 4-1-(8). 분석 결과 PDF 다운로드 / 인쇄 -->
+                            <button class="btn-action btn-primary-act" style="padding: 8px 16px; font-size: 13px;" onclick="printMarketReport()">
+                                📄 상권 분석 PDF 리포트 출력
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 주소 미등록 시 노출되는 안내 화면 -->
+            <div id="marketNoAddressNotice" style="display: none; padding: 60px 20px; text-align: center; background: #ffffff; border: 1px dashed var(--border-color); border-radius: 16px; margin-bottom: 24px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">📍</div>
+                <h3 style="margin: 0 0 8px; font-size: 18px; font-weight: 700; color: var(--text-color);">학원 주소 정보가 등록되지 않았습니다</h3>
+                <p style="margin: 0 0 20px; font-size: 14px; color: var(--text-muted); line-height: 1.6;">
+                    학원 교육 상권 분석(주변 배후 학교, 학생 수, 반경별 경쟁 학원 등)을 이용하시려면<br>
+                    먼저 프로필 관리에서 학원 주소를 입력하고 저장해주세요.
+                </p>
+                <button class="btn-action btn-primary-act" style="padding: 10px 22px; font-size: 14px;" onclick="openTab('tab-profile')">
+                    ✏️ 프로필 관리에서 주소 입력하기
+                </button>
+            </div>
+
+            <!-- 로딩 상태 인디케이터 -->
+            <div id="marketLoadingIndicator" style="display: none; padding: 60px 0; text-align: center;">
+                <div style="font-size: 28px; margin-bottom: 12px;">⏳</div>
+                <div style="font-size: 15px; font-weight: 600; color: var(--text-color);">교육 상권 및 배후 학교 데이터를 분석하고 있습니다...</div>
+            </div>
+
+            <div id="marketAnalysisContent">
+                <!-- 4-1-(4). 반경별 교육 상권 핵심 지표 (KPI) -->
+                <div class="metric-grid" style="margin-bottom: 24px;">
+                    <div class="metric-card primary">
+                        <div class="metric-info">
+                            <h4>배후 잠재 학생 수</h4>
+                            <div class="metric-value"><span id="mMetricStudents">0</span><span class="unit">명</span></div>
+                            <div class="metric-subtext">반경 내 초·중·고교 총 재학생</div>
+                        </div>
+                        <div class="metric-icon">🎒</div>
+                    </div>
+                    <div class="metric-card primary">
+                        <div class="metric-info">
+                            <h4>배후 학교 현황</h4>
+                            <div class="metric-value"><span id="mMetricSchools">0</span><span class="unit">개교</span></div>
+                            <div class="metric-subtext" id="mMetricSchoolsBreakdown">초 0 / 중 0 / 고 0</div>
+                        </div>
+                        <div class="metric-icon">🏫</div>
+                    </div>
+                    <div class="metric-card primary">
+                        <div class="metric-info">
+                            <h4>반경 내 경쟁 학원 수</h4>
+                            <div class="metric-value"><span id="mMetricAcademies">0</span><span class="unit">개소</span></div>
+                            <div class="metric-subtext">인접 행정구역 등록 학원·교습소</div>
+                        </div>
+                        <div class="metric-icon">📚</div>
+                    </div>
+                    <div class="metric-card primary">
+                        <div class="metric-info">
+                            <h4>교육 상권 종합 등급</h4>
+                            <div class="metric-value" style="color: var(--primary);"><span id="mMetricGrade">A</span><span class="unit">등급</span></div>
+                            <div class="metric-subtext" id="mMetricPerAcademy">학원 1곳당 배후 학생: 0명</div>
+                        </div>
+                        <div class="metric-icon">⭐</div>
+                    </div>
+                </div>
+
+                <!-- 상권 종합 진단 브리핑 박스 -->
+                <div class="panel" style="margin-bottom: 24px; background: #f0fdf4; border: 1px solid #bbf7d0;">
+                    <div class="panel-body" style="padding: 16px 20px;">
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <span style="font-size: 22px;">💡</span>
+                            <div>
+                                <h4 style="margin: 0 0 4px; font-size: 15px; font-weight: 700; color: #166534;">학업여지도 AI 상권 종합 진단 리포트</h4>
+                                <p id="mMetricDescription" style="margin: 0; font-size: 13.5px; color: #15803d; line-height: 1.5;">
+                                    안정적인 배후 수요와 적정 경쟁 환경을 갖춘 표준 교육 상권입니다.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2컬럼 레이아웃: 좌측(주변 학교) vs 우측(주변 학원 및 과목별 경쟁) -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 24px; margin-bottom: 24px;">
+                    <!-- 좌측: 4-1-(3) 주변 배후 학교 정보 조회 -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <h3>🏫 반경 내 배후 학교 목록</h3>
+                                <p>반경 내 위치한 초·중·고교의 학생 수 및 학급 규모 현황입니다.</p>
+                            </div>
+                        </div>
+                        <div class="panel-body" style="padding: 16px;">
+                            <div class="market-table-wrap">
+                                <table class="market-table">
+                                    <thead>
+                                        <tr>
+                                            <th>학교명</th>
+                                            <th>구분</th>
+                                            <th style="text-align: right;">학생수</th>
+                                            <th style="text-align: right;">학급당 인원</th>
+                                            <th style="text-align: right;">직선거리</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mNearbySchoolsTbody">
+                                        <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">학교 데이터를 불러오는 중...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 우측: 4-1-(5) 지역별 학원 경쟁 현황 비교 -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <h3>📊 과목별 학원 분포 및 경쟁 현황</h3>
+                                <p>해당 교육 상권 내 과목별 점유율과 주요 경쟁 학원 현황입니다.</p>
+                            </div>
+                        </div>
+                        <div class="panel-body" style="padding: 16px 20px;">
+                            <!-- 과목별 점유율 그래프 -->
+                            <div id="mSubjectBarsArea" style="margin-bottom: 20px;">
+                                <!-- 동적 렌더링 -->
+                            </div>
+
+                            <h4 style="font-size: 13.5px; font-weight: 700; color: var(--text-sub); margin: 16px 0 8px;">주요 인접 경쟁 학원 목록</h4>
+                            <div class="market-table-wrap" style="max-height: 200px;">
+                                <table class="market-table">
+                                    <thead>
+                                        <tr>
+                                            <th>학원명</th>
+                                            <th>과목/유형</th>
+                                            <th>거리</th>
+                                            <th>연락처</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mNearbyAcademiesTbody">
+                                        <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">학원 데이터를 불러오는 중...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4-1-(6). 프리미엄 학원 광고 실시간 미리보기 -->
+                <div class="panel" style="margin-bottom: 24px;">
+                    <div class="panel-header">
+                        <div>
+                            <h3>📢 프리미엄 학원 광고 및 지도 노출 미리보기 (기획서 4-1-(6))</h3>
+                            <p>학부모가 학업여지도 지도 및 검색 화면에서 확인하게 되는 내 학원의 프리미엄 노출 형태입니다.</p>
+                        </div>
+                        <a href="javascript:void(0)" onclick="openTab('tab-pricing')" class="btn-link" style="color: var(--primary); font-weight: 600;">
+                            💎 프리미엄 광고 플랜 보기 ↗
+                        </a>
+                    </div>
+                    <div class="panel-body" style="padding: 24px;">
+                        <div style="max-width: 680px; margin: 0 auto; background: #ffffff; border: 2px solid var(--primary); border-radius: 14px; padding: 20px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.12);">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="background: #ef4444; color: #ffffff; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px;">스폰서 광고</span>
+                                    <span style="background: #eff6ff; color: #2563eb; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px;">지역 1위 추천</span>
+                                    <span id="adPreviewSubjectBadge" style="background: #f1f5f9; color: var(--text-sub); font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px;">수학 전문</span>
+                                </div>
+                                <span style="font-size: 12px; color: var(--text-muted);">실제 지도 검색 최상단 고정 노출</span>
+                            </div>
+                            <div style="display: flex; gap: 16px; align-items: center;">
+                                <div style="width: 70px; height: 70px; background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; flex-shrink: 0;">
+                                    🏫
+                                </div>
+                                <div style="flex: 1;">
+                                    <h4 id="adPreviewBizName" style="margin: 0 0 6px; font-size: 17px; font-weight: 700; color: var(--text-color);">학원명</h4>
+                                    <p id="adPreviewAddress" style="margin: 0 0 6px; font-size: 13px; color: var(--text-muted);">학원 주소</p>
+                                    <div style="display: flex; gap: 12px; font-size: 12.5px; color: var(--text-sub);">
+                                        <span>📞 <strong id="adPreviewPhone">02-0000-0000</strong></span>
+                                        <span>⭐ <strong>학부모 1:1 안심 상담 연결</strong></span>
+                                    </div>
+                                </div>
+                                <button class="btn-action btn-primary-act" style="padding: 10px 16px; font-size: 13px; flex-shrink: 0;" onclick="alert('학부모 지도 화면에서는 1:1 실시간 상담 문의 창구가 바로 열립니다.')">
+                                    상담 문의하기
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4-1-(8). 인쇄/PDF 다운로드 전용 보고서 템플릿 (기본 숨김, print 시 활성화) -->
+        <div id="marketPrintReportArea" style="display: none;">
+            <div style="border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    <h1 style="margin: 0; font-size: 24px; color: #1e3a8a;">학업여지도 교육 상권 및 경쟁 분석 리포트</h1>
+                    <p style="margin: 4px 0 0; font-size: 13px; color: #475569;">LEAMAP BUSINESS INTELLIGENCE REPORT · 맞춤형 상권 입지 분석</p>
+                </div>
+                <div style="text-align: right; font-size: 12px; color: #64748b;">
+                    <div>발행일시: <span id="printReportDate">-</span></div>
+                    <div>분석 반경: <span id="printReportRadius">1km</span></div>
+                </div>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+                <h3 style="margin: 0 0 6px; font-size: 16px;" id="printReportBizName">분석 대상 학원</h3>
+                <div style="font-size: 13px; color: #334155;" id="printReportBizAddr">주소: -</div>
+            </div>
+            <div style="margin-bottom: 24px;">
+                <h3 style="font-size: 16px; border-left: 4px solid #2563eb; padding-left: 8px; margin-bottom: 10px;">1. 상권 핵심 지표 요약</h3>
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; border: 1px solid #cbd5e1;">
+                    <tr style="background: #f1f5f9;">
+                        <th style="padding: 10px; border: 1px solid #cbd5e1;">배후 총 학생수</th>
+                        <th style="padding: 10px; border: 1px solid #cbd5e1;">배후 학교 수</th>
+                        <th style="padding: 10px; border: 1px solid #cbd5e1;">경쟁 학원 수</th>
+                        <th style="padding: 10px; border: 1px solid #cbd5e1;">학원 1곳당 배후학생</th>
+                        <th style="padding: 10px; border: 1px solid #cbd5e1;">상권 매력도</th>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border: 1px solid #cbd5e1; font-weight: 700;" id="printRepStudents">-</td>
+                        <td style="padding: 12px; border: 1px solid #cbd5e1;" id="printRepSchools">-</td>
+                        <td style="padding: 12px; border: 1px solid #cbd5e1;" id="printRepAcademies">-</td>
+                        <td style="padding: 12px; border: 1px solid #cbd5e1;" id="printRepPerAcademy">-</td>
+                        <td style="padding: 12px; border: 1px solid #cbd5e1; font-weight: 700; color: #2563eb;" id="printRepGrade">-</td>
+                    </tr>
+                </table>
+                <div style="margin-top: 10px; padding: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; font-size: 12.5px; color: #166534;" id="printRepDesc">
+                    -
+                </div>
+            </div>
+            <div style="margin-bottom: 24px;">
+                <h3 style="font-size: 16px; border-left: 4px solid #2563eb; padding-left: 8px; margin-bottom: 10px;">2. 반경 내 배후 학교 목록</h3>
+                <div id="printReportSchoolsArea" style="font-size: 12.5px;">-</div>
+            </div>
+            <div>
+                <h3 style="font-size: 16px; border-left: 4px solid #2563eb; padding-left: 8px; margin-bottom: 10px;">3. 과목별 경쟁 분석 및 주요 경쟁 학원</h3>
+                <div id="printReportAcademiesArea" style="font-size: 12.5px;">-</div>
+            </div>
+            <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                본 보고서는 학업여지도 플랫폼의 학교알리미 공시 및 카카오 로컬 빅데이터를 기반으로 생성되었습니다. © 학업여지도
+            </div>
+        </div>
 
         <!-- TAB 1: 사업자 대시보드 -->
         <div id="tab-dashboard" class="tab-content active">
@@ -913,124 +1315,246 @@
                     </div>
                 </div>
                 <div class="panel-body">
-                    <!-- 학원 전용 요금제 그리드 -->
+                    <!-- 학원 전용 요금제 그리드 (기획서 4-2) -->
                     <div id="academyPricingGrid" class="pricing-grid">
-                        <!-- 무료 플랜 -->
+                        <!-- FREE (0원) -->
                         <div class="pricing-card">
-                            <div class="pricing-title">학원 무료 등록</div>
-                            <div style="font-size: 13px; color: var(--text-muted);">기본 검색 노출</div>
+                            <div class="pricing-title">학원 FREE</div>
+                            <div style="font-size: 13px; color: var(--text-muted);">서비스 체험 및 기본 정보 관리</div>
                             <div class="pricing-price">
                                 0원 <span class="period">/ 평생 무료</span>
                             </div>
                             <ul class="pricing-features">
-                                <li>학원 기본 프로필 제공</li>
+                                <li>기본 학원 정보 등록</li>
                                 <li>학업여지도 일반 검색 목록 노출</li>
                                 <li>기본 조회수 확인</li>
                             </ul>
-                            <button class="btn-action btn-secondary-act" disabled
-                                style="opacity: 0.6; cursor: default;">
+                            <button class="btn-action btn-secondary-act" disabled style="opacity: 0.6; cursor: default;">
                                 현재 기본 적용됨
                             </button>
                         </div>
 
-                        <!-- 학원 프리미엄 (MVP 핵심) -->
-                        <div class="pricing-card featured">
-                            <div class="pricing-badge-top">BEST 추천 플랜</div>
-                            <div class="pricing-title" style="color: var(--primary);">학원 프리미엄 멤버십</div>
-                            <div style="font-size: 13px; color: var(--text-muted);">지역 타깃 학부모 집중 홍보 & 상담 유치</div>
+                        <!-- BASIC (29,000원) -->
+                        <div class="pricing-card">
+                            <div class="pricing-title">학원 BASIC</div>
+                            <div style="font-size: 13px; color: var(--text-muted);">학원 상세 페이지 관리 & 소개</div>
                             <div class="pricing-price">
                                 29,000원 <span class="period">/ 월 (VAT 포함)</span>
                             </div>
                             <ul class="pricing-features">
-                                <li><strong>지역·학교 검색 결과 상단 [스폰서/광고] 배지 노출</strong></li>
-                                <li><strong>학부모 1:1 안심 상담 문의 직접 연결 및 알림</strong></li>
-                                <li><strong>학원 상세 프로필 전체 커스텀 (과목·학년·수업방식·수강료)</strong></li>
-                                <li><strong>실시간 사업자 성과 통계 대시보드 제공</strong></li>
-                                <li>지도 마커 우선 가시성 지원</li>
+                                <li>학원 상세 페이지 관리</li>
+                                <li>사진 및 학원 소개 등록</li>
+                                <li>기본 조회 통계 제공</li>
+                                <li>학부모 1:1 안심 상담 문의 연결</li>
                             </ul>
-                            <div id="premiumSubActionArea">
-                                <button class="btn-action btn-primary-act"
-                                    onclick="subscribePlan('prod_academy_premium')">
-                                    🚀 월 29,000원으로 프리미엄 시작하기
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- 학원 마케팅 플러스 (후속) -->
-                        <div class="pricing-card">
-                            <div class="pricing-title">학원 마케팅 플러스</div>
-                            <div style="font-size: 13px; color: var(--text-muted);">인접 동네 확장 홍보 (후속 상품)</div>
-                            <div class="pricing-price">
-                                59,000원 <span class="period">/ 월</span>
-                            </div>
-                            <ul class="pricing-features">
-                                <li>프리미엄 모든 기능 기본 포함</li>
-                                <li>인접 3개 행정동 다지역 확장 배지 노출</li>
-                                <li>주간 학부모 관심사 심층 분석 리포트</li>
-                            </ul>
-                            <button class="btn-action btn-secondary-act" onclick="subscribePlan('prod_academy_plus')">
-                                마케팅 플러스 신청하기
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- 부동산 중개업소 전용 요금제 그리드 -->
-                    <div id="realEstatePricingGrid" class="pricing-grid" style="display: none;">
-                        <!-- 부동산 무료 플랜 -->
-                        <div class="pricing-card">
-                            <div class="pricing-title">부동산 기본 등록</div>
-                            <div style="font-size: 13px; color: var(--text-muted);">중개사무소 기본 프로필</div>
-                            <div class="pricing-price">
-                                0원 <span class="period">/ 평생 무료</span>
-                            </div>
-                            <ul class="pricing-features">
-                                <li>중개사무소 기본 프로필 제공</li>
-                                <li>학업여지도 파트너 목록 기본 등록</li>
-                                <li>기본 조회수 확인</li>
-                            </ul>
-                            <button class="btn-action btn-secondary-act" disabled
-                                style="opacity: 0.6; cursor: default;">
-                                현재 기본 적용됨
+                            <button class="btn-action btn-secondary-act" onclick="subscribePlan('prod_academy_basic')">
+                                BASIC 신청하기
                             </button>
                         </div>
 
-                        <!-- 부동산 교육환경 파트너 (BEST 추천 플랜) -->
+                        <!-- PRO (99,000원 - 주력 상품) -->
                         <div class="pricing-card featured">
-                            <div class="pricing-badge-top">BEST 추천 플랜</div>
-                            <div class="pricing-title" style="color: var(--primary);">부동산 교육환경 파트너</div>
-                            <div style="font-size: 13px; color: var(--text-muted);">단지 이야기 / 동네 이야기 학군 상담 우선 노출</div>
+                            <div class="pricing-badge-top">BEST 주력 추천</div>
+                            <div class="pricing-title" style="color: var(--primary);">학원 PRO</div>
+                            <div style="font-size: 13px; color: var(--text-muted);">지역 상권 분석 & 프리미엄 홍보 (주력 플랜)</div>
                             <div class="pricing-price">
                                 99,000원 <span class="period">/ 월 (VAT 포함)</span>
                             </div>
                             <ul class="pricing-features">
-                                <li><strong>주택 단지 상세 및 동네 이야기 하단 단독 파트너 배너 노출</strong></li>
-                                <li><strong>학군 안심 전문 공인중개사 골드 인증 뱃지 부여</strong></li>
-                                <li><strong>학부모 1:1 학군 매물 상담 및 직통 전화 바로 연결</strong></li>
-                                <li><strong>단지별 실시간 학부모 조회수 및 상담 전환 통계 제공</strong></li>
-                                <li>담당 지역 내 전문 아파트 단지 다수 매핑 지원</li>
+                                <li><strong>BASIC 전체 기능 기본 포함</strong></li>
+                                <li><strong>지역·학교 검색 상단 [프리미엄/스폰서] 배지 노출</strong></li>
+                                <li><strong>주변 학원 실시간 경쟁 환경 분석</strong></li>
+                                <li><strong>학교·학생 수 기반 교육 상권 분석</strong></li>
+                                <li><strong>거주 지역별 교육환경 비교 기능</strong></li>
+                                <li><strong>상권 분석 결과 PDF 보고서 다운로드</strong></li>
                             </ul>
-                            <div id="reSubActionArea">
-                                <button class="btn-action btn-primary-act" onclick="subscribePlan('prod_re_partner')">
-                                    🚀 월 99,000원으로 교육환경 파트너 시작하기
+                            <div id="premiumSubActionArea">
+                                <button class="btn-action btn-primary-act" onclick="subscribePlan('prod_academy_pro')">
+                                    🚀 월 99,000원으로 PRO 시작하기
                                 </button>
                             </div>
                         </div>
 
-                        <!-- 부동산 지역 전문 (49,000원) -->
+                        <!-- TEAM (199,000원) -->
                         <div class="pricing-card">
-                            <div class="pricing-title">부동산 지역 전문</div>
-                            <div style="font-size: 13px; color: var(--text-muted);">행정동 단위 학군 전문 공인중개사</div>
+                            <div class="pricing-title">학원 TEAM</div>
+                            <div style="font-size: 13px; color: var(--text-muted);">다수 지점 관리 & 통합 리포트</div>
                             <div class="pricing-price">
-                                49,000원 <span class="period">/ 월</span>
+                                199,000원 <span class="period">/ 월 (VAT 포함)</span>
                             </div>
                             <ul class="pricing-features">
-                                <li>중개사무소 인증 프로필 제공</li>
-                                <li>동네 이야기 및 지역 검색 결과 스폰서 노출</li>
-                                <li>학부모 직통 전화 문의 연결 및 클릭 통계</li>
+                                <li>PRO 전체 기능 기본 포함</li>
+                                <li>다수 지점 및 복수 프랜차이즈 관리</li>
+                                <li>복수 지역 교육 상권 비교</li>
+                                <li>직원 및 강사진 서브 계정 관리</li>
+                                <li>통합 경영 분석 보고서 제공</li>
                             </ul>
-                            <button class="btn-action btn-secondary-act" onclick="subscribePlan('prod_re_local')">
-                                지역 전문 신청하기
+                            <button class="btn-action btn-secondary-act" onclick="subscribePlan('prod_academy_team')">
+                                TEAM 신청하기
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- 부동산 중개업소 전용 요금제 그리드 (기획서 5-2) -->
+                    <div id="realEstatePricingGrid" class="pricing-grid" style="display: none;">
+                        <!-- FREE (0원) -->
+                        <div class="pricing-card">
+                            <div class="pricing-title">부동산 FREE</div>
+                            <div style="font-size: 13px; color: var(--text-muted);">중개사무소 기본 등록</div>
+                            <div class="pricing-price">
+                                0원 <span class="period">/ 평생 무료</span>
+                            </div>
+                            <ul class="pricing-features">
+                                <li>부동산 기본 정보 등록</li>
+                                <li>제한된 매물 기본 등록</li>
+                                <li>일반 검색 목록 노출</li>
+                                <li>기본 조회수 확인</li>
+                            </ul>
+                            <button class="btn-action btn-secondary-act" disabled style="opacity: 0.6; cursor: default;">
+                                현재 기본 적용됨
+                            </button>
+                        </div>
+
+                        <!-- BASIC (29,000원) -->
+                        <div class="pricing-card">
+                            <div class="pricing-title">부동산 BASIC</div>
+                            <div style="font-size: 13px; color: var(--text-muted);">매물 및 기본 교육환경 관리</div>
+                            <div class="pricing-price">
+                                29,000원 <span class="period">/ 월 (VAT 포함)</span>
+                            </div>
+                            <ul class="pricing-features">
+                                <li>매물 등록 및 관리</li>
+                                <li>기본 교육환경 정보 연동</li>
+                                <li>기본 조회 및 유입 통계</li>
+                            </ul>
+                            <button class="btn-action btn-secondary-act" onclick="subscribePlan('prod_re_basic')">
+                                BASIC 신청하기
+                            </button>
+                        </div>
+
+                        <!-- PRO (59,000원 - 주력 상품) -->
+                        <div class="pricing-card featured">
+                            <div class="pricing-badge-top">BEST 주력 추천</div>
+                            <div class="pricing-title" style="color: var(--primary);">부동산 PRO</div>
+                            <div style="font-size: 13px; color: var(--text-muted);">교육환경 분석 & 프리미엄 매물 홍보 (주력 플랜)</div>
+                            <div class="pricing-price">
+                                59,000원 <span class="period">/ 월 (VAT 포함)</span>
+                            </div>
+                            <ul class="pricing-features">
+                                <li><strong>BASIC 전체 기능 기본 포함</strong></li>
+                                <li><strong>매물별 심층 교육환경 자동 분석</strong></li>
+                                <li><strong>프리미엄 매물 상단 강조 노출</strong></li>
+                                <li><strong>지역 교육환경 비교 분석 기능</strong></li>
+                                <li><strong>학부모 직통 문의 및 상세 조회 통계</strong></li>
+                            </ul>
+                            <div id="reSubActionArea">
+                                <button class="btn-action btn-primary-act" onclick="subscribePlan('prod_re_pro')">
+                                    🚀 월 59,000원으로 PRO 시작하기
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- PREMIUM (99,000원) -->
+                        <div class="pricing-card">
+                            <div class="pricing-title">부동산 PREMIUM</div>
+                            <div style="font-size: 13px; color: var(--text-muted);">단지 파트너 배너 & 골드 인증</div>
+                            <div class="pricing-price">
+                                99,000원 <span class="period">/ 월 (VAT 포함)</span>
+                            </div>
+                            <ul class="pricing-features">
+                                <li>PRO 전체 기능 기본 포함</li>
+                                <li>다수 매물 무제한 홍보 및 관리</li>
+                                <li>교육환경 특화 단독 매물 홍보 페이지</li>
+                                <li>주택 단지 상세 및 동네 이야기 단독 배너</li>
+                                <li>학군 안심 전문 골드 인증 뱃지</li>
+                                <li>지역별 심층 교육환경 분석 보고서</li>
+                            </ul>
+                            <button class="btn-action btn-secondary-act" onclick="subscribePlan('prod_re_premium')">
+                                PREMIUM 신청하기
+                            </button>
+                        </div>
+
+                        <!-- TEAM (199,000원) -->
+                        <div class="pricing-card">
+                            <div class="pricing-title">부동산 TEAM</div>
+                            <div style="font-size: 13px; color: var(--text-muted);">복수 지점 및 소속 중개사 관리</div>
+                            <div class="pricing-price">
+                                199,000원 <span class="period">/ 월 (VAT 포함)</span>
+                            </div>
+                            <ul class="pricing-features">
+                                <li>PREMIUM 전체 기능 기본 포함</li>
+                                <li>소속 공인중개사 서브 계정 관리</li>
+                                <li>다수 중개사무소 및 지점 통합 관리</li>
+                                <li>통합 매물 관리 및 상권 분석 리포트</li>
+                            </ul>
+                            <button class="btn-action btn-secondary-act" onclick="subscribePlan('prod_re_team')">
+                                TEAM 신청하기
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 기획서 6-2. 전문 분석 보고서 구매 섹션 -->
+                    <div style="margin-top: 36px; padding-top: 24px; border-top: 1px dashed var(--border-color);">
+                        <div style="margin-bottom: 16px;">
+                            <h4 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-color);">📊 전문 교육 상권 분석 보고서 구매 (건별 맞춤 리포트)</h4>
+                            <p style="margin: 4px 0 0; font-size: 13px; color: var(--text-muted);">학업여지도 빅데이터 기반의 맞춤형 입지·경쟁·교육환경 분석 보고서를 즉시 구매 및 신청하실 수 있습니다.</p>
+                        </div>
+                        <div class="pricing-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
+                            <div class="pricing-card">
+                                <div class="pricing-title">학원 창업 상권 분석</div>
+                                <div style="font-size: 12.5px; color: var(--text-muted);">학교·학생 수 기반 입지 분석</div>
+                                <div class="pricing-price">49,000원 <span class="period">/ 건</span></div>
+                                <ul class="pricing-features">
+                                    <li>배후 학교 학생수 및 학령인구 추이</li>
+                                    <li>반경 1~2km 학원 밀집도 및 틈새 과목</li>
+                                    <li>PDF 맞춤 리포트 발급</li>
+                                </ul>
+                                <button class="btn-action btn-secondary-act" onclick="orderReport('report_academy_location')">보고서 신청하기</button>
+                            </div>
+                            <div class="pricing-card">
+                                <div class="pricing-title">학원 경쟁 환경 분석</div>
+                                <div style="font-size: 12.5px; color: var(--text-muted);">동일 과목 경쟁 학원 전수 분석</div>
+                                <div class="pricing-price">29,000원 <span class="period">/ 건</span></div>
+                                <ul class="pricing-features">
+                                    <li>행정동 내 동일 과목 경쟁 학원 분석</li>
+                                    <li>수강료 분포 및 학부모 선호 키워드</li>
+                                    <li>경쟁 강도 평가 및 차별화 포인트</li>
+                                </ul>
+                                <button class="btn-action btn-secondary-act" onclick="orderReport('report_academy_competition')">보고서 신청하기</button>
+                            </div>
+                            <div class="pricing-card">
+                                <div class="pricing-title">지역 교육환경 분석</div>
+                                <div style="font-size: 12.5px; color: var(--text-muted);">행정동 단위 교육 인프라 총람</div>
+                                <div class="pricing-price">19,000원 <span class="period">/ 건</span></div>
+                                <ul class="pricing-features">
+                                    <li>초·중·고교 학군 및 진학 성향</li>
+                                    <li>교과/예체능 학원가 인프라 지수</li>
+                                    <li>학부모 교육열 및 거주 만족도</li>
+                                </ul>
+                                <button class="btn-action btn-secondary-act" onclick="orderReport('report_education_env')">보고서 신청하기</button>
+                            </div>
+                            <div class="pricing-card">
+                                <div class="pricing-title">부동산 매물 교육환경 분석</div>
+                                <div style="font-size: 12.5px; color: var(--text-muted);">아파트·단지별 통학 및 학군</div>
+                                <div class="pricing-price">19,000원 <span class="period">/ 건</span></div>
+                                <ul class="pricing-features">
+                                    <li>초등학교 배정 통학구역 및 도보시간</li>
+                                    <li>단지 반경 안심 통학로 및 유해시설</li>
+                                    <li>학부모 브리핑용 맞춤 자료</li>
+                                </ul>
+                                <button class="btn-action btn-secondary-act" onclick="orderReport('report_re_education')">보고서 신청하기</button>
+                            </div>
+                            <div class="pricing-card">
+                                <div class="pricing-title">복수 지역 비교 보고서</div>
+                                <div style="font-size: 12.5px; color: var(--text-muted);">2개 이상 지역 심층 종합 비교</div>
+                                <div class="pricing-price">59,000원 <span class="period">/ 건</span></div>
+                                <ul class="pricing-features">
+                                    <li>복수 후보지 학군 및 학원가 1:1 비교</li>
+                                    <li>학생수 변화율 및 미래 학령인구 예측</li>
+                                    <li>입지 결정 및 매물 추천 종합 리포트</li>
+                                </ul>
+                                <button class="btn-action btn-secondary-act" onclick="orderReport('report_multi_region')">보고서 신청하기</button>
+                            </div>
                         </div>
                     </div>
 
@@ -1327,10 +1851,16 @@
                         <div class="form-grid">
                             <div class="form-group">
                                 <label>사업자 유형 <span class="req">*</span></label>
-                                <select id="regType" class="form-control" required>
-                                    <option value="academy">학원 사업자</option>
-                                    <option value="real_estate">부동산 중개사무소</option>
-                                </select>
+                                <div style="display: flex; gap: 20px; align-items: center; min-height: 42px; padding: 4px 2px;">
+                                    <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: #1e293b; cursor: pointer;">
+                                        <input type="radio" name="regType" value="academy" checked style="width: 17px; height: 17px; accent-color: var(--primary, #2563eb); cursor: pointer;">
+                                        <span>학원 사업자</span>
+                                    </label>
+                                    <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: #1e293b; cursor: pointer;">
+                                        <input type="radio" name="regType" value="real_estate" style="width: 17px; height: 17px; accent-color: var(--primary, #2563eb); cursor: pointer;">
+                                        <span>부동산 중개사무소</span>
+                                    </label>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label>사업자 상호명 <span class="req">*</span></label>
@@ -1415,6 +1945,119 @@
         <span id="toastIcon">✅</span>
         <span id="toastMsg">작업이 성공적으로 처리되었습니다.</span>
     </div>
+    <!-- 사업자 등록 신청 미승인 안내 모달 -->
+    <div id="approvalNoticeModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(6px); z-index: 99999; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+        <div
+            style="background: #ffffff; width: 100%; max-width: 440px; border-radius: 18px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2); overflow: hidden; display: flex; flex-direction: column; border: 1px solid #e2e8f0;">
+            <!-- Header Bar -->
+            <div
+                style="padding: 18px 22px; background: #ffffff; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div
+                        style="width: 36px; height: 36px; border-radius: 10px; background: #fef2f2; border: 1px solid #fee2e2; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                        ⚠️
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #1e293b;">사업자 승인 안내</h3>
+                        <span id="approvalNoticeStatusBadge"
+                            style="display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px; background: #fef3c7; color: #b45309; margin-top: 2px;">심사 대기 중</span>
+                    </div>
+                </div>
+                <button type="button" onclick="closeApprovalNoticeModal()"
+                    style="background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer; padding: 2px 6px; line-height: 1; border-radius: 6px;"
+                    aria-label="닫기">&times;</button>
+            </div>
+
+            <!-- Content Body -->
+            <div style="padding: 24px;">
+                <div
+                    style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: center;">
+                    <div style="font-size: 16px; font-weight: 800; color: #dc2626; margin-bottom: 6px;">
+                        사업자 등록 신청 승인이 되지 않았습니다.
+                    </div>
+                    <div id="approvalNoticeDetailMsg"
+                        style="font-size: 13px; color: #475569; line-height: 1.55; word-break: keep-all;">
+                        관리자 승인이 완료된 후 이용하실 수 있습니다.
+                    </div>
+                </div>
+
+                <div style="background: #eff6ff; border-radius: 10px; padding: 12px 14px; font-size: 12px; color: #1e40af; line-height: 1.45; display: flex; gap: 8px;">
+                    <span>💡</span>
+                    <span>신규 사업자 등록 신청 후 서류 검토가 완료되면 즉시 프로필 저장 및 상품 구독이 활성화됩니다.</span>
+                </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div
+                style="padding: 14px 22px 18px 22px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" onclick="closeApprovalNoticeModal()"
+                    style="flex: 1; height: 40px; border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; color: #475569; font-size: 13px; font-weight: 700; cursor: pointer;">
+                    닫기
+                </button>
+                <button type="button" onclick="closeApprovalNoticeModal(); openTab('tab-register');"
+                    style="flex: 1.4; height: 40px; border: none; border-radius: 8px; background: #2563eb; color: #ffffff; font-size: 13px; font-weight: 700; cursor: pointer;">
+                    사업자등록 신청하기 →
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- 학원 주소 정보 미입력 안내 모달 -->
+    <div id="addressNoticeModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(6px); z-index: 99999; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+        <div
+            style="background: #ffffff; width: 100%; max-width: 440px; border-radius: 18px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2); overflow: hidden; display: flex; flex-direction: column; border: 1px solid #e2e8f0;">
+            <!-- Header Bar -->
+            <div
+                style="padding: 18px 22px; background: #ffffff; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div
+                        style="width: 36px; height: 36px; border-radius: 10px; background: #eff6ff; border: 1px solid #dbeafe; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                        📍
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #1e293b;">학원 주소 정보 입력 필요</h3>
+                        <span style="display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px; background: #eff6ff; color: #2563eb; margin-top: 2px;">상권 분석 필수</span>
+                    </div>
+                </div>
+                <button type="button" onclick="closeAddressNoticeModal()"
+                    style="background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer; padding: 2px 6px; line-height: 1; border-radius: 6px;"
+                    aria-label="닫기">&times;</button>
+            </div>
+
+            <!-- Content Body -->
+            <div style="padding: 24px;">
+                <div
+                    style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 16px; text-align: center;">
+                    <div style="font-size: 16px; font-weight: 800; color: #0f172a; margin-bottom: 6px;">
+                        주소 정보가 등록되지 않았습니다.
+                    </div>
+                    <div style="font-size: 13px; color: #475569; line-height: 1.55; word-break: keep-all;">
+                        학원 교육 상권 분석(주변 배후 학교, 학생수, 반경별 경쟁 학원)은 <strong>프로필에서 주소 정보를 입력해야만 이용</strong>하실 수 있습니다.
+                    </div>
+                </div>
+
+                <div style="background: #eff6ff; border-radius: 10px; padding: 12px 14px; font-size: 12px; color: #1e40af; line-height: 1.45; display: flex; gap: 8px;">
+                    <span>💡</span>
+                    <span>프로필 관리 페이지에서 학원 주소를 입력하고 저장하시면 즉시 실시간 상권 분석이 진행됩니다.</span>
+                </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div
+                style="padding: 14px 22px 18px 22px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" onclick="closeAddressNoticeModal()"
+                    style="flex: 1; height: 40px; border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; color: #475569; font-size: 13px; font-weight: 700; cursor: pointer;">
+                    닫기
+                </button>
+                <button type="button" onclick="closeAddressNoticeModal(); openTab('tab-profile');"
+                    style="flex: 1.4; height: 40px; border: none; border-radius: 8px; background: #2563eb; color: #ffffff; font-size: 13px; font-weight: 700; cursor: pointer;">
+                    ✏️ 프로필에서 주소 입력하기
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <script>
         const urlParamsInit = new URLSearchParams(window.location.search);
@@ -1433,6 +2076,308 @@
             }, 3000);
         }
 
+        function showApprovalNoticeModal(actionType = 'save') {
+            const modal = document.getElementById('approvalNoticeModal');
+            const msgEl = document.getElementById('approvalNoticeDetailMsg');
+            const statusBadge = document.getElementById('approvalNoticeStatusBadge');
+            const actionText = actionType === 'subscribe' ? '상품 구독' : '프로필 저장';
+
+            if (msgEl) {
+                if (!currentBiz) {
+                    msgEl.innerHTML = '아직 사업자 등록 신청이 접수되지 않았습니다.<br><strong>신규 사업자 등록 신청</strong>을 완료하고 관리자 승인을 받으신 후 ' + actionText + '이(가) 가능합니다.';
+                    if (statusBadge) {
+                        statusBadge.innerText = '미등록 상태';
+                        statusBadge.style.background = '#f1f5f9';
+                        statusBadge.style.color = '#64748b';
+                    }
+                } else {
+                    const bizName = currentBiz.name || '신청 사업자';
+                    msgEl.innerHTML = '현재 <strong>\'' + bizName + '\'</strong>의 사업자 등록 심사가 진행 중입니다.<br>관리자 최종 승인이 완료된 후 ' + actionText + '을(를) 진행하실 수 있습니다.';
+                    if (statusBadge) {
+                        statusBadge.innerText = '심사 대기 중';
+                        statusBadge.style.background = '#fef3c7';
+                        statusBadge.style.color = '#b45309';
+                    }
+                }
+            }
+
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeApprovalNoticeModal() {
+            const modal = document.getElementById('approvalNoticeModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function showAddressNoticeModal() {
+            const modal = document.getElementById('addressNoticeModal');
+            if (modal) {
+                modal.style.display = 'flex';
+            } else {
+                alert('학원 교육 상권 분석은 프로필에서 주소 정보를 입력해야만 이용하실 수 있습니다.\n프로필 관리 페이지로 이동합니다.');
+                openTab('tab-profile');
+            }
+        }
+
+        function closeAddressNoticeModal() {
+            const modal = document.getElementById('addressNoticeModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+
+        let currentMarketRadius = 1000;
+        let lastMarketData = null;
+
+        async function loadMarketAnalysis(radius = currentMarketRadius) {
+            currentMarketRadius = radius;
+            document.querySelectorAll('.btn-market-rad').forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.dataset.radius, 10) === radius);
+            });
+
+            const loadingElem = document.getElementById('marketLoadingIndicator');
+            const contentElem = document.getElementById('marketAnalysisContent');
+            const noAddressElem = document.getElementById('marketNoAddressNotice');
+
+            // 0. 인증 전 상태인 경우 주소 모달을 노출하지 않고 즉시 종료 (가우시안 오버레이 레이어가 우선 노출됨)
+            const isApproved = currentBiz && currentBiz.status === 'approved';
+            if (!isApproved) {
+                if (loadingElem) loadingElem.style.display = 'none';
+                if (contentElem) contentElem.style.display = 'none';
+                if (noAddressElem) noAddressElem.style.display = 'none';
+                return;
+            }
+
+            // 1. 프로필 주소 정보 등록 여부 검증 (인증 완료 사업자만 검증)
+            const hasAddress = currentBiz && currentBiz.address && currentBiz.address.trim().length > 0;
+            if (!hasAddress) {
+                if (loadingElem) loadingElem.style.display = 'none';
+                if (contentElem) contentElem.style.display = 'none';
+                if (noAddressElem) noAddressElem.style.display = 'block';
+
+                showAddressNoticeModal();
+                return;
+            }
+
+            if (noAddressElem) noAddressElem.style.display = 'none';
+            if (loadingElem) loadingElem.style.display = 'block';
+            if (contentElem) contentElem.style.display = 'none';
+
+            const bizId = currentBiz.id;
+            try {
+                const res = await fetch(`/api/business/market-analysis?businessId=${bizId}&radius=${radius}`);
+                const data = await res.json();
+
+                if (!res.ok) {
+                    if (data.requireAddress) {
+                        if (contentElem) contentElem.style.display = 'none';
+                        if (noAddressElem) noAddressElem.style.display = 'block';
+                        showAddressNoticeModal();
+                        return;
+                    }
+                    alert(data.error || '상권 분석을 불러오지 못했습니다.');
+                    return;
+                }
+
+                lastMarketData = data;
+                renderMarketAnalysis(data);
+                if (contentElem) contentElem.style.display = 'block';
+            } catch (err) {
+                console.error('Market analysis load error:', err);
+                alert('상권 분석 통신 중 오류가 발생했습니다.');
+            } finally {
+                if (loadingElem) loadingElem.style.display = 'none';
+            }
+        }
+
+        function renderMarketAnalysis(data) {
+            if (!data) return;
+
+            // 학원명 & 주소
+            const bizName = (data.business && data.business.name) ? data.business.name : (currentBiz ? currentBiz.name : '학원 교육 상권 분석');
+            const bizAddr = (data.business && data.business.address) ? data.business.address : (currentBiz ? currentBiz.address : '주소 정보 미등록 (기본 서울 중심가 분석)');
+            const bizPhone = (data.business && data.business.phone) ? data.business.phone : (currentBiz ? currentBiz.phone : '02-0000-0000');
+            const bizSub = (data.business && data.business.subjects && data.business.subjects[0]) ? data.business.subjects[0] + ' 전문' : '수학 전문';
+
+            document.getElementById('marketBizName').innerText = bizName;
+            document.getElementById('marketBizAddress').innerText = bizAddr;
+
+            // KPI
+            document.getElementById('mMetricStudents').innerText = (data.summary.totalStudents || 0).toLocaleString();
+            document.getElementById('mMetricSchools').innerText = (data.summary.totalSchools || 0).toLocaleString();
+            document.getElementById('mMetricSchoolsBreakdown').innerText = `초 ${data.summary.elemCount} / 중 ${data.summary.midCount} / 고 ${data.summary.highCount}`;
+            document.getElementById('mMetricAcademies').innerText = (data.summary.totalAcademies || 0).toLocaleString();
+            document.getElementById('mMetricGrade').innerText = data.summary.marketGrade || 'A';
+            document.getElementById('mMetricPerAcademy').innerText = `학원 1곳당 배후 학생: ${data.summary.studentsPerAcademy || 0}명`;
+            document.getElementById('mMetricDescription').innerText = data.summary.gradeDescription || '';
+
+            // 주변 학교 테이블
+            const schTbody = document.getElementById('mNearbySchoolsTbody');
+            if (data.nearbySchools && data.nearbySchools.length > 0) {
+                schTbody.innerHTML = data.nearbySchools.map(sch => {
+                    const badgeClass = sch.type === '초등학교' ? 'badge-school-elem' : (sch.type === '중학교' ? 'badge-school-mid' : 'badge-school-high');
+                    return `
+                        <tr>
+                            <td><strong>${sch.name}</strong></td>
+                            <td><span class="${badgeClass}">${sch.type}</span></td>
+                            <td style="text-align: right;">${sch.studentCount.toLocaleString()}명</td>
+                            <td style="text-align: right;">${sch.classAvgSize}명</td>
+                            <td style="text-align: right; color: var(--text-muted);">${sch.distance < 1000 ? sch.distance + 'm' : (sch.distance / 1000).toFixed(1) + 'km'}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } else {
+                schTbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">반경 내 배후 학교가 없습니다.</td></tr>';
+            }
+
+            // 과목별 학원 분포 바
+            const subBarsArea = document.getElementById('mSubjectBarsArea');
+            if (data.subjectBreakdown && data.subjectBreakdown.length > 0) {
+                subBarsArea.innerHTML = data.subjectBreakdown.map(sb => `
+                    <div class="subject-bar-wrap">
+                        <div class="subject-bar-label">
+                            <span>${sb.subject}</span>
+                            <span style="color: var(--text-sub);">${sb.count}개소 (${sb.ratio}%)</span>
+                        </div>
+                        <div class="subject-progress-bg">
+                            <div class="subject-progress-fill" style="width: ${sb.ratio}%;"></div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // 주변 학원 목록 테이블
+            const acaTbody = document.getElementById('mNearbyAcademiesTbody');
+            if (data.nearbyAcademies && data.nearbyAcademies.length > 0) {
+                acaTbody.innerHTML = data.nearbyAcademies.slice(0, 15).map(ac => `
+                    <tr>
+                        <td><strong>${ac.name}</strong></td>
+                        <td><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 11.5px;">${ac.subject}</span></td>
+                        <td style="color: var(--text-muted);">${ac.distance < 1000 ? ac.distance + 'm' : (ac.distance / 1000).toFixed(1) + 'km'}</td>
+                        <td style="color: var(--text-muted); font-size: 12px;">${ac.phone || '-'}</td>
+                    </tr>
+                `).join('');
+            } else {
+                acaTbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 18px;">주변 학원 데이터를 조회하는 중입니다.</td></tr>';
+            }
+
+            // 프리미엄 광고 미리보기
+            document.getElementById('adPreviewBizName').innerText = bizName;
+            document.getElementById('adPreviewAddress').innerText = bizAddr;
+            document.getElementById('adPreviewPhone').innerText = bizPhone;
+            document.getElementById('adPreviewSubjectBadge').innerText = bizSub;
+        }
+
+        function openAcademyOnParentMap() {
+            if (!lastMarketData || !lastMarketData.center) {
+                window.open('/', '_blank');
+                return;
+            }
+            const { lat, lng } = lastMarketData.center;
+            const name = (lastMarketData.business && lastMarketData.business.name) ? encodeURIComponent(lastMarketData.business.name) : '학원';
+            window.open(`/?lat=${lat}&lng=${lng}&name=${name}`, '_blank');
+        }
+
+        function printMarketReport() {
+            if (!lastMarketData) {
+                alert('상권 분석 데이터를 먼저 불러와주세요.');
+                return;
+            }
+            const data = lastMarketData;
+            const bizName = (data.business && data.business.name) ? data.business.name : '학원명 미등록';
+            const bizAddr = (data.business && data.business.address) ? data.business.address : '주소 미등록';
+
+            document.getElementById('printReportDate').innerText = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('printReportRadius').innerText = data.radius < 1000 ? data.radius + 'm' : (data.radius / 1000) + 'km';
+            document.getElementById('printReportBizName').innerText = bizName;
+            document.getElementById('printReportBizAddr').innerText = '소재지: ' + bizAddr;
+
+            document.getElementById('printRepStudents').innerText = (data.summary.totalStudents || 0).toLocaleString() + '명';
+            document.getElementById('printRepSchools').innerText = (data.summary.totalSchools || 0) + '개교 (초 ' + data.summary.elemCount + ', 중 ' + data.summary.midCount + ', 고 ' + data.summary.highCount + ')';
+            document.getElementById('printRepAcademies').innerText = (data.summary.totalAcademies || 0).toLocaleString() + '개소';
+            document.getElementById('printRepPerAcademy').innerText = (data.summary.studentsPerAcademy || 0) + '명';
+            document.getElementById('printRepGrade').innerText = data.summary.marketGrade + ' 등급';
+            document.getElementById('printRepDesc').innerText = '💡 상권 진단: ' + (data.summary.gradeDescription || '');
+
+            // 학교 목록 HTML
+            if (data.nearbySchools && data.nearbySchools.length > 0) {
+                let sHtml = '<table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; text-align: left;"><tr style="background: #f8fafc;"><th style="padding: 6px 8px; border: 1px solid #cbd5e1;">학교명</th><th style="padding: 6px 8px; border: 1px solid #cbd5e1;">구분</th><th style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: right;">학생수</th><th style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: right;">학급당 인원</th><th style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: right;">거리</th></tr>';
+                data.nearbySchools.slice(0, 10).forEach(sch => {
+                    sHtml += `<tr><td style="padding: 6px 8px; border: 1px solid #cbd5e1;">${sch.name}</td><td style="padding: 6px 8px; border: 1px solid #cbd5e1;">${sch.type}</td><td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: right;">${sch.studentCount.toLocaleString()}명</td><td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: right;">${sch.classAvgSize}명</td><td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: right;">${sch.distance}m</td></tr>`;
+                });
+                sHtml += '</table>';
+                document.getElementById('printReportSchoolsArea').innerHTML = sHtml;
+            }
+
+            // 학원 목록 HTML
+            if (data.nearbyAcademies && data.nearbyAcademies.length > 0) {
+                let aHtml = '<table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; text-align: left;"><tr style="background: #f8fafc;"><th style="padding: 6px 8px; border: 1px solid #cbd5e1;">학원명</th><th style="padding: 6px 8px; border: 1px solid #cbd5e1;">과목</th><th style="padding: 6px 8px; border: 1px solid #cbd5e1;">주소</th><th style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: right;">거리</th></tr>';
+                data.nearbyAcademies.slice(0, 10).forEach(ac => {
+                    aHtml += `<tr><td style="padding: 6px 8px; border: 1px solid #cbd5e1;">${ac.name}</td><td style="padding: 6px 8px; border: 1px solid #cbd5e1;">${ac.subject}</td><td style="padding: 6px 8px; border: 1px solid #cbd5e1;">${ac.address}</td><td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: right;">${ac.distance}m</td></tr>`;
+                });
+                aHtml += '</table>';
+                document.getElementById('printReportAcademiesArea').innerHTML = aHtml;
+            }
+
+            window.print();
+        }
+
+        function updateAuthLockOverlay(activeTabId) {
+            const overlay = document.getElementById('unauthGaussianOverlay');
+            if (!overlay) return;
+
+            const protectedTabs = ['tab-dashboard', 'tab-market', 'tab-pricing', 'tab-profile'];
+            const isApproved = currentBiz && currentBiz.status === 'approved';
+
+            // 등록 신청 탭이거나, 인증이 완료된 사업자인 경우 오버레이 해제
+            if (activeTabId === 'tab-register' || isApproved) {
+                overlay.style.display = 'none';
+                return;
+            }
+
+            // 보호된 탭인데 인증이 되지 않은 경우 -> 가우시안 오버레이 활성화
+            if (protectedTabs.includes(activeTabId)) {
+                overlay.style.display = 'flex';
+
+                const titleEl = document.getElementById('unauthOverlayTitle');
+                const msgEl = document.getElementById('unauthOverlayMsg');
+                const badgeEl = document.getElementById('unauthOverlayBadge');
+                const btnEl = document.getElementById('unauthOverlayBtn');
+
+                if (!currentBiz) {
+                    if (badgeEl) {
+                        badgeEl.innerText = '미등록 상태';
+                        badgeEl.style.background = '#f1f5f9';
+                        badgeEl.style.color = '#64748b';
+                    }
+                    if (titleEl) titleEl.innerText = '사업자 등록 및 인증 필요';
+                    if (msgEl) {
+                        msgEl.innerHTML = '현재 선택하신 메뉴(대시보드, 교육상권분석, 상품&구독, 프로필관리)는<br><strong>사업자 인증 후 사용 가능</strong>합니다.<br>먼저 사업자 등록 신청을 진행해주세요.';
+                    }
+                    if (btnEl) btnEl.innerText = '📝 사업자 등록 신청하기 →';
+                } else {
+                    const bizName = currentBiz.name || '신청 사업자';
+                    if (badgeEl) {
+                        badgeEl.innerText = '심사 대기 중';
+                        badgeEl.style.background = '#fef3c7';
+                        badgeEl.style.color = '#b45309';
+                    }
+                    if (titleEl) titleEl.innerText = '사업자 등록 심사 진행 중';
+                    if (msgEl) {
+                        msgEl.innerHTML = '현재 <strong>\'' + bizName + '\'</strong>의 사업자 등록 심사가 진행 중입니다.<br>관리자 최종 승인(인증)이 완료되면 본 서비스가 즉시 활성화됩니다.';
+                    }
+                    if (btnEl) btnEl.innerText = '📝 심사 상태 확인하기 →';
+                }
+            } else {
+                overlay.style.display = 'none';
+            }
+        }
+
         function openTab(tabId) {
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
@@ -1440,6 +2385,15 @@
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.toggle('active', content.id === tabId);
             });
+
+            updateAuthLockOverlay(tabId);
+
+            if (tabId === 'tab-market') {
+                const isApproved = currentBiz && currentBiz.status === 'approved';
+                if (isApproved) {
+                    loadMarketAnalysis(currentMarketRadius);
+                }
+            }
             if (tabId === 'tab-profile') {
                 setTimeout(() => {
                     if (academyMap) {
@@ -1518,6 +2472,9 @@
                 }
             } catch (err) {
                 console.error(err);
+            } finally {
+                const activeTab = document.querySelector('.tab-content.active')?.id || 'tab-dashboard';
+                updateAuthLockOverlay(activeTab);
             }
         }
 
@@ -1570,8 +2527,8 @@
 
             // 프리미엄 결제 버튼 상태 동기화
             const actionArea = isRe ? document.getElementById('reSubActionArea') : document.getElementById('premiumSubActionArea');
-            const targetProdId = isRe ? 'prod_re_partner' : 'prod_academy_premium';
-            const btnLabel = isRe ? '🚀 월 99,000원으로 교육환경 파트너 시작하기' : '🚀 월 29,000원으로 프리미엄 시작하기';
+            const targetProdId = isRe ? 'prod_re_pro' : 'prod_academy_pro';
+            const btnLabel = isRe ? '🚀 월 59,000원으로 PRO 시작하기' : '🚀 월 99,000원으로 PRO 시작하기';
 
             if (actionArea) {
                 if (sub && sub.status === 'active') {
@@ -2670,7 +3627,10 @@
         }
 
         async function saveProfile() {
-            if (!currentBiz) return;
+            if (!currentBiz || currentBiz.status !== 'approved') {
+                showApprovalNoticeModal('save');
+                return;
+            }
             let payload = { businessId: currentBiz.id };
 
             if (currentBiz.type === 'real_estate') {
@@ -2791,15 +3751,25 @@
         }
 
         async function subscribePlan(productId) {
-            if (!currentBiz) return;
-            if (currentBiz.status !== 'approved') {
-                alert('현재 검수 대기 중인 사업자입니다.\n관리자 승인 완료 후 프리미엄 결제를 진행할 수 있습니다.');
+            if (!currentBiz || currentBiz.status !== 'approved') {
+                showApprovalNoticeModal('subscribe');
                 return;
             }
 
-            const planName = productId === 'prod_re_partner'
-                ? '부동산 교육환경 파트너(월 99,000원)'
-                : (productId === 'prod_re_local' ? '부동산 지역 전문(월 49,000원)' : '학원 프리미엄 플랜(월 29,000원)');
+            const planMap = {
+                'prod_academy_basic': '학원 BASIC(월 29,000원)',
+                'prod_academy_pro': '학원 PRO 주력 플랜(월 99,000원)',
+                'prod_academy_team': '학원 TEAM 플랜(월 199,000원)',
+                'prod_academy_premium': '학원 프리미엄 플랜(월 29,000원)',
+                'prod_academy_plus': '학원 마케팅 플러스(월 59,000원)',
+                'prod_re_basic': '부동산 BASIC(월 29,000원)',
+                'prod_re_pro': '부동산 PRO 주력 플랜(월 59,000원)',
+                'prod_re_premium': '부동산 PREMIUM 플랜(월 99,000원)',
+                'prod_re_team': '부동산 TEAM 플랜(월 199,000원)',
+                'prod_re_partner': '부동산 교육환경 파트너(월 99,000원)',
+                'prod_re_local': '부동산 지역 전문(월 49,000원)'
+            };
+            const planName = planMap[productId] || '비즈니스 멤버십 플랜';
 
             if (!confirm(`${planName}을(를) 결제 및 활성화하시겠습니까?`)) {
                 return;
@@ -2827,6 +3797,48 @@
             } catch (err) {
                 console.error(err);
                 alert('결제 통신 중 오류가 발생했습니다.');
+            }
+        }
+
+        async function orderReport(reportId) {
+            if (!currentBiz || currentBiz.status !== 'approved') {
+                showApprovalNoticeModal('subscribe');
+                return;
+            }
+
+            const reportMap = {
+                'report_academy_location': '학원 창업 상권 분석 보고서 (49,000원)',
+                'report_academy_competition': '학원 경쟁 환경 분석 보고서 (29,000원)',
+                'report_education_env': '지역 교육환경 분석 보고서 (19,000원)',
+                'report_re_education': '부동산 매물 교육환경 분석 보고서 (19,000원)',
+                'report_multi_region': '복수 지역 비교 보고서 (59,000원)'
+            };
+            const repName = reportMap[reportId] || '전문 분석 보고서';
+
+            if (!confirm(`[${repName}] 생성을 신청하시겠습니까?\n\n신청 즉시 빅데이터 분석 및 보고서가 생성됩니다.`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/business/report-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        businessId: currentBiz.id,
+                        reportId: reportId
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    showToast('분석 보고서 신청이 완료되었습니다!', '📊');
+                    alert(`[${repName}] 신청이 성공적으로 접수되었습니다!\n보고서 생성이 완료되는 대로 등록된 이메일과 대시보드로 안내됩니다.`);
+                } else {
+                    alert(data.error || '보고서 신청에 실패했습니다.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('보고서 신청 통신 중 오류가 발생했습니다.');
             }
         }
 
@@ -2904,8 +3916,11 @@
             const baseAddr = document.getElementById('regAddress').value.trim();
             const detailAddr = document.getElementById('regAddressDetail') ? document.getElementById('regAddressDetail').value.trim() : '';
 
+            const selectedTypeRadio = document.querySelector('input[name="regType"]:checked');
+            const typeVal = selectedTypeRadio ? selectedTypeRadio.value : 'academy';
+
             const payload = {
-                type: document.getElementById('regType').value,
+                type: typeVal,
                 name: document.getElementById('regName').value.trim(),
                 representative: document.getElementById('regRepresentative').value.trim(),
                 bizNumber: bizNumVal,
@@ -2947,6 +3962,12 @@
 
         // 초기 로드
         document.addEventListener('DOMContentLoaded', () => {
+            const approvalModal = document.getElementById('approvalNoticeModal');
+            if (approvalModal) {
+                approvalModal.addEventListener('click', (e) => {
+                    if (e.target === approvalModal) closeApprovalNoticeModal();
+                });
+            }
             loadSession();
 
             // URL 파라미터 기반 탭 열기 (예: /business?tab=register)

@@ -5976,6 +5976,9 @@ app.put('/api/business/profile', (req, res) => {
         if (idx === -1) {
             return res.status(404).json({ error: '해당 사업자를 찾을 수 없습니다.' });
         }
+        if (businesses[idx].status !== 'approved') {
+            return res.status(403).json({ error: '사업자 등록 신청 승인이 되지 않았습니다.' });
+        }
 
         if (academyProfile) {
             if (!businesses[idx].registeredAddress && businesses[idx].address) {
@@ -6067,14 +6070,337 @@ app.get('/api/business/dashboard', (req, res) => {
     }
 });
 
+// 비즈니스 모델 기획서 기반 상품 목록 (기획서 4-2, 5-2, 6-2)
+const DEFAULT_BUSINESS_PRODUCTS = [
+    // 4-2. 학원 사업자 요금제
+    { id: 'prod_academy_basic', type: 'academy', name: '학원 BASIC', price: 29000, billingPeriod: 'monthly', features: ['학원 상세 페이지 관리', '사진 및 소개 등록', '기본 조회 통계', '문의 연결 기능'] },
+    { id: 'prod_academy_pro', type: 'academy', name: '학원 PRO (주력)', price: 99000, billingPeriod: 'monthly', isPopular: true, features: ['BASIC 전체 기능', '프리미엄 노출 혜택', '주변 학원 경쟁 분석', '학교·학생 수 기반 지역 분석', '지역별 비교 기능', 'PDF 보고서'] },
+    { id: 'prod_academy_team', type: 'academy', name: '학원 TEAM', price: 199000, billingPeriod: 'monthly', features: ['PRO 전체 기능', '다수 지점 관리', '복수 지역 비교', '직원 계정 관리', '통합 분석 보고서'] },
+    { id: 'prod_academy_premium', type: 'academy', name: '학원 프리미엄 멤버십', price: 29000, billingPeriod: 'monthly' },
+    { id: 'prod_academy_plus', type: 'academy', name: '학원 마케팅 플러스', price: 59000, billingPeriod: 'monthly' },
+
+    // 5-2. 부동산 사업자 요금제
+    { id: 'prod_re_basic', type: 'real_estate', name: '부동산 BASIC', price: 29000, billingPeriod: 'monthly', features: ['매물 관리', '기본 교육환경 정보', '기본 조회 통계'] },
+    { id: 'prod_re_pro', type: 'real_estate', name: '부동산 PRO (주력)', price: 59000, billingPeriod: 'monthly', isPopular: true, features: ['BASIC 전체 기능', '매물별 교육환경 분석', '프리미엄 매물 노출', '지역 교육환경 비교', '문의 및 조회 통계'] },
+    { id: 'prod_re_premium', type: 'real_estate', name: '부동산 PREMIUM', price: 99000, billingPeriod: 'monthly', features: ['PRO 전체 기능', '다수 매물 관리', '매물별 홍보 페이지', '지역별 분석 보고서'] },
+    { id: 'prod_re_team', type: 'real_estate', name: '부동산 TEAM', price: 199000, billingPeriod: 'monthly', features: ['PREMIUM 전체 기능', '직원 계정 관리', '다수 사무소 및 지점 관리', '통합 매물 관리 및 분석'] },
+    { id: 'prod_re_partner', type: 'real_estate', name: '부동산 교육환경 파트너', price: 99000, billingPeriod: 'monthly' },
+    { id: 'prod_re_local', type: 'real_estate', name: '부동산 지역 전문', price: 49000, billingPeriod: 'monthly' },
+
+    // 6-2. 분석 보고서 판매 상품
+    { id: 'report_academy_location', type: 'report', name: '학원 창업 상권 분석 보고서', price: 49000, billingPeriod: 'one_time' },
+    { id: 'report_academy_competition', type: 'report', name: '학원 경쟁 환경 분석 보고서', price: 29000, billingPeriod: 'one_time' },
+    { id: 'report_education_env', type: 'report', name: '지역 교육환경 분석 보고서', price: 19000, billingPeriod: 'one_time' },
+    { id: 'report_re_education', type: 'report', name: '부동산 매물 교육환경 분석 보고서', price: 19000, billingPeriod: 'one_time' },
+    { id: 'report_multi_region', type: 'report', name: '복수 지역 비교 보고서', price: 59000, billingPeriod: 'one_time' }
+];
+
+function getMergedProducts(subData) {
+    const list = Array.isArray(subData.products) ? [...subData.products] : [];
+    DEFAULT_BUSINESS_PRODUCTS.forEach(dp => {
+        if (!list.some(p => p.id === dp.id)) {
+            list.push(dp);
+        }
+    });
+    return list;
+}
+
 // 6. 구독 상품 목록 (P-05)
 app.get('/api/products', (req, res) => {
     try {
-        const subData = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [] });
-        return res.json(subData.products || []);
+        const subData = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [], subscriptions: [] });
+        const merged = getMergedProducts(subData);
+        return res.json(merged);
     } catch (err) {
         console.error('Products Error:', err);
         return res.status(500).json({ error: '상품 목록을 불러오지 못했습니다.' });
+    }
+});
+
+// 6-2. 분석 보고서 주문/신청 API
+app.post('/api/business/report-order', (req, res) => {
+    try {
+        const { businessId, reportId, applicantName, contactPhone, notes } = req.body;
+        if (!businessId || !reportId) {
+            return res.status(400).json({ error: '사업자 ID와 보고서 유형이 필요합니다.' });
+        }
+        const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+        const biz = businesses.find(b => b.id === businessId);
+        if (!biz) {
+            return res.status(404).json({ error: '사업자 정보를 찾을 수 없습니다.' });
+        }
+        if (biz.status !== 'approved') {
+            return res.status(403).json({ error: '관리자 승인이 완료된 사업자만 보고서를 신청할 수 있습니다.' });
+        }
+
+        const subData = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [], subscriptions: [] });
+        const allProds = getMergedProducts(subData);
+        const targetReport = allProds.find(p => p.id === reportId);
+        if (!targetReport) {
+            return res.status(400).json({ error: '존재하지 않는 보고서 상품입니다.' });
+        }
+
+        const REPORT_ORDERS_PATH = path.join(DATA_DIR, 'report_orders.json');
+        const orders = readJsonFileSafe(REPORT_ORDERS_PATH, []);
+        const newOrder = {
+            id: 'ord_rep_' + Date.now(),
+            businessId,
+            businessName: biz.name,
+            businessType: biz.businessType,
+            reportId,
+            reportName: targetReport.name,
+            price: targetReport.price,
+            applicantName: applicantName || biz.representativeName,
+            contactPhone: contactPhone || biz.contactPhone,
+            notes: notes || '',
+            status: 'completed',
+            createdAt: new Date().toISOString()
+        };
+        orders.push(newOrder);
+        writeJsonFileSafe(REPORT_ORDERS_PATH, orders);
+
+        return res.json({ success: true, message: '보고서 신청이 완료되었습니다.', order: newOrder });
+    } catch (err) {
+        console.error('Report Order Error:', err);
+        return res.status(500).json({ error: '보고서 주문 처리 중 오류가 발생했습니다.' });
+    }
+});
+
+// 하버사인 거리 계산 함수 (미터 단위)
+function calcDistanceMeters(lat1, lon1, lat2, lon2) {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return 999999;
+    const R = 6371e3;
+    const phi1 = lat1 * Math.PI / 180;
+    const phi2 = lat2 * Math.PI / 180;
+    const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+    const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+              Math.cos(phi1) * Math.cos(phi2) *
+              Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(R * c);
+}
+
+// 4-1. 학원 사업자 교육 상권 분석 API (기획서 4-1: 3 주변 학교·학원 조회, 4 반경별 상권 분석, 5 지역별 경쟁 현황 비교)
+app.get('/api/business/market-analysis', async (req, res) => {
+    try {
+        const { businessId } = req.query;
+        const radius = Math.min(Math.max(parseInt(req.query.radius, 10) || 1000, 300), 5000);
+
+        let lat = parseFloat(req.query.lat);
+        let lng = parseFloat(req.query.lng);
+        let biz = null;
+
+        if (businessId) {
+            const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+            biz = businesses.find(b => b.id === businessId);
+            if (!biz) {
+                return res.status(404).json({ error: '사업자 정보를 찾을 수 없습니다.' });
+            }
+        }
+
+        // 주소 정보 입력 필수 검증: 프로필에 주소가 없으면 상권 분석 불가 및 알림 안내 플래그 반환
+        if (biz && (!biz.address || !biz.address.trim())) {
+            return res.status(400).json({
+                error: '학원 교육 상권 분석은 프로필에서 주소 정보를 입력해야만 이용하실 수 있습니다.',
+                requireAddress: true
+            });
+        }
+        if (!biz && (!lat || !lng)) {
+            return res.status(400).json({
+                error: '학원 교육 상권 분석은 프로필에서 주소 정보를 입력해야만 이용하실 수 있습니다.',
+                requireAddress: true
+            });
+        }
+
+        // 사업자 주소 기반 지오코딩
+        if (biz && (!lat || !lng)) {
+            if (biz.lat && biz.lng) {
+                lat = parseFloat(biz.lat);
+                lng = parseFloat(biz.lng);
+            } else if (biz.address) {
+                const config = await readConfig();
+                const appkey = config.kakao_app_key;
+                if (appkey) {
+                    try {
+                        const cleanAddr = biz.address.replace(/\([^)]*\)/g, '').trim();
+                        const geoUrl = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(cleanAddr)}`;
+                        const geoData = await httpsGet(geoUrl, getKakaoHeaders(req, appkey));
+                        if (geoData.documents && geoData.documents.length > 0) {
+                            lng = parseFloat(geoData.documents[0].x);
+                            lat = parseFloat(geoData.documents[0].y);
+                            biz.lat = lat;
+                            biz.lng = lng;
+                            const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+                            const targetIdx = businesses.findIndex(b => b.id === biz.id);
+                            if (targetIdx !== -1) {
+                                businesses[targetIdx].lat = lat;
+                                businesses[targetIdx].lng = lng;
+                                writeJsonFileSafe(BUSINESSES_PATH, businesses);
+                            }
+                        }
+                    } catch (gErr) {
+                        console.warn('Geocoding error:', gErr.message);
+                    }
+                }
+            }
+        }
+
+        // 기본 좌표 (서울 강남 대치동 기준 폴백)
+        if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+            lat = 37.4981;
+            lng = 127.0583;
+        }
+
+        // 1. 반경 내 주변 학교 분석 (schools_seoul.json)
+        const allSchools = readJsonFileSafe(SCHOOLS_PATH, []);
+        const nearbySchools = [];
+        let totalStudents = 0;
+        let elemCount = 0;
+        let midCount = 0;
+        let highCount = 0;
+        let otherSchoolCount = 0;
+
+        allSchools.forEach(sch => {
+            if (!sch.lat || !sch.lng) return;
+            const dist = calcDistanceMeters(lat, lng, parseFloat(sch.lat), parseFloat(sch.lng));
+            if (dist <= radius) {
+                const stuCount = parseInt(sch.student_count, 10) || 0;
+                totalStudents += stuCount;
+                if (sch.school_type === '초등학교') elemCount++;
+                else if (sch.school_type === '중학교') midCount++;
+                else if (sch.school_type === '고등학교') highCount++;
+                else otherSchoolCount++;
+
+                nearbySchools.push({
+                    id: sch.school_id,
+                    name: sch.school_name,
+                    type: sch.school_type,
+                    address: sch.address,
+                    studentCount: stuCount,
+                    classAvgSize: sch.class_avg_size || 0,
+                    distance: dist
+                });
+            }
+        });
+
+        nearbySchools.sort((a, b) => a.distance - b.distance);
+
+        // 2. 반경 내 주변 학원 분석 (카카오 로컬 카테고리 AC5)
+        let nearbyAcademies = [];
+        let totalAcademies = 0;
+        const config = await readConfig();
+        const appkey = config.kakao_app_key;
+
+        if (appkey) {
+            try {
+                const ac5Url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=AC5&x=${lng}&y=${lat}&radius=${Math.min(radius, 2000)}&size=15&page=1`;
+                const acData = await httpsGet(ac5Url, getKakaoHeaders(req, appkey));
+                if (acData && acData.documents) {
+                    totalAcademies = acData.meta ? acData.meta.total_count : acData.documents.length;
+                    nearbyAcademies = acData.documents.map(d => {
+                        let sub = '종합/기타';
+                        const placeName = d.place_name || '';
+                        if (/수학|매쓰|연산|셈/.test(placeName)) sub = '수학';
+                        else if (/영어|어학|잉글리|토플|토익|스피킹/.test(placeName)) sub = '영어';
+                        else if (/국어|논술|독서/.test(placeName)) sub = '국어/논술';
+                        else if (/과학|사이언스|코딩|컴퓨터|로봇/.test(placeName)) sub = '과학/코딩';
+                        else if (/음악|피아노|바이올린|미술|아트|태권도|줄넘기|발레|체육/.test(placeName)) sub = '예체능';
+
+                        return {
+                            id: d.id,
+                            name: placeName,
+                            category: d.category_name,
+                            subject: sub,
+                            address: d.road_address_name || d.address_name,
+                            phone: d.phone || '',
+                            distance: parseInt(d.distance, 10) || calcDistanceMeters(lat, lng, parseFloat(d.y), parseFloat(d.x)),
+                            x: parseFloat(d.x),
+                            y: parseFloat(d.y)
+                        };
+                    });
+                }
+            } catch (aErr) {
+                console.warn('Academies fetch error:', aErr.message);
+            }
+        }
+
+        // 주변 학원 데이터 보충 (카카오 API 실패 또는 결과가 0일 때)
+        if (totalAcademies === 0 && nearbySchools.length > 0) {
+            const avgAcademies = Math.round(nearbySchools.reduce((acc, cur) => acc + (cur.academy_count || 25), 0) / nearbySchools.length);
+            totalAcademies = Math.max(12, avgAcademies);
+        }
+        if (totalAcademies === 0) totalAcademies = 28;
+
+        // 3. 과목별 경쟁 현황 비교 통계
+        const subjectCounts = { '수학': 0, '영어': 0, '국어/논술': 0, '과학/코딩': 0, '예체능': 0, '종합/기타': 0 };
+        nearbyAcademies.forEach(ac => {
+            if (subjectCounts[ac.subject] !== undefined) subjectCounts[ac.subject]++;
+            else subjectCounts['종합/기타']++;
+        });
+
+        const subjectBreakdown = [
+            { subject: '수학', count: nearbyAcademies.length > 5 ? subjectCounts['수학'] : Math.round(totalAcademies * 0.32), ratio: 0 },
+            { subject: '영어', count: nearbyAcademies.length > 5 ? subjectCounts['영어'] : Math.round(totalAcademies * 0.28), ratio: 0 },
+            { subject: '국어/논술', count: nearbyAcademies.length > 5 ? subjectCounts['국어/논술'] : Math.round(totalAcademies * 0.15), ratio: 0 },
+            { subject: '과학/코딩', count: nearbyAcademies.length > 5 ? subjectCounts['과학/코딩'] : Math.round(totalAcademies * 0.10), ratio: 0 },
+            { subject: '예체능', count: nearbyAcademies.length > 5 ? subjectCounts['예체능'] : Math.round(totalAcademies * 0.15), ratio: 0 }
+        ];
+        const sumCounts = subjectBreakdown.reduce((sum, item) => sum + item.count, 0) || 1;
+        subjectBreakdown.forEach(item => {
+            item.ratio = Math.round((item.count / sumCounts) * 1000) / 10;
+        });
+
+        // 4. 상권 매력도 등급 및 지표 산출
+        const studentsPerAcademy = Math.round(totalStudents / Math.max(1, totalAcademies));
+        let marketGrade = 'B';
+        let gradeDescription = '적정 수요와 안정적 경쟁 환경을 갖춘 표준 교육 상권';
+
+        if (studentsPerAcademy >= 140) {
+            marketGrade = 'A+';
+            gradeDescription = '초우량 교육 상권 (학원 공급 대비 배후 잠재 학생 수가 매우 풍부한 핵심 상권)';
+        } else if (studentsPerAcademy >= 85) {
+            marketGrade = 'A';
+            gradeDescription = '우량 교육 상권 (탄탄한 학령 인구와 높은 신규 원생 모집 가능성)';
+        } else if (studentsPerAcademy >= 45) {
+            marketGrade = 'B';
+            gradeDescription = '표준 교육 상권 (수요와 공급이 균형을 이루며 차별화 커리큘럼 권장)';
+        } else {
+            marketGrade = 'C';
+            gradeDescription = '고밀도 경쟁 상권 (학원 밀집도가 높아 타깃 과목 및 프리미엄 홍보 필수)';
+        }
+
+        return res.json({
+            business: biz ? {
+                id: biz.id,
+                name: biz.name,
+                representative: biz.representative,
+                phone: biz.phone,
+                address: biz.address,
+                subjects: biz.subjects || ['수학'],
+                status: biz.status
+            } : null,
+            center: { lat, lng },
+            radius,
+            summary: {
+                totalSchools: nearbySchools.length,
+                elemCount,
+                midCount,
+                highCount,
+                otherSchoolCount,
+                totalStudents,
+                totalAcademies,
+                studentsPerAcademy,
+                marketGrade,
+                gradeDescription
+            },
+            subjectBreakdown,
+            nearbySchools: nearbySchools.slice(0, 20),
+            nearbyAcademies: nearbyAcademies.slice(0, 20)
+        });
+    } catch (err) {
+        console.error('Market Analysis API Error:', err);
+        return res.status(500).json({ error: '교육 상권 분석 중 오류가 발생했습니다.' });
     }
 });
 
@@ -6098,7 +6424,8 @@ app.post('/api/subscription/checkout', (req, res) => {
         }
 
         const subData = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [], subscriptions: [] });
-        const product = subData.products.find(p => p.id === productId);
+        const allProducts = getMergedProducts(subData);
+        const product = allProducts.find(p => p.id === productId);
         if (!product) {
             return res.status(400).json({ error: '존재하지 않는 상품입니다.' });
         }

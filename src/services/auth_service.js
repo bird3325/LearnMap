@@ -721,6 +721,29 @@ export class AuthService {
     }
 
     /**
+     * 사용자 정보 로컬 스토리지 및 캐시 동기화 저장
+     */
+    saveUserToLocalStorage(user) {
+        if (!user) return;
+        try {
+            localStorage.setItem(this.userStorageKey, JSON.stringify(user));
+            const rawUsers = localStorage.getItem(this.usersDbKey);
+            if (rawUsers) {
+                const users = JSON.parse(rawUsers);
+                if (Array.isArray(users)) {
+                    const idx = users.findIndex(u => u.email === user.email);
+                    if (idx !== -1) {
+                        users[idx] = { ...users[idx], ...user };
+                        localStorage.setItem(this.usersDbKey, JSON.stringify(users));
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Failed to save user to storage:', e);
+        }
+    }
+
+    /**
      * 사용자 로그아웃
      */
     logout() {

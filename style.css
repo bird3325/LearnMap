@@ -1990,13 +1990,16 @@ body {
     transform: translateY(-50%) translateX(0);
 }
 
-/* 주변 학원 상세(communityPanel) 또는 주택 상세(housingDetailPanel)가 열려있을 때 상단 우측 도움말 가이드, 설정 버튼 및 자녀 내신 정밀 진단 버튼 강제 숨김 */
+/* 주변 학원 상세(communityPanel), 주택 상세(housingDetailPanel), 교육문화 자원 상세(eduCultureDetailPanel)가 열려있을 때 상단 우측 도움말 가이드, 설정 버튼 및 자녀 내신 정밀 진단 버튼 강제 숨김 */
 .sidebar-section.active-community ~ #btnShowTutorial,
 .sidebar-section.active-community ~ #btnOpenSettings,
 .sidebar-section.active-community ~ #btnOpenNEISModal,
 .sidebar-section.active-housing ~ #btnShowTutorial,
 .sidebar-section.active-housing ~ #btnOpenSettings,
 .sidebar-section.active-housing ~ #btnOpenNEISModal,
+.sidebar-section.active-educulture ~ #btnShowTutorial,
+.sidebar-section.active-educulture ~ #btnOpenSettings,
+.sidebar-section.active-educulture ~ #btnOpenNEISModal,
 .app-container:has(#communityPanel[style*="display: flex"]) #btnShowTutorial,
 .app-container:has(#communityPanel[style*="display: flex"]) #btnOpenSettings,
 .app-container:has(#communityPanel[style*="display: flex"]) #btnOpenNEISModal,
@@ -2008,7 +2011,13 @@ body {
 .app-container:has(#housingDetailPanel[style*="display: flex"]) #btnOpenNEISModal,
 .app-container:has(#housingDetailPanel[style*="display: block"]) #btnShowTutorial,
 .app-container:has(#housingDetailPanel[style*="display: block"]) #btnOpenSettings,
-.app-container:has(#housingDetailPanel[style*="display: block"]) #btnOpenNEISModal {
+.app-container:has(#housingDetailPanel[style*="display: block"]) #btnOpenNEISModal,
+.app-container:has(#eduCultureDetailPanel[style*="display: flex"]) #btnShowTutorial,
+.app-container:has(#eduCultureDetailPanel[style*="display: flex"]) #btnOpenSettings,
+.app-container:has(#eduCultureDetailPanel[style*="display: flex"]) #btnOpenNEISModal,
+.app-container:has(#eduCultureDetailPanel[style*="display: block"]) #btnShowTutorial,
+.app-container:has(#eduCultureDetailPanel[style*="display: block"]) #btnOpenSettings,
+.app-container:has(#eduCultureDetailPanel[style*="display: block"]) #btnOpenNEISModal {
     display: none !important;
 }
 

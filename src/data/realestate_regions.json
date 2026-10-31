@@ -11,28 +11,28 @@
     "sigungu": "강남구",
     "lawdCd": "11680",
     "fileName": "11680.json",
-    "count": 2572
+    "count": 2507
   },
   {
     "sido": "서울특별시",
     "sigungu": "강동구",
     "lawdCd": "11740",
     "fileName": "11740.json",
-    "count": 11104
+    "count": 10988
   },
   {
     "sido": "서울특별시",
     "sigungu": "강북구",
     "lawdCd": "11305",
     "fileName": "11305.json",
-    "count": 7105
+    "count": 7044
   },
   {
     "sido": "서울특별시",
     "sigungu": "강서구",
     "lawdCd": "11500",
     "fileName": "11500.json",
-    "count": 10489
+    "count": 10481
   },
   {
     "sido": "경기도",
@@ -46,7 +46,7 @@
     "sigungu": "관악구",
     "lawdCd": "11620",
     "fileName": "11620.json",
-    "count": 7768
+    "count": 7621
   },
   {
     "sido": "경기도",
@@ -74,14 +74,14 @@
     "sigungu": "구로구",
     "lawdCd": "11530",
     "fileName": "11530.json",
-    "count": 2176
+    "count": 2131
   },
   {
     "sido": "경기도",
     "sigungu": "구리시",
     "lawdCd": "41310",
     "fileName": "41310.json",
-    "count": 5203
+    "count": 5202
   },
   {
     "sido": "경기도",
@@ -102,14 +102,14 @@
     "sigungu": "금천구",
     "lawdCd": "11545",
     "fileName": "11545.json",
-    "count": 1707
+    "count": 1718
   },
   {
     "sido": "경기도",
     "sigungu": "기흥구",
     "lawdCd": "41463",
     "fileName": "41463.json",
-    "count": 6452
+    "count": 6450
   },
   {
     "sido": "경기도",
@@ -123,21 +123,21 @@
     "sigungu": "남양주시",
     "lawdCd": "41360",
     "fileName": "41360.json",
-    "count": 5740
+    "count": 5739
   },
   {
     "sido": "서울특별시",
     "sigungu": "노원구",
     "lawdCd": "11350",
     "fileName": "11350.json",
-    "count": 4744
+    "count": 4725
   },
   {
     "sido": "경기도",
     "sigungu": "단원구",
     "lawdCd": "41273",
     "fileName": "41273.json",
-    "count": 7422
+    "count": 7421
   },
   {
     "sido": "경기도",
@@ -147,18 +147,32 @@
     "count": 1245
   },
   {
+    "sido": "서울특별시",
+    "sigungu": "도봉구",
+    "lawdCd": "11320",
+    "fileName": "11320.json",
+    "count": 2079
+  },
+  {
+    "sido": "서울특별시",
+    "sigungu": "동대문구",
+    "lawdCd": "11230",
+    "fileName": "11230.json",
+    "count": 1769
+  },
+  {
     "sido": "경기도",
     "sigungu": "동두천시",
     "lawdCd": "41250",
     "fileName": "41250.json",
-    "count": 5184
+    "count": 5183
   },
   {
     "sido": "경기도",
     "sigungu": "동안구",
     "lawdCd": "41173",
     "fileName": "41173.json",
-    "count": 4270
+    "count": 4268
   },
   {
     "sido": "경기도",
@@ -200,14 +214,14 @@
     "sigungu": "상록구",
     "lawdCd": "41271",
     "fileName": "41271.json",
-    "count": 6632
+    "count": 6629
   },
   {
     "sido": "서울특별시",
     "sigungu": "서초구",
     "lawdCd": "11650",
     "fileName": "11650.json",
-    "count": 8195
+    "count": 8082
   },
   {
     "sido": "경기도",
@@ -221,14 +235,14 @@
     "sigungu": "송파구",
     "lawdCd": "11710",
     "fileName": "11710.json",
-    "count": 9028
+    "count": 8758
   },
   {
     "sido": "경기도",
     "sigungu": "수정구",
     "lawdCd": "41131",
     "fileName": "41131.json",
-    "count": 11771
+    "count": 11770
   },
   {
     "sido": "경기도",
@@ -256,14 +270,14 @@
     "sigungu": "양주시",
     "lawdCd": "41630",
     "fileName": "41630.json",
-    "count": 2905
+    "count": 2904
   },
   {
     "sido": "서울특별시",
     "sigungu": "양천구",
     "lawdCd": "11470",
     "fileName": "11470.json",
-    "count": 6191
+    "count": 6149
   },
   {
     "sido": "경기도",
@@ -326,7 +340,7 @@
     "sigungu": "의정부시",
     "lawdCd": "41150",
     "fileName": "41150.json",
-    "count": 6561
+    "count": 6560
   },
   {
     "sido": "경기도",
@@ -354,7 +368,7 @@
     "sigungu": "장안구",
     "lawdCd": "41111",
     "fileName": "41111.json",
-    "count": 10822
+    "count": 10821
   },
   {
     "sido": "경기도",
@@ -368,7 +382,7 @@
     "sigungu": "처인구",
     "lawdCd": "41461",
     "fileName": "41461.json",
-    "count": 3916
+    "count": 3915
   },
   {
     "sido": "경기도",
@@ -382,7 +396,7 @@
     "sigungu": "팔달구",
     "lawdCd": "41115",
     "fileName": "41115.json",
-    "count": 10077
+    "count": 10076
   },
   {
     "sido": "경기도",
@@ -403,7 +417,7 @@
     "sigungu": "하남시",
     "lawdCd": "41450",
     "fileName": "41450.json",
-    "count": 4234
+    "count": 4233
   },
   {
     "sido": "경기도",

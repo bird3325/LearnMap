@@ -5,6 +5,7 @@
 이 프로젝트는 공공데이터(학교알리미, KERIS, 학구도안내서비스) 기반의 팩트 데이터와 맞춤형 온보딩 매칭 알고리즘을 활용하여 자녀에게 꼭 맞는 학교 및 이사/통학 의사결정을 보조하는 서비스입니다.
 
 ## 1. 개편 핵심 전략 및 참고 가이드
+- **[비즈니스 모델 기획서 (BUSINESS_MODEL_PLAN.md)](BUSINESS_MODEL_PLAN.md)**: 학업여지도 비즈니스 모델 기획서 v1.0 (학원·부동산 요금제, 상권 분석, 수익화 로드맵)
 - **[서비스 리포지셔닝 및 개편 계획서 (docs/repositioning_plan.md)](file:///d:/100%20shop/LearnMap/docs/repositioning_plan.md)**: 데이터 다이어트, 온보딩 UX, 매칭 태그, 수익화 모델(BM) 및 리스크 정리 지침
 - **[디자인 사양서 (docs/design_guide.md)](file:///d:/100%20shop/LearnMap/docs/design_guide.md)**: 공통 UI/UX 스타일 가이드라인
 

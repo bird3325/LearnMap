@@ -1,1 +1,22 @@
-[]
+[
+  {
+    "id": "evt_1793401890759",
+    "businessId": "biz_1793401890745",
+    "eventType": "business_signup",
+    "metadata": {
+      "type": "academy",
+      "name": "대치 프라임 수학학원 1793401890722"
+    },
+    "createdAt": "2026-10-30T23:11:30.759Z"
+  },
+  {
+    "id": "evt_1793401890804",
+    "businessId": "biz_1793401890745",
+    "eventType": "subscription_started",
+    "metadata": {
+      "productId": "prod_academy_pro",
+      "amount": 99000
+    },
+    "createdAt": "2026-10-30T23:11:30.802Z"
+  }
+]
