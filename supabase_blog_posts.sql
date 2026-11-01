@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS public.blog_posts (
     id TEXT PRIMARY KEY,                                      -- 고유 식별자 (예: 'post-1730160000000' 또는 uuid_generate_v4()::text)
     slug TEXT UNIQUE,                                         -- SEO 친화적 URL 슬러그 (기본값: id와 동일)
     title TEXT NOT NULL,                                      -- 칼럼 제목
-    category VARCHAR(50) NOT NULL DEFAULT '학군 분석',        -- 카테고리 (학군 분석, 입시 정보, 학군지 부동산, 서비스 소식)
+    category VARCHAR(50) NOT NULL DEFAULT '학군 분석',        -- 카테고리 (학군 분석, 입시 정보, 학군지 부동산, 학교생활, 내신·성적관리, 진로·진학, 돌봄·방과후, 통학·안전, 교육정책·공시, 사교육·학원비, 학습법, 건강·생활습관, 서비스 소식)
     summary TEXT,                                             -- 검색 결과 및 카드 목록용 간략 요약
     content TEXT NOT NULL,                                    -- 마크다운 형식 본문 내용
     thumbnail TEXT,                                           -- 대표 썸네일 이미지 URL 또는 SVG data URI

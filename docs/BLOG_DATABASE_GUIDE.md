@@ -21,7 +21,7 @@
 | **`id`** | `TEXT` | ❌ NOT NULL | - | **기본키(PK)**. 고유 식별자 (`post-타임스탬프`) |
 | **`slug`** | `TEXT` | ❌ NOT NULL | - | **고유값(UNIQUE)**. SEO 친화적 URL 슬러그 |
 | **`title`** | `TEXT` | ❌ NOT NULL | - | 칼럼 제목 |
-| **`category`** | `VARCHAR(50)` | ❌ NOT NULL | `'학군 분석'` | 카테고리 (`학군 분석`, `입시 정보`, `학군지 부동산`, `서비스 소식`) |
+| **`category`** | `VARCHAR(50)` | ❌ NOT NULL | `'학군 분석'` | 카테고리 (`학군 분석`, `입시 정보`, `학군지 부동산`, `학교생활`, `내신·성적관리`, `진로·진학`, `돌봄·방과후`, `통학·안전`, `교육정책·공시`, `사교육·학원비`, `학습법`, `건강·생활습관`, `서비스 소식`) |
 | **`summary`** | `TEXT` | ✔️ NULL 허용 | `''` | 2~3줄 요약문 (목록 및 SNS 프리뷰용) |
 | **`content`** | `TEXT` | ❌ NOT NULL | - | 마크다운(Markdown) 본문 텍스트 |
 | **`thumbnail`** | `TEXT` | ✔️ NULL 허용 | `''` | 대표 이미지 URL 또는 SVG data URI |

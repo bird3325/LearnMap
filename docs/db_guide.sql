@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS public.blog_posts (
     id TEXT PRIMARY KEY,
     slug TEXT UNIQUE,
     title TEXT NOT NULL,
-    category VARCHAR(50) NOT NULL DEFAULT '학군 분석',
+    category VARCHAR(50) NOT NULL DEFAULT '학군 분석',        -- 카테고리 (학군 분석, 입시 정보, 학군지 부동산, 학교생활, 내신·성적관리, 진로·진학, 돌봄·방과후, 통학·안전, 교육정책·공시, 사교육·학원비, 학습법, 건강·생활습관, 서비스 소식)
     summary TEXT,
     content TEXT NOT NULL,
     thumbnail TEXT,
