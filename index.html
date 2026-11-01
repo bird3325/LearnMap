@@ -2,9 +2,6 @@
 <html lang="ko">
 
 <head>
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
     <meta charset="UTF-8">
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-3GMJRV3CVX"></script>
@@ -33,7 +30,6 @@
     <meta name="description" content="점수 나열 대신, 공공데이터 기반 팩트 분석으로 우리 아이에게 맞는 학교와 학군 이사를 선택하는 학군 의사결정 보조 플랫폼">
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
-    <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -388,9 +384,6 @@
                         setTimeout(() => {
                             if (container && !container.classList.contains('academy-open')) {
                                 if (academySidebar) academySidebar.style.display = 'none';
-                                if (typeof window.recenterActivePinOnMap === 'function') {
-                                    window.recenterActivePinOnMap();
-                                }
                             }
                         }, 300);
                     } else {
@@ -417,8 +410,6 @@
                             container.classList.add('sidebar-open');
                         }
 
-                        const wasAlreadyOpen = academySidebar && academySidebar.style.display === 'flex';
-
                         if (academySidebar) {
                             academySidebar.style.display = 'flex';
                             void academySidebar.offsetWidth;
@@ -431,6 +422,20 @@
                         // 모바일에서는 슬라이드 업 트랜지션을 위해 sidebar-open 클래스도 함께 활성화합니다.
                         if (window.innerWidth <= 1024) {
                             if (container) container.classList.add('sidebar-open');
+                        } else {
+                            // PC 화면: 학원 목록이 열릴 때 선택된 학교 핀이 실제로 사이드바에 가려지는 경우에만 지도 이동
+                            setTimeout(() => {
+                                if (window.isOpeningFromAcademyPin) return;
+                                const schoolObj = (typeof fullSchool !== 'undefined' ? fullSchool : null) ||
+                                    (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) ||
+                                    window.currentSelectedSchool || null;
+                                let sLat = schoolObj && (schoolObj.lat || schoolObj.y || schoolObj.latitude) ? parseFloat(schoolObj.lat || schoolObj.y || schoolObj.latitude) : null;
+                                let sLng = schoolObj && (schoolObj.lng || schoolObj.x || schoolObj.longitude) ? parseFloat(schoolObj.lng || schoolObj.x || schoolObj.longitude) : null;
+
+                                if (sLat && sLng && typeof window.centerAcademyPinWithSidebarOffset === 'function') {
+                                    window.centerAcademyPinWithSidebarOffset(sLng, sLat, schoolObj.school_name);
+                                }
+                            }, 100);
                         }
                     }
                     if (window.kakaoMapInstance) {
@@ -467,9 +472,6 @@
                         setTimeout(() => {
                             if (container && !container.classList.contains('housing-open')) {
                                 if (housingSidebar) housingSidebar.style.display = 'none';
-                                if (typeof window.recenterActivePinOnMap === 'function') {
-                                    window.recenterActivePinOnMap();
-                                }
                             }
                         }, 300);
                     } else {
@@ -497,8 +499,6 @@
                             container.classList.add('sidebar-open');
                         }
 
-                        const wasAlreadyOpen = housingSidebar && housingSidebar.style.display === 'flex';
-
                         if (housingSidebar) {
                             housingSidebar.style.display = 'flex';
                             void housingSidebar.offsetWidth;
@@ -511,6 +511,18 @@
                         // 모바일에서는 슬라이드 업 트랜지션을 위해 sidebar-open 클래스도 함께 활성화
                         if (window.innerWidth <= 1024) {
                             if (container) container.classList.add('sidebar-open');
+                        } else {
+                            setTimeout(() => {
+                                const schoolObj = (typeof fullSchool !== 'undefined' ? fullSchool : null) ||
+                                    (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) ||
+                                    window.currentSelectedSchool || null;
+                                let sLat = schoolObj && (schoolObj.lat || schoolObj.y || schoolObj.latitude) ? parseFloat(schoolObj.lat || schoolObj.y || schoolObj.latitude) : null;
+                                let sLng = schoolObj && (schoolObj.lng || schoolObj.x || schoolObj.longitude) ? parseFloat(schoolObj.lng || schoolObj.x || schoolObj.longitude) : null;
+
+                                if (sLat && sLng && typeof window.centerAcademyPinWithSidebarOffset === 'function') {
+                                    window.centerAcademyPinWithSidebarOffset(sLng, sLat, schoolObj.school_name);
+                                }
+                            }, 100);
                         }
                     }
                     if (window.kakaoMapInstance) {
@@ -585,8 +597,6 @@
                         void eduSidebar.offsetWidth;
                         if (window.innerWidth > 1024) {
                             eduSidebar.style.setProperty('transform', 'translateX(0)', 'important');
-                            const targetW = (sidebar && sidebar.offsetWidth > 0) ? sidebar.offsetWidth : 500;
-                            eduSidebar.style.right = `${targetW}px`;
                         } else {
                             eduSidebar.style.setProperty('transform', 'none', 'important');
                         }
@@ -1425,10 +1435,6 @@
                 </div>
             </div>
 
-        
-
-            
-
         </section>
 
         <!-- Academy Sidebar (Initially hidden) -->
@@ -1678,7 +1684,8 @@
                         style="font-size: 19px; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px;">
                         <span>교육·문화 자원 리스트</span>
                         <span id="eduCultureTotalCountBadge"
-                            style="background: #eff6ff; color: #2563eb; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; display: inline-flex; align-items: center; white-space: nowrap;">총 0개소</span>
+                            style="background: #eff6ff; color: #2563eb; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; display: inline-flex; align-items: center; white-space: nowrap;">총
+                            0개소</span>
                     </h2>
                 </div>
                 <button onclick="toggleEduCultureSidebar()"
@@ -1750,7 +1757,112 @@
                     <!-- 동적 자원 카드 렌더링 -->
                 </div>
             </div>
-            
+            <!-- 교육·문화 자원 상세 패널 (학원/주택 상세 패널과 동일한 디자인 & 오버레이 구조) -->
+            <div id="eduCultureDetailPanel"
+                style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #ffffff; z-index: 100; flex-direction: column; padding: 14px 16px 16px 16px; overflow: hidden; transition: opacity 0.3s ease;">
+
+                <!-- 상단 내비게이션 바 -->
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 12px; min-height: 32px; flex-shrink: 0;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button onclick="window.closeEduCultureDetail()"
+                            style="background: none; border: none; cursor: pointer; color: #475569; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; line-height: 1;"
+                            title="뒤로가기">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                        <h3
+                            style="margin: 0; font-size: 15.5px; font-weight: 800; color: #0f172a; letter-spacing: -0.3px;">
+                            교육·문화 자원 상세</h3>
+                    </div>
+                    <button onclick="toggleEduCultureSidebar()"
+                        style="background: #f1f5f9; border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; color: #475569; display: flex; align-items: center; justify-content: center; padding: 0;"
+                        title="닫기">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- 상세 본문 스크롤 영역 -->
+                <div id="eduCultureDetailScrollContent" class="hide-scrollbar"
+                    style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding-bottom: 20px;">
+
+                    <!-- 헤더 카드: 카테고리, 무료뱃지, 시설명, 거리 -->
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span id="eduDetailCategoryBadge"
+                                    style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px;">🏛️
+                                    공공도서관</span>
+                                <span id="eduDetailFeeBadge"
+                                    style="font-size: 11px; font-weight: 700; color: #059669; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 2px 7px; border-radius: 6px;">무료</span>
+                            </div>
+                            <span id="eduDetailDistance"
+                                style="font-size: 12.5px; font-weight: 800; color: #2563eb;">0.3km (도보 4분)</span>
+                        </div>
+                        <h2 id="eduDetailName"
+                            style="margin: 0; font-size: 17px; font-weight: 800; color: #0f172a; line-height: 1.35; letter-spacing: -0.4px;">
+                            시설명</h2>
+                    </div>
+
+                    <!-- 기본 운영 정보 -->
+                    <div
+                        style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+                        <h4
+                            style="margin: 0; font-size: 13.5px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 5px;">
+                            <span>📋</span> <span>시설 운영 정보</span>
+                        </h4>
+                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px; color: #475569;">
+                            <div style="display: flex; gap: 6px; align-items: flex-start;">
+                                <span style="font-weight: 700; color: #64748b; min-width: 55px;">📍 주소:</span>
+                                <span id="eduDetailAddress" style="color: #0f172a; word-break: keep-all;">-</span>
+                            </div>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <span style="font-weight: 700; color: #64748b; min-width: 55px;">📞 전화:</span>
+                                <span id="eduDetailPhone" style="color: #0f172a;">-</span>
+                            </div>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <span style="font-weight: 700; color: #64748b; min-width: 55px;">⏰ 시간:</span>
+                                <span id="eduDetailHours" style="color: #0f172a;">09:00 ~ 18:00</span>
+                            </div>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <span style="font-weight: 700; color: #64748b; min-width: 55px;">🚫 휴관:</span>
+                                <span id="eduDetailClosed" style="color: #0f172a;">매주 월요일 / 공휴일</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 주요 프로그램 및 편의활동 -->
+                    <div
+                        style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+                        <h4
+                            style="margin: 0; font-size: 13.5px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 5px;">
+                            <span>🌟</span> <span>대표 프로그램 & 이용 안내</span>
+                        </h4>
+                        <div id="eduDetailProgramsList" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                            <!-- 동적 뱃지 -->
+                        </div>
+                    </div>
+
+                    <!-- 액션 버튼 그룹 -->
+                    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
+                        <button type="button" id="btnEduDetailPanMap"
+                            style="width: 100%; padding: 11px; background: #2563eb; color: #ffffff; border: none; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.15s ease;">
+                            <span>📍</span> <span>지도에서 위치 확인</span>
+                        </button>
+                        <a id="btnEduDetailKakaoLink" href="#" target="_blank" rel="noopener noreferrer"
+                            style="width: 100%; box-sizing: border-box; padding: 11px; background: #fee500; color: #191919; text-decoration: none; border-radius: 12px; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; text-align: center;">
+                            <span>🗺️</span> <span>카카오맵 상세 및 길찾기</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <!-- PC용 우측 사이드바 옆 플로팅 퀵 필터 버튼 그룹 -->
@@ -1939,15 +2051,6 @@
                                         <span>로그아웃</span>
                                     </button>
                                 </div>
-                                <button type="button" id="btnSettingsSwitchPartner"
-                                    onclick="if(window.handlePartnerButtonClick) window.handlePartnerButtonClick(); else if(window.openPartnerSwitchModal) window.openPartnerSwitchModal();"
-                                    style="width: 100%; height: 38px; margin-top: 10px; background: #ffffff; border: 1.5px solid #2563eb; border-radius: 10px; font-size: 12.5px; font-weight: 700; color: #2563eb; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: all 0.2s;">
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                                    </svg>
-                                    <span id="btnSettingsSwitchPartnerText">파트너 전환</span>
-                                </button>
                             </div>
 
                             <!-- 미로그인 시 노출되는 간편 로그인 & 이메일 폼 -->
@@ -1983,10 +2086,11 @@
                                 </div>
 
                                 <div id="settingsLoginForm">
-                                    <input type="email" id="settingsEmail" class="toss-input" placeholder="이메일 주소" onkeydown="if(event.key==='Enter'){event.preventDefault(); if(window.handleSettingsLogin) window.handleSettingsLogin();}"
+                                    <input type="email" id="settingsEmail" class="toss-input" placeholder="이메일 주소"
                                         style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 12px; font-size: 12.5px; box-sizing: border-box; margin-bottom: 8px;">
                                     <div class="toss-pw-wrap" style="position: relative; margin-bottom: 12px;">
-                                        <input type="password" id="settingsPassword" class="toss-input" placeholder="비밀번호" onkeydown="if(event.key==='Enter'){event.preventDefault(); if(window.handleSettingsLogin) window.handleSettingsLogin();}"
+                                        <input type="password" id="settingsPassword" class="toss-input"
+                                            placeholder="비밀번호"
                                             style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 36px 0 12px; font-size: 12.5px; box-sizing: border-box;">
                                         <button type="button" class="toss-pw-toggle"
                                             onclick="if(window.togglePasswordVisibility) window.togglePasswordVisibility('settingsPassword', this);"
@@ -1995,8 +2099,8 @@
                                                 fill="none" stroke="currentColor" stroke-width="2">
                                                 <path
                                                     d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24">
-                            </path>
-                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                                                </path>
+                                                <line x1="1" y1="1" x2="23" y2="23"></line>
                                             </svg>
                                             <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none"
                                                 stroke="currentColor" stroke-width="2" style="display: none;">
@@ -2624,15 +2728,6 @@
                                         <span>로그아웃</span>
                                     </button>
                                 </div>
-                                <button type="button" id="btnSettingsSwitchPartnerMobile"
-                                    onclick="if(window.handlePartnerButtonClick) window.handlePartnerButtonClick(); else if(window.openPartnerSwitchModal) window.openPartnerSwitchModal();"
-                                    style="width: 100%; height: 36px; margin-top: 8px; background: #ffffff; border: 1.5px solid #2563eb; border-radius: 8px; font-size: 12px; font-weight: 700; color: #2563eb; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; transition: all 0.2s;">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                                    </svg>
-                                    <span id="btnSettingsSwitchPartnerMobileText">파트너 전환</span>
-                                </button>
                             </div>
 
                             <!-- 미로그인 시 노출되는 간편 로그인 & 이메일 폼 -->
@@ -2669,10 +2764,11 @@
                                 </div>
 
                                 <div id="settingsLoginFormMobile">
-                                    <input type="email" id="settingsEmailMobile" class="toss-input" placeholder="이메일 주소" onkeydown="if(event.key==='Enter'){event.preventDefault(); if(window.handleSettingsLogin) window.handleSettingsLogin();}"
+                                    <input type="email" id="settingsEmailMobile" class="toss-input" placeholder="이메일 주소"
                                         style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 12px; font-size: 12.5px; box-sizing: border-box; margin-bottom: 8px;">
                                     <div class="toss-pw-wrap" style="position: relative; margin-bottom: 12px;">
-                                        <input type="password" id="settingsPasswordMobile" class="toss-input" placeholder="비밀번호" onkeydown="if(event.key==='Enter'){event.preventDefault(); if(window.handleSettingsLogin) window.handleSettingsLogin();}"
+                                        <input type="password" id="settingsPasswordMobile" class="toss-input"
+                                            placeholder="비밀번호"
                                             style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 36px 0 12px; font-size: 12.5px; box-sizing: border-box;">
                                         <button type="button" class="toss-pw-toggle"
                                             onclick="if(window.togglePasswordVisibility) window.togglePasswordVisibility('settingsPasswordMobile', this);"
@@ -4425,25 +4521,24 @@
                         style="display: flex; flex-direction: column; gap: 12px;">
                         <div id="schoolAcademicZoneSummarySlot">
                             <div
-                                style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 12px; letter-spacing: -0.3px;">
+                                style="margin-bottom: 4px; padding: 13px 14px; background: #eff6ff; border: 1.5px solid #93c5fd; border-radius: 12px; display: flex; flex-direction: column; gap: 7px;">
                                 <div
-                                    style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-                                    <h4
-                                        style="font-size: 14px; font-weight: 800; color: #1e3a8a; margin: 0; display: flex; align-items: center; gap: 6px; letter-spacing: -0.3px;">
-                                        🏫 학구도·통학구역 경계 및 중학교군 정보
-                                    </h4>
+                                    style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                    <strong style="color: #1e3a8a; font-size: 12.5px; font-weight: 800;">🏫 학구도·통학구역 경계
+                                        및 중학교군 정보</strong>
                                     <span
-                                        style="font-size: 11px; font-weight: 700; color: #2563eb; background: #dbeafe; padding: 3px 8px; border-radius: 10px; letter-spacing: -0.2px; white-space: nowrap;">2026.09 학구도 기준</span>
+                                        style="font-size: 10px; font-weight: 800; color: #1d4ed8; background: #dbeafe; padding: 2px 7px; border-radius: 999px;">2026.09
+                                        학구도 기준</span>
                                 </div>
-                                <div style="display: flex; gap: 8px;">
+                                <div style="display: flex; gap: 6px;">
                                     <button type="button" class="btn-school-zone-toggle"
                                         onclick="if(typeof window.toggleCurrentSchoolZoneOnMap==='function') window.toggleCurrentSchoolZoneOnMap();"
-                                        style="flex: 1; padding: 8px 12px; background: #2563eb; border: none; border-radius: 10px; color: #ffffff; font-size: 12px; font-weight: 700; letter-spacing: -0.3px; cursor: pointer;">
+                                        style="flex: 1; padding: 8px 10px; background: #2563eb; border: none; border-radius: 8px; color: #ffffff; font-size: 11.5px; font-weight: 700; cursor: pointer;">
                                         🗺️ 초등 통학구역 경계 보기/닫기
                                     </button>
                                     <button type="button"
                                         onclick="if(typeof window.openSimulationForCurrentSchool==='function') window.openSimulationForCurrentSchool();"
-                                        style="flex: 1; padding: 8px 12px; background: #0f172a; border: none; border-radius: 10px; color: #ffffff; font-size: 12px; font-weight: 700; letter-spacing: -0.3px; cursor: pointer;">
+                                        style="flex: 1; padding: 8px 10px; background: #0f172a; border: none; border-radius: 8px; color: #ffffff; font-size: 11.5px; font-weight: 700; cursor: pointer;">
                                         ⚖️ 이사 후보지와 배정 비교
                                     </button>
                                 </div>
@@ -4474,7 +4569,8 @@
                                         id="advItem1Label">과학고·영재고</div>
                                     <div style="font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 4px;">
                                         <span id="advSciCount">6</span> <span
-                                            style="font-size: 12px; font-weight: normal; color: #64748b;">명</span></div>
+                                            style="font-size: 12px; font-weight: normal; color: #64748b;">명</span>
+                                    </div>
                                     <div style="font-size: 10px; color: #059669; font-weight: 700;" id="advSciChange">전년
                                         대비 +2</div>
                                 </div>
@@ -4485,7 +4581,8 @@
                                         id="advItem2Label">외고·국제고</div>
                                     <div style="font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 4px;">
                                         <span id="advForeignCount">14</span> <span
-                                            style="font-size: 12px; font-weight: normal; color: #64748b;">명</span></div>
+                                            style="font-size: 12px; font-weight: normal; color: #64748b;">명</span>
+                                    </div>
                                     <div style="font-size: 10px; color: #64748b; font-weight: 700;"
                                         id="advForeignChange">보합세 유지</div>
                                 </div>
@@ -4496,7 +4593,8 @@
                                         id="advItem3Label">자율형사립고</div>
                                     <div style="font-size: 18px; font-weight: 800; color: #2563eb; margin-bottom: 4px;">
                                         <span id="advAutoCount">28</span> <span
-                                            style="font-size: 12px; font-weight: normal; color: #64748b;">명</span></div>
+                                            style="font-size: 12px; font-weight: normal; color: #64748b;">명</span>
+                                    </div>
                                     <div style="font-size: 10px; color: #2563eb; font-weight: 700;" id="advAutoRank">서초구
                                         상위 10%</div>
                                 </div>
@@ -4547,7 +4645,8 @@
                                         <div
                                             style="font-size: 15px; font-weight: 800; color: #2563eb; margin-bottom: 2px;">
                                             <span id="eduTeacherVal">13.8</span><span
-                                                style="font-size: 12px; font-weight: 600;">명</span></div>
+                                                style="font-size: 12px; font-weight: 600;">명</span>
+                                        </div>
                                         <div style="font-size: 10px; color: #059669; font-weight: 700;"
                                             id="eduTeacherBadge">지역우수</div>
                                     </div>
@@ -4567,7 +4666,8 @@
                                         <div
                                             style="font-size: 15px; font-weight: 800; color: #1e293b; margin-bottom: 2px;">
                                             <span id="eduClassVal">24.3</span><span
-                                                style="font-size: 12px; font-weight: 600;">명</span></div>
+                                                style="font-size: 12px; font-weight: 600;">명</span>
+                                        </div>
                                         <div style="font-size: 10px; color: #64748b; font-weight: 700;"
                                             id="eduClassBadge">적정규모</div>
                                     </div>
@@ -4584,7 +4684,8 @@
                                         <div
                                             style="font-size: 15px; font-weight: 800; color: #2563eb; margin-bottom: 2px;">
                                             <span id="eduInvestVal">112</span><span
-                                                style="font-size: 12px; font-weight: 600;">만원</span></div>
+                                                style="font-size: 12px; font-weight: 600;">만원</span>
+                                        </div>
                                         <div style="font-size: 10px; color: #3b82f6; font-weight: 700;"
                                             id="eduInvestBadge">상위 20%</div>
                                     </div>
@@ -4776,6 +4877,16 @@
                                 <span style="font-size: 13px; color: #1e293b; font-weight: 700;">🚶 안심 통학로 도보 분석
                                     활성화</span>
                             </label>
+                            <div id="schoolEnvironmentZoneSummarySlot">
+                                <label
+                                    style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 14px; background: #eff6ff; border-radius: 12px; border: 1px solid #93c5fd; margin-bottom: 12px; cursor: pointer;">
+                                    <input type="checkbox" class="chk-school-zone-toggle"
+                                        onchange="if(typeof window.toggleCurrentSchoolZoneOnMap==='function') window.toggleCurrentSchoolZoneOnMap();"
+                                        style="width: 16px; height: 16px; cursor: pointer; accent-color: #2563eb;">
+                                    <span style="font-size: 13px; color: #1e3a8a; font-weight: 800;">🗺️ 초등 통학구역 경계 폴리곤
+                                        표시 (2026.09 학구도)</span>
+                                </label>
+                            </div>
                             <label style="display: none;"><input type="checkbox" id="chkShuttlePath"></label>
 
                             <!-- 안심통학로 설정 패널 -->
@@ -5131,7 +5242,7 @@
                                     분석</span>
                             </div>
 
-                            <div style="display: flex; gap: 8px;">
+                            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
                                 <button id="btnCompareChild"
                                     style="flex: 1; padding: 12px 14px; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: none; background: #2563eb; color: white; cursor: pointer; box-shadow: 0 4px 10px rgba(37,99,235,0.2); transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;">
                                     🎯 맞춤 학교 진단
@@ -5142,6 +5253,37 @@
                                 </button>
                             </div>
 
+                            <!-- 찐 학부모 리뷰 보기 박스 -->
+                            <div
+                                style="background: #ffffff; border-radius: 14px; border: 1.5px solid #3b82f6; padding: 16px; position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(59,130,246,0.1);">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                                        <div style="font-size: 18px; margin-top: 2px;">💬</div>
+                                        <div>
+                                            <div
+                                                style="font-size: 15px; font-weight: 800; color: #1e293b; margin-bottom: 4px;">
+                                                찐 학부모 리뷰 보기</div>
+                                            <div style="font-size: 12px; color: #64748b; font-weight: 500;">학부모 128건
+                                                전체보기</div>
+                                        </div>
+                                    </div>
+                                    <button id="btnShowReviews"
+                                        style="background: #2563eb; color: white; border: none; padding: 8px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.2);">
+                                        리뷰 열기
+                                    </button>
+                                </div>
+
+                                <!-- 후기 남기기 하단 바 -->
+                                <div
+                                    style="border-top: 1px solid #f1f5f9; margin: 0 -16px -16px -16px; padding: 12px 16px; background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: 12px; color: #64748b; font-weight: 500;">서운중 학부모이신가요?</span>
+                                    <span
+                                        style="font-size: 12.5px; color: #ea580c; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                        ✍️ 후기 남기기
+                                    </span>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- 2. 🔥 학부모 실시간 키워드 토크 -->
@@ -5162,21 +5304,82 @@
                             </div>
 
                             <!-- 키워드 태그들 -->
-                            <div id="schoolKeywordTagsContainer" style="display: none; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;"></div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;">
+                                <span
+                                    style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
+                                        style="color: #3b82f6;">#</span>면학분위기_차분함</span>
+                                <span
+                                    style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
+                                        style="color: #3b82f6;">#</span>내신_변별력높음</span>
+                                <span
+                                    style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
+                                        style="color: #3b82f6;">#</span>특목고_진학관심</span>
+                                <span
+                                    style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
+                                        style="color: #3b82f6;">#</span>서초동_인근학원연계</span>
+                                <span
+                                    style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
+                                        style="color: #3b82f6;">#</span>교장·선생님_열정</span>
+                            </div>
 
-                            <!-- 실시간 리뷰 아이템들 (실제 DB 데이터만 노출) -->
-                            <div id="schoolRealtimeTalkListContainer" style="display: flex; flex-direction: column; gap: 12px;">
-                                <div style="border: 1px dashed #cbd5e1; border-radius: 14px; padding: 24px 16px; background: #f8fafc; text-align: center;">
-                                    <div style="font-size: 24px; margin-bottom: 8px;">💡</div>
-                                    <div style="font-size: 13.5px; font-weight: 700; color: #334155; margin-bottom: 4px;">
-                                        아직 등록된 학부모 실시간 토크가 없습니다.
+                            <!-- 실시간 리뷰 아이템들 -->
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <!-- 리뷰 1 -->
+                                <div
+                                    style="border: 1px solid #f1f5f9; border-radius: 14px; padding: 16px; background: #fafafa;">
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span style="font-size: 13px; font-weight: 800; color: #1e293b;">재학생 중2
+                                                학부모</span>
+                                            <span
+                                                style="background: #dcfce7; color: #166534; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 12px;">인증
+                                                완료</span>
+                                        </div>
+                                        <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">2025.02
+                                            인증</span>
                                     </div>
-                                    <div style="font-size: 12px; color: #64748b; line-height: 1.5; margin-bottom: 12px;">
-                                        학교의 첫 번째 학부모 후기를 남겨주시면<br>실시간 키워드 토크에 즉시 반영됩니다!
+                                    <div
+                                        style="font-size: 13px; color: #334155; line-height: 1.5; font-weight: 500; margin-bottom: 14px; letter-spacing: -0.2px;">
+                                        "1학년 때부터 면학 분위기가 잘 잡혀 있어 스스로 공부하는 습관 들이기 좋습니다. 서초권 학원가 연계도 매우 편해요."
                                     </div>
-                                    <button type="button" onclick="if(window.openSchoolReviewForm) window.openSchoolReviewForm();" style="padding: 7px 16px; background: #2563eb; color: #ffffff; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;">
-                                        ✍️ 첫 후기 남기기
-                                    </button>
+                                    <div style="display: flex; gap: 12px; align-items: center;">
+                                        <span
+                                            style="font-size: 12px; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 4px;">👍
+                                            공감 24</span>
+                                        <span
+                                            style="font-size: 12px; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 4px;">💬
+                                            댓글 6</span>
+                                    </div>
+                                </div>
+
+                                <!-- 리뷰 2 -->
+                                <div
+                                    style="border: 1px solid #f1f5f9; border-radius: 14px; padding: 16px; background: #fafafa;">
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span style="font-size: 13px; font-weight: 800; color: #1e293b;">졸업생
+                                                학부모</span>
+                                            <span
+                                                style="background: #e0f2fe; color: #0369a1; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 12px;">동문
+                                                인증</span>
+                                        </div>
+                                        <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">2024.12
+                                            인증</span>
+                                    </div>
+                                    <div
+                                        style="font-size: 13px; color: #334155; line-height: 1.5; font-weight: 500; margin-bottom: 14px; letter-spacing: -0.2px;">
+                                        "특목-자사고 준비반 및 방과후 프로그램이 알차고, 진학 상담이 구체적이어서 큰 도움이 되었습니다."
+                                    </div>
+                                    <div style="display: flex; gap: 12px; align-items: center;">
+                                        <span
+                                            style="font-size: 12px; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 4px;">👍
+                                            공감 19</span>
+                                        <span
+                                            style="font-size: 12px; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 4px;">💬
+                                            댓글 3</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -5621,98 +5824,6 @@
 
                 </div><!-- /community-scroll-content -->
             </div>
-
-            <!-- 교육·문화 자원 상세 패널 (학원/주택 상세 패널과 동일한 디자인 & 오버레이 구조) -->
-            <div id="eduCultureDetailPanel"
-                style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #ffffff; z-index: 100; flex-direction: column; padding: 14px 16px 16px 16px; overflow: hidden; transition: opacity 0.3s ease;">
-                
-                <!-- 상단 내비게이션 바 -->
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 12px; min-height: 32px; flex-shrink: 0; position: relative; z-index: 10;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <button onclick="window.closeEduCultureDetail()"
-                            style="background: none; border: none; cursor: pointer; color: #475569; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; line-height: 1;"
-                            title="뒤로가기">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="15 18 9 12 15 6"></polyline>
-                            </svg>
-                        </button>
-                        <h3 style="margin: 0; font-size: 15.5px; font-weight: 800; color: #0f172a; letter-spacing: -0.3px;">교육·문화 자원 상세</h3>
-                    </div>
-                    <button id="btnCloseEduCultureModal" onclick="window.closeEduCultureDetail()"
-                        style="background: #f1f5f9; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: #64748b; display: flex; align-items: center; justify-content: center; padding: 0; line-height: 1; transition: background 0.2s ease;"
-                        onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'"
-                        title="닫기">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>
-                </div>
-
-                <!-- 상세 본문 스크롤 영역 -->
-                <div id="eduCultureDetailScrollContent" class="hide-scrollbar"
-                    style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding-bottom: 20px;">
-                    
-                    <!-- 헤더 카드: 카테고리, 무료뱃지, 시설명, 거리 -->
-                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <div style="display: flex; align-items: center; gap: 6px;">
-                                <span id="eduDetailCategoryBadge" style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px;">🏛️ 공공도서관</span>
-                                <span id="eduDetailFeeBadge" style="font-size: 11px; font-weight: 700; color: #059669; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 2px 7px; border-radius: 6px;">무료</span>
-                            </div>
-                            <span id="eduDetailDistance" style="font-size: 12.5px; font-weight: 800; color: #2563eb;">0.3km (도보 4분)</span>
-                        </div>
-                        <h2 id="eduDetailName" style="margin: 0; font-size: 17px; font-weight: 800; color: #0f172a; line-height: 1.35; letter-spacing: -0.4px;">시설명</h2>
-                    </div>
-
-                    <!-- 기본 운영 정보 -->
-                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
-                        <h4 style="margin: 0; font-size: 13.5px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 5px;">
-                            <span>📋</span> <span>시설 운영 정보</span>
-                        </h4>
-                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px; color: #475569;">
-                            <div style="display: flex; gap: 6px; align-items: flex-start;">
-                                <span style="font-weight: 700; color: #64748b; min-width: 55px;">📍 주소:</span>
-                                <span id="eduDetailAddress" style="color: #0f172a; word-break: keep-all;">-</span>
-                            </div>
-                            <div style="display: flex; gap: 6px; align-items: center;">
-                                <span style="font-weight: 700; color: #64748b; min-width: 55px;">📞 전화:</span>
-                                <span id="eduDetailPhone" style="color: #0f172a;">-</span>
-                            </div>
-                            <div style="display: flex; gap: 6px; align-items: center;">
-                                <span style="font-weight: 700; color: #64748b; min-width: 55px;">⏰ 시간:</span>
-                                <span id="eduDetailHours" style="color: #0f172a;">09:00 ~ 18:00</span>
-                            </div>
-                            <div style="display: flex; gap: 6px; align-items: center;">
-                                <span style="font-weight: 700; color: #64748b; min-width: 55px;">🚫 휴관:</span>
-                                <span id="eduDetailClosed" style="color: #0f172a;">매주 월요일 / 공휴일</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 주요 프로그램 및 편의활동 -->
-                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
-                        <h4 style="margin: 0; font-size: 13.5px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 5px;">
-                            <span>🌟</span> <span>대표 프로그램 & 이용 안내</span>
-                        </h4>
-                        <div id="eduDetailProgramsList" style="display: flex; flex-wrap: wrap; gap: 6px;">
-                            <!-- 동적 뱃지 -->
-                        </div>
-                    </div>
-
-                    <!-- 액션 버튼 그룹 -->
-                    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
-                        <button type="button" id="btnEduDetailPanMap"
-                            style="width: 100%; padding: 11px; background: #2563eb; color: #ffffff; border: none; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.15s ease;">
-                            <span>📍</span> <span>지도에서 위치 확인</span>
-                        </button>
-                        <a id="btnEduDetailKakaoLink" href="#" target="_blank" rel="noopener noreferrer"
-                            style="width: 100%; box-sizing: border-box; padding: 11px; background: #fee500; color: #191919; text-decoration: none; border-radius: 12px; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; text-align: center;">
-                            <span>🗺️</span> <span>카카오맵 상세 및 길찾기</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
         </section>
     </div>
 
@@ -5786,7 +5897,7 @@
                             ▲ 지역 평균</div>
                     </div>
                 </div>
-               style="background: none; border:�� -->
+                <!-- 3개년 추이 미니 차트 -->
                 <div style="margin-bottom: 10px;">
                     <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">📈 최근 3개년 추이</div>
                     <div style="display: flex; align-items: flex-end; gap: 6px; height: 60px; margin-top: 10px;"
@@ -6302,7 +6413,7 @@
                 <script>
                     (function () {
                         const container = document.getElementById('academyStarContainer');
-                        const stars = container.querySelectorAll('span');
+                        tars = container.querySelectorAll('span');
                         const input = document.getElementById('reviewRating');
                         let currentVal = parseInt(input.value);
 
@@ -6371,7 +6482,7 @@
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path
                                 d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24">
-      </path>
+                            </path>
                             <line x1="1" y1="1" x2="23" y2="23"></line>
                         </svg>
                         <svg class="icon-eye" width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -6767,8 +6878,8 @@
                 <!-- Info Bar -->
                 <div
                     style="border-top: 1px dashed #e2e8f0; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; letter-spacing: -0.2px;">
-                    <span style="color: #2563eb; font-weight: 600;">● 주요 학군: <span
-                            id="simSchoolsListA">지역 선택 시 자동 조회</span></span>
+                    <span style="color: #2563eb; font-weight: 600;">● 주요 학군: <span id="simSchoolsListA">지역 선택 시 자동
+                            조회</span></span>
                     <span style="color: #1e293b; font-weight: 800;">평균 매매 <span id="simPriceA">-억</span></span>
                 </div>
             </div>
@@ -6808,8 +6919,8 @@
                 <!-- Info Bar -->
                 <div
                     style="border-top: 1px dashed #e2e8f0; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; letter-spacing: -0.2px;">
-                    <span style="color: #059669; font-weight: 600;">● 주요 학군: <span
-                            id="simSchoolsListB">지역 선택 시 자동 조회</span></span>
+                    <span style="color: #059669; font-weight: 600;">● 주요 학군: <span id="simSchoolsListB">지역 선택 시 자동
+                            조회</span></span>
                     <span style="color: #1e293b; font-weight: 800;">평균 매매 <span id="simPriceB">-억</span></span>
                 </div>
             </div>
@@ -7128,13 +7239,13 @@
                         <label
                             style="display: block; font-size: 12px; font-weight: 600; color: #4e5968; margin-bottom: 6px;">아이디
                             (이메일 주소)</label>
-                        <input type="email" id="loginEmail" class="toss-input" required placeholder="user@example.com" onkeydown="if(event.key==='Enter'){event.preventDefault(); if(window.handleLoginSubmit) window.handleLoginSubmit(event);}">
+                        <input type="email" id="loginEmail" class="toss-input" required placeholder="user@example.com">
                     </div>
                     <div style="margin-bottom: 16px;">
                         <label
                             style="display: block; font-size: 12px; font-weight: 600; color: #4e5968; margin-bottom: 6px;">비밀번호</label>
                         <div class="toss-pw-wrap">
-                            <input type="password" id="loginPassword" class="toss-input" required placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter'){event.preventDefault(); if(window.handleLoginSubmit) window.handleLoginSubmit(event);}"
+                            <input type="password" id="loginPassword" class="toss-input" required placeholder="비밀번호 입력"
                                 style="margin-bottom: 0;">
                             <button type="button" class="toss-pw-toggle"
                                 onclick="if(window.togglePasswordVisibility) window.togglePasswordVisibility('loginPassword', this);"
@@ -7426,105 +7537,10 @@
         </div>
     </div>
 
-        <!-- 파트너스 전환 안내 모달 -->
-    <div id="partnerSwitchModal"
-        style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(8px); z-index: 100100; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
-        <div class="auth-modal-content"
-            style="background: var(--bg-card, #ffffff); width: 100%; max-width: 480px; border-radius: 18px; box-shadow: 0 24px 50px rgba(0,0,0,0.25); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-color, #e2e8f0);">
-
-            <!-- Header Bar -->
-            <div
-                style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 18px 24px; color: white; display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div
-                        style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #2563eb, #1d4ed8); display: flex; align-items: center; justify-content: center; font-size: 18px;">
-                        🏢</div>
-                    <div>
-                        <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #ffffff;">파트너스 전환 안내</h3>
-                        <span style="font-size: 11px; color: #94a3b8;">학원 및 부동산 사업자 전용 파트너십</span>
-                    </div>
-                </div>
-                <button type="button" onclick="if(window.closePartnerSwitchModal) window.closePartnerSwitchModal();"
-                    style="background: rgba(255,255,255,0.1); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; justify-content: center; align-items: center;"
-                    aria-label="닫기">&times;</button>
-            </div>
-
-            <!-- Content Body -->
-            <div style="padding: 24px; max-height: calc(85vh - 140px); overflow-y: auto;">
-                <!-- 설명 요약 박스 -->
-                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;">
-                    <div style="display: flex; align-items: flex-start; gap: 10px;">
-                        <span style="font-size: 18px; line-height: 1.2;">💡</span>
-                        <div style="font-size: 13px; color: #1e3a8a; line-height: 1.5;">
-                            <strong>러닝맵 파트너스로 전환</strong>하시면 학원 홍보, 부동산 매물 연계, 지역 상권·학군 정밀 분석 대시보드를 이용하실 수 있습니다.
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 전환 절차 3단계 -->
-                <div style="margin-bottom: 18px;">
-                    <div style="font-size: 13px; font-weight: 800; color: #1e293b; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
-                        <span>📋</span> 파트너스 전환은 어떻게 진행되나요?
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <!-- STEP 1 -->
-                        <div style="display: flex; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
-                            <div style="width: 24px; height: 24px; border-radius: 50%; background: #2563eb; color: #ffffff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">1</div>
-                            <div style="flex: 1;">
-                                <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 2px;">사업자등록 신청</div>
-                                <div style="font-size: 12px; color: #64748b; line-height: 1.4;">아래 전환 버튼을 클릭하여 파트너 센터로 이동한 후 상호명, 사업자번호 등 사업자 정보를 등록합니다.</div>
-                            </div>
-                        </div>
-
-                        <!-- STEP 2 -->
-                        <div style="display: flex; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
-                            <div style="width: 24px; height: 24px; border-radius: 50%; background: #2563eb; color: #ffffff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">2</div>
-                            <div style="flex: 1;">
-                                <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 2px;">서류 및 사업자 확인</div>
-                                <div style="font-size: 12px; color: #64748b; line-height: 1.4;">제출해주신 정보를 바탕으로 신속하게 사업자 인증 및 확인 절차가 진행됩니다.</div>
-                            </div>
-                        </div>
-
-                        <!-- STEP 3 -->
-                        <div style="display: flex; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
-                            <div style="width: 24px; height: 24px; border-radius: 50%; background: #10b981; color: #ffffff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">3</div>
-                            <div style="flex: 1;">
-                                <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 2px;">파트너스 전환 완료 및 솔루션 이용</div>
-                                <div style="font-size: 12px; color: #64748b; line-height: 1.4;">승인 즉시 파트너 센터 전용 기능(학원 홍보, 학부모 안심 노출, 상권 분석)을 바로 시작할 수 있습니다.</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 안내 유의사항 -->
-                <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px; font-size: 11.5px; color: #64748b; line-height: 1.5;">
-                    💡 기존 학부모 회원 계정 정보는 유지되며, 파트너 등록 후에도 학부모 지도 및 파트너 센터를 자유롭게 전환하며 이용하실 수 있습니다.
-                </div>
-            </div>
-
-            <!-- Footer Actions -->
-            <div
-                style="padding: 14px 24px 20px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; justify-content: flex-end;">
-                <button type="button" onclick="if(window.closePartnerSwitchModal) window.closePartnerSwitchModal();"
-                    style="flex: 1; height: 42px; border: 1px solid #cbd5e1; border-radius: 10px; background: #ffffff; color: #475569; font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.2s;">
-                    닫기
-                </button>
-                <a href="/business?tab=register" target="_blank" rel="noopener noreferrer"
-                    onclick="if(window.closePartnerSwitchModal) window.closePartnerSwitchModal();"
-                    style="flex: 2; height: 42px; border: none; border-radius: 10px; background: #2563eb; color: #ffffff; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); text-decoration: none; transition: background 0.2s; box-sizing: border-box;">
-                    <span>파트너 센터에서 사업자등록 신청</span>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
-                </a>
-            </div>
-        </div>
-    </div>
-
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script type="module" src="app.js?v=1793524778985"></script>
+    <script type="module" src="app.js?v=20261030_iconpin1"></script>
 </body>
 
 </html>

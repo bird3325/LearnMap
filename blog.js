@@ -221,6 +221,63 @@ function getFilteredPosts() {
     return list;
 }
 
+// 안전한 HTML 속성 이스케이프 함수
+function escapeHtmlAttr(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+// 이미지가 없을 때 카테고리별 브랜드 일러스트 기본 썸네일 SVG 생성 (따옴표 깨짐 방지 및 세련된 그라디언트)
+function getFallbackThumbnail(category = '') {
+    const icons = {
+        '학군 분석': '🏫',
+        '입시 정보': '🎯',
+        '학군지 부동산': '🏢',
+        '학교생활': '🎒',
+        '내신·성적관리': '📊',
+        '진로·진학': '🧭',
+        '돌봄·방과후': '🌱',
+        '통학·안전': '🚸',
+        '교육정책·공시': '📋',
+        '사교육·학원비': '💡',
+        '학습법': '📚',
+        '건강·생활습관': '🍎',
+        '서비스 소식': '📢'
+    };
+    const icon = icons[category] || '🎓';
+    const catLabel = escapeHtmlAttr(category || '학업여지도');
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
+        <defs>
+            <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#0f172a"/>
+                <stop offset="50%" stop-color="#1e293b"/>
+                <stop offset="100%" stop-color="#334155"/>
+            </linearGradient>
+            <radialGradient id="glowGrad" cx="50%" cy="40%" r="55%">
+                <stop offset="0%" stop-color="rgba(59, 130, 246, 0.3)"/>
+                <stop offset="100%" stop-color="rgba(15, 23, 42, 0)"/>
+            </radialGradient>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#bgGrad)"/>
+        <circle cx="400" cy="180" r="150" fill="url(#glowGrad)"/>
+        <circle cx="400" cy="180" r="62" fill="rgba(255, 255, 255, 0.08)" stroke="rgba(255, 255, 255, 0.18)" stroke-width="2"/>
+        <text x="400" y="196" font-size="52" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif">${icon}</text>
+        <text x="400" y="280" font-size="22" font-weight="700" fill="#ffffff" letter-spacing="0.5px" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif">${catLabel}</text>
+        <text x="400" y="314" font-size="14" font-weight="500" fill="rgba(255, 255, 255, 0.65)" letter-spacing="0.2px" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif">학업여지도 칼럼 &amp; 리서치</text>
+    </svg>`;
+
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+if (typeof window !== 'undefined') {
+    window.getFallbackThumbnail = getFallbackThumbnail;
+}
+
 // 게시글 목록 렌더링
 function renderPosts() {
     const grid = document.getElementById('postGrid');
@@ -240,26 +297,34 @@ function renderPosts() {
     }
 
     grid.innerHTML = filtered.map(post => {
-        const tagsHtml = (post.tags || []).slice(0, 3).map(tag => `<span class="tag-pill">#${tag}</span>`).join('');
-        const thumbSrc = post.thumbnail || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" fill="%231E293B"></svg>';
+        const tagsHtml = (post.tags || []).slice(0, 3).map(tag => `<span class="tag-pill">#${escapeHtmlAttr(tag)}</span>`).join('');
+        const fallbackThumb = getFallbackThumbnail(post.category);
+        const thumbSrc = (post.thumbnail && typeof post.thumbnail === 'string' && post.thumbnail.trim())
+            ? escapeHtmlAttr(post.thumbnail.trim())
+            : fallbackThumb;
+        const safeTitle = escapeHtmlAttr(post.title || '');
+        const safeCategory = escapeHtmlAttr(post.category || '칼럼');
+        const safeReadTime = escapeHtmlAttr(post.readTime || '3분');
+        const safeSummary = escapeHtmlAttr(post.summary || '');
+        const safeAuthor = escapeHtmlAttr(post.author || '학업여지도팀');
 
         return `
             <article class="post-card" data-post-id="${post.id}" onclick="window.openPostPage('${post.id}')">
                 <div class="card-thumb-wrap">
-                    <img src="${thumbSrc}" alt="${post.title}" class="card-thumb-img" loading="lazy">
-                    <span class="card-category-badge">${post.category || '칼럼'}</span>
-                    <span class="card-readtime">⏱️ ${post.readTime || '3분'}</span>
+                    <img src="${thumbSrc}" alt="${safeTitle}" class="card-thumb-img" loading="lazy" onerror="this.onerror=null; this.src=window.getFallbackThumbnail('${safeCategory}');">
+                    <span class="card-category-badge">${safeCategory}</span>
+                    <span class="card-readtime">⏱️ ${safeReadTime}</span>
                 </div>
                 <div class="card-body">
-                    <h3 class="card-title">${post.title}</h3>
-                    <p class="card-summary">${post.summary || ''}</p>
+                    <h3 class="card-title">${safeTitle}</h3>
+                    <p class="card-summary">${safeSummary}</p>
                     <div class="card-tags">
                         ${tagsHtml}
                     </div>
                     <div class="card-footer">
                         <div class="card-author-info">
                             <div class="author-avatar">🎓</div>
-                            <span>${post.author || '학업여지도팀'}</span>
+                            <span>${safeAuthor}</span>
                         </div>
                         <div class="card-metrics">
                             <span class="metric-item">👁️ ${post.views || 0}</span>
