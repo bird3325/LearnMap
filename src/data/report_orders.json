@@ -1,1 +1,26 @@
-[]
+[
+  {
+    "id": "ord_rep_1793491608566",
+    "businessId": "biz_1793491608520",
+    "businessName": "대치 미래로 수학학원 1793491608433",
+    "reportId": "report_academy_location",
+    "reportName": "학원 창업 상권 분석 보고서",
+    "price": 49000,
+    "notes": "대치동 입지 상세 분석 요청",
+    "status": "completed",
+    "createdAt": "2026-11-01T00:06:48.566Z"
+  },
+  {
+    "id": "ord_rep_1793491892477",
+    "businessId": "biz_1793491891945",
+    "businessName": "대치 미래로 수학학원 1793491891922",
+    "reportId": "report_education_env",
+    "reportName": "지역 교육환경 분석 보고서",
+    "price": 19000,
+    "applicantName": "박대표",
+    "contactPhone": "02-555-7788",
+    "notes": "대치동 학원가 심층 상권 분석 요청",
+    "status": "completed",
+    "createdAt": "2026-11-01T00:11:32.477Z"
+  }
+]

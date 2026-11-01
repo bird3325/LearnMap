@@ -96,6 +96,13 @@ CREATE TABLE IF NOT EXISTS public.users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 기존 users 테이블에 신규 프로필 컬럼 추가 (마이그레이션 구문)
+ALTER TABLE public.users 
+ADD COLUMN IF NOT EXISTS nickname VARCHAR(50),
+ADD COLUMN IF NOT EXISTS postcode VARCHAR(20),
+ADD COLUMN IF NOT EXISTS address TEXT,
+ADD COLUMN IF NOT EXISTS address_detail TEXT;
+
 -- RLS 비활성화 (익명 회원가입 및 로그인 저장 즉시 허용)
 ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;
 
@@ -177,4 +184,97 @@ CREATE POLICY "Allow anon full access for blog management"
 GRANT ALL ON TABLE public.blog_posts TO anon;
 GRANT ALL ON TABLE public.blog_posts TO authenticated;
 GRANT ALL ON TABLE public.blog_posts TO service_role;
+
+
+
+-- 8. 사업자 및 파트너스 학원 프로필 테이블 (business_partners)
+-- 학원 상세 프로필, 대표 로고/썸네일 및 학원 시설 전경 갤러리 사진 정보를 관리합니다.
+CREATE TABLE IF NOT EXISTS public.business_partners (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_number VARCHAR(20) NOT NULL UNIQUE,
+    business_name VARCHAR(100) NOT NULL,
+    representative_name VARCHAR(50) NOT NULL,
+    type VARCHAR(20) NOT NULL DEFAULT 'academy' CHECK (type IN ('academy', 'real_estate')),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    phone VARCHAR(20),
+    address TEXT,
+    address_detail TEXT,
+    academy_profile JSONB DEFAULT '{}'::jsonb,
+    -- academy_profile 내부 JSONB 구조:
+    --   logo_url: TEXT (학원 대표 로고 또는 썸네일 이미지 URL)
+    --   photos: JSONB Array (강의실, 자습실, 로비 등 시설 사진 URL 배열 / FREE: 0장, BASIC: 3장, PRO/TEAM: 최대 10장)
+    --   headline: TEXT (학원 한 줄 소개)
+    --   description: TEXT (학원 상세 소개글)
+    --   subjects: TEXT[] / JSONB (대표 교육 과목)
+    --   grades: TEXT[] / JSONB (교육 대상 학년)
+    --   class_method: TEXT (지도 방식 및 특징)
+    --   website_url / blog_url / instagram_url / kakao_url: TEXT (온라인 채널)
+    --   membership_plan: VARCHAR(30) (현재 활성 멤버십 플랜: free | basic | pro | team)
+    --   membership_plan_name: VARCHAR(50) (플랜 표시 명칭: 학원 FREE | 학원 BASIC | 학원 PRO | 학원 TEAM)
+    --   is_premium: BOOLEAN (유료 프리미엄 구독 활성 여부)
+    real_estate_profile JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS 정책 설정
+ALTER TABLE public.business_partners ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read access for business_partners" ON public.business_partners FOR SELECT USING (true);
+CREATE POLICY "Allow anon full access for business_partners" ON public.business_partners FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.business_partners TO anon;
+GRANT ALL ON TABLE public.business_partners TO authenticated;
+GRANT ALL ON TABLE public.business_partners TO service_role;
+
+
+
+-- 9. 사업자 유료 구독 관리 테이블 (subscriptions)
+-- 관리자 직권 구독 변경 및 실제 결제 플로우에서 생성/동기화되는 구독 상태를 관리합니다.
+CREATE TABLE IF NOT EXISTS public.subscriptions (
+    id VARCHAR(50) PRIMARY KEY, -- 예: sub_1793517706455_adm
+    business_id UUID REFERENCES public.business_partners(id) ON DELETE CASCADE,
+    business_number VARCHAR(20) NOT NULL,
+    plan_id VARCHAR(50) NOT NULL, -- academy_basic | academy_pro | academy_team | free | realestate_basic | realestate_premium
+    plan_name VARCHAR(100) NOT NULL, -- 학원 BASIC | 학원 PRO | 학원 TEAM 등
+    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'canceled', 'expired', 'free')),
+    started_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ, -- 구독 종료/갱신 예정 일시 (보통 시작일로부터 30일)
+    billing_cycle VARCHAR(20) DEFAULT 'monthly',
+    price INTEGER NOT NULL DEFAULT 0,
+    created_by VARCHAR(50) DEFAULT 'user', -- 'user' (사용자 결제) | 'admin' (관리자 직권 변경)
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read access for subscriptions" ON public.subscriptions FOR SELECT USING (true);
+CREATE POLICY "Allow anon full access for subscriptions" ON public.subscriptions FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.subscriptions TO anon;
+GRANT ALL ON TABLE public.subscriptions TO authenticated;
+GRANT ALL ON TABLE public.subscriptions TO service_role;
+
+
+
+-- 10. 결제 내역 및 트랜잭션 기록 테이블 (partner_payments)
+-- 실제 사용자 결제 및 관리자 직권 유료 구독 변경 시 실제 결제와 동일하게 생성되는 결제 트랜잭션 기록입니다.
+CREATE TABLE IF NOT EXISTS public.partner_payments (
+    id VARCHAR(50) PRIMARY KEY, -- 예: pay_1793517706571_3nig
+    subscription_id VARCHAR(50) REFERENCES public.subscriptions(id) ON DELETE SET NULL,
+    business_id UUID REFERENCES public.business_partners(id) ON DELETE CASCADE,
+    business_number VARCHAR(20) NOT NULL,
+    amount INTEGER NOT NULL DEFAULT 0,
+    currency VARCHAR(10) DEFAULT 'KRW',
+    payment_method VARCHAR(50) DEFAULT 'admin_grant', -- card | transfer | admin_grant (관리자 직권 부여)
+    status VARCHAR(20) NOT NULL DEFAULT 'paid' CHECK (status IN ('paid', 'failed', 'refunded', 'free_change')),
+    plan_name VARCHAR(100) NOT NULL,
+    memo TEXT, -- 관리자 변경 사유 또는 결제 메모
+    paid_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.partner_payments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read access for partner_payments" ON public.partner_payments FOR SELECT USING (true);
+CREATE POLICY "Allow anon full access for partner_payments" ON public.partner_payments FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON TABLE public.partner_payments TO anon;
+GRANT ALL ON TABLE public.partner_payments TO authenticated;
+GRANT ALL ON TABLE public.partner_payments TO service_role;
 

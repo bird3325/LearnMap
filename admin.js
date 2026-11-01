@@ -989,46 +989,83 @@ function getPinColor(school) {
     return 'gray';
 }
 
-// Custom Modal Dialog Helpers
+// Custom Modal Dialog Helpers (모든 alert -> 모달창)
 function showAlert(message, onClose) {
-    const modal = document.getElementById('alertModal');
-    const msgEl = document.getElementById('alertModalMessage');
-    const btnClose = document.getElementById('btnAlertClose');
+    let modal = document.getElementById('alertModal');
+    let msgEl = document.getElementById('alertModalMessage');
+    let btnClose = document.getElementById('btnAlertClose');
+
+    // DOM에 엘리먼트가 없더라도 화면에 동적으로 생성하여 100% 모달 노출 보장
     if (!modal || !msgEl || !btnClose) {
-        alert(message);
-        if (typeof onClose === 'function') onClose();
-        return;
+        modal = document.createElement('div');
+        modal.id = 'alertModal';
+        modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); z-index: 99999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 20px; box-sizing: border-box;';
+        modal.innerHTML = `
+            <div style="background: white; border-radius: 18px; padding: 32px 28px; max-width: 440px; width: 90%; text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid #e2e8f0;">
+                <div style="font-size: 40px; margin-bottom: 12px;">ℹ️</div>
+                <h3 style="font-size: 18px; color: #0f172a; margin-bottom: 10px; font-weight: 800;">관리자 알림</h3>
+                <p id="alertModalMessage" style="font-size: 14px; color: #475569; margin-bottom: 24px; line-height: 1.6; word-break: keep-all;"></p>
+                <button class="btn-primary" id="btnAlertClose" style="width: 100%; height: 42px; padding: 0 24px; border-radius: 8px; font-weight: 700; cursor: pointer;">확인</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        msgEl = modal.querySelector('#alertModalMessage');
+        btnClose = modal.querySelector('#btnAlertClose');
     }
-    msgEl.innerText = message;
+
+    msgEl.innerText = message || '';
     modal.style.display = 'flex';
+
     btnClose.onclick = () => {
         modal.style.display = 'none';
         if (typeof onClose === 'function') onClose();
     };
 }
 
-function showConfirm(message, onProceed) {
-    const modal = document.getElementById('confirmModal');
-    const msgEl = document.getElementById('confirmModalMessage');
-    const btnProceed = document.getElementById('btnConfirmProceed');
-    const btnCancel = document.getElementById('btnConfirmCancel');
+function showConfirm(message, onProceed, onCancel) {
+    let modal = document.getElementById('confirmModal');
+    let msgEl = document.getElementById('confirmModalMessage');
+    let btnProceed = document.getElementById('btnConfirmProceed');
+    let btnCancel = document.getElementById('btnConfirmCancel');
+
     if (!modal || !msgEl || !btnProceed || !btnCancel) {
-        if (confirm(message)) {
-            onProceed();
-        }
-        return;
+        modal = document.createElement('div');
+        modal.id = 'confirmModal';
+        modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); z-index: 99999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 20px; box-sizing: border-box;';
+        modal.innerHTML = `
+            <div style="background: white; border-radius: 18px; padding: 32px 28px; max-width: 440px; width: 90%; text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid #e2e8f0;">
+                <div style="font-size: 40px; margin-bottom: 12px;">⚡</div>
+                <h3 style="font-size: 18px; color: #0f172a; margin-bottom: 10px; font-weight: 800;">작업 실행 확인</h3>
+                <p id="confirmModalMessage" style="font-size: 14px; color: #475569; margin-bottom: 24px; line-height: 1.6; word-break: keep-all;"></p>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button id="btnConfirmCancel" style="flex: 1; height: 42px; border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; color: #475569; font-weight: 700; cursor: pointer;">취소</button>
+                    <button class="btn-primary" id="btnConfirmProceed" style="flex: 1; height: 42px; border-radius: 8px; font-weight: 700; cursor: pointer;">확인</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        msgEl = modal.querySelector('#confirmModalMessage');
+        btnProceed = modal.querySelector('#btnConfirmProceed');
+        btnCancel = modal.querySelector('#btnConfirmCancel');
     }
-    msgEl.innerText = message;
+
+    msgEl.innerText = message || '';
     modal.style.display = 'flex';
-    
+
     btnProceed.onclick = () => {
         modal.style.display = 'none';
-        onProceed();
+        if (typeof onProceed === 'function') onProceed();
     };
     btnCancel.onclick = () => {
         modal.style.display = 'none';
+        if (typeof onCancel === 'function') onCancel();
     };
 }
+
+// 브라우저 기본 alert를 전용 모달창으로 가로채기
+window.alert = function(message, onClose) {
+    showAlert(message, onClose);
+};
 
 // 4. DATABASE UPDATE PROCESS Event (Complex Geocoding Pipeline)
 btnRunUpdate.addEventListener('click', () => {
@@ -2643,7 +2680,8 @@ function renderRealEstateRegionStats() {
         if (hasTrade) sidoStats[sido].sigungus[displayName].hasTrade++;
     });
 
-    const sidos = Object.keys(sidoStats).sort((a, b) => sidoStats[b].total - sidoStats[a].total);
+    // 1-1. 시/도 목록 지역명(가나다) 오름차순 정렬
+    const sidos = Object.keys(sidoStats).sort((a, b) => a.localeCompare(b, 'ko'));
     let totalSigunguCount = 0;
     sidos.forEach(s => totalSigunguCount += Object.keys(sidoStats[s].sigungus).length);
 
@@ -2696,7 +2734,8 @@ function renderRealEstateRegionStats() {
         }
     });
 
-    allSigunguList.sort((a, b) => b.total - a.total);
+    // 1-2. 세부 시/군/구 목록 지역명(가나다) 오름차순 정렬
+    allSigunguList.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
 
     allSigunguList.forEach(sig => {
         let isChipActive = false;
@@ -4132,6 +4171,9 @@ function renderAdminBizTable(businesses) {
                                     ⚠️ 이용 정지
                                 </button>
                             ` : ''}
+                            <button type="button" onclick="openAdminSubChangeModal('${b.id}', '${escapeHtml(b.name)}', '${b.type}', '${sub ? sub.productId : 'free'}')" class="btn-primary" style="padding: 7px 12px; font-size: 11.5px; background: #2563eb; color: #ffffff; justify-content: center; border-radius: 6px; box-shadow: 0 1px 3px rgba(37,99,235,0.2);">
+                                💎 구독 플랜 변경
+                            </button>
                         </div>
                     </div>
                 `;
@@ -4170,6 +4212,7 @@ async function loadAdminSubscriptions() {
                         <th style="padding: 10px 12px;">구독 시작일</th>
                         <th style="padding: 10px 12px;">만료 예정일</th>
                         <th style="padding: 10px 12px;">결제 수단</th>
+                        <th style="padding: 10px 12px; text-align: center;">플랜 관리</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -4186,6 +4229,11 @@ async function loadAdminSubscriptions() {
                             <td style="padding: 10px 12px; color: var(--adm-text-muted);">${s.startDate ? s.startDate.split('T')[0] : '-'}</td>
                             <td style="padding: 10px 12px; color: #0f172a; font-weight: 600;">${s.endDate ? s.endDate.split('T')[0] : '-'}</td>
                             <td style="padding: 10px 12px; color: var(--adm-text-muted);">${escapeHtml(s.paymentMethod || '카드 자동결제')}</td>
+                            <td style="padding: 8px 12px; text-align: center;">
+                                <button type="button" onclick="openAdminSubChangeModal('${s.businessId}', '${escapeHtml(s.businessName)}', 'academy', '${s.productId}')" class="btn-secondary" style="padding: 4px 10px; font-size: 11.5px; color: #2563eb; border-color: #bfdbfe; font-weight: 700; width: auto; margin: 0; background: #eff6ff; border-radius: 6px;">
+                                    플랜 변경
+                                </button>
+                            </td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -4197,26 +4245,27 @@ async function loadAdminSubscriptions() {
     }
 }
 
-window.setBusinessStatus = async function(businessId, status, rejectionReason = '') {
-    if (!confirm(`해당 사업자 상태를 [${status}]로 변경하시겠습니까?`)) return;
-
-    try {
-        const res = await fetch('/api/admin/business/status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ businessId, status, rejectionReason })
-        });
-        const data = await res.json();
-        if (data.success) {
-            alert(data.message || '상태가 변경되었습니다.');
-            loadBusinessManagement();
-        } else {
-            alert(data.error || '상태 변경에 실패했습니다.');
+window.setBusinessStatus = function(businessId, status, rejectionReason = '') {
+    showConfirm(`해당 사업자 상태를 [${status}]로 변경하시겠습니까?`, async () => {
+        try {
+            const res = await fetch('/api/admin/business/status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ businessId, status, rejectionReason })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showAlert(data.message || '상태가 변경되었습니다.', () => {
+                    loadBusinessManagement();
+                });
+            } else {
+                showAlert(data.error || '상태 변경에 실패했습니다.');
+            }
+        } catch (err) {
+            console.error('setBusinessStatus error:', err);
+            showAlert('요청 중 서버 오류가 발생했습니다.');
         }
-    } catch (err) {
-        console.error('setBusinessStatus error:', err);
-        alert('요청 중 서버 오류가 발생했습니다.');
-    }
+    });
 };
 
 window.rejectBusinessPrompt = function(businessId) {
@@ -4787,7 +4836,7 @@ function renderAttachedBlogImages() {
             const thumbInput = document.getElementById('blogPostThumbnail');
             if (thumbInput) thumbInput.value = img.url;
             updateThumbnailPreview(img.url);
-            alert('대표 썸네일로 지정되었습니다.');
+            showAlert('대표 썸네일로 지정되었습니다.');
         });
         item.querySelector('.btn-delete-img').addEventListener('click', () => {
             currentAttachedBlogImages.splice(idx, 1);
@@ -4801,12 +4850,12 @@ function renderAttachedBlogImages() {
 async function uploadBlogImageFile(file, isThumbnail = false) {
     if (!file) return;
     if (!file.type || !file.type.startsWith('image/')) {
-        alert('이미지 파일(PNG, JPG, WebP, GIF, SVG 등)만 업로드할 수 있습니다.');
+        showAlert('이미지 파일(PNG, JPG, WebP, GIF, SVG 등)만 업로드할 수 있습니다.');
         return;
     }
 
     if (file.size > 15 * 1024 * 1024) {
-        alert('이미지 파일 크기는 최대 15MB까지 업로드 가능합니다.');
+        showAlert('이미지 파일 크기는 최대 15MB까지 업로드 가능합니다.');
         return;
     }
 
@@ -4880,7 +4929,7 @@ async function uploadBlogImageFile(file, isThumbnail = false) {
         } catch (err) {
             console.error('[Blog Image Upload Error]:', err);
             if (statusEl) statusEl.innerHTML = `<span style="color: #dc2626; font-weight: 600;">❌ 업로드 실패: ${err.message}</span>`;
-            alert('이미지 업로드에 실패했습니다: ' + err.message);
+            showAlert('이미지 업로드에 실패했습니다: ' + err.message);
         }
     };
     reader.readAsDataURL(file);
@@ -4971,12 +5020,12 @@ window.openBlogFullPreviewModal = function() {
     const isPublished = document.getElementById('blogPostIsPublished').checked;
 
     if (!title) {
-        alert('미리보기를 확인하려면 먼저 칼럼 제목을 입력해 주세요.');
+        showAlert('미리보기를 확인하려면 먼저 칼럼 제목을 입력해 주세요.');
         document.getElementById('blogPostTitle').focus();
         return;
     }
     if (!content) {
-        alert('미리보기를 확인하려면 먼저 본문 내용을 입력해 주세요.');
+        showAlert('미리보기를 확인하려면 먼저 본문 내용을 입력해 주세요.');
         document.getElementById('blogPostContent').focus();
         return;
     }
@@ -5043,11 +5092,11 @@ window.saveBlogPostAdmin = async function() {
     const isPublished = document.getElementById('blogPostIsPublished').checked;
 
     if (!title) {
-        alert('칼럼 제목을 입력해 주세요.');
+        showAlert('칼럼 제목을 입력해 주세요.');
         return;
     }
     if (!content) {
-        alert('본문 내용을 입력해 주세요.');
+        showAlert('본문 내용을 입력해 주세요.');
         return;
     }
 
@@ -5076,38 +5125,38 @@ window.saveBlogPostAdmin = async function() {
         });
 
         if (res.ok) {
-            alert(isEdit ? '칼럼이 수정되었습니다.' : '새 칼럼이 등록되었습니다.');
-            window.closeBlogEditorModal();
-            loadBlogManagement();
+            showAlert(isEdit ? '칼럼이 수정되었습니다.' : '새 칼럼이 등록되었습니다.', () => {
+                window.closeBlogEditorModal();
+                loadBlogManagement();
+            });
         } else {
             const err = await res.json().catch(() => ({}));
-            alert('저장에 실패했습니다: ' + (err.error || '서버 오류'));
+            showAlert('저장에 실패했습니다: ' + (err.error || '서버 오류'));
         }
     } catch (e) {
         console.error('[Admin Blog Save Error]:', e);
-        alert('서버와 통신 중 오류가 발생했습니다.');
+        showAlert('서버와 통신 중 오류가 발생했습니다.');
     }
 };
 
-window.deleteBlogPostAdmin = async function(postId, encodedTitle) {
+window.deleteBlogPostAdmin = function(postId, encodedTitle) {
     const title = decodeURIComponent(encodedTitle);
-    if (!confirm(`정말로 "${title}" 칼럼을 삭제하시겠습니까?`)) {
-        return;
-    }
-
-    try {
-        const res = await fetch(`/api/admin/blog/posts/${postId}`, {
-            method: 'DELETE'
-        });
-        if (res.ok) {
-            alert('칼럼이 삭제되었습니다.');
-            loadBlogManagement();
-        } else {
-            alert('삭제에 실패했습니다.');
+    showConfirm(`정말로 "${title}" 칼럼을 삭제하시겠습니까?`, async () => {
+        try {
+            const res = await fetch(`/api/admin/blog/posts/${postId}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                showAlert('칼럼이 삭제되었습니다.', () => {
+                    loadBlogManagement();
+                });
+            } else {
+                showAlert('삭제에 실패했습니다.');
+            }
+        } catch (e) {
+            showAlert('삭제 요청 중 서버 오류가 발생했습니다.');
         }
-    } catch (e) {
-        alert('삭제 요청 중 서버 오류가 발생했습니다.');
-    }
+    });
 };
 
 function initBlogAdminEvents() {
@@ -5274,7 +5323,7 @@ function initBlogAdminEvents() {
         btnConvertMd.addEventListener('click', () => {
             const currentVal = contentTextarea.value;
             if (!currentVal.trim()) {
-                alert('변환할 본문 내용이 없습니다. 웹문서나 워드에서 복사한 글을 붙여넣으신 후 클릭하세요.');
+                showAlert('변환할 본문 내용이 없습니다. 웹문서나 워드에서 복사한 글을 붙여넣으신 후 클릭하세요.');
                 return;
             }
 
@@ -5290,9 +5339,9 @@ function initBlogAdminEvents() {
             if (converted !== currentVal) {
                 contentTextarea.value = converted;
                 updateBlogEditorCharCount();
-                alert('마크다운 문법으로 변환되었습니다! 상단 [👁️ 마크다운 미리보기] 탭에서 확인해 보세요.');
+                showAlert('마크다운 문법으로 변환되었습니다! 상단 [👁️ 마크다운 미리보기] 탭에서 확인해 보세요.');
             } else {
-                alert('이미 마크다운 형식으로 작성되어 있거나 추가 변환이 필요하지 않은 텍스트입니다.');
+                showAlert('이미 마크다운 형식으로 작성되어 있거나 추가 변환이 필요하지 않은 텍스트입니다.');
             }
         });
     }
@@ -5428,3 +5477,111 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 
 
 
+
+// ==========================================
+// [관리자] 사업자 유료 구독 플랜 변경 모달 & 결제 프로세스 연동
+// ==========================================
+window.openAdminSubChangeModal = function(bizId, bizName, bizType, curProductId) {
+    const modal = document.getElementById('adminChangeSubModal');
+    if (!modal) return;
+
+    document.getElementById('adminSubModalBizId').value = bizId;
+    document.getElementById('adminSubModalBizType').value = bizType || 'academy';
+    document.getElementById('adminSubModalBizName').innerText = `[${bizType === 'real_estate' ? '부동산' : '학원'}] ${bizName}`;
+
+    const curPlanEl = document.getElementById('adminSubModalCurPlan');
+    const isFree = !curProductId || curProductId === 'free';
+    if (curPlanEl) {
+        curPlanEl.innerText = isFree ? '현재 상태: 일반 무료 (FREE)' : `현재 이용 중: ${curProductId}`;
+    }
+
+    const selectPlan = document.getElementById('adminSubModalSelectPlan');
+    if (selectPlan) {
+        if (bizType === 'real_estate') {
+            selectPlan.innerHTML = `
+                <option value="free" ${isFree ? 'selected' : ''}>부동산 FREE (평생 무료 / 월 0원)</option>
+                <option value="prod_re_basic" ${curProductId === 'prod_re_basic' ? 'selected' : ''}>부동산 BASIC (월 29,000원 - 매물 관리 & 기본 교육환경)</option>
+                <option value="prod_re_pro" ${curProductId === 'prod_re_pro' || isFree ? 'selected' : ''}>부동산 PRO (월 59,000원 - 교육환경 분석 & 프리미엄 홍보)</option>
+                <option value="prod_re_team" ${curProductId === 'prod_re_team' ? 'selected' : ''}>부동산 TEAM (월 199,000원 - 다수 사무소 & 지점 통합 관리)</option>
+            `;
+        } else {
+            selectPlan.innerHTML = `
+                <option value="free" ${isFree ? 'selected' : ''}>학원 FREE (기본 정보 등록 및 무료 체험 / 월 0원 / 시설 사진 0장)</option>
+                <option value="prod_academy_basic" ${curProductId === 'prod_academy_basic' ? 'selected' : ''}>학원 BASIC (월 29,000원 - 상세페이지 & 소개글 활성, 시설 사진 3장, 1:1 상담)</option>
+                <option value="prod_academy_pro" ${curProductId === 'prod_academy_pro' || isFree ? 'selected' : ''}>학원 PRO (월 99,000원 - 주력 추천 / 상단 프리미엄 노출, 시설 사진 최대 10장, 상권분석)</option>
+                <option value="prod_academy_team" ${curProductId === 'prod_academy_team' ? 'selected' : ''}>학원 TEAM (월 199,000원 - 다수 지점 통합 프로필 & 관리, 시설 사진 최대 10장)</option>
+            `;
+        }
+    }
+
+    onAdminPlanSelectChange();
+    modal.style.display = 'flex';
+};
+
+window.closeAdminSubChangeModal = function() {
+    const modal = document.getElementById('adminChangeSubModal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.onAdminPlanSelectChange = function() {
+    const select = document.getElementById('adminSubModalSelectPlan');
+    const priceText = document.getElementById('adminSubModalPriceText');
+    if (!select || !priceText) return;
+
+    const val = select.value;
+    const priceMap = {
+        'free': '0원 (무료 플랜 전환)',
+        'prod_academy_basic': '29,000원 / 월',
+        'prod_academy_pro': '99,000원 / 월',
+        'prod_academy_team': '199,000원 / 월',
+        'prod_re_basic': '29,000원 / 월',
+        'prod_re_pro': '59,000원 / 월',
+        'prod_re_team': '199,000원 / 월'
+    };
+    priceText.innerText = priceMap[val] || '0원';
+};
+
+window.executeAdminSubscriptionChange = async function() {
+    const bizId = document.getElementById('adminSubModalBizId').value;
+    const productId = document.getElementById('adminSubModalSelectPlan').value;
+    const paymentMethod = document.getElementById('adminSubModalPayMethod').value;
+    const durationDays = parseInt(document.getElementById('adminSubModalDurationDays').value, 10) || 30;
+    const reason = document.getElementById('adminSubModalReason').value.trim() || '관리자 직권 유료 결제 승인 및 구독 플랜 변경';
+
+    if (!bizId || !productId) {
+        showAlert('필수 입력값이 누락되었습니다.');
+        return;
+    }
+
+    const planText = document.getElementById('adminSubModalSelectPlan').selectedOptions[0]?.text || productId;
+
+    showConfirm(`선택하신 [${planText}]으로 실제 결제 승인 및 구독 플랜을 변경 적용하시겠습니까?\n(결제 내역 및 MRR 매출 통계에 즉시 반영됩니다)`, async () => {
+        try {
+            const res = await fetch('/api/admin/subscription/change', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    businessId: bizId,
+                    productId,
+                    paymentMethod,
+                    durationDays,
+                    reason
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                closeAdminSubChangeModal();
+                showAlert(data.message || '유료 구독 플랜 변경이 성공적으로 완료되었습니다!', () => {
+                    loadAdminBusinesses();
+                    loadAdminSubscriptions();
+                });
+            } else {
+                showAlert(data.error || '구독 변경 처리에 실패했습니다.');
+            }
+        } catch (err) {
+            console.error('executeAdminSubscriptionChange error:', err);
+            showAlert('서버 통신 중 오류가 발생했습니다: ' + err.message);
+        }
+    });
+};

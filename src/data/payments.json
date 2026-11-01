@@ -1,0 +1,15 @@
+[
+  {
+    "id": "pay_1793517706571_3nig",
+    "businessId": "biz_1793495258331",
+    "businessName": "미래탐구",
+    "subscriptionId": "sub_1793517706455_adm",
+    "productId": "prod_academy_pro",
+    "productName": "학원 PRO (주력)",
+    "amount": 99000,
+    "status": "success",
+    "paymentMethod": "관리자 수동 결제 승인 (Master Admin)",
+    "paidAt": "2026-11-01T07:21:46.455Z",
+    "createdAt": "2026-11-01T07:21:46.455Z"
+  }
+]

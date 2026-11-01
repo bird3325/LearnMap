@@ -272,18 +272,34 @@ export class AuthService {
                 if (Array.isArray(dbUsers) && dbUsers.length > 0) {
                     const target = dbUsers[0];
                     if (target.password_hash === password) {
-                        // 마지막 로그인 시간 비동기 갱신
-                        fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${target.id}`, {
-                            method: 'PATCH',
-                            headers: {
-                                'apikey': SUPABASE_KEY,
-                                'Authorization': `Bearer ${SUPABASE_KEY}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ last_login_at: new Date().toISOString() })
-                        }).catch(() => {});
+                        // 마지막 로그인 시간 DB 동기화
+                        try {
+                            const nowIso = new Date().toISOString();
+                            await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${target.id}`, {
+                                method: 'PATCH',
+                                headers: {
+                                    'apikey': SUPABASE_KEY,
+                                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                    'Content-Type': 'application/json',
+                                    'Prefer': 'return=representation'
+                                },
+                                body: JSON.stringify({ last_login_at: nowIso, updated_at: nowIso })
+                            });
+                        } catch (patchErr) {
+                            console.warn('[Login] last_login_at 갱신 경고:', patchErr);
+                        }
 
-                        const sessionUser = { id: target.id, email: target.email, name: target.name, role: target.role };
+                        const sessionUser = {
+                            id: target.id,
+                            email: target.email,
+                            name: target.name,
+                            role: target.role,
+                            phone: target.phone || '',
+                            nickname: target.nickname || '',
+                            postcode: target.postcode || '',
+                            address: target.address || '',
+                            addressDetail: target.address_detail || target.addressDetail || ''
+                        };
                         localStorage.setItem(this.userStorageKey, JSON.stringify(sessionUser));
                         return { success: true, user: sessionUser, message: `${target.name}님 환영합니다!` };
                     } else {
@@ -494,9 +510,26 @@ export class AuthService {
             });
             if (checkRes.ok) {
                 const existing = await checkRes.json();
+                const nowIso = new Date().toISOString();
                 if (Array.isArray(existing) && existing.length > 0) {
                     createdUserId = existing[0].id || createdUserId;
+                    // 기존 카카오 회원 로그인 시 last_login_at DB 갱신
+                    try {
+                        await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${createdUserId}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'apikey': SUPABASE_KEY,
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=representation'
+                            },
+                            body: JSON.stringify({ last_login_at: nowIso, updated_at: nowIso })
+                        });
+                    } catch (kPatchErr) {
+                        console.warn('[Kakao Login] last_login_at 갱신 경고:', kPatchErr);
+                    }
                 } else {
+                    // 최초 카카오 회원 가입 시 last_login_at 함께 등록
                     const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
                         method: 'POST',
                         headers: {
@@ -510,7 +543,8 @@ export class AuthService {
                             password_hash: 'kakao_oauth_' + id,
                             name: cleanName,
                             role: 'parent',
-                            is_active: true
+                            is_active: true,
+                            last_login_at: nowIso
                         })
                     });
                     if (insertRes.ok) {
@@ -746,6 +780,111 @@ export class AuthService {
     /**
      * 사용자 로그아웃
      */
+    /**
+     * 사용자 정보 수정 및 Supabase DB 동기화 저장
+     */
+    async updateUserProfile(userData) {
+        if (!userData) return { success: false, message: '수정할 회원 정보가 없습니다.' };
+
+        const currentUser = this.getCurrentUser();
+        if (!currentUser) return { success: false, message: '로그인된 사용자 정보를 찾을 수 없습니다.' };
+
+        const email = (currentUser.email || '').trim().toLowerCase();
+        let targetId = currentUser.id;
+
+        const nowIso = new Date().toISOString();
+        const patchBody = {
+            updated_at: nowIso
+        };
+
+        if (userData.name !== undefined) patchBody.name = userData.name.trim();
+        if (userData.nickname !== undefined) patchBody.nickname = userData.nickname.trim();
+        if (userData.phone !== undefined) patchBody.phone = userData.phone.trim();
+        if (userData.postcode !== undefined) patchBody.postcode = userData.postcode.trim();
+        if (userData.address !== undefined) patchBody.address = userData.address.trim();
+        if (userData.addressDetail !== undefined) patchBody.address_detail = userData.addressDetail.trim();
+        if (userData.address_detail !== undefined) patchBody.address_detail = userData.address_detail.trim();
+        if (userData.password && userData.password.trim()) {
+            patchBody.password_hash = userData.password.trim();
+        }
+
+        let dbUpdated = false;
+
+        // 1. Supabase DB users 테이블 업데이트
+        try {
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (!targetId || !uuidRegex.test(targetId)) {
+                if (email) {
+                    const findRes = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=id`, {
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_KEY}`
+                        }
+                    });
+                    if (findRes.ok) {
+                        const found = await findRes.json();
+                        if (found && found.length > 0 && found[0].id) {
+                            targetId = found[0].id;
+                        }
+                    }
+                }
+            }
+
+            const patchUrl = targetId && uuidRegex.test(targetId)
+                ? `${SUPABASE_URL}/rest/v1/users?id=eq.${targetId}`
+                : `${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}`;
+
+            const patchRes = await fetch(patchUrl, {
+                method: 'PATCH',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify(patchBody)
+            });
+
+            if (patchRes.ok) {
+                dbUpdated = true;
+                const updatedRows = await patchRes.json().catch(() => []);
+                if (updatedRows && updatedRows[0] && updatedRows[0].id) {
+                    targetId = updatedRows[0].id;
+                }
+            } else {
+                console.warn('[updateUserProfile] DB PATCH 실패:', patchRes.status, await patchRes.text());
+            }
+        } catch (dbErr) {
+            console.error('[updateUserProfile] DB 연동 오류:', dbErr);
+        }
+
+        // 2. 현재 로그인 세션 사용자 객체 업데이트 및 로컬 저장
+        const mergedUser = {
+            ...currentUser,
+            id: targetId || currentUser.id,
+            name: patchBody.name !== undefined ? patchBody.name : currentUser.name,
+            nickname: patchBody.nickname !== undefined ? patchBody.nickname : (currentUser.nickname || ''),
+            phone: patchBody.phone !== undefined ? patchBody.phone : (currentUser.phone || ''),
+            postcode: patchBody.postcode !== undefined ? patchBody.postcode : (currentUser.postcode || ''),
+            address: patchBody.address !== undefined ? patchBody.address : (currentUser.address || ''),
+            addressDetail: patchBody.address_detail !== undefined ? patchBody.address_detail : (currentUser.addressDetail || ''),
+            updatedAt: nowIso
+        };
+
+        if (patchBody.password_hash) {
+            mergedUser.hasCustomPassword = true;
+        }
+
+        this.saveUserToLocalStorage(mergedUser);
+
+        return {
+            success: true,
+            dbUpdated: dbUpdated,
+            user: mergedUser,
+            message: '회원 정보가 성공적으로 수정되었습니다.'
+        };
+    }
+
     logout() {
         try {
             localStorage.removeItem(this.userStorageKey);

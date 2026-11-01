@@ -1,4 +1,19 @@
 {
   "products": [],
-  "subscriptions": []
+  "subscriptions": [
+    {
+      "id": "sub_1793517706455_adm",
+      "businessId": "biz_1793495258331",
+      "productId": "prod_academy_pro",
+      "productName": "학원 PRO (주력)",
+      "amount": 99000,
+      "status": "active",
+      "startDate": "2026-11-01T07:21:46.455+00:00",
+      "endDate": "2026-12-01T07:21:46.455+00:00",
+      "paymentMethod": "관리자 수동 결제 승인 (Master Admin)",
+      "lastPaymentDate": "2026-11-01T07:21:46.455+00:00",
+      "createdAt": "2026-11-01T07:21:45.864095+00:00",
+      "updatedAt": "2026-11-01T07:21:46.457+00:00"
+    }
+  ]
 }

@@ -1,1 +1,64 @@
-[]
+[
+  {
+    "id": "biz_1793495258331",
+    "userId": "46771a9e-a080-4cb3-85df-dd47dd49842a",
+    "type": "academy",
+    "name": "미래탐구",
+    "representative": "조민기",
+    "bizNumber": "206-85-26551",
+    "phone": "010-6393-0923",
+    "email": "bird3325@naver.com",
+    "address": "경기 고양시 덕양구 신원로 5 (신원동)",
+    "addressDetail": "10",
+    "registeredAddress": "경기 고양시 덕양구 신원로 5 (신원동)",
+    "registeredAddressDetail": "10",
+    "status": "approved",
+    "rejectionReason": "",
+    "lat": null,
+    "lng": null,
+    "grades": [],
+    "feeInfo": "",
+    "subjects": [],
+    "classMethod": "",
+    "description": "일어",
+    "academyProfile": {
+      "lat": 37.661353,
+      "lng": 126.89019,
+      "grades": [
+        "초등",
+        "중등",
+        "고등"
+      ],
+      "address": "경기 고양시 덕양구 신원로 5 (신원동)",
+      "blogUrl": "https://blog.naver.com/mirae_daechi",
+      "feeInfo": "",
+      "capacity": "10",
+      "headline": "서초동·서일중 최상위권 내신 & 특목고 대비 1:1 맞춤형 수학·과학 전문",
+      "kakaoUrl": "https://pf.kakao.com/_miraetamgu",
+      "subjects": [
+        "국어",
+        "영어",
+        "수학"
+      ],
+      "zonecode": "",
+      "eduOffice": "경기도고양교육지원청",
+      "isPremium": true,
+      "updatedAt": "2026-11-01T04:36:58.026Z",
+      "websiteUrl": "",
+      "classMethod": "",
+      "description": "일어",
+      "contactPhone": "010-6393-0923",
+      "foundingDate": "2026. 11. 01",
+      "instagramUrl": "https://instagram.com/mirae_tamgu_official",
+      "addressDetail": "10",
+      "directionGuide": "서초중학교 후문 도보 3분, 강남역 5번 출구 400m (건물 내 주차 가능)",
+      "membershipPlan": "pro",
+      "institutionType": "학원",
+      "sameAsBizAddress": true,
+      "targetAcademyName": "미래탐구",
+      "membershipPlanName": "학원 PRO (주력)"
+    },
+    "createdAt": "2026-11-01T01:07:37.806032+00:00",
+    "updatedAt": "2026-11-01T07:21:46.572+00:00"
+  }
+]

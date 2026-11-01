@@ -18,5 +18,137 @@
       "amount": 99000
     },
     "createdAt": "2026-10-30T23:11:30.802Z"
+  },
+  {
+    "id": "evt_1793490629076",
+    "businessId": "biz_1793490629066",
+    "eventType": "business_signup",
+    "metadata": {
+      "type": "academy",
+      "name": "미래탐구"
+    },
+    "createdAt": "2026-10-31T23:50:29.076Z"
+  },
+  {
+    "id": "evt_1793491608527",
+    "businessId": "biz_1793491608520",
+    "eventType": "business_signup",
+    "metadata": {
+      "type": "academy",
+      "name": "대치 미래로 수학학원 1793491608433"
+    },
+    "createdAt": "2026-11-01T00:06:48.527Z"
+  },
+  {
+    "id": "evt_1793491608557",
+    "businessId": "biz_1793491608520",
+    "eventType": "subscription_started",
+    "metadata": {
+      "productId": "prod_academy_pro",
+      "amount": 99000
+    },
+    "createdAt": "2026-11-01T00:06:48.555Z"
+  },
+  {
+    "id": "evt_1793491860218",
+    "businessId": "biz_1793491860102",
+    "eventType": "business_signup",
+    "metadata": {
+      "type": "academy",
+      "name": "대치 미래로 수학학원 1793491860082"
+    },
+    "createdAt": "2026-11-01T00:11:00.218Z"
+  },
+  {
+    "id": "evt_1793491860362",
+    "businessId": "biz_1793491860102",
+    "eventType": "subscription_started",
+    "metadata": {
+      "productId": "prod_academy_premium",
+      "amount": 29000
+    },
+    "createdAt": "2026-11-01T00:11:00.301Z"
+  },
+  {
+    "id": "evt_1793491892308",
+    "businessId": "biz_1793491891945",
+    "eventType": "business_signup",
+    "metadata": {
+      "type": "academy",
+      "name": "대치 미래로 수학학원 1793491891922"
+    },
+    "createdAt": "2026-11-01T00:11:32.308Z"
+  },
+  {
+    "id": "evt_1793491892473",
+    "businessId": "biz_1793491891945",
+    "eventType": "subscription_started",
+    "metadata": {
+      "productId": "prod_academy_premium",
+      "amount": 29000
+    },
+    "createdAt": "2026-11-01T00:11:32.406Z"
+  },
+  {
+    "id": "evt_1793492804600",
+    "businessId": "biz_1793492804495",
+    "eventType": "business_signup",
+    "metadata": {
+      "type": "academy",
+      "name": "미래탐구"
+    },
+    "createdAt": "2026-11-01T00:26:44.600Z"
+  },
+  {
+    "id": "evt_1793493835829",
+    "businessId": "biz_1793493835725",
+    "eventType": "business_signup",
+    "metadata": {
+      "type": "academy",
+      "name": "대치 탑클래스 수학학원"
+    },
+    "createdAt": "2026-11-01T00:43:55.829Z"
+  },
+  {
+    "id": "evt_1793493864180",
+    "businessId": "biz_1793493864106",
+    "eventType": "business_signup",
+    "metadata": {
+      "type": "academy",
+      "name": "대치 탑클래스 수학학원"
+    },
+    "createdAt": "2026-11-01T00:44:24.180Z"
+  },
+  {
+    "id": "evt_1793493925381",
+    "businessId": "biz_1793493925321",
+    "eventType": "business_signup",
+    "metadata": {
+      "type": "academy",
+      "name": "대치 탑클래스 수학학원"
+    },
+    "createdAt": "2026-11-01T00:45:25.381Z"
+  },
+  {
+    "id": "evt_1793495258391",
+    "businessId": "biz_1793495258331",
+    "eventType": "business_signup",
+    "metadata": {
+      "type": "academy",
+      "name": "미래탐구"
+    },
+    "createdAt": "2026-11-01T01:07:38.391Z"
+  },
+  {
+    "id": "evt_1793517706675",
+    "businessId": "biz_1793495258331",
+    "eventType": "subscription_started",
+    "metadata": {
+      "productId": "prod_academy_pro",
+      "amount": 99000,
+      "byAdmin": true,
+      "reason": "관리자 직권 테스트 결제 및 활성화"
+    },
+    "createdAt": "2026-11-01T07:21:46.455Z"
   }
 ]

@@ -2,6 +2,9 @@
 <html lang="ko">
 
 <head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
     <meta charset="UTF-8">
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-3GMJRV3CVX"></script>
@@ -385,6 +388,9 @@
                         setTimeout(() => {
                             if (container && !container.classList.contains('academy-open')) {
                                 if (academySidebar) academySidebar.style.display = 'none';
+                                if (typeof window.recenterActivePinOnMap === 'function') {
+                                    window.recenterActivePinOnMap();
+                                }
                             }
                         }, 300);
                     } else {
@@ -425,20 +431,6 @@
                         // 모바일에서는 슬라이드 업 트랜지션을 위해 sidebar-open 클래스도 함께 활성화합니다.
                         if (window.innerWidth <= 1024) {
                             if (container) container.classList.add('sidebar-open');
-                        } else if (!wasAlreadyOpen) {
-                            // PC 화면: 학원 목록이 처음 새로 열릴 때만 선택된 학교 핀 위치 보정 (이미 열려있거나 학원 핀/카드 클릭 시에는 불필요한 이동 방지)
-                            setTimeout(() => {
-                                if (window.isOpeningFromAcademyPin || window.isOpeningFromAcademyDetail) return;
-                                const schoolObj = (typeof fullSchool !== 'undefined' ? fullSchool : null) ||
-                                    (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) ||
-                                    window.currentSelectedSchool || null;
-                                let sLat = schoolObj && (schoolObj.lat || schoolObj.y || schoolObj.latitude) ? parseFloat(schoolObj.lat || schoolObj.y || schoolObj.latitude) : null;
-                                let sLng = schoolObj && (schoolObj.lng || schoolObj.x || schoolObj.longitude) ? parseFloat(schoolObj.lng || schoolObj.x || schoolObj.longitude) : null;
-
-                                if (sLat && sLng && typeof window.centerAcademyPinWithSidebarOffset === 'function') {
-                                    window.centerAcademyPinWithSidebarOffset(sLng, sLat, schoolObj.school_name);
-                                }
-                            }, 100);
                         }
                     }
                     if (window.kakaoMapInstance) {
@@ -475,6 +467,9 @@
                         setTimeout(() => {
                             if (container && !container.classList.contains('housing-open')) {
                                 if (housingSidebar) housingSidebar.style.display = 'none';
+                                if (typeof window.recenterActivePinOnMap === 'function') {
+                                    window.recenterActivePinOnMap();
+                                }
                             }
                         }, 300);
                     } else {
@@ -502,6 +497,8 @@
                             container.classList.add('sidebar-open');
                         }
 
+                        const wasAlreadyOpen = housingSidebar && housingSidebar.style.display === 'flex';
+
                         if (housingSidebar) {
                             housingSidebar.style.display = 'flex';
                             void housingSidebar.offsetWidth;
@@ -514,18 +511,6 @@
                         // 모바일에서는 슬라이드 업 트랜지션을 위해 sidebar-open 클래스도 함께 활성화
                         if (window.innerWidth <= 1024) {
                             if (container) container.classList.add('sidebar-open');
-                        } else {
-                            setTimeout(() => {
-                                const schoolObj = (typeof fullSchool !== 'undefined' ? fullSchool : null) ||
-                                    (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) ||
-                                    window.currentSelectedSchool || null;
-                                let sLat = schoolObj && (schoolObj.lat || schoolObj.y || schoolObj.latitude) ? parseFloat(schoolObj.lat || schoolObj.y || schoolObj.latitude) : null;
-                                let sLng = schoolObj && (schoolObj.lng || schoolObj.x || schoolObj.longitude) ? parseFloat(schoolObj.lng || schoolObj.x || schoolObj.longitude) : null;
-
-                                if (sLat && sLng && typeof window.centerAcademyPinWithSidebarOffset === 'function') {
-                                    window.centerAcademyPinWithSidebarOffset(sLng, sLat, schoolObj.school_name);
-                                }
-                            }, 100);
                         }
                     }
                     if (window.kakaoMapInstance) {
@@ -1955,7 +1940,7 @@
                                     </button>
                                 </div>
                                 <button type="button" id="btnSettingsSwitchPartner"
-                                    onclick="if(window.openPartnerSwitchModal) window.openPartnerSwitchModal();"
+                                    onclick="if(window.handlePartnerButtonClick) window.handlePartnerButtonClick(); else if(window.openPartnerSwitchModal) window.openPartnerSwitchModal();"
                                     style="width: 100%; height: 38px; margin-top: 10px; background: #ffffff; border: 1.5px solid #2563eb; border-radius: 10px; font-size: 12.5px; font-weight: 700; color: #2563eb; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: all 0.2s;">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
@@ -1998,11 +1983,10 @@
                                 </div>
 
                                 <div id="settingsLoginForm">
-                                    <input type="email" id="settingsEmail" class="toss-input" placeholder="이메일 주소"
+                                    <input type="email" id="settingsEmail" class="toss-input" placeholder="이메일 주소" onkeydown="if(event.key==='Enter'){event.preventDefault(); if(window.handleSettingsLogin) window.handleSettingsLogin();}"
                                         style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 12px; font-size: 12.5px; box-sizing: border-box; margin-bottom: 8px;">
                                     <div class="toss-pw-wrap" style="position: relative; margin-bottom: 12px;">
-                                        <input type="password" id="settingsPassword" class="toss-input"
-                                            placeholder="비밀번호"
+                                        <input type="password" id="settingsPassword" class="toss-input" placeholder="비밀번호" onkeydown="if(event.key==='Enter'){event.preventDefault(); if(window.handleSettingsLogin) window.handleSettingsLogin();}"
                                             style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 36px 0 12px; font-size: 12.5px; box-sizing: border-box;">
                                         <button type="button" class="toss-pw-toggle"
                                             onclick="if(window.togglePasswordVisibility) window.togglePasswordVisibility('settingsPassword', this);"
@@ -2641,7 +2625,7 @@
                                     </button>
                                 </div>
                                 <button type="button" id="btnSettingsSwitchPartnerMobile"
-                                    onclick="if(window.openPartnerSwitchModal) window.openPartnerSwitchModal();"
+                                    onclick="if(window.handlePartnerButtonClick) window.handlePartnerButtonClick(); else if(window.openPartnerSwitchModal) window.openPartnerSwitchModal();"
                                     style="width: 100%; height: 36px; margin-top: 8px; background: #ffffff; border: 1.5px solid #2563eb; border-radius: 8px; font-size: 12px; font-weight: 700; color: #2563eb; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; transition: all 0.2s;">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
@@ -2685,11 +2669,10 @@
                                 </div>
 
                                 <div id="settingsLoginFormMobile">
-                                    <input type="email" id="settingsEmailMobile" class="toss-input" placeholder="이메일 주소"
+                                    <input type="email" id="settingsEmailMobile" class="toss-input" placeholder="이메일 주소" onkeydown="if(event.key==='Enter'){event.preventDefault(); if(window.handleSettingsLogin) window.handleSettingsLogin();}"
                                         style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 12px; font-size: 12.5px; box-sizing: border-box; margin-bottom: 8px;">
                                     <div class="toss-pw-wrap" style="position: relative; margin-bottom: 12px;">
-                                        <input type="password" id="settingsPasswordMobile" class="toss-input"
-                                            placeholder="비밀번호"
+                                        <input type="password" id="settingsPasswordMobile" class="toss-input" placeholder="비밀번호" onkeydown="if(event.key==='Enter'){event.preventDefault(); if(window.handleSettingsLogin) window.handleSettingsLogin();}"
                                             style="width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 36px 0 12px; font-size: 12.5px; box-sizing: border-box;">
                                         <button type="button" class="toss-pw-toggle"
                                             onclick="if(window.togglePasswordVisibility) window.togglePasswordVisibility('settingsPasswordMobile', this);"
@@ -4793,16 +4776,6 @@
                                 <span style="font-size: 13px; color: #1e293b; font-weight: 700;">🚶 안심 통학로 도보 분석
                                     활성화</span>
                             </label>
-                            <div id="schoolEnvironmentZoneSummarySlot">
-                                <label
-                                    style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 14px; background: #eff6ff; border-radius: 12px; border: 1px solid #93c5fd; margin-bottom: 12px; cursor: pointer;">
-                                    <input type="checkbox" class="chk-school-zone-toggle"
-                                        onchange="if(typeof window.toggleCurrentSchoolZoneOnMap==='function') window.toggleCurrentSchoolZoneOnMap();"
-                                        style="width: 16px; height: 16px; cursor: pointer; accent-color: #2563eb;">
-                                    <span style="font-size: 13px; color: #1e3a8a; font-weight: 800;">🗺️ 초등 통학구역 경계 폴리곤
-                                        표시 (2026.09 학구도)</span>
-                                </label>
-                            </div>
                             <label style="display: none;"><input type="checkbox" id="chkShuttlePath"></label>
 
                             <!-- 안심통학로 설정 패널 -->
@@ -5158,7 +5131,7 @@
                                     분석</span>
                             </div>
 
-                            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                            <div style="display: flex; gap: 8px;">
                                 <button id="btnCompareChild"
                                     style="flex: 1; padding: 12px 14px; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: none; background: #2563eb; color: white; cursor: pointer; box-shadow: 0 4px 10px rgba(37,99,235,0.2); transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;">
                                     🎯 맞춤 학교 진단
@@ -5169,38 +5142,6 @@
                                 </button>
                             </div>
 
-                            <!-- 찐 학부모 리뷰 보기 박스 -->
-                            <div
-                                style="background: #ffffff; border-radius: 14px; border: 1.5px solid #3b82f6; padding: 16px; position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(59,130,246,0.1);">
-                                <div
-                                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                                    <div style="display: flex; align-items: flex-start; gap: 10px;">
-                                        <div style="font-size: 18px; margin-top: 2px;">💬</div>
-                                        <div>
-                                            <div
-                                                style="font-size: 15px; font-weight: 800; color: #1e293b; margin-bottom: 4px;">
-                                                찐 학부모 리뷰 보기</div>
-                                            <div style="font-size: 12px; color: #64748b; font-weight: 500;">학부모 128건
-                                                전체보기</div>
-                                        </div>
-                                    </div>
-                                    <button id="btnShowReviews"
-                                        style="background: #2563eb; color: white; border: none; padding: 8px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.2);">
-                                        리뷰 열기
-                                    </button>
-                                </div>
-
-                                <!-- 후기 남기기 하단 바 -->
-                                <div
-                                    style="border-top: 1px solid #f1f5f9; margin: 0 -16px -16px -16px; padding: 12px 16px; background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
-                                    <span id="schoolDetailParentPrompt" style="font-size: 12px; color: #64748b; font-weight: 500;">학부모이신가요?</span>
-                                    <span
-                                        onclick="if(window.openSchoolReviewForm) window.openSchoolReviewForm();"
-                                        style="font-size: 12.5px; color: #ea580c; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px;">
-                                        ✍️ 후기 남기기
-                                    </span>
-                                </div>
-                            </div>
                         </div>
 
                         <!-- 2. 🔥 학부모 실시간 키워드 토크 -->
@@ -5221,82 +5162,21 @@
                             </div>
 
                             <!-- 키워드 태그들 -->
-                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;">
-                                <span
-                                    style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
-                                        style="color: #3b82f6;">#</span>면학분위기_차분함</span>
-                                <span
-                                    style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
-                                        style="color: #3b82f6;">#</span>내신_변별력높음</span>
-                                <span
-                                    style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
-                                        style="color: #3b82f6;">#</span>특목고_진학관심</span>
-                                <span
-                                    style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
-                                        style="color: #3b82f6;">#</span>서초동_인근학원연계</span>
-                                <span
-                                    style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
-                                        style="color: #3b82f6;">#</span>교장·선생님_열정</span>
-                            </div>
+                            <div id="schoolKeywordTagsContainer" style="display: none; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;"></div>
 
-                            <!-- 실시간 리뷰 아이템들 -->
-                            <div style="display: flex; flex-direction: column; gap: 12px;">
-                                <!-- 리뷰 1 -->
-                                <div
-                                    style="border: 1px solid #f1f5f9; border-radius: 14px; padding: 16px; background: #fafafa;">
-                                    <div
-                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            <span style="font-size: 13px; font-weight: 800; color: #1e293b;">재학생 중2
-                                                학부모</span>
-                                            <span
-                                                style="background: #dcfce7; color: #166534; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 12px;">인증
-                                                완료</span>
-                                        </div>
-                                        <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">2025.02
-                                            인증</span>
+                            <!-- 실시간 리뷰 아이템들 (실제 DB 데이터만 노출) -->
+                            <div id="schoolRealtimeTalkListContainer" style="display: flex; flex-direction: column; gap: 12px;">
+                                <div style="border: 1px dashed #cbd5e1; border-radius: 14px; padding: 24px 16px; background: #f8fafc; text-align: center;">
+                                    <div style="font-size: 24px; margin-bottom: 8px;">💡</div>
+                                    <div style="font-size: 13.5px; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                                        아직 등록된 학부모 실시간 토크가 없습니다.
                                     </div>
-                                    <div
-                                        style="font-size: 13px; color: #334155; line-height: 1.5; font-weight: 500; margin-bottom: 14px; letter-spacing: -0.2px;">
-                                        "1학년 때부터 면학 분위기가 잘 잡혀 있어 스스로 공부하는 습관 들이기 좋습니다. 서초권 학원가 연계도 매우 편해요."
+                                    <div style="font-size: 12px; color: #64748b; line-height: 1.5; margin-bottom: 12px;">
+                                        학교의 첫 번째 학부모 후기를 남겨주시면<br>실시간 키워드 토크에 즉시 반영됩니다!
                                     </div>
-                                    <div style="display: flex; gap: 12px; align-items: center;">
-                                        <span
-                                            style="font-size: 12px; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 4px;">👍
-                                            공감 24</span>
-                                        <span
-                                            style="font-size: 12px; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 4px;">💬
-                                            댓글 6</span>
-                                    </div>
-                                </div>
-
-                                <!-- 리뷰 2 -->
-                                <div
-                                    style="border: 1px solid #f1f5f9; border-radius: 14px; padding: 16px; background: #fafafa;">
-                                    <div
-                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            <span style="font-size: 13px; font-weight: 800; color: #1e293b;">졸업생
-                                                학부모</span>
-                                            <span
-                                                style="background: #e0f2fe; color: #0369a1; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 12px;">동문
-                                                인증</span>
-                                        </div>
-                                        <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">2024.12
-                                            인증</span>
-                                    </div>
-                                    <div
-                                        style="font-size: 13px; color: #334155; line-height: 1.5; font-weight: 500; margin-bottom: 14px; letter-spacing: -0.2px;">
-                                        "특목-자사고 준비반 및 방과후 프로그램이 알차고, 진학 상담이 구체적이어서 큰 도움이 되었습니다."
-                                    </div>
-                                    <div style="display: flex; gap: 12px; align-items: center;">
-                                        <span
-                                            style="font-size: 12px; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 4px;">👍
-                                            공감 19</span>
-                                        <span
-                                            style="font-size: 12px; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 4px;">💬
-                                            댓글 3</span>
-                                    </div>
+                                    <button type="button" onclick="if(window.openSchoolReviewForm) window.openSchoolReviewForm();" style="padding: 7px 16px; background: #2563eb; color: #ffffff; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                                        ✍️ 첫 후기 남기기
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -7248,13 +7128,13 @@
                         <label
                             style="display: block; font-size: 12px; font-weight: 600; color: #4e5968; margin-bottom: 6px;">아이디
                             (이메일 주소)</label>
-                        <input type="email" id="loginEmail" class="toss-input" required placeholder="user@example.com">
+                        <input type="email" id="loginEmail" class="toss-input" required placeholder="user@example.com" onkeydown="if(event.key==='Enter'){event.preventDefault(); if(window.handleLoginSubmit) window.handleLoginSubmit(event);}">
                     </div>
                     <div style="margin-bottom: 16px;">
                         <label
                             style="display: block; font-size: 12px; font-weight: 600; color: #4e5968; margin-bottom: 6px;">비밀번호</label>
                         <div class="toss-pw-wrap">
-                            <input type="password" id="loginPassword" class="toss-input" required placeholder="비밀번호 입력"
+                            <input type="password" id="loginPassword" class="toss-input" required placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter'){event.preventDefault(); if(window.handleLoginSubmit) window.handleLoginSubmit(event);}"
                                 style="margin-bottom: 0;">
                             <button type="button" class="toss-pw-toggle"
                                 onclick="if(window.togglePasswordVisibility) window.togglePasswordVisibility('loginPassword', this);"
@@ -7644,7 +7524,7 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script type="module" src="app.js?v=1793403688031"></script>
+    <script type="module" src="app.js?v=1793524778985"></script>
 </body>
 
 </html>

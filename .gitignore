@@ -3,3 +3,6 @@ node_modules/
 dist/
 build/
 .DS_Store
+
+# MCP 설정 (토큰 포함 - 커밋 금지)
+.antigravity/mcp.json
