@@ -235,7 +235,7 @@
     "sigungu": "서대문구",
     "lawdCd": "11410",
     "fileName": "11410.json",
-    "count": 11297
+    "count": 14403
   },
   {
     "sido": "서울특별시",
@@ -243,6 +243,20 @@
     "lawdCd": "11650",
     "fileName": "11650.json",
     "count": 8082
+  },
+  {
+    "sido": "서울특별시",
+    "sigungu": "성동구",
+    "lawdCd": "11200",
+    "fileName": "11200.json",
+    "count": 6320
+  },
+  {
+    "sido": "서울특별시",
+    "sigungu": "성북구",
+    "lawdCd": "11290",
+    "fileName": "11290.json",
+    "count": 8081
   },
   {
     "sido": "경기도",
@@ -322,6 +336,13 @@
     "count": 74
   },
   {
+    "sido": "서울특별시",
+    "sigungu": "영등포구",
+    "lawdCd": "11560",
+    "fileName": "11560.json",
+    "count": 2233
+  },
+  {
     "sido": "경기도",
     "sigungu": "영통구",
     "lawdCd": "41117",
@@ -343,11 +364,25 @@
     "count": 4019
   },
   {
+    "sido": "서울특별시",
+    "sigungu": "용산구",
+    "lawdCd": "11170",
+    "fileName": "11170.json",
+    "count": 2341
+  },
+  {
     "sido": "경기도",
     "sigungu": "원미구",
     "lawdCd": "41192",
     "fileName": "41192.json",
     "count": 8638
+  },
+  {
+    "sido": "서울특별시",
+    "sigungu": "은평구",
+    "lawdCd": "11380",
+    "fileName": "11380.json",
+    "count": 4660
   },
   {
     "sido": "경기도",
@@ -390,6 +425,13 @@
     "lawdCd": "41111",
     "fileName": "41111.json",
     "count": 10821
+  },
+  {
+    "sido": "서울특별시",
+    "sigungu": "종로구",
+    "lawdCd": "11110",
+    "fileName": "11110.json",
+    "count": 2500
   },
   {
     "sido": "경기도",
