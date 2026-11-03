@@ -35,6 +35,20 @@
     "count": 10481
   },
   {
+    "sido": "인천광역시",
+    "sigungu": "강화군",
+    "lawdCd": "28710",
+    "fileName": "28710.json",
+    "count": 419
+  },
+  {
+    "sido": "인천광역시",
+    "sigungu": "계양구",
+    "lawdCd": "28245",
+    "fileName": "28245.json",
+    "count": 5728
+  },
+  {
     "sido": "경기도",
     "sigungu": "과천시",
     "lawdCd": "41290",
@@ -117,6 +131,13 @@
     "lawdCd": "41570",
     "fileName": "41570.json",
     "count": 4462
+  },
+  {
+    "sido": "인천광역시",
+    "sigungu": "남동구",
+    "lawdCd": "28200",
+    "fileName": "28200.json",
+    "count": 9094
   },
   {
     "sido": "경기도",
@@ -210,11 +231,25 @@
     "count": 5509
   },
   {
+    "sido": "인천광역시",
+    "sigungu": "미추홀구",
+    "lawdCd": "28177",
+    "fileName": "28177.json",
+    "count": 11099
+  },
+  {
     "sido": "경기도",
     "sigungu": "병점구",
     "lawdCd": "41595",
     "fileName": "41595.json",
     "count": 1735
+  },
+  {
+    "sido": "인천광역시",
+    "sigungu": "부평구",
+    "lawdCd": "28237",
+    "fileName": "28237.json",
+    "count": 5818
   },
   {
     "sido": "경기도",
@@ -329,6 +364,13 @@
     "count": 2060
   },
   {
+    "sido": "인천광역시",
+    "sigungu": "연수구",
+    "lawdCd": "28185",
+    "fileName": "28185.json",
+    "count": 1364
+  },
+  {
     "sido": "경기도",
     "sigungu": "연천군",
     "lawdCd": "41800",
@@ -362,6 +404,13 @@
     "lawdCd": "41196",
     "fileName": "41196.json",
     "count": 4019
+  },
+  {
+    "sido": "인천광역시",
+    "sigungu": "옹진군",
+    "lawdCd": "28720",
+    "fileName": "28720.json",
+    "count": 53
   },
   {
     "sido": "서울특별시",
@@ -431,7 +480,21 @@
     "sigungu": "종로구",
     "lawdCd": "11110",
     "fileName": "11110.json",
-    "count": 2500
+    "count": 2678
+  },
+  {
+    "sido": "서울특별시",
+    "sigungu": "중구",
+    "lawdCd": "11140",
+    "fileName": "11140.json",
+    "count": 1462
+  },
+  {
+    "sido": "서울특별시",
+    "sigungu": "중랑구",
+    "lawdCd": "11260",
+    "fileName": "11260.json",
+    "count": 2692
   },
   {
     "sido": "경기도",
