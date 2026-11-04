@@ -8524,6 +8524,17 @@ ${allUrls.map(u => `  <url>
     }
 });
 
+// 정적 멀티 페이지 라우팅 매핑 (/business, /partner, /admin, /blog)
+app.get(['/business', '/business/', '/partner', '/partner/'], (req, res) => {
+    res.sendFile(path.join(__dirname, 'business.html'));
+});
+app.get(['/admin', '/admin/'], (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin.html'));
+});
+app.get(['/blog', '/blog/'], (req, res) => {
+    res.sendFile(path.join(__dirname, 'blog.html'));
+});
+
 // Fallback to serve index.html for unknown SPA routes
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));

@@ -52,7 +52,35 @@
       "destination": "/server.js"
     },
     {
+      "source": "/business",
+      "destination": "/business.html"
+    },
+    {
+      "source": "/business/",
+      "destination": "/business.html"
+    },
+    {
+      "source": "/partner",
+      "destination": "/business.html"
+    },
+    {
+      "source": "/partner/",
+      "destination": "/business.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/",
+      "destination": "/admin.html"
+    },
+    {
       "source": "/blog",
+      "destination": "/blog.html"
+    },
+    {
+      "source": "/blog/",
       "destination": "/blog.html"
     },
     {
