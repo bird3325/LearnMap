@@ -1,555 +1,100 @@
 [
   {
-    "sido": "경기도",
-    "sigungu": "가평군",
-    "lawdCd": "41820",
-    "fileName": "41820.json",
-    "count": 103
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "강남구",
-    "lawdCd": "11680",
-    "fileName": "11680.json",
-    "count": 2507
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "강동구",
-    "lawdCd": "11740",
-    "fileName": "11740.json",
-    "count": 10988
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "강북구",
-    "lawdCd": "11305",
-    "fileName": "11305.json",
-    "count": 7044
-  },
-  {
-    "sido": "서울특별시",
+    "sido": "부산광역시",
     "sigungu": "강서구",
-    "lawdCd": "11500",
-    "fileName": "11500.json",
-    "count": 10481
+    "lawdCd": "26440",
+    "fileName": "26440.json",
+    "count": 5008
   },
   {
-    "sido": "인천광역시",
-    "sigungu": "강화군",
-    "lawdCd": "28710",
-    "fileName": "28710.json",
-    "count": 419
+    "sido": "부산광역시",
+    "sigungu": "금정구",
+    "lawdCd": "26410",
+    "fileName": "26410.json",
+    "count": 9778
   },
   {
-    "sido": "인천광역시",
-    "sigungu": "계양구",
-    "lawdCd": "28245",
-    "fileName": "28245.json",
-    "count": 5728
+    "sido": "부산광역시",
+    "sigungu": "기장군",
+    "lawdCd": "26710",
+    "fileName": "26710.json",
+    "count": 339
   },
   {
-    "sido": "경기도",
-    "sigungu": "과천시",
-    "lawdCd": "41290",
-    "fileName": "41290.json",
-    "count": 724
+    "sido": "부산광역시",
+    "sigungu": "남구",
+    "lawdCd": "26290",
+    "fileName": "26290.json",
+    "count": 626
   },
   {
-    "sido": "서울특별시",
-    "sigungu": "관악구",
-    "lawdCd": "11620",
-    "fileName": "11620.json",
-    "count": 7621
+    "sido": "부산광역시",
+    "sigungu": "동구",
+    "lawdCd": "26170",
+    "fileName": "26170.json",
+    "count": 7293
   },
   {
-    "sido": "경기도",
-    "sigungu": "광명시",
-    "lawdCd": "41210",
-    "fileName": "41210.json",
-    "count": 5467
+    "sido": "부산광역시",
+    "sigungu": "동래구",
+    "lawdCd": "26260",
+    "fileName": "26260.json",
+    "count": 10474
   },
   {
-    "sido": "경기도",
-    "sigungu": "광주시",
-    "lawdCd": "41610",
-    "fileName": "41610.json",
-    "count": 8549
+    "sido": "부산광역시",
+    "sigungu": "부산진구",
+    "lawdCd": "26230",
+    "fileName": "26230.json",
+    "count": 17876
   },
   {
-    "sido": "서울특별시",
-    "sigungu": "광진구",
-    "lawdCd": "11215",
-    "fileName": "11215.json",
-    "count": 5145
+    "sido": "부산광역시",
+    "sigungu": "북구",
+    "lawdCd": "26320",
+    "fileName": "26320.json",
+    "count": 408
   },
   {
-    "sido": "서울특별시",
-    "sigungu": "구로구",
-    "lawdCd": "11530",
-    "fileName": "11530.json",
-    "count": 2131
+    "sido": "부산광역시",
+    "sigungu": "사상구",
+    "lawdCd": "26530",
+    "fileName": "26530.json",
+    "count": 7131
   },
   {
-    "sido": "경기도",
-    "sigungu": "구리시",
-    "lawdCd": "41310",
-    "fileName": "41310.json",
-    "count": 5202
+    "sido": "부산광역시",
+    "sigungu": "사하구",
+    "lawdCd": "26380",
+    "fileName": "26380.json",
+    "count": 13010
   },
   {
-    "sido": "경기도",
-    "sigungu": "군포시",
-    "lawdCd": "41410",
-    "fileName": "41410.json",
-    "count": 3603
+    "sido": "부산광역시",
+    "sigungu": "서구",
+    "lawdCd": "26140",
+    "fileName": "26140.json",
+    "count": 4167
   },
   {
-    "sido": "경기도",
-    "sigungu": "권선구",
-    "lawdCd": "41113",
-    "fileName": "41113.json",
-    "count": 10519
+    "sido": "부산광역시",
+    "sigungu": "수영구",
+    "lawdCd": "26500",
+    "fileName": "26500.json",
+    "count": 8147
   },
   {
-    "sido": "서울특별시",
-    "sigungu": "금천구",
-    "lawdCd": "11545",
-    "fileName": "11545.json",
-    "count": 1718
+    "sido": "부산광역시",
+    "sigungu": "연제구",
+    "lawdCd": "26470",
+    "fileName": "26470.json",
+    "count": 4883
   },
   {
-    "sido": "경기도",
-    "sigungu": "기흥구",
-    "lawdCd": "41463",
-    "fileName": "41463.json",
-    "count": 6450
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "김포시",
-    "lawdCd": "41570",
-    "fileName": "41570.json",
-    "count": 4462
-  },
-  {
-    "sido": "인천광역시",
-    "sigungu": "남동구",
-    "lawdCd": "28200",
-    "fileName": "28200.json",
-    "count": 9094
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "남양주시",
-    "lawdCd": "41360",
-    "fileName": "41360.json",
-    "count": 5739
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "노원구",
-    "lawdCd": "11350",
-    "fileName": "11350.json",
-    "count": 4725
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "단원구",
-    "lawdCd": "41273",
-    "fileName": "41273.json",
-    "count": 7421
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "덕양구",
-    "lawdCd": "41281",
-    "fileName": "41281.json",
-    "count": 1245
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "도봉구",
-    "lawdCd": "11320",
-    "fileName": "11320.json",
-    "count": 2079
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "동대문구",
-    "lawdCd": "11230",
-    "fileName": "11230.json",
-    "count": 1769
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "동두천시",
-    "lawdCd": "41250",
-    "fileName": "41250.json",
-    "count": 5183
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "동안구",
-    "lawdCd": "41173",
-    "fileName": "41173.json",
-    "count": 4268
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "동작구",
-    "lawdCd": "11590",
-    "fileName": "11590.json",
-    "count": 12212
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "동탄구",
-    "lawdCd": "41597",
-    "fileName": "41597.json",
-    "count": 2031
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "마포구",
-    "lawdCd": "11440",
-    "fileName": "11440.json",
-    "count": 2879
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "만세구",
-    "lawdCd": "41591",
-    "fileName": "41591.json",
-    "count": 3701
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "만안구",
-    "lawdCd": "41171",
-    "fileName": "41171.json",
-    "count": 5509
-  },
-  {
-    "sido": "인천광역시",
-    "sigungu": "미추홀구",
-    "lawdCd": "28177",
-    "fileName": "28177.json",
-    "count": 11099
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "병점구",
-    "lawdCd": "41595",
-    "fileName": "41595.json",
-    "count": 1735
-  },
-  {
-    "sido": "인천광역시",
-    "sigungu": "부평구",
-    "lawdCd": "28237",
-    "fileName": "28237.json",
-    "count": 5818
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "분당구",
-    "lawdCd": "41135",
-    "fileName": "41135.json",
-    "count": 6344
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "상록구",
-    "lawdCd": "41271",
-    "fileName": "41271.json",
-    "count": 6629
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "서대문구",
-    "lawdCd": "11410",
-    "fileName": "11410.json",
-    "count": 14403
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "서초구",
-    "lawdCd": "11650",
-    "fileName": "11650.json",
-    "count": 8082
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "성동구",
-    "lawdCd": "11200",
-    "fileName": "11200.json",
-    "count": 6320
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "성북구",
-    "lawdCd": "11290",
-    "fileName": "11290.json",
-    "count": 8081
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "소사구",
-    "lawdCd": "41194",
-    "fileName": "41194.json",
-    "count": 5084
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "송파구",
-    "lawdCd": "11710",
-    "fileName": "11710.json",
-    "count": 8758
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "수정구",
-    "lawdCd": "41131",
-    "fileName": "41131.json",
-    "count": 11770
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "수지구",
-    "lawdCd": "41465",
-    "fileName": "41465.json",
-    "count": 3100
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "시흥시",
-    "lawdCd": "41390",
-    "fileName": "41390.json",
-    "count": 6268
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "안성시",
-    "lawdCd": "41550",
-    "fileName": "41550.json",
-    "count": 1080
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "양주시",
-    "lawdCd": "41630",
-    "fileName": "41630.json",
-    "count": 2904
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "양천구",
-    "lawdCd": "11470",
-    "fileName": "11470.json",
-    "count": 6149
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "양평군",
-    "lawdCd": "41830",
-    "fileName": "41830.json",
-    "count": 286
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "여주시",
-    "lawdCd": "41670",
-    "fileName": "41670.json",
-    "count": 2060
-  },
-  {
-    "sido": "인천광역시",
-    "sigungu": "연수구",
-    "lawdCd": "28185",
-    "fileName": "28185.json",
-    "count": 1364
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "연천군",
-    "lawdCd": "41800",
-    "fileName": "41800.json",
-    "count": 74
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "영등포구",
-    "lawdCd": "11560",
-    "fileName": "11560.json",
-    "count": 2233
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "영통구",
-    "lawdCd": "41117",
-    "fileName": "41117.json",
-    "count": 4493
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "오산시",
-    "lawdCd": "41370",
-    "fileName": "41370.json",
-    "count": 2916
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "오정구",
-    "lawdCd": "41196",
-    "fileName": "41196.json",
-    "count": 4019
-  },
-  {
-    "sido": "인천광역시",
-    "sigungu": "옹진군",
-    "lawdCd": "28720",
-    "fileName": "28720.json",
-    "count": 53
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "용산구",
-    "lawdCd": "11170",
-    "fileName": "11170.json",
-    "count": 2341
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "원미구",
-    "lawdCd": "41192",
-    "fileName": "41192.json",
-    "count": 8638
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "은평구",
-    "lawdCd": "11380",
-    "fileName": "11380.json",
-    "count": 4660
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "의왕시",
-    "lawdCd": "41430",
-    "fileName": "41430.json",
-    "count": 1814
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "의정부시",
-    "lawdCd": "41150",
-    "fileName": "41150.json",
-    "count": 6560
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "이천시",
-    "lawdCd": "41500",
-    "fileName": "41500.json",
-    "count": 3547
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "일산동구",
-    "lawdCd": "41285",
-    "fileName": "41285.json",
-    "count": 8416
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "일산서구",
-    "lawdCd": "41287",
-    "fileName": "41287.json",
-    "count": 4533
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "장안구",
-    "lawdCd": "41111",
-    "fileName": "41111.json",
-    "count": 10821
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "종로구",
-    "lawdCd": "11110",
-    "fileName": "11110.json",
-    "count": 2678
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "중구",
-    "lawdCd": "11140",
-    "fileName": "11140.json",
-    "count": 1462
-  },
-  {
-    "sido": "서울특별시",
-    "sigungu": "중랑구",
-    "lawdCd": "11260",
-    "fileName": "11260.json",
-    "count": 2692
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "중원구",
-    "lawdCd": "41133",
-    "fileName": "41133.json",
-    "count": 8110
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "처인구",
-    "lawdCd": "41461",
-    "fileName": "41461.json",
-    "count": 3915
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "파주시",
-    "lawdCd": "41480",
-    "fileName": "41480.json",
-    "count": 4077
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "팔달구",
-    "lawdCd": "41115",
-    "fileName": "41115.json",
-    "count": 10076
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "평택시",
-    "lawdCd": "41220",
-    "fileName": "41220.json",
-    "count": 7317
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "포천시",
-    "lawdCd": "41650",
-    "fileName": "41650.json",
-    "count": 1315
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "하남시",
-    "lawdCd": "41450",
-    "fileName": "41450.json",
-    "count": 4233
-  },
-  {
-    "sido": "경기도",
-    "sigungu": "효행구",
-    "lawdCd": "41593",
-    "fileName": "41593.json",
-    "count": 1084
+    "sido": "부산광역시",
+    "sigungu": "영도구",
+    "lawdCd": "26200",
+    "fileName": "26200.json",
+    "count": 199
   }
 ]
