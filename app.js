@@ -7386,24 +7386,214 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.academyRatingsMap = {};
         window.premiumAcademiesMap = {};
+        window.partnerAcademiesList = [];
 
-        // 학업여지도 비즈니스 모델 (PRD v1.0): 프리미엄 구독 학원 목록 조회
+        // 학원명/주소 정규화 및 비즈니스 학원 상세 프로필 매칭 헬퍼 (TC-027)
+        window.normalizeAcadNameForMatch = function (name) {
+            if (!name) return '';
+            return String(name).replace(/\s+/g, '').replace(/[()\[\]·.,\-_]/g, '').toLowerCase();
+        };
+
+        window.extractCoreAcadName = function (name) {
+            const norm = window.normalizeAcadNameForMatch(name);
+            return norm.replace(/(전문학원|어학원|수학학원|영어학원|국어학원|과학학원|미술학원|음악학원|교습소|학원)$/g, '') || norm;
+        };
+
+        window.normalizeAddressForMatch = function (addr) {
+            if (!addr) return '';
+            return String(addr)
+                .replace(/\([^)]*\)/g, ' ')
+                .replace(/,.*$/, ' ')
+                .replace(/^(서울특별시|서울시)/, '서울')
+                .replace(/^(경기도)/, '경기')
+                .replace(/^(인천광역시|인천시)/, '인천')
+                .replace(/^(부산광역시|부산시)/, '부산')
+                .replace(/^(대구광역시|대구시)/, '대구')
+                .replace(/^(대전광역시|대전시)/, '대전')
+                .replace(/^(광주광역시|광주시)/, '광주')
+                .replace(/^(울산광역시|울산시)/, '울산')
+                .replace(/^(세종특별자치시)/, '세종')
+                .replace(/^(강원특별자치도|강원도)/, '강원')
+                .replace(/^(충청북도)/, '충북')
+                .replace(/^(충청남도)/, '충남')
+                .replace(/^(전북특별자치도|전라북도)/, '전북')
+                .replace(/^(전라남도)/, '전남')
+                .replace(/^(경상북도)/, '경북')
+                .replace(/^(경상남도)/, '경남')
+                .replace(/^(제주특별자치도|제주도)/, '제주')
+                .replace(/\s+/g, ' ')
+                .trim();
+        };
+
+        window.extractRoadKey = function (addr) {
+            const norm = window.normalizeAddressForMatch(addr);
+            const m = norm.match(/([가-힣0-9]+(?:로|길)\s*\d+(?:-\d+)?)/);
+            return m ? m[1].replace(/\s+/g, '') : '';
+        };
+
+        window.extractJibunKey = function (addr) {
+            const norm = window.normalizeAddressForMatch(addr);
+            const m = norm.match(/([가-힣0-9]+(?:동|읍|면|리)\s*\d+(?:-\d+)?)/);
+            return m ? m[1].replace(/\s+/g, '') : '';
+        };
+
+        window.findMatchedPartnerAcademy = function (placeOrName, addressStr = '', lng = '', lat = '') {
+            if (!placeOrName) return null;
+            if (typeof placeOrName === 'object' && placeOrName._partnerProfile) {
+                return {
+                    businessId: placeOrName._businessId || placeOrName._partnerProfile.businessId,
+                    name: placeOrName._partnerProfile.targetAcademyName || placeOrName.place_name,
+                    isPremium: Boolean(placeOrName._isPremium || placeOrName._partnerProfile.isPremium),
+                    mapVerified: Boolean(placeOrName._mapVerified || placeOrName._partnerProfile.mapVerified),
+                    profile: placeOrName._partnerProfile,
+                    phone: placeOrName._partnerProfile.contactPhone || placeOrName.phone,
+                    address: placeOrName._partnerProfile.address || placeOrName.road_address_name || placeOrName.address_name
+                };
+            }
+
+            const list = Array.isArray(window.partnerAcademiesList) ? window.partnerAcademiesList : [];
+            if (list.length === 0) return null;
+
+            const targetName = typeof placeOrName === 'object' ? (placeOrName.place_name || '') : String(placeOrName);
+            const targetRoad = typeof placeOrName === 'object' ? (placeOrName.road_address_name || addressStr || '') : String(addressStr || '');
+            const targetJibun = typeof placeOrName === 'object' ? (placeOrName.address_name || addressStr || '') : String(addressStr || '');
+            const targetPlaceId = typeof placeOrName === 'object' ? (placeOrName.id || '') : '';
+            const tLng = parseFloat(typeof placeOrName === 'object' ? (placeOrName.x || lng) : lng);
+            const tLat = parseFloat(typeof placeOrName === 'object' ? (placeOrName.y || lat) : lat);
+
+            const normTargetName = window.normalizeAcadNameForMatch(targetName);
+            const coreTargetName = window.extractCoreAcadName(targetName);
+
+            for (const item of list) {
+                const prof = item.profile || {};
+                if (targetPlaceId && prof.matchedPlaceId && String(prof.matchedPlaceId) === String(targetPlaceId)) {
+                    return item;
+                }
+
+                const bName = (prof.targetAcademyName || item.name || item.originalName || '').trim();
+                if (!bName || !targetName) continue;
+
+                const normBizName = window.normalizeAcadNameForMatch(bName);
+                const coreBizName = window.extractCoreAcadName(bName);
+
+                const nameMatches = (normBizName === normTargetName) ||
+                    (coreBizName.length >= 2 && coreBizName === coreTargetName) ||
+                    (coreBizName.length >= 2 && (normTargetName.includes(coreBizName) || normBizName.includes(coreTargetName)));
+
+                if (!nameMatches) continue;
+
+                const bAddr = prof.address || item.address || '';
+                const normBizAddr = window.normalizeAddressForMatch(bAddr);
+                const normRoad = window.normalizeAddressForMatch(targetRoad);
+                const normJibun = window.normalizeAddressForMatch(targetJibun);
+
+                let addrMatches = false;
+                if (normBizAddr && (
+                    normBizAddr === normRoad ||
+                    normBizAddr === normJibun ||
+                    (normRoad && (normBizAddr.includes(normRoad) || normRoad.includes(normBizAddr))) ||
+                    (normJibun && (normBizAddr.includes(normJibun) || normJibun.includes(normBizAddr)))
+                )) {
+                    addrMatches = true;
+                }
+
+                if (!addrMatches) {
+                    const bRoadKey = window.extractRoadKey(bAddr);
+                    const tRoadKey = window.extractRoadKey(targetRoad) || window.extractRoadKey(targetJibun);
+                    if (bRoadKey && tRoadKey && bRoadKey === tRoadKey) addrMatches = true;
+                }
+
+                if (!addrMatches) {
+                    const bJibunKey = window.extractJibunKey(bAddr);
+                    const tJibunKey = window.extractJibunKey(targetJibun) || window.extractJibunKey(targetRoad);
+                    if (bJibunKey && tJibunKey && bJibunKey === tJibunKey) addrMatches = true;
+                }
+
+                if (!addrMatches) {
+                    const bLat = parseFloat(prof.lat || item.lat);
+                    const bLng = parseFloat(prof.lng || item.lng);
+                    if (!isNaN(bLat) && !isNaN(bLng) && !isNaN(tLat) && !isNaN(tLng)) {
+                        const dy = (bLat - tLat) * 111000;
+                        const dx = (bLng - tLng) * 88800;
+                        if (Math.sqrt(dx * dx + dy * dy) <= 120) addrMatches = true;
+                    }
+                }
+
+                // 주소 정보가 아직 전달되지 않은 단독 학원명 호출인 경우 학원명이 정확히 일치하면 매칭
+                if (!addrMatches && !targetRoad && !targetJibun && isNaN(tLat) && normBizName === normTargetName) {
+                    addrMatches = true;
+                }
+
+                if (addrMatches) {
+                    return item;
+                }
+            }
+            return null;
+        };
+
+        window.applyPartnerProfileToPlace = function (place) {
+            if (!place || typeof place !== 'object') return place;
+            const matched = window.findMatchedPartnerAcademy(place);
+            if (!matched) return place;
+            const prof = matched.profile || {};
+            const updatedName = (prof.targetAcademyName || matched.name || place.place_name || '').trim();
+            const baseAddr = (prof.address || matched.address || place.road_address_name || place.address_name || '').trim();
+            const detailAddr = (prof.addressDetail || matched.addressDetail || '').trim();
+            const fullAddr = detailAddr ? `${baseAddr} ${detailAddr}` : baseAddr;
+            const updatedPhone = (prof.contactPhone || matched.phone || place.phone || '').trim();
+            const subjects = Array.isArray(prof.subjects) && prof.subjects.length > 0 ? prof.subjects : [];
+            const instType = prof.institutionType || (updatedName.includes('교습소') ? '교습소' : '학원');
+
+            place.place_name = updatedName;
+            if (updatedPhone) place.phone = updatedPhone;
+            if (fullAddr) place.road_address_name = fullAddr;
+            if (baseAddr) place.address_name = baseAddr;
+            if (subjects.length > 0) {
+                place.category_name = `교육,학문 > ${instType} > ${subjects.join('·')}`;
+            }
+            if (prof.websiteUrl || prof.blogUrl || prof.kakaoUrl || prof.instagramUrl) {
+                place.place_url = prof.websiteUrl || prof.blogUrl || prof.kakaoUrl || prof.instagramUrl;
+            }
+            place._businessId = matched.businessId;
+            place._isPartnerMatched = true;
+            place._isPremium = Boolean(matched.isPremium || prof.isPremium);
+            place._mapVerified = Boolean(matched.mapVerified || prof.mapVerified);
+            place._partnerProfile = prof;
+            return place;
+        };
+
+        // 학업여지도 비즈니스 모델 (PRD v1.0): 프리미엄 및 전체 비즈니스 등록 학원 목록 조회
         async function fetchPremiumAcademies() {
             try {
-                const res = await fetch('/api/academies/premium');
-                if (res.ok) {
-                    const list = await res.json();
+                const [premRes, partRes] = await Promise.all([
+                    fetch('/api/academies/premium').catch(() => null),
+                    fetch('/api/academies/partners').catch(() => null)
+                ]);
+
+                if (partRes && partRes.ok) {
+                    const pList = await partRes.json();
+                    if (Array.isArray(pList)) {
+                        window.partnerAcademiesList = pList;
+                    }
+                }
+
+                if (premRes && premRes.ok) {
+                    const list = await premRes.json();
                     const map = {};
                     if (Array.isArray(list)) {
+                        if (window.partnerAcademiesList.length === 0) {
+                            window.partnerAcademiesList = list;
+                        }
                         list.forEach(item => {
                             if (item.name) map[item.name.trim()] = item;
+                            if (item.originalName) map[item.originalName.trim()] = item;
                         });
                     }
                     window.premiumAcademiesMap = map;
                     return map;
                 }
             } catch (err) {
-                console.warn('Failed to fetch premium academies:', err);
+                console.warn('Failed to fetch premium/partner academies:', err);
             }
             return {};
         }
@@ -7420,8 +7610,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { }
         };
 
-        // 초기 프리미엄 학원 캐시 로드
-        fetchPremiumAcademies();
+        // 초기 프리미엄 및 파트너 학원 캐시 로드
+        window.partnerAcademiesPromise = fetchPremiumAcademies();
 
         async function fetchAcademyRatingsFromDb() {
             try {
@@ -7855,20 +8045,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 프리미엄 학원 카드 DOM 생성 헬퍼
         function createAcademyCard(place) {
-            const acadName = place.place_name || '';
-            const typeLabel = acadName.includes('교습소') ? '교습소' : '학원';
+            if (typeof window.applyPartnerProfileToPlace === 'function') {
+                window.applyPartnerProfileToPlace(place);
+            }
+            const partnerProf = place._partnerProfile || null;
+            const acadName = (partnerProf && partnerProf.targetAcademyName) ? partnerProf.targetAcademyName : (place.place_name || '');
+            const typeLabel = (partnerProf && partnerProf.institutionType)
+                ? partnerProf.institutionType
+                : (acadName.includes('교습소') ? '교습소' : '학원');
 
             // 프리미엄 유료 구독 여부 확인 (PRD v1.0 P-07)
             const cleanAcadName = acadName.trim();
-            const premInfo = (window.premiumAcademiesMap && window.premiumAcademiesMap[cleanAcadName]) || null;
-            const isPremium = Boolean(premInfo);
+            const matchedPartner = (typeof window.findMatchedPartnerAcademy === 'function') ? window.findMatchedPartnerAcademy(place) : null;
+            const premInfo = (matchedPartner && matchedPartner.isPremium ? matchedPartner : null) || (window.premiumAcademiesMap && window.premiumAcademiesMap[cleanAcadName]) || null;
+            const isPremium = Boolean(premInfo || place._isPremium);
 
-            if (isPremium && typeof window.logAnalyticsEvent === 'function') {
-                window.logAnalyticsEvent('premium_impression', premInfo.businessId, { place_name: cleanAcadName });
+            if (isPremium && typeof window.logAnalyticsEvent === 'function' && (premInfo?.businessId || place._businessId)) {
+                window.logAnalyticsEvent('premium_impression', premInfo?.businessId || place._businessId, { place_name: cleanAcadName });
             }
 
             let subjectLabel = '';
-            if (place.category_name) {
+            if (partnerProf && Array.isArray(partnerProf.subjects) && partnerProf.subjects.length > 0) {
+                subjectLabel = partnerProf.subjects.join('·');
+            } else if (place.category_name) {
                 const parts = place.category_name.split('>').map(s => s.trim());
                 if (parts.length > 2) {
                     subjectLabel = parts[parts.length - 1];
@@ -9461,7 +9660,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 allFetchedAcademies = [...(result.items || [])];
-                const totalCount = result.total_count || allFetchedAcademies.length;
+                if (typeof window.applyPartnerProfileToPlace === 'function') {
+                    allFetchedAcademies.forEach(item => window.applyPartnerProfileToPlace(item));
+                }
+                if (Array.isArray(window.partnerAcademiesList) && window.partnerAcademiesList.length > 0) {
+                    window.partnerAcademiesList.forEach(part => {
+                        const prof = part.profile || {};
+                        const bLat = parseFloat(prof.lat || part.lat);
+                        const bLng = parseFloat(prof.lng || part.lng);
+                        if (!isNaN(bLat) && !isNaN(bLng)) {
+                            const dist = calculateAcademyDistance(targetLat, targetLng, bLat, bLng);
+                            if (dist <= radNum) {
+                                const alreadyIn = allFetchedAcademies.some(p => p._businessId === part.businessId || window.findMatchedPartnerAcademy(p)?.businessId === part.businessId);
+                                if (!alreadyIn) {
+                                    const injected = {
+                                        id: prof.matchedPlaceId || `partner_${part.businessId}`,
+                                        place_name: prof.targetAcademyName || part.name,
+                                        x: String(bLng),
+                                        y: String(bLat),
+                                        distance: String(dist)
+                                    };
+                                    window.applyPartnerProfileToPlace(injected);
+                                    allFetchedAcademies.push(injected);
+                                }
+                            }
+                        }
+                    });
+                }
+                const totalCount = allFetchedAcademies.length || result.total_count || 0;
 
                 if (schoolAcademiesEl) schoolAcademiesEl.innerText = `${totalCount}개`;
                 if (totalBadge) totalBadge.innerText = `총 ${totalCount}개소`;
@@ -16922,17 +17148,89 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('학원비 데이터 호출 실패:', e);
         }
 
-        // 공공데이터 정보 추출 또는 기본 정보 활용 (항상 노출되도록 보장)
-        const typeName = (validRow && validRow.ACA_INSTI_SC_NM) ? validRow.ACA_INSTI_SC_NM : (typeLabel || subject || '학원 / 교습소');
-        const eduOffice = (validRow && validRow.ATPT_OFCDC_SC_NM) ? validRow.ATPT_OFCDC_SC_NM : '관할 교육청 (정식 등록 인가)';
-        const estDate = (validRow && validRow.ESTBL_YMD) ? validRow.ESTBL_YMD.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') : '설립 및 정식 운영 중';
-        const capacity = (validRow && validRow.TOFOR_SMTOT) ? `${validRow.TOFOR_SMTOT}명` : '수용 정원 기준 운영';
-        const addressStr = (validRow && validRow.FA_RDNMA) ? `${validRow.FA_RDNMA} ${validRow.FA_RDNDA || ''}`.trim() : (address || '주소 정보 문의');
-        const telNo = (validRow && validRow.FA_TELNO) ? validRow.FA_TELNO : (phone || '전화 문의');
+        // 비즈니스 학원 상세 프로필 매칭 확인 및 정보 우선 적용 (TC-027)
+        if ((!Array.isArray(window.partnerAcademiesList) || window.partnerAcademiesList.length === 0) && window.partnerAcademiesPromise) {
+            try { await window.partnerAcademiesPromise; } catch (e) { }
+        }
+        let matchedPartner = (typeof window.findMatchedPartnerAcademy === 'function')
+            ? window.findMatchedPartnerAcademy(acadName, address, safeLng, safeLat)
+            : null;
+        let partnerProf = (matchedPartner && matchedPartner.profile && matchedPartner.profile.mapVerified !== false)
+            ? matchedPartner.profile
+            : null;
+
+        // 비즈니스 프로필에 등록된 수강료 정보가 있으면 우선 반영
+        if (partnerProf && partnerProf.feeInfo) {
+            const rawFeeStr = String(partnerProf.feeInfo).replace(/,/g, '').trim();
+            const manMatch = rawFeeStr.match(/(\d+(?:\.\d+)?)\s*만/);
+            const numMatch = rawFeeStr.match(/(\d{4,})/);
+            if (manMatch && manMatch[1]) {
+                originalFee = Math.round(parseFloat(manMatch[1]) * 10000);
+            } else if (numMatch && numMatch[1]) {
+                originalFee = parseInt(numMatch[1], 10);
+            }
+            if (originalFee > 0) {
+                feeReason = `💡 <strong>출처:</strong> 비즈니스 학원 상세 프로필 공식 등록 정보<br><div style="margin-top: 6px; padding: 6px; background: #fff; border: 1px solid #e0e0e0; border-radius: 4px; color: var(--primary-blue); font-weight: 500;">• ${partnerProf.feeInfo}</div>`;
+                isRealData = true;
+            }
+        }
+
+        // 공공데이터 정보 추출 또는 비즈니스 상세 프로필 정보 우선 활용 (항상 노출되도록 보장)
+        const typeName = (partnerProf && partnerProf.institutionType)
+            ? partnerProf.institutionType
+            : ((validRow && validRow.ACA_INSTI_SC_NM) ? validRow.ACA_INSTI_SC_NM : (typeLabel || subject || '학원 / 교습소'));
+        const curriculumDesc = (partnerProf && Array.isArray(partnerProf.subjects) && partnerProf.subjects.length > 0)
+            ? `${partnerProf.subjects.join(', ')} 전문 커리큘럼${(Array.isArray(partnerProf.grades) && partnerProf.grades.length > 0) ? ' (' + partnerProf.grades.join('·') + ' 대상)' : ''}`
+            : '주요 교과 및 보습·어학 전문 커리큘럼';
+        const eduOffice = (partnerProf && partnerProf.eduOffice)
+            ? partnerProf.eduOffice
+            : ((validRow && validRow.ATPT_OFCDC_SC_NM) ? validRow.ATPT_OFCDC_SC_NM : '관할 교육청 (정식 등록 인가)');
+        const estDate = (partnerProf && partnerProf.foundingDate)
+            ? partnerProf.foundingDate
+            : ((validRow && validRow.ESTBL_YMD) ? validRow.ESTBL_YMD.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') : '설립 및 정식 운영 중');
+        const capacity = (partnerProf && partnerProf.capacity)
+            ? (String(partnerProf.capacity).includes('명') ? String(partnerProf.capacity) : `${partnerProf.capacity}명`)
+            : ((validRow && validRow.TOFOR_SMTOT) ? `${validRow.TOFOR_SMTOT}명` : '수용 정원 기준 운영');
+        const addressStr = (partnerProf && partnerProf.address)
+            ? `${partnerProf.address} ${partnerProf.addressDetail || ''}`.trim()
+            : ((validRow && validRow.FA_RDNMA) ? `${validRow.FA_RDNMA} ${validRow.FA_RDNDA || ''}`.trim() : (address || '주소 정보 문의'));
+        const telNo = (partnerProf && partnerProf.contactPhone)
+            ? partnerProf.contactPhone
+            : ((validRow && validRow.FA_TELNO) ? validRow.FA_TELNO : (phone || '전화 문의'));
+        const directionTip = (partnerProf && partnerProf.directionGuide)
+            ? partnerProf.directionGuide
+            : '인근 지하철역 도보권 및 셔틀 버스 접근 가능';
+
+        // 상단 모달 헤더의 학원명/과목/유형 뱃지도 비즈니스 프로필 정보로 동기화
+        if (partnerProf) {
+            const headerTitleEl = document.getElementById('communityAcademyName');
+            if (headerTitleEl && partnerProf.targetAcademyName) {
+                headerTitleEl.innerText = partnerProf.targetAcademyName;
+            }
+            const headerSubjEl = document.getElementById('communityAcademySubject');
+            if (headerSubjEl && Array.isArray(partnerProf.subjects) && partnerProf.subjects.length > 0) {
+                headerSubjEl.innerText = partnerProf.subjects.join(' · ');
+                headerSubjEl.style.display = 'inline-block';
+            }
+            const headerTypeEl = document.getElementById('communityAcademyType');
+            if (headerTypeEl && partnerProf.institutionType) {
+                headerTypeEl.innerText = partnerProf.institutionType;
+                headerTypeEl.style.display = 'inline-block';
+            }
+        }
 
         const safeAddressStr = addressStr.replace(/'/g, "\\'");
-        const safeAcadName = acadName.replace(/'/g, "\\'");
-        const isNeisRegistered = Boolean(validRow);
+        const safeAcadName = ((partnerProf && partnerProf.targetAcademyName) ? partnerProf.targetAcademyName : acadName).replace(/'/g, "\\'");
+        const isNeisRegistered = Boolean(validRow || partnerProf);
+
+        const partnerExtraHtml = partnerProf ? `
+            ${(partnerProf.headline || partnerProf.description || partnerProf.classMethod) ? `
+            <div style="margin-top: 12px; padding: 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; font-size: 12px; color: #1e293b; line-height: 1.5;">
+                ${partnerProf.headline ? `<div style="font-weight: 800; color: #1d4ed8; margin-bottom: 4px;">✨ ${partnerProf.headline}</div>` : ''}
+                ${partnerProf.classMethod ? `<div style="font-size: 11.5px; color: #334155; margin-bottom: 4px;"><strong>수업 방식:</strong> ${partnerProf.classMethod}</div>` : ''}
+                ${partnerProf.description ? `<div style="font-size: 11.5px; color: #475569; white-space: pre-wrap;">${partnerProf.description}</div>` : ''}
+            </div>` : ''}
+        ` : '';
 
         const academyInfoHtml = `
             <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 12px;">
@@ -16942,7 +17240,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <strong style="color: #0f172a; font-size: 15px; font-weight: 700;">기본 학원 정보</strong>
                     </div>
                     <span style="background: ${isNeisRegistered ? '#ecfdf5' : '#eff6ff'}; color: ${isNeisRegistered ? '#059669' : '#2563eb'}; border: 1px solid ${isNeisRegistered ? '#a7f3d0' : '#bfdbfe'}; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px;">
-                        ${isNeisRegistered ? '교육청 정식등록 인가' : '주변 추천 승인 학원'}
+                        ${partnerProf ? '비즈니스 프로필 인증 학원' : (isNeisRegistered ? '교육청 정식등록 인가' : '주변 추천 승인 학원')}
                     </span>
                 </div>
 
@@ -16950,7 +17248,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div style="color: #64748b; display: flex; align-items: center; gap: 4px;">🏷️ 구분</div>
                     <div>
                         <span style="color: #1e293b; font-weight: 700;">${typeName}</span>
-                        <div style="font-size: 11px; color: #94a3b8; margin-top: 1px;">주요 교과 및 보습·어학 전문 커리큘럼</div>
+                        <div style="font-size: 11px; color: #94a3b8; margin-top: 1px;">${curriculumDesc}</div>
                     </div>
 
                     <div style="color: #64748b; display: flex; align-items: center; gap: 4px;">🏛️ 관할 교육청</div>
@@ -16990,9 +17288,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
 
+                ${partnerExtraHtml}
+
                 <div style="margin-top: 14px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #475569;">
                     <span style="font-size: 15px;">🚌</span>
-                    <div><strong>통학·교통 팁:</strong> 인근 지하철역 도보권 및 셔틀 버스 접근 가능</div>
+                    <div><strong>통학·교통 팁:</strong> ${directionTip}</div>
                 </div>
             </div>
         `;
@@ -19817,20 +20117,43 @@ window.addEventListener('DOMContentLoaded', () => {
                 btnToggleTop.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
             }
 
-            // 2) 과목 및 유형 정보 추출
+            // 2) 과목 및 유형 정보 추출 (비즈니스 등록 학원 상세 프로필 우선 연동)
+            if (place && typeof window.applyPartnerProfileToPlace === 'function') {
+                window.applyPartnerProfileToPlace(place);
+            }
+            const rawAddressStr = place ? (place.road_address_name || place.address_name || '') : '';
+            const rawXCoord = place ? place.x : '';
+            const rawYCoord = place ? place.y : '';
+            const matchedPartner = (typeof window.findMatchedPartnerAcademy === 'function')
+                ? window.findMatchedPartnerAcademy(place || acadName, rawAddressStr, rawXCoord, rawYCoord)
+                : null;
+            const partnerProf = (matchedPartner && matchedPartner.profile) ? matchedPartner.profile : (place && place._partnerProfile ? place._partnerProfile : null);
+
+            if (partnerProf && partnerProf.targetAcademyName) {
+                acadName = partnerProf.targetAcademyName;
+            }
+
             let categorySubject = '';
-            if (place && place.category_name) {
+            if (partnerProf && Array.isArray(partnerProf.subjects) && partnerProf.subjects.length > 0) {
+                categorySubject = partnerProf.subjects.join(' · ');
+            } else if (place && place.category_name) {
                 const parts = place.category_name.split('>').map(s => s.trim());
                 categorySubject = parts.length > 2 ? parts[parts.length - 1] : (parts.length === 2 ? parts[1] : parts[0]);
             }
             let shortSubject = categorySubject.replace('학원', '').replace('교습소', '').replace('전문', '').trim();
             if (!shortSubject) shortSubject = categorySubject || '학원';
 
-            const tLabel = acadName.includes('교습소') ? '교습소' : '학원';
-            const addressStr = place ? (place.road_address_name || place.address_name || '') : '';
-            const phoneStr = place ? (place.phone || '') : '';
-            const xCoord = place ? place.x : '';
-            const yCoord = place ? place.y : '';
+            const tLabel = (partnerProf && partnerProf.institutionType)
+                ? partnerProf.institutionType
+                : (acadName.includes('교습소') ? '교습소' : '학원');
+            const addressStr = (partnerProf && partnerProf.address)
+                ? `${partnerProf.address} ${partnerProf.addressDetail || ''}`.trim()
+                : rawAddressStr;
+            const phoneStr = (partnerProf && partnerProf.contactPhone)
+                ? partnerProf.contactPhone
+                : (place ? (place.phone || '') : '');
+            const xCoord = (partnerProf && partnerProf.lng) ? String(partnerProf.lng) : rawXCoord;
+            const yCoord = (partnerProf && partnerProf.lat) ? String(partnerProf.lat) : rawYCoord;
 
             window.currentAcademyForCommunity = acadName;
             window.currentAcademyCoords = { lng: xCoord, lat: yCoord };

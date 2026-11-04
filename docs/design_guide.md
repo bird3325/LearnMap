@@ -148,4 +148,23 @@
   - **전략 3 (3단계 실행 로드맵)**: 프로필 최적화 -> 스폰서 광고 선점 -> 1:1 상담 채널 연계의 실천 로드맵
   - **하단 액션**: `[닫기]`, `[📋 추천 슬로건 프로필에 반영]` (클립보드 복사 및 프로필 탭 이동), `[🚀 스폰서 광고 미리보기]` (광고 미리보기 영역 `#adPreviewSection`으로 부드러운 스크롤 이동)
 
+### 8.3 비즈니스 학원 상세 프로필 ↔ 지도 노출 학원 매칭 및 정보 수정 바인딩 (`#academyBasicInfoContainer`)
+- **동작 및 바인딩 원칙**: 기존 학원 카드(`.academy-card`)와 학원 상세 패널(`#communityPanel` 내 `#academyBasicInfoContainer`)의 레이아웃, CSS 스타일, 컬러 팔레트는 100% 그대로 유지하며, 학원명과 주소가 일치하여 확인(`mapVerified: true`)된 비즈니스 학원의 경우 상세 프로필 데이터(`institutionType`, `subjects`, `grades`, `eduOffice`, `foundingDate`, `capacity`, `contactPhone`, `address + addressDetail`, `directionGuide`, `headline`, `classMethod`, `description`, `feeInfo`)로 지도 노출 정보를 실시간 덮어쓰기(Override)하여 표출합니다.
 
+
+
+
+
+## 23. 파트너센터 [학원 상세 프로필 관리] 변경사항 저장 시 지도 노출 학원 프로필 확인 모달 (2026-11-04)
+- **적용 위치**: `business.html` (`saveProfile()`, `openMapAcademyProfileConfirmModal()`, `#mapAcademyProfileConfirmModal`)
+- **동작 방식**:
+  - 파트너센터의 **[학원 상세 프로필 관리]** 탭에서 **「💾 변경사항 저장하기」** 버튼 클릭 시 `/api/business/verify-map-academy`를 호출하여 입력한 학원명·주소와 실제 지도 노출 학원 정보를 대조합니다.
+  - 화면 중앙에 **「지도에서 노출되는 학원 프로필 확인」** 모달(`#mapAcademyProfileConfirmModal`)을 노출하여 실제 메인 지도에서 학부모에게 보여지는 **`🏫 기본 학원 정보` 카드 UI**(학원명, 구분/커리큘럼, 관할 교육청, 설립일, 수용 정원, 전화번호, 상세주소, 헤드라인/수업방식/소개, 등록 수강료, 통학·교통 팁)와 기존 지도 매칭 학원 정보를 한눈에 보여줍니다.
+  - 사업자가 **「✅ 해당 학원이 맞습니다 · 지도 학원정보 수정 및 저장」** 버튼을 클릭하면 `mapVerified: true` 상태로 저장되며, 메인 지도(`index.html` / `app.js`)에서는 별도 팝업 없이 즉시 수정된 학원 상세 프로필이 지도에 노출됩니다.
+
+
+## 24. 사업자 등록정보 ↔ 학원 프로필 주소 분리 정책 및 '사업장 소재지 동일' 체크박스 제거 (2026-11-04)
+- **체크박스 및 기능 제거**: `business.html`의 **[학원 상세 주소 및 지도 위치 설정]** 섹션에서 `사업장 소재지 동일` 체크박스(`#chkSameAsBizAddress`) 및 연동 핸들러(`handleSameAsBizAddressChange`)를 제거했습니다.
+- **주소 노출 및 독립 수정 정책**:
+  - 최초 사업자 등록정보에서 주소 등록 시 학원 프로필 주소(`academyProfile.address`, `academyProfile.addressDetail`)에 초기값으로 그대로 노출됩니다.
+  - 이후 학원 프로필에서 주소를 수정하더라도 사업자 등록정보의 주소(`address`, `addressDetail`, `registeredAddress`, `registeredAddressDetail`)는 변경되지 않으며, 반대로 사업자 등록정보에서 주소를 수정하더라도 이미 등록된 학원 프로필의 주소는 변경되지 않도록 독립적으로 관리됩니다.

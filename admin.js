@@ -4345,7 +4345,9 @@ async function loadBlogManagement() {
         const res = await fetch('/api/blog/posts?admin=true');
         if (res.ok) {
             const raw = await res.json();
-            allAdminBlogPosts = Array.isArray(raw) ? raw.map(normalizeAdminPost) : [];
+            allAdminBlogPosts = Array.isArray(raw)
+                ? raw.filter(p => p && p.category !== '__asset__' && !String(p.id || '').startsWith('asset_')).map(normalizeAdminPost)
+                : [];
             renderAdminBlogTable();
             return;
         }
@@ -4622,7 +4624,14 @@ function renderMarkdownAdminPreview(md) {
     html = html.replace(/^\> (.*$)/gim, '<blockquote style="background: #f8fafc; border-left: 4px solid #2563eb; padding: 10px 14px; margin: 14px 0; border-radius: 0 8px 8px 0; color: #334155; font-size: 13.5px;">$1</blockquote>');
 
     // Images: ![alt](url)
-    html = html.replace(/!\[(.*?)\]\((.*?)\)/gim, '<figure style="margin: 16px 0; text-align: center;"><img src="$2" alt="$1" style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: inline-block;" loading="lazy"><figcaption style="font-size: 12px; color: #64748b; margin-top: 6px;">$1</figcaption></figure>');
+    html = html.replace(/!\[(.*?)\]\((.*?)\)/gim, (_, altText, rawUrl) => {
+        const cleanUrl = (rawUrl || '').trim();
+        const matchedImg = Array.isArray(currentAttachedBlogImages)
+            ? currentAttachedBlogImages.find(im => im.url === cleanUrl || (im.filename && cleanUrl.endsWith(im.filename)))
+            : null;
+        const resolvedSrc = (matchedImg && matchedImg.dataUrl) ? matchedImg.dataUrl : cleanUrl;
+        return `<figure style="margin: 16px 0; text-align: center;"><img src="${resolvedSrc}" alt="${altText}" style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: inline-block;" loading="lazy"><figcaption style="font-size: 12px; color: #64748b; margin-top: 6px;">${altText}</figcaption></figure>`;
+    });
 
     // Links: [text](url)
     html = html.replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: underline; font-weight: 600;">$1</a>');
@@ -4762,8 +4771,13 @@ function updateThumbnailPreview(url) {
     const preview = document.getElementById('blogThumbnailPreview');
     if (!preview) return;
     if (url && url.trim()) {
+        const cleanUrl = url.trim();
+        const matchedImg = Array.isArray(currentAttachedBlogImages)
+            ? currentAttachedBlogImages.find(im => im.url === cleanUrl || (im.filename && cleanUrl.endsWith(im.filename)))
+            : null;
+        const displayUrl = (matchedImg && matchedImg.dataUrl) ? matchedImg.dataUrl : cleanUrl;
         preview.style.display = 'block';
-        preview.style.backgroundImage = `url('${url.trim()}')`;
+        preview.style.backgroundImage = `url("${displayUrl}")`;
     } else {
         preview.style.display = 'none';
         preview.style.backgroundImage = 'none';
@@ -4801,10 +4815,11 @@ function renderAttachedBlogImages() {
         item.style.cssText = 'display: flex; flex-direction: column; width: 150px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; overflow: hidden; font-size: 11.5px; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0,0,0,0.06); transition: transform 0.15s ease;';
 
         const sizeStr = img.size ? ` (${(img.size / 1024).toFixed(0)}KB)` : '';
+        const previewSrc = img.dataUrl || img.url;
 
         item.innerHTML = `
             <div style="position: relative; width: 100%; height: 90px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                <img src="${img.url}" alt="${img.name || '첨부 이미지'}" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;" title="클릭하여 원본 보기">
+                <img src="${previewSrc}" alt="${img.name || '첨부 이미지'}" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;" title="클릭하여 원본 보기">
                 <button type="button" class="btn-delete-img" title="이미지 제거" style="position: absolute; top: 4px; right: 4px; background: rgba(15, 23, 42, 0.7); border: none; border-radius: 50%; color: white; width: 20px; height: 20px; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center;">
                     ✕
                 </button>
@@ -4847,6 +4862,53 @@ function renderAttachedBlogImages() {
     });
 }
 
+function compressBlogImageIfNeeded(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('파일 읽기에 실패했습니다.'));
+        reader.onload = (e) => {
+            const rawDataUrl = e.target.result;
+            // GIF나 SVG는 리사이즈 없이 원본 사용
+            if (file.type === 'image/gif' || file.type === 'image/svg+xml') {
+                return resolve({ dataUrl: rawDataUrl, contentType: file.type });
+            }
+            const img = new Image();
+            img.onerror = () => resolve({ dataUrl: rawDataUrl, contentType: file.type });
+            img.onload = () => {
+                try {
+                    const maxDim = 1280;
+                    let w = img.width;
+                    let h = img.height;
+                    if (w <= maxDim && h <= maxDim && file.size <= 350 * 1024) {
+                        return resolve({ dataUrl: rawDataUrl, contentType: file.type });
+                    }
+                    if (w > maxDim || h > maxDim) {
+                        if (w >= h) {
+                            h = Math.round((h * maxDim) / w);
+                            w = maxDim;
+                        } else {
+                            w = Math.round((w * maxDim) / h);
+                            h = maxDim;
+                        }
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    const outType = (file.type === 'image/png' && file.size <= 800 * 1024) ? 'image/png' : 'image/jpeg';
+                    const compressedDataUrl = canvas.toDataURL(outType, 0.84);
+                    resolve({ dataUrl: compressedDataUrl, contentType: outType });
+                } catch (err) {
+                    resolve({ dataUrl: rawDataUrl, contentType: file.type });
+                }
+            };
+            img.src = rawDataUrl;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
 async function uploadBlogImageFile(file, isThumbnail = false) {
     if (!file) return;
     if (!file.type || !file.type.startsWith('image/')) {
@@ -4861,78 +4923,84 @@ async function uploadBlogImageFile(file, isThumbnail = false) {
 
     const statusEl = document.getElementById('blogEditorStatusMessage');
     if (statusEl) {
-        statusEl.innerHTML = `<span style="color: #2563eb; font-weight: 600;">⏳ "${file.name}" 이미지 업로드 중...</span>`;
+        statusEl.innerHTML = `<span style="color: #2563eb; font-weight: 600;">⏳ "${file.name}" 이미지 최적화 및 업로드 중...</span>`;
     }
 
-    const reader = new FileReader();
-    reader.onerror = () => {
-        if (statusEl) statusEl.innerHTML = '<span style="color: #dc2626;">❌ 파일 읽기에 실패했습니다.</span>';
-    };
-    reader.onload = async (e) => {
-        const base64Data = e.target.result;
-        try {
-            const res = await fetch('/api/admin/blog/upload-image', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    filename: file.name,
-                    data: base64Data,
-                    contentType: file.type
-                })
-            });
+    try {
+        const { dataUrl: base64Data, contentType: finalContentType } = await compressBlogImageIfNeeded(file);
+        const res = await fetch('/api/admin/blog/upload-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                filename: file.name,
+                data: base64Data,
+                contentType: finalContentType
+            })
+        });
 
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.error || '업로드 응답 실패');
-            }
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || '업로드 응답 실패');
+        }
 
-            const data = await res.json();
-            if (!data.success || !data.url) {
-                throw new Error(data.error || '이미지 URL 발급 실패');
-            }
+        const data = await res.json();
+        if (!data.success || !data.url) {
+            throw new Error(data.error || '이미지 URL 발급 실패');
+        }
 
-            if (isThumbnail) {
-                const thumbInput = document.getElementById('blogPostThumbnail');
-                if (thumbInput) thumbInput.value = data.url;
-                updateThumbnailPreview(data.url);
-                if (statusEl) statusEl.innerHTML = `<span style="color: #059669; font-weight: 600;">✓ 대표 썸네일 이미지가 업로드되었습니다.</span>`;
-            } else {
-                insertMarkdownAtCursor(`\n\n![${data.originalName || '칼럼 이미지'}](${data.url})\n\n`, '');
+        const resolvedDataUrl = data.dataUrl || base64Data;
 
+        if (isThumbnail) {
+            if (!currentAttachedBlogImages.some(im => im.url === data.url)) {
                 currentAttachedBlogImages.push({
                     url: data.url,
+                    dataUrl: resolvedDataUrl,
                     filename: data.filename,
                     name: data.originalName || file.name,
                     size: data.size
                 });
                 renderAttachedBlogImages();
-
-                const previewContent = document.getElementById('blogEditorPreviewContent');
-                const textarea = document.getElementById('blogPostContent');
-                if (previewContent && textarea) {
-                    previewContent.innerHTML = renderMarkdownAdminPreview(textarea.value);
-                }
-
-                const thumbInput = document.getElementById('blogPostThumbnail');
-                if (thumbInput && !thumbInput.value.trim()) {
-                    thumbInput.value = data.url;
-                    updateThumbnailPreview(data.url);
-                }
-
-                if (statusEl) {
-                    statusEl.innerHTML = `<span style="color: #059669; font-weight: 700;">🖼️ "${data.originalName}" 이미지가 첨부되어 하단 갤러리에 표시되었습니다! ([👁️ 마크다운 미리보기]에서 확인 가능)</span>`;
-                    setTimeout(() => {
-                        if (statusEl) statusEl.innerHTML = '<span>💡 웹페이지/워드 글을 그냥 붙여넣으면 마크다운으로 자동 변환됩니다.</span>';
-                    }, 5000);
-                }
             }
-        } catch (err) {
-            console.error('[Blog Image Upload Error]:', err);
-            if (statusEl) statusEl.innerHTML = `<span style="color: #dc2626; font-weight: 600;">❌ 업로드 실패: ${err.message}</span>`;
-            showAlert('이미지 업로드에 실패했습니다: ' + err.message);
+            const thumbInput = document.getElementById('blogPostThumbnail');
+            if (thumbInput) thumbInput.value = data.url;
+            updateThumbnailPreview(data.url);
+            if (statusEl) statusEl.innerHTML = `<span style="color: #059669; font-weight: 600;">✓ 대표 썸네일 이미지가 업로드되었습니다.</span>`;
+        } else {
+            insertMarkdownAtCursor(`\n\n![${data.originalName || '칼럼 이미지'}](${data.url})\n\n`, '');
+
+            currentAttachedBlogImages.push({
+                url: data.url,
+                dataUrl: resolvedDataUrl,
+                filename: data.filename,
+                name: data.originalName || file.name,
+                size: data.size
+            });
+            renderAttachedBlogImages();
+
+            const previewContent = document.getElementById('blogEditorPreviewContent');
+            const textarea = document.getElementById('blogPostContent');
+            if (previewContent && textarea) {
+                previewContent.innerHTML = renderMarkdownAdminPreview(textarea.value);
+            }
+
+            const thumbInput = document.getElementById('blogPostThumbnail');
+            if (thumbInput && !thumbInput.value.trim()) {
+                thumbInput.value = data.url;
+                updateThumbnailPreview(data.url);
+            }
+
+            if (statusEl) {
+                statusEl.innerHTML = `<span style="color: #059669; font-weight: 700;">🖼️ "${data.originalName}" 이미지가 첨부되어 하단 갤러리에 표시되었습니다! ([👁️ 마크다운 미리보기]에서 확인 가능)</span>`;
+                setTimeout(() => {
+                    if (statusEl) statusEl.innerHTML = '<span>💡 웹페이지/워드 글을 그냥 붙여넣으면 마크다운으로 자동 변환됩니다.</span>';
+                }, 5000);
+            }
         }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+        console.error('[Blog Image Upload Error]:', err);
+        if (statusEl) statusEl.innerHTML = `<span style="color: #dc2626; font-weight: 600;">❌ 업로드 실패: ${err.message}</span>`;
+        showAlert('이미지 업로드에 실패했습니다: ' + err.message);
+    }
 }
 
 window.openNewBlogPostModal = function() {

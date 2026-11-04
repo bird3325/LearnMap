@@ -3916,10 +3916,6 @@
                                 <div class="form-group" style="margin-bottom: 0;">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                                         <label style="margin-bottom: 0;">도로명 주소 <span class="req-star">*</span></label>
-                                        <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #64748b; cursor: pointer;">
-                                            <input type="checkbox" id="chkSameAsBizAddress" onchange="handleSameAsBizAddressChange(this.checked)" style="cursor: pointer;">
-                                            <span>사업장 소재지 동일</span>
-                                        </label>
                                     </div>
                                     <div class="form-input-with-btn">
                                         <input type="hidden" id="profZonecode">
@@ -5193,10 +5189,15 @@
                 } catch (ge) {}
             }
 
-            const name = (biz && biz.name) ? biz.name : (currentBiz ? currentBiz.name : '학원');
-            const addr = (biz && biz.address) ? biz.address : (currentBiz ? currentBiz.address : '');
-            const phone = (biz && biz.phone) ? biz.phone : (currentBiz ? currentBiz.phone : '');
-            const subj = (biz && Array.isArray(biz.subjects) && biz.subjects.length > 0) ? biz.subjects[0] : '';
+            const prof = (biz && biz.academyProfile) || (currentBiz && currentBiz.academyProfile) || {};
+            const name = prof.targetAcademyName || (biz && biz.name) || (currentBiz ? currentBiz.name : '학원');
+            const baseAddr = prof.address || (biz && biz.address) || (currentBiz ? currentBiz.address : '');
+            const detailAddr = prof.addressDetail || (biz && biz.addressDetail) || (currentBiz ? currentBiz.addressDetail : '');
+            const addr = detailAddr ? `${baseAddr} ${detailAddr}`.trim() : baseAddr;
+            const phone = prof.contactPhone || (biz && biz.phone) || (currentBiz ? currentBiz.phone : '');
+            const subj = (Array.isArray(prof.subjects) && prof.subjects.length > 0)
+                ? prof.subjects.join('·')
+                : ((biz && Array.isArray(biz.subjects) && biz.subjects.length > 0) ? biz.subjects[0] : '');
 
             if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
                 const targetUrl = '/?lat=' + lat + '&lng=' + lng + '&name=' + encodeURIComponent(name) + '&academy=' + encodeURIComponent(name) + '&addr=' + encodeURIComponent(addr) + '&phone=' + encodeURIComponent(phone) + '&subject=' + encodeURIComponent(subj) + '&autoClick=1';
@@ -6266,19 +6267,14 @@
                 if (descCnt) descCnt.innerText = (p.description || '').length;
 
                 document.getElementById('profZonecode').value = p.zonecode || '';
-                document.getElementById('profAddress').value = p.address || biz.address || '';
-                document.getElementById('profAddressDetail').value = p.addressDetail || '';
+                const hasProfileAddr = Boolean(p.address && String(p.address).trim());
+                document.getElementById('profAddress').value = hasProfileAddr ? p.address : (biz.registeredAddress || biz.address || '');
+                document.getElementById('profAddressDetail').value = hasProfileAddr
+                    ? (p.addressDetail || '')
+                    : (p.addressDetail || biz.registeredAddressDetail || biz.addressDetail || '');
 
                 if (document.getElementById('profDirectionGuide')) {
                     document.getElementById('profDirectionGuide').value = p.directionGuide || '';
-                }
-
-                const chkSame = document.getElementById('chkSameAsBizAddress');
-                if (chkSame) {
-                    const bizAddr = (biz.registeredAddress || biz.address || '').trim();
-                    const curAddr = (document.getElementById('profAddress').value || '').trim();
-                    chkSame.checked = p.sameAsBizAddress === true ||
-                        (Boolean(bizAddr) && Boolean(curAddr) && curAddr === bizAddr);
                 }
                 const savedLat = (p.lat !== undefined && p.lat !== null && p.lat !== '') ? parseFloat(p.lat) : null;
                 const savedLng = (p.lng !== undefined && p.lng !== null && p.lng !== '') ? parseFloat(p.lng) : null;
@@ -6583,14 +6579,12 @@
                     const addrEl = document.getElementById('profAddress');
                     const detailEl = document.getElementById('profAddressDetail');
                     const statusEl = document.getElementById('coordStatusMsg');
-                    const chkSame = document.getElementById('chkSameAsBizAddress');
 
                     if (zoneEl) zoneEl.value = zonecode;
                     if (addrEl) addrEl.value = fullBaseAddr;
                     if (detailEl) detailEl.focus();
                     // 관할 교육청 셀렉트를 새 주소 기반으로 스마트 자동 변경
                     initOrUpdateEduOfficeSelect('', fullBaseAddr);
-                    if (chkSame) chkSame.checked = false;
 
                     if (statusEl) {
                         statusEl.style.display = 'block';
@@ -6670,80 +6664,6 @@
             } else {
                 if (!silent) {
                     alert('주소에 해당하는 좌표를 찾지 못했습니다.\n지도 위를 직접 클릭하여 학원 위치를 지정해주세요.');
-                }
-            }
-        }
-
-        // --- 사업장 소재지 주소 동일 체크박스 핸들러 ---
-        async function handleSameAsBizAddressChange(isChecked) {
-            const zoneEl = document.getElementById('profZonecode');
-            const addrEl = document.getElementById('profAddress');
-            const detailEl = document.getElementById('profAddressDetail');
-            const statusEl = document.getElementById('coordStatusMsg');
-
-            if (isChecked) {
-                // 사업자 등록 신청 시의 사업장 소재지 주소 가져오기
-                let bizAddr = '';
-                let bizZone = '';
-                let bizDetail = '';
-
-                if (currentBiz) {
-                    bizAddr = (currentBiz.registeredAddress || currentBiz.address || '').trim();
-                    bizDetail = (currentBiz.registeredAddressDetail || currentBiz.addressDetail || '').trim();
-                    if (!bizDetail && currentBiz.academyProfile) {
-                        bizZone = (currentBiz.academyProfile.zonecode || '').trim();
-                        bizDetail = (currentBiz.academyProfile.addressDetail || '').trim();
-                    }
-                }
-                if (!bizAddr) {
-                    const regAddrInput = document.getElementById('regAddress');
-                    if (regAddrInput && regAddrInput.value.trim()) {
-                        bizAddr = regAddrInput.value.trim();
-                    }
-                }
-                if (!bizDetail) {
-                    const regDetailInput = document.getElementById('regAddressDetail');
-                    if (regDetailInput && regDetailInput.value.trim()) {
-                        bizDetail = regDetailInput.value.trim();
-                    }
-                }
-
-                if (!bizAddr) {
-                    showToast('사업자 등록 신청 시 입력된 사업장 소재지 주소가 없습니다.', '⚠️');
-                    const chk = document.getElementById('chkSameAsBizAddress');
-                    if (chk) chk.checked = false;
-                    return;
-                }
-
-                // 체크 해제 시 복원할 수 있도록 현재 입력값 보관
-                window._prevProfAddress = addrEl ? addrEl.value : '';
-                window._prevProfZonecode = zoneEl ? zoneEl.value : '';
-                window._prevProfAddressDetail = detailEl ? detailEl.value : '';
-
-                // 학원 상세 주소 필드에 사업장 소재지 주소 노출
-                if (addrEl) addrEl.value = bizAddr;
-                initOrUpdateEduOfficeSelect('', bizAddr);
-                if (detailEl && bizDetail) detailEl.value = bizDetail;
-                if (zoneEl && bizZone) zoneEl.value = bizZone;
-
-                if (statusEl) {
-                    statusEl.style.display = 'block';
-                    statusEl.style.color = '#2563eb';
-                    statusEl.innerText = '🔍 사업장 소재지 주소로 지도 위치를 동기화하는 중입니다...';
-                }
-
-                // 주소 기반으로 지도 좌표 자동 변환 및 지도 위치 마커 동기화
-                await convertAddressToCoords(true);
-                showToast('사업장 소재지 주소가 학원 상세 주소에 동일하게 적용되었습니다!', '🏢');
-            } else {
-                // 체크 해제 시 이전 상태 복원
-                if (window._prevProfAddress !== undefined) {
-                    if (addrEl) addrEl.value = window._prevProfAddress;
-                    if (zoneEl) zoneEl.value = window._prevProfZonecode || '';
-                    if (detailEl) detailEl.value = window._prevProfAddressDetail || '';
-                    if (addrEl && addrEl.value) {
-                        await convertAddressToCoords(true);
-                    }
                 }
             }
         }
@@ -7293,7 +7213,6 @@
                     address: document.getElementById('profAddress').value.trim(),
                     addressDetail: document.getElementById('profAddressDetail').value.trim(),
                     directionGuide: document.getElementById('profDirectionGuide') ? document.getElementById('profDirectionGuide').value.trim() : '',
-                    sameAsBizAddress: document.getElementById('chkSameAsBizAddress') ? document.getElementById('chkSameAsBizAddress').checked : false,
                     lat: (latVal !== null && !isNaN(latVal)) ? latVal : null,
                     lng: (lngVal !== null && !isNaN(lngVal)) ? lngVal : null,
                     websiteUrl: document.getElementById('profWebsiteUrl').value.trim(),
@@ -7303,6 +7222,37 @@
                     feeInfo: document.getElementById('profFeeInfo').value.trim(),
                     updatedAt: new Date().toISOString()
                 };
+
+                // 파트너센터 [학원 상세 프로필 관리] 변경사항 저장하기 클릭 시 지도에서 노출되는 학원 프로필 노출 및 일치 확인
+                if (payload.academyProfile.targetAcademyName && payload.academyProfile.address) {
+                    let vData = null;
+                    try {
+                        const vUrl = `/api/business/verify-map-academy?name=${encodeURIComponent(payload.academyProfile.targetAcademyName)}&address=${encodeURIComponent(payload.academyProfile.address)}&lat=${payload.academyProfile.lat || ''}&lng=${payload.academyProfile.lng || ''}&businessId=${encodeURIComponent(currentBiz.id)}`;
+                        const vRes = await fetch(vUrl);
+                        if (vRes.ok) {
+                            vData = await vRes.json();
+                        }
+                    } catch (vErr) {
+                        console.warn('지도 노출 학원 매칭 확인 중 오류:', vErr);
+                    }
+
+                    const confirmAction = await openMapAcademyProfileConfirmModal(vData, payload.academyProfile);
+                    if (confirmAction === 'cancel') {
+                        return;
+                    }
+                    if (confirmAction === 'confirm') {
+                        const mp = (vData && vData.matchedPlace) ? vData.matchedPlace : {};
+                        const mpAddr = mp.road_address_name || mp.address_name || payload.academyProfile.address;
+                        payload.academyProfile.mapVerified = true;
+                        payload.academyProfile.matchedPlaceId = mp.id || '';
+                        payload.academyProfile.matchedPlaceName = mp.place_name || payload.academyProfile.targetAcademyName;
+                        payload.academyProfile.matchedAddress = mpAddr;
+                        if (!payload.academyProfile.lat && vData && vData.lat) payload.academyProfile.lat = vData.lat;
+                        if (!payload.academyProfile.lng && vData && vData.lng) payload.academyProfile.lng = vData.lng;
+                    } else {
+                        payload.academyProfile.mapVerified = false;
+                    }
+                }
             }
 
             try {
@@ -7313,7 +7263,11 @@
                 });
                 const result = await res.json();
                 if (result.success) {
-                    showToast('프로필 정보가 안전하게 저장되었습니다!');
+                    if (payload.academyProfile && payload.academyProfile.mapVerified) {
+                        showToast('프로필 저장 및 실제 지도에 노출되는 학원 정보가 수정·반영되었습니다!');
+                    } else {
+                        showToast('프로필 정보가 안전하게 저장되었습니다!');
+                    }
                     loadSession();
                 } else {
                     alert(result.error || '저장에 실패했습니다.');
@@ -7322,6 +7276,151 @@
                 console.error(err);
                 alert('서버 연결 중 오류가 발생했습니다.');
             }
+        }
+
+        let _mapProfileConfirmResolver = null;
+        function resolveMapAcademyProfileConfirmModal(action) {
+            const modal = document.getElementById('mapAcademyProfileConfirmModal');
+            if (modal) modal.style.display = 'none';
+            if (typeof _mapProfileConfirmResolver === 'function') {
+                const fn = _mapProfileConfirmResolver;
+                _mapProfileConfirmResolver = null;
+                fn(action);
+            }
+        }
+
+        function openMapAcademyProfileConfirmModal(vData, prof) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('mapAcademyProfileConfirmModal');
+                const contentEl = document.getElementById('mapAcademyProfileConfirmContent');
+                if (!modal || !contentEl) {
+                    resolve('confirm');
+                    return;
+                }
+                _mapProfileConfirmResolver = resolve;
+
+                const mp = (vData && vData.matchedPlace) ? vData.matchedPlace : null;
+                const mb = (vData && vData.mapBasicInfo) ? vData.mapBasicInfo : null;
+                const isExternalMapMatched = Boolean(mp && !mp.isDirectAddressMatch);
+
+                const acadName = prof.targetAcademyName || (mb && mb.placeName) || '학원명 미입력';
+                const typeName = prof.institutionType || (mb && mb.typeName) || '학원';
+                const subjText = (Array.isArray(prof.subjects) && prof.subjects.length > 0)
+                    ? prof.subjects.join(' · ')
+                    : ((mb && mb.subject) || '교과/보습');
+                const curriculumDesc = (Array.isArray(prof.subjects) && prof.subjects.length > 0)
+                    ? `${prof.subjects.join(', ')} 전문 커리큘럼${(Array.isArray(prof.grades) && prof.grades.length > 0) ? ' (' + prof.grades.join('·') + ' 대상)' : ''}`
+                    : '주요 교과 및 보습·어학 전문 커리큘럼';
+                const eduOffice = prof.eduOffice || (mb && mb.eduOffice) || '관할 교육청 (정식 등록 인가)';
+                const estDate = prof.foundingDate || (mb && mb.estDate) || '설립 및 정식 운영 중';
+                const capacity = prof.capacity
+                    ? (String(prof.capacity).includes('명') ? String(prof.capacity) : `${prof.capacity}명`)
+                    : ((mb && mb.capacity) || '수용 정원 기준 운영');
+                const telNo = prof.contactPhone || (mb && mb.phone) || '전화 문의';
+                const addressStr = `${prof.address || ''} ${prof.addressDetail || ''}`.trim() || ((mb && mb.address) || '주소 정보 문의');
+                const directionTip = prof.directionGuide || '인근 지하철역 도보권 및 셔틀 버스 접근 가능';
+
+                const origMapName = (mb && mb.placeName) ? mb.placeName : acadName;
+                const origMapAddr = (mb && mb.address) ? mb.address : (prof.address || '');
+                const origMapPhone = (mb && mb.phone) ? mb.phone : '-';
+
+                contentEl.innerHTML = `
+                    <div style="background: ${isExternalMapMatched ? '#ecfdf5' : '#eff6ff'}; border: 1.5px solid ${isExternalMapMatched ? '#6ee7b7' : '#93c5fd'}; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;">
+                        <div style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; color: ${isExternalMapMatched ? '#065f46' : '#1e40af'};">
+                            <span>📍</span>
+                            <span>${isExternalMapMatched ? '실제 지도에 노출되는 학원과 학원명·주소가 일치합니다!' : '등록하신 학원명·주소 기준으로 지도에 노출되는 학원 프로필입니다.'}</span>
+                        </div>
+                        <div style="font-size: 12.5px; color: #334155; line-height: 1.5;">
+                            아래 <strong>지도에서 노출되는 학원 프로필</strong>이 운영하시는 <strong>해당 학원이 맞는지 확인</strong>해주세요.<br>
+                            <strong>[해당 학원이 맞습니다 · 지도 학원정보 수정 및 저장]</strong>을 클릭하시면 실제 지도에 노출되는 학원 프로필이 아래 정보로 즉시 수정·반영됩니다.
+                        </div>
+                        <div style="margin-top: 4px; padding: 8px 12px; background: rgba(255,255,255,0.85); border-radius: 8px; font-size: 11.5px; color: #475569; display: flex; flex-wrap: wrap; gap: 12px;">
+                            <span><strong>기존 지도 매칭 학원명:</strong> ${origMapName}</span>
+                            <span><strong>기존 지도 주소:</strong> ${origMapAddr}</span>
+                            <span><strong>기존 연락처:</strong> ${origMapPhone}</span>
+                        </div>
+                    </div>
+
+                    <!-- 지도에서 노출되는 학원 프로필 카드 (실제 메인 지도 #communityModal & #academyBasicInfoContainer 동일 UI) -->
+                    <div style="border: 1.5px solid #cbd5e1; border-radius: 16px; overflow: hidden; background: #f8fafc; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);">
+                        <!-- 지도 모달 상단 학원 헤더 영역 -->
+                        <div style="background: #ffffff; padding: 16px 18px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap;">
+                                    <span style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px;">${typeName}</span>
+                                    <span style="background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px;">${subjText}</span>
+                                    ${prof.isPremium ? `<span style="background: linear-gradient(135deg,#2563eb,#1d4ed8); color: #fff; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 6px;">👑 프리미엄 파트너</span>` : ''}
+                                </div>
+                                <div style="font-size: 18px; font-weight: 800; color: #0f172a; letter-spacing: -0.3px;">${acadName}</div>
+                            </div>
+                            <span style="background: #dbeafe; color: #1d4ed8; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; white-space: nowrap;">지도 노출 화면 미리보기</span>
+                        </div>
+
+                        <!-- 지도 모달 기본 학원 정보 영역 (#academyBasicInfoContainer) -->
+                        <div style="padding: 16px;">
+                            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span style="font-size: 16px;">🏫</span>
+                                        <strong style="color: #0f172a; font-size: 15px; font-weight: 700;">기본 학원 정보</strong>
+                                    </div>
+                                    <span style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px;">
+                                        비즈니스 프로필 인증 학원
+                                    </span>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: 88px 1fr; row-gap: 10px; column-gap: 8px; font-size: 12.5px; line-height: 1.45;">
+                                    <div style="color: #64748b; display: flex; align-items: center; gap: 4px;">🏷️ 구분</div>
+                                    <div>
+                                        <span style="color: #1e293b; font-weight: 700;">${typeName}</span>
+                                        <div style="font-size: 11px; color: #94a3b8; margin-top: 1px;">${curriculumDesc}</div>
+                                    </div>
+
+                                    <div style="color: #64748b; display: flex; align-items: center; gap: 4px;">🏛️ 관할 교육청</div>
+                                    <div style="color: #1e293b; font-weight: 600;">${eduOffice}</div>
+
+                                    <div style="color: #64748b; display: flex; align-items: center; gap: 4px;">📅 설립일</div>
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span style="color: #1e293b; font-weight: 700;">${estDate}</span>
+                                        <span style="background: #f1f5f9; color: #475569; font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 4px; border: 1px solid #e2e8f0;">정식 운영</span>
+                                    </div>
+
+                                    <div style="color: #64748b; display: flex; align-items: center; gap: 4px;">👥 수용 정원</div>
+                                    <div>
+                                        <span style="color: #2563eb; font-weight: 700;">${capacity}</span>
+                                        <span style="font-size: 11px; color: #94a3b8;"> (동시 수용 기준)</span>
+                                    </div>
+
+                                    <div style="color: #64748b; display: flex; align-items: center; gap: 4px;">📞 전화번호</div>
+                                    <div style="color: #2563eb; font-weight: 700;">${telNo}</div>
+
+                                    <div style="color: #64748b; display: flex; align-items: flex-start; gap: 4px; padding-top: 2px;">📍 상세주소</div>
+                                    <div style="color: #1e293b; font-weight: 600; line-height: 1.4; word-break: keep-all;">${addressStr}</div>
+                                </div>
+
+                                ${(prof.headline || prof.classMethod || prof.description) ? `
+                                <div style="margin-top: 12px; padding: 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; font-size: 12px; color: #1e293b; line-height: 1.5;">
+                                    ${prof.headline ? `<div style="font-weight: 800; color: #1d4ed8; margin-bottom: 4px;">✨ ${prof.headline}</div>` : ''}
+                                    ${prof.classMethod ? `<div style="font-size: 11.5px; color: #334155; margin-bottom: 4px;"><strong>수업 방식:</strong> ${prof.classMethod}</div>` : ''}
+                                    ${prof.description ? `<div style="font-size: 11.5px; color: #475569; white-space: pre-wrap;">${prof.description}</div>` : ''}
+                                </div>` : ''}
+
+                                ${prof.feeInfo ? `
+                                <div style="margin-top: 10px; padding: 10px 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; font-size: 12px; color: #166534;">
+                                    <strong>💰 등록 수강료 정보:</strong> ${prof.feeInfo}
+                                </div>` : ''}
+
+                                <div style="margin-top: 12px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #475569;">
+                                    <span style="font-size: 15px;">🚌</span>
+                                    <div><strong>통학·교통 팁:</strong> ${directionTip}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                modal.style.display = 'flex';
+            });
         }
 
         async function subscribePlan(productId) {
@@ -7499,6 +7598,7 @@
             } catch (e) {}
 
             const payload = {
+                businessId: currentBiz ? currentBiz.id : null,
                 userId: currentUser ? currentUser.id : null,
                 type: typeVal,
                 name: document.getElementById('regName').value.trim(),
@@ -7521,7 +7621,6 @@
                 const data = await res.json();
                 if (data.success) {
                     currentBizId = data.business.id;
-                    document.getElementById('newBizForm').reset();
                     const pErr = document.getElementById('regPhoneError');
                     if (pErr) pErr.style.display = 'none';
                     const bErr = document.getElementById('regBizNumberError');
@@ -7529,8 +7628,14 @@
                     const eErr = document.getElementById('regEmailError');
                     if (eErr) eErr.style.display = 'none';
 
-                    // 파트너 등록 신청서 제출 완료 모달창 노출
-                    showRegisterSuccessModal(data.business);
+                    if (data.isUpdated) {
+                        showToast('사업자 등록 정보가 안전하게 수정되었습니다!');
+                        loadSession();
+                    } else {
+                        document.getElementById('newBizForm').reset();
+                        // 파트너 등록 신청서 제출 완료 모달창 노출
+                        showRegisterSuccessModal(data.business);
+                    }
                 } else {
                     alert(data.error || '신청 중 오류가 발생했습니다.');
                 }
@@ -8603,6 +8708,56 @@
                     <button type="button" onclick="closeAiTargetStrategyModal()"
                         style="padding: 9px 18px; background: #1e293b; color: #ffffff; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer;">
                         닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 지도에서 노출되는 학원 프로필 확인 및 수정 반영 모달 -->
+    <div id="mapAcademyProfileConfirmModal"
+        style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 10050; align-items: center; justify-content: center; padding: 20px;">
+        <div
+            style="background: #ffffff; width: 100%; max-width: 640px; max-height: 90vh; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); display: flex; flex-direction: column; overflow: hidden; border: 1px solid #e2e8f0;">
+            <!-- Header -->
+            <div
+                style="padding: 18px 22px; background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%); border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div
+                        style="width: 38px; height: 38px; border-radius: 10px; background: #2563eb; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800;">
+                        🏫
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #0f172a;">지도에서 노출되는 학원 프로필 확인</h3>
+                        <span style="font-size: 11.5px; color: #64748b;">파트너센터 학원 상세 프로필 변경사항 지도 반영</span>
+                    </div>
+                </div>
+                <button type="button" onclick="resolveMapAcademyProfileConfirmModal('cancel')"
+                    style="border: none; background: #f1f5f9; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: #64748b; font-size: 16px; display: flex; align-items: center; justify-content: center;">
+                    ✕
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div id="mapAcademyProfileConfirmContent"
+                style="padding: 20px 22px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 16px;">
+            </div>
+
+            <!-- Footer -->
+            <div
+                style="padding: 14px 22px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap;">
+                <button type="button" onclick="resolveMapAcademyProfileConfirmModal('cancel')"
+                    style="padding: 10px 16px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 13px; font-weight: 600; color: #475569; cursor: pointer;">
+                    취소 (다시 수정)
+                </button>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" onclick="resolveMapAcademyProfileConfirmModal('decline')"
+                        style="padding: 10px 14px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 12.5px; font-weight: 600; color: #475569; cursor: pointer;">
+                        지도 학원정보 수정 없이 프로필만 저장
+                    </button>
+                    <button type="button" onclick="resolveMapAcademyProfileConfirmModal('confirm')"
+                        style="padding: 10px 18px; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #ffffff; border: none; border-radius: 10px; font-size: 13px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">
+                        ✅ 해당 학원이 맞습니다 · 지도 학원정보 수정 및 저장
                     </button>
                 </div>
             </div>

@@ -52,6 +52,10 @@
       "destination": "/server.js"
     },
     {
+      "source": "/uploads/(.*)",
+      "destination": "/server.js"
+    },
+    {
       "source": "/business",
       "destination": "/business.html"
     },

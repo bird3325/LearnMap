@@ -9,7 +9,7 @@ let currentSort = 'latest';
 let activePostId = null;
 
 // Markdown 단순 렌더러 (별도 외부 라이브러리 없이 안전하고 경량화된 HTML 변환)
-function renderMarkdown(md) {
+function renderMarkdown(md, postImages = []) {
     if (!md) return '';
     let html = md
         // Escape basic HTML to prevent XSS
@@ -29,7 +29,14 @@ function renderMarkdown(md) {
     html = html.replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>');
 
     // Images: ![alt](url)
-    html = html.replace(/!\[(.*?)\]\((.*?)\)/gim, '<figure class="blog-post-figure"><img src="$2" alt="$1" class="blog-post-img" loading="lazy" /><figcaption class="blog-img-caption">$1</figcaption></figure>');
+    html = html.replace(/!\[(.*?)\]\((.*?)\)/gim, (_, altText, rawUrl) => {
+        const cleanUrl = (rawUrl || '').trim();
+        const matchedImg = Array.isArray(postImages)
+            ? postImages.find(im => im && (im.url === cleanUrl || (im.filename && cleanUrl.endsWith(im.filename))))
+            : null;
+        const resolvedSrc = (matchedImg && matchedImg.dataUrl) ? matchedImg.dataUrl : cleanUrl;
+        return `<figure class="blog-post-figure"><img src="${resolvedSrc}" alt="${altText}" class="blog-post-img" loading="lazy" /><figcaption class="blog-img-caption">${altText}</figcaption></figure>`;
+    });
 
     // Links: [text](url)
     html = html.replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
@@ -162,7 +169,9 @@ async function loadPosts() {
         const res = await fetch('/api/blog/posts');
         if (res.ok) {
             const rawPosts = await res.json();
-            allPosts = Array.isArray(rawPosts) ? rawPosts.map(normalizePost) : [];
+            allPosts = Array.isArray(rawPosts)
+                ? rawPosts.filter(p => p && p.category !== '__asset__' && !String(p.id || '').startsWith('asset_')).map(normalizePost)
+                : [];
             renderPosts();
             checkUrlRoute();
             return;
@@ -175,7 +184,9 @@ async function loadPosts() {
         const resStatic = await fetch('/src/data/blog_posts.json');
         if (resStatic.ok) {
             const rawPosts = await resStatic.json();
-            allPosts = Array.isArray(rawPosts) ? rawPosts.map(normalizePost) : [];
+            allPosts = Array.isArray(rawPosts)
+                ? rawPosts.filter(p => p && p.category !== '__asset__' && !String(p.id || '').startsWith('asset_')).map(normalizePost)
+                : [];
             renderPosts();
             checkUrlRoute();
             return;
@@ -299,9 +310,12 @@ function renderPosts() {
     grid.innerHTML = filtered.map(post => {
         const tagsHtml = (post.tags || []).slice(0, 3).map(tag => `<span class="tag-pill">#${escapeHtmlAttr(tag)}</span>`).join('');
         const fallbackThumb = getFallbackThumbnail(post.category);
-        const thumbSrc = (post.thumbnail && typeof post.thumbnail === 'string' && post.thumbnail.trim())
-            ? escapeHtmlAttr(post.thumbnail.trim())
-            : fallbackThumb;
+        const rawThumb = (post.thumbnail && typeof post.thumbnail === 'string') ? post.thumbnail.trim() : '';
+        const matchedThumbImg = (rawThumb && Array.isArray(post.images))
+            ? post.images.find(im => im && (im.url === rawThumb || (im.filename && rawThumb.endsWith(im.filename))))
+            : null;
+        const resolvedThumb = (matchedThumbImg && matchedThumbImg.dataUrl) ? matchedThumbImg.dataUrl : rawThumb;
+        const thumbSrc = resolvedThumb ? escapeHtmlAttr(resolvedThumb) : fallbackThumb;
         const safeTitle = escapeHtmlAttr(post.title || '');
         const safeCategory = escapeHtmlAttr(post.category || '칼럼');
         const safeReadTime = escapeHtmlAttr(post.readTime || '3분');
@@ -382,7 +396,7 @@ window.openPostPage = function (postId, pushHistory = true) {
     if (roleEl) roleEl.textContent = post.authorRole || '수석연구원';
 
     const bodyEl = document.getElementById('modalBody');
-    if (bodyEl) bodyEl.innerHTML = renderMarkdown(post.content || post.summary);
+    if (bodyEl) bodyEl.innerHTML = renderMarkdown(post.content || post.summary, post.images || []);
 
     // 관련 학교 위젯
     const relatedBox = document.getElementById('modalRelatedSchoolsBox');

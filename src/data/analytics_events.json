@@ -150,5 +150,149 @@
       "reason": "관리자 직권 테스트 결제 및 활성화"
     },
     "createdAt": "2026-11-01T07:21:46.455Z"
+  },
+  {
+    "id": "evt_1793796596669_8a5b",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩"
+    },
+    "createdAt": "2026-11-04T12:49:56.669Z"
+  },
+  {
+    "id": "evt_1793796596958_3jjv",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩"
+    },
+    "createdAt": "2026-11-04T12:49:56.958Z"
+  },
+  {
+    "id": "evt_1793796784784_f1db",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩"
+    },
+    "createdAt": "2026-11-04T12:53:04.784Z"
+  },
+  {
+    "id": "evt_1793796785155_9vbf",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩"
+    },
+    "createdAt": "2026-11-04T12:53:05.155Z"
+  },
+  {
+    "id": "evt_1793796895232_7c8j",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩"
+    },
+    "createdAt": "2026-11-04T12:54:55.232Z"
+  },
+  {
+    "id": "evt_1793796895592_tlso",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩"
+    },
+    "createdAt": "2026-11-04T12:54:55.592Z"
+  },
+  {
+    "id": "evt_1793796978390_661a",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩"
+    },
+    "createdAt": "2026-11-04T12:56:18.390Z"
+  },
+  {
+    "id": "evt_1793796978534_q5y6",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩"
+    },
+    "createdAt": "2026-11-04T12:56:18.534Z"
+  },
+  {
+    "id": "evt_1793797164727_djct",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩"
+    },
+    "createdAt": "2026-11-04T12:59:24.727Z"
+  },
+  {
+    "id": "evt_1793797165767_30u4",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩"
+    },
+    "createdAt": "2026-11-04T12:59:25.767Z"
+  },
+  {
+    "id": "evt_1793834991707_4d47",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩"
+    },
+    "createdAt": "2026-11-04T23:29:51.707Z"
+  },
+  {
+    "id": "evt_1793834992699_rmu8",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩"
+    },
+    "createdAt": "2026-11-04T23:29:52.699Z"
+  },
+  {
+    "id": "evt_1793835954153_cmmm",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩"
+    },
+    "createdAt": "2026-11-04T23:45:54.153Z"
+  },
+  {
+    "id": "evt_1793835954291_kpta",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩"
+    },
+    "createdAt": "2026-11-04T23:45:54.291Z"
+  },
+  {
+    "id": "evt_1793836453038_5dsy",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩"
+    },
+    "createdAt": "2026-11-04T23:54:13.038Z"
+  },
+  {
+    "id": "evt_1793836453388_fcfv",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩"
+    },
+    "createdAt": "2026-11-04T23:54:13.388Z"
   }
 ]

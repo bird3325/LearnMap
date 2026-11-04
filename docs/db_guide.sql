@@ -278,3 +278,20 @@ GRANT ALL ON TABLE public.partner_payments TO anon;
 GRANT ALL ON TABLE public.partner_payments TO authenticated;
 GRANT ALL ON TABLE public.partner_payments TO service_role;
 
+
+-- 11. business_partners.academy_profile (JSONB) 내 지도 노출 학원 매칭 및 정보 동기화 필드 정의 (TC-027)
+-- 비즈니스에서 등록한 학원 상세 프로필(targetAcademyName, address)이 실제 지도에 노출되는 학원과 일치할 경우
+-- 사용자 확인을 거쳐 academy_profile JSONB 내에 아래 필드가 함께 저장·동기화됩니다:
+--   mapVerified: BOOLEAN (해당 학원 일치 여부 사용자 확인 완료 상태)
+--   matchedPlaceId: VARCHAR (매칭된 지도 장소 ID)
+--   matchedPlaceName: VARCHAR (매칭된 지도 노출 학원명)
+--   matchedAddress: VARCHAR (매칭된 지도 노출 주소)
+
+
+-- =========================================================================
+-- 17. 블로그/학원 업로드 이미지 서버리스 영구 저장 정책 (2026-11-05)
+-- =========================================================================
+-- Vercel 서버리스 환경(읽기 전용 파일시스템 EROFS)에서도 이미지 업로드 및 노출이 정상 작동하고
+-- `blog_posts` 테이블에 불필요한 임시저장(에셋) 행이 생성되지 않도록,
+-- 업로드된 이미지 데이터(`dataUrl`)는 각 게시글의 `blog_posts.images` (JSONB 배열) 내부에 함께 저장하며
+-- 서버 메모리 캐시 및 `/api/blog/image/:filename`(`blog_posts.images` JSONB 조회 포함)을 통해 서빙합니다.
