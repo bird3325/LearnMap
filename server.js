@@ -498,7 +498,7 @@ async function geocodeKakaoPrecise(item, kakaoKey) {
             const bunNum = parseInt(item.bun, 10);
             const jiNum = (item.ji && item.ji !== '0000' && item.ji !== '0') ? parseInt(item.ji, 10) : null;
             const jibunStr = jiNum ? `${bunNum}-${jiNum}` : `${bunNum}`;
-            const parentCity = typeof findParentCity === 'function' ? findParentCity(item.sigungu) : '';
+            const parentCity = typeof findParentCity === 'function' ? findParentCity(item.sigungu, item.sido) : '';
             const queries = [
                 `${item.sido || ''} ${parentCity ? parentCity + ' ' : ''}${item.sigungu || ''} ${item.dong} ${jibunStr}`.trim(),
                 `${item.dong} ${jibunStr}`.trim()
@@ -939,10 +939,15 @@ const KNOWN_DISTRICT_DONGS = {
     '화성시': ['우정읍', '향남읍', '남양읍', '마도면', '송산면', '서신면', '팔탄면', '장안면', '양감면', '새솔동', '행정리', '상신리', '하길리', '남양리', '북양리', '조암리', '봉담읍', '매송면', '비봉면', '정남면', '기안동', '배양동', '동화리', '와우리', '수영리', '상리', '내리', '수기리', '진안동', '병점동', '반월동', '기산동', '안녕동', '송산동', '황계동', '반정동', '반송동', '석우동', '청계동', '영천동', '중동', '오산동', '신동', '목동', '산척동', '장지동', '송동', '방교동', '금곡동', '능동', '여울동']
 };
 
-function findParentCity(guName) {
+function findParentCity(guName, sido = '') {
     if (!guName) return '';
     for (const [city, gus] of Object.entries(SUB_DISTRICT_MAP)) {
-        if (gus.includes(guName)) return city;
+        if (gus.includes(guName)) {
+            if (city === '포항시' && (!sido || (!sido.includes('경상북도') && !sido.includes('경북')))) {
+                return '';
+            }
+            return city;
+        }
     }
     return '';
 }
@@ -1222,7 +1227,7 @@ app.post('/api/realestate/collect-master', async (req, res) => {
             }
             if (!kakaoKey) return { coord: null, bCode: null };
             try {
-                const parentCity = findParentCity(guName);
+                const parentCity = findParentCity(guName, sidoName);
                 const query = `${sidoName} ${parentCity ? parentCity + ' ' : ''}${guName} ${dongName}`;
                 const dRes = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(query)}`, {
                     headers: { 'Authorization': `KakaoAK ${kakaoKey}`, 'KA': 'sdk/1.0.0 os/javascript origin/http://localhost:3000' }
@@ -1280,7 +1285,7 @@ app.post('/api/realestate/collect-master', async (req, res) => {
 
                 // (B) 카카오 로컬 검색(행정복지센터, 주민센터, 초등학교, 아파트)을 통해 해당 구의 동/읍/면 정밀 추출
                 if (kakaoKey) {
-                    const parentCity = findParentCity(gu);
+                    const parentCity = findParentCity(gu, sido);
                     const prefix = `${sido} ${parentCity ? parentCity + ' ' : ''}${gu}`;
                     const queries = [
                         `${prefix} 행정복지센터`,
@@ -1429,7 +1434,7 @@ app.post('/api/realestate/collect-master', async (req, res) => {
 
                                 const key = `${sido}_${gu}_${cleanName}`;
                                 const buildYear = (useAprDay && useAprDay.length >= 4) ? useAprDay.substring(0, 4) : ((pmsDay && pmsDay.length >= 4) ? pmsDay.substring(0, 4) : '');
-                                const parentCity = findParentCity(gu);
+                                const parentCity = findParentCity(gu, sido);
                                 const fullAddr = (newPlatPlc || platPlc || `${sido} ${parentCity ? parentCity + ' ' : ''}${gu} ${dong}`).trim();
 
                                 if (!estateMap.has(key)) {
@@ -1732,7 +1737,7 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                         // [3단계] 지번 주소(동 + 번지) 조합 정밀 검색
                         if (!enrichedCoord && item.dong && item.bun && item.bun !== '0') {
                             try {
-                                const parentCity = findParentCity(item.sigungu);
+                                const parentCity = findParentCity(item.sigungu, item.sido);
                                 const jibunQuery = `${item.sido} ${parentCity ? parentCity + ' ' : ''}${item.sigungu} ${item.dong} ${parseInt(item.bun, 10)}${item.ji && item.ji !== '0' ? '-' + parseInt(item.ji, 10) : ''}`;
                                 const jibunRes = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(jibunQuery)}`, {
                                     headers: { 'Authorization': `KakaoAK ${kakaoKey}`, 'KA': 'sdk/1.0.0 os/javascript origin/http://localhost:3000' },
@@ -4345,23 +4350,7 @@ app.get('/api/community', async (req, res) => {
 
 // Helper to build Kakao headers with valid origin matching registered Kakao domain
 function getKakaoHeaders(req, appkey) {
-    let origin = req ? req.headers.origin : null;
-    if (!origin && req && req.headers.referer) {
-        try {
-            const parsed = new URL(req.headers.referer);
-            origin = parsed.origin;
-        } catch (e) {}
-    }
-    if (!origin && req && req.headers.host) {
-        origin = `http://${req.headers.host}`;
-    }
-    if (!origin) {
-        origin = 'http://localhost:3000';
-    }
-    if (origin.includes(':5000')) {
-        origin = origin.replace(':5000', ':3000');
-    }
-    const cleanOrigin = origin.startsWith('http') ? origin : `http://${origin}`;
+    const cleanOrigin = 'http://localhost:3000';
     return {
         'Authorization': `KakaoAK ${appkey}`,
         'KA': `sdk/1.25.3 os/javascript lang/en-US device/Win32 origin/${encodeURIComponent(cleanOrigin)}`
@@ -4517,6 +4506,9 @@ function applyBusinessProfileToMapItem(item, biz, isPremium = false) {
     const categoryStr = subjects.length > 0
         ? `교육,학문 > ${instType} > ${subjects.join('·')}`
         : (item.category_name || `교육,학문 > ${instType}`);
+    const targetSchools = Array.isArray(prof.targetSchools) && prof.targetSchools.length > 0
+        ? prof.targetSchools
+        : (prof.primaryTargetSchool ? [prof.primaryTargetSchool] : []);
 
     return {
         ...item,
@@ -4532,6 +4524,7 @@ function applyBusinessProfileToMapItem(item, biz, isPremium = false) {
         _isPartnerMatched: true,
         _mapVerified: Boolean(prof.mapVerified),
         _isPremium: Boolean(isPremium || prof.isPremium),
+        _targetSchools: targetSchools,
         _partnerProfile: {
             ...prof,
             businessId: biz.id,
@@ -4541,6 +4534,8 @@ function applyBusinessProfileToMapItem(item, biz, isPremium = false) {
             addressDetail: detailAddr,
             institutionType: instType,
             subjects,
+            targetSchools,
+            primaryTargetSchool: targetSchools[0] || '',
             isPremium: Boolean(isPremium || prof.isPremium)
         }
     };
@@ -6642,6 +6637,83 @@ app.post('/api/business/register', async (req, res) => {
     }
 });
 
+// 3-1-B. 파트너센터 학원/부동산 주소 -> 정밀 위경도 좌표 변환 API (도메인 제약 무관 서버사이드 다단계 지오코딩)
+app.get('/api/business/geocode', async (req, res) => {
+    try {
+        const rawAddr = String(req.query.address || '').trim();
+        const rawName = String(req.query.name || '').trim();
+        if (!rawAddr) {
+            return res.status(400).json({ success: false, error: '주소가 필요합니다.' });
+        }
+
+        const config = await readConfig();
+        const appkey = config.kakao_app_key || 'a1395655b7d4904b57ff20a90998c001';
+        const headers = getKakaoHeaders(req, appkey);
+
+        const cleanAddr = rawAddr.replace(/\s*\([^)]*\)/g, '').trim();
+        const strippedAddr = cleanAddr
+            .replace(/\s+(지하\s*)?\d+\s*[층호동].*$/i, '')
+            .replace(/\s+[가-힣A-Za-z0-9]+(빌딩|타워|상가|프라자|플라자|센터|아파트|오피스텔|빌라).*$/i, '')
+            .trim();
+        const roadMatch = cleanAddr.match(/^([가-힣]+(?:특별시|광역시|특별자치시|도|특별자치도)?\s+[가-힣]+(?:시|군|구)(?:\s+[가-힣]+구)?\s+[가-힣0-9]+(?:로|길|동|읍|면|리)\s+\d+(?:-\d+)?)/);
+        const coreAddr = roadMatch ? roadMatch[1].trim() : '';
+
+        const addrCandidates = [...new Set([cleanAddr, strippedAddr, coreAddr, rawAddr].filter(Boolean))];
+
+        for (const q of addrCandidates) {
+            const addrUrl = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(q)}`;
+            const addrData = await httpsGet(addrUrl, headers).catch(() => ({ documents: [] }));
+            if (addrData && Array.isArray(addrData.documents) && addrData.documents.length > 0) {
+                const doc = addrData.documents[0];
+                const lat = parseFloat(doc.y);
+                const lng = parseFloat(doc.x);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    return res.json({
+                        success: true,
+                        lat,
+                        lng,
+                        address_name: doc.address_name || q,
+                        road_address_name: (doc.road_address && doc.road_address.address_name) || '',
+                        fullData: doc
+                    });
+                }
+            }
+        }
+
+        const kwCandidates = [...new Set([
+            cleanAddr,
+            strippedAddr,
+            rawAddr,
+            rawName ? `${cleanAddr} ${rawName}`.trim() : ''
+        ].filter(Boolean))];
+
+        for (const kw of kwCandidates) {
+            const kwUrl = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(kw)}&size=5`;
+            const kwData = await httpsGet(kwUrl, headers).catch(() => ({ documents: [] }));
+            if (kwData && Array.isArray(kwData.documents) && kwData.documents.length > 0) {
+                const doc = kwData.documents[0];
+                const lat = parseFloat(doc.y);
+                const lng = parseFloat(doc.x);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    return res.json({
+                        success: true,
+                        lat,
+                        lng,
+                        address_name: doc.address_name || doc.road_address_name || kw,
+                        road_address_name: doc.road_address_name || '',
+                        fullData: doc
+                    });
+                }
+            }
+        }
+
+        return res.json({ success: false, error: '좌표를 찾지 못했습니다.' });
+    } catch (err) {
+        console.error('Business Geocode Error:', err);
+        return res.status(500).json({ success: false, error: '주소 좌표 변환 중 오류가 발생했습니다.' });
+    }
+});
+
 // 3-2. 학원 상세 프로필 등록 시 실제 지도 노출 학원 일치 여부 검증 및 지도 노출 프로필 조회 (TC-027)
 app.get('/api/business/verify-map-academy', async (req, res) => {
     try {
@@ -6962,6 +7034,77 @@ function getMergedProducts(subData) {
         }
     });
     return list;
+}
+
+// ============================================================================
+// 프리미엄 학원 타깃 학교 1곳 선택 + 학교당 최대 3구좌 제한 + 확장 옵션 헬퍼
+// ============================================================================
+const MAX_PREMIUM_SLOTS_PER_SCHOOL = 3;
+const EXTRA_SCHOOL_SLOT_PRICE = 29000;
+
+function normalizeSchoolSlotName(name) {
+    return String(name || '').trim();
+}
+
+function getBusinessTargetSchools(biz, allSchools = []) {
+    if (!biz) return [];
+    const prof = biz.academyProfile || {};
+    if (Array.isArray(prof.targetSchools) && prof.targetSchools.length > 0) {
+        return [...new Set(prof.targetSchools.map(normalizeSchoolSlotName).filter(Boolean))];
+    }
+    if (prof.primaryTargetSchool && normalizeSchoolSlotName(prof.primaryTargetSchool)) {
+        return [normalizeSchoolSlotName(prof.primaryTargetSchool)];
+    }
+    // 명시적 지정이 없는 기존 사업자는 학원 좌표 기준 가장 가까운 학교 1곳만 자동 매핑
+    const bLat = parseFloat(prof.lat || biz.lat);
+    const bLng = parseFloat(prof.lng || biz.lng);
+    if (!isNaN(bLat) && !isNaN(bLng) && Array.isArray(allSchools) && allSchools.length > 0) {
+        let closestName = '';
+        let minDist = Infinity;
+        for (const sch of allSchools) {
+            if (!sch.lat || !sch.lng || !sch.school_name) continue;
+            const d = calcDistanceMeters(bLat, bLng, parseFloat(sch.lat), parseFloat(sch.lng));
+            if (d < minDist) {
+                minDist = d;
+                closestName = normalizeSchoolSlotName(sch.school_name);
+            }
+        }
+        if (closestName && minDist <= 3000) {
+            return [closestName];
+        }
+    }
+    return [];
+}
+
+function computeSchoolSlotsSummary(businesses, subData, allSchools = [], excludeBizId = null) {
+    const now = new Date();
+    const activeSubBizIds = new Set(
+        ((subData && subData.subscriptions) || [])
+            .filter(s => s.status === 'active' && new Date(s.endDate) > now)
+            .map(s => s.businessId)
+    );
+
+    const totalSlotMap = {};
+    const otherSlotMap = {};
+
+    (businesses || []).forEach(b => {
+        if (!b || b.status !== 'approved' || b.type === 'real_estate') return;
+        const prof = b.academyProfile || {};
+        const isPrem = activeSubBizIds.has(b.id) || Boolean(prof.isPremium);
+        if (!isPrem) return;
+
+        const tSchools = getBusinessTargetSchools(b, allSchools);
+        tSchools.forEach(sName => {
+            const key = normalizeSchoolSlotName(sName);
+            if (!key) return;
+            totalSlotMap[key] = (totalSlotMap[key] || 0) + 1;
+            if (!excludeBizId || b.id !== excludeBizId) {
+                otherSlotMap[key] = (otherSlotMap[key] || 0) + 1;
+            }
+        });
+    });
+
+    return { totalSlotMap, otherSlotMap, activeSubBizIds };
 }
 
 // 6. 구독 상품 목록 (P-05)
@@ -7380,6 +7523,28 @@ app.get('/api/business/market-analysis', async (req, res) => {
             aiInsight += `학원 공급 대비 배후 잠재 학생 수가 매우 풍부한 최우량 교육 상권입니다. 프리미엄 스폰서 광고 선점을 통해 신학기 정원 조기 마감 및 높은 문의 전환을 달성할 수 있습니다.`;
         }
 
+        // 학교별 프리미엄 구좌(최대 3구좌) 현황 및 내 타깃 학교 정보 병합
+        const businessesAll = await syncBusinessesFromDB();
+        const subDataAll = await syncSubscriptionsFromDB();
+        const { totalSlotMap, otherSlotMap } = computeSchoolSlotsSummary(businessesAll, subDataAll, allSchools, biz ? biz.id : null);
+        const myTargetSchools = biz ? getBusinessTargetSchools(biz, allSchools) : (nearbySchools[0] ? [nearbySchools[0].name] : []);
+
+        const enrichedNearbySchools = nearbySchools.slice(0, 20).map(s => {
+            const usedTotal = Math.min(MAX_PREMIUM_SLOTS_PER_SCHOOL, totalSlotMap[s.name] || 0);
+            const usedOthers = Math.min(MAX_PREMIUM_SLOTS_PER_SCHOOL, otherSlotMap[s.name] || 0);
+            const isSelected = myTargetSchools.includes(s.name);
+            return {
+                ...s,
+                usedSlots: usedTotal,
+                usedByOthers: usedOthers,
+                maxSlots: MAX_PREMIUM_SLOTS_PER_SCHOOL,
+                remainingSlots: Math.max(0, MAX_PREMIUM_SLOTS_PER_SCHOOL - usedTotal),
+                remainingForMe: Math.max(0, MAX_PREMIUM_SLOTS_PER_SCHOOL - usedOthers),
+                isFull: usedOthers >= MAX_PREMIUM_SLOTS_PER_SCHOOL && !isSelected,
+                isSelectedByMe: isSelected
+            };
+        });
+
         return res.json({
             business: biz ? {
                 id: biz.id,
@@ -7391,10 +7556,25 @@ app.get('/api/business/market-analysis', async (req, res) => {
                 status: biz.status,
                 lat: lat,
                 lng: lng,
-                academyProfile: biz.academyProfile || null
+                targetSchools: myTargetSchools,
+                primaryTargetSchool: myTargetSchools[0] || '',
+                extraSchoolSlots: Math.max(0, myTargetSchools.length - 1),
+                academyProfile: biz.academyProfile ? {
+                    ...biz.academyProfile,
+                    targetSchools: myTargetSchools,
+                    primaryTargetSchool: myTargetSchools[0] || '',
+                    extraSchoolSlots: Math.max(0, myTargetSchools.length - 1)
+                } : null
             } : null,
             center: { lat, lng },
             radius,
+            slotPolicy: {
+                maxSlotsPerSchool: MAX_PREMIUM_SLOTS_PER_SCHOOL,
+                baseIncludedSchools: 1,
+                extraSlotPrice: EXTRA_SCHOOL_SLOT_PRICE,
+                targetSchools: myTargetSchools,
+                primaryTargetSchool: myTargetSchools[0] || ''
+            },
             summary: {
                 totalSchools: nearbySchools.length,
                 elemCount,
@@ -7420,7 +7600,7 @@ app.get('/api/business/market-analysis', async (req, res) => {
                 competitionLevel: marketGrade === 'C' ? '경쟁 강도 높음' : (marketGrade === 'B' ? '경쟁 보통' : '경쟁 여유')
             },
             subjectBreakdown,
-            nearbySchools: nearbySchools.slice(0, 20),
+            nearbySchools: enrichedNearbySchools,
             nearbyAcademies: nearbyAcademies.slice(0, 20)
         });
     } catch (err) {
@@ -7429,15 +7609,180 @@ app.get('/api/business/market-analysis', async (req, res) => {
     }
 });
 
+// 6-3. 학원 반경 내 학교별 프리미엄 구좌(최대 3구좌) 현황 조회 API
+app.get('/api/academies/school-slots', async (req, res) => {
+    try {
+        const { businessId } = req.query;
+        const radius = parseInt(req.query.radius, 10) || 2000;
+        const businesses = await syncBusinessesFromDB();
+        const subData = await syncSubscriptionsFromDB();
+        const allSchools = readJsonFileSafe(SCHOOLS_PATH, []);
+
+        const biz = businessId ? businesses.find(b => b.id === businessId) : null;
+        const { totalSlotMap, otherSlotMap } = computeSchoolSlotsSummary(businesses, subData, allSchools, businessId || null);
+        const myTargetSchools = biz ? getBusinessTargetSchools(biz, allSchools) : [];
+
+        let lat = biz ? parseFloat(biz.academyProfile?.lat || biz.lat) : NaN;
+        let lng = biz ? parseFloat(biz.academyProfile?.lng || biz.lng) : NaN;
+        if (isNaN(lat) || isNaN(lng)) {
+            lat = 37.4981;
+            lng = 127.0583;
+        }
+
+        const schoolsWithDist = [];
+        allSchools.forEach(sch => {
+            if (!sch.lat || !sch.lng || !sch.school_name) return;
+            const dist = calcDistanceMeters(lat, lng, parseFloat(sch.lat), parseFloat(sch.lng));
+            if (dist <= radius) {
+                const sName = normalizeSchoolSlotName(sch.school_name);
+                const usedTotal = Math.min(MAX_PREMIUM_SLOTS_PER_SCHOOL, totalSlotMap[sName] || 0);
+                const usedOthers = Math.min(MAX_PREMIUM_SLOTS_PER_SCHOOL, otherSlotMap[sName] || 0);
+                const isSelected = myTargetSchools.includes(sName);
+                schoolsWithDist.push({
+                    id: sch.school_id,
+                    name: sName,
+                    type: sch.school_type,
+                    address: sch.address,
+                    studentCount: parseInt(sch.student_count, 10) || 0,
+                    distance: dist,
+                    walkMin: Math.max(1, Math.round(dist / 70)),
+                    usedSlots: usedTotal,
+                    usedByOthers: usedOthers,
+                    maxSlots: MAX_PREMIUM_SLOTS_PER_SCHOOL,
+                    remainingSlots: Math.max(0, MAX_PREMIUM_SLOTS_PER_SCHOOL - usedTotal),
+                    remainingForMe: Math.max(0, MAX_PREMIUM_SLOTS_PER_SCHOOL - usedOthers),
+                    isFull: usedOthers >= MAX_PREMIUM_SLOTS_PER_SCHOOL && !isSelected,
+                    isSelectedByMe: isSelected
+                });
+            }
+        });
+
+        schoolsWithDist.sort((a, b) => a.distance - b.distance);
+
+        return res.json({
+            success: true,
+            maxSlotsPerSchool: MAX_PREMIUM_SLOTS_PER_SCHOOL,
+            baseIncludedSchools: 1,
+            extraSlotPrice: EXTRA_SCHOOL_SLOT_PRICE,
+            targetSchools: myTargetSchools,
+            primaryTargetSchool: myTargetSchools[0] || (schoolsWithDist[0]?.name || ''),
+            schools: schoolsWithDist.slice(0, 20)
+        });
+    } catch (err) {
+        console.error('School Slots API Error:', err);
+        return res.status(500).json({ error: '학교별 구좌 현황을 불러오지 못했습니다.' });
+    }
+});
+
+// 6-4. 타깃 학교(기본 1곳 + 확장 옵션) 설정 및 구좌 변경 API
+app.put('/api/business/target-schools', async (req, res) => {
+    try {
+        const { businessId, targetSchools } = req.body;
+        if (!businessId || !Array.isArray(targetSchools) || targetSchools.length === 0) {
+            return res.status(400).json({ error: '타깃 학교를 최소 1곳 이상 선택해 주세요.' });
+        }
+
+        const cleanSchools = [...new Set(targetSchools.map(normalizeSchoolSlotName).filter(Boolean))];
+        if (cleanSchools.length === 0) {
+            return res.status(400).json({ error: '유효한 타깃 학교를 선택해 주세요.' });
+        }
+
+        const businesses = await syncBusinessesFromDB();
+        const subData = await syncSubscriptionsFromDB();
+        const allSchools = readJsonFileSafe(SCHOOLS_PATH, []);
+
+        const bizIdx = businesses.findIndex(b => b.id === businessId);
+        if (bizIdx === -1) {
+            return res.status(404).json({ error: '사업자 정보를 찾을 수 없습니다.' });
+        }
+
+        const { otherSlotMap } = computeSchoolSlotsSummary(businesses, subData, allSchools, businessId);
+        for (const sName of cleanSchools) {
+            const usedByOthers = otherSlotMap[sName] || 0;
+            if (usedByOthers >= MAX_PREMIUM_SLOTS_PER_SCHOOL) {
+                return res.status(400).json({
+                    error: `선택하신 [${sName}]는 프리미엄 광고 구좌(최대 ${MAX_PREMIUM_SLOTS_PER_SCHOOL}구좌)가 모두 마감되었습니다. 다른 학교를 선택해 주세요.`
+                });
+            }
+        }
+
+        const extraSchoolCount = Math.max(0, cleanSchools.length - 1);
+        const activeSub = (subData.subscriptions || []).find(s => s.businessId === businessId && s.status === 'active');
+        const prevHistory = Array.isArray(businesses[bizIdx].academyProfile?.paymentHistory)
+            ? [...businesses[bizIdx].academyProfile.paymentHistory]
+            : [];
+
+        if (activeSub) {
+            const allProducts = getMergedProducts(subData);
+            const prod = allProducts.find(p => p.id === activeSub.productId);
+            const basePrice = prod ? prod.price : (activeSub.baseAmount || activeSub.amount || 0);
+            const extraAmt = extraSchoolCount * EXTRA_SCHOOL_SLOT_PRICE;
+            const newTotal = basePrice + extraAmt;
+            const baseProdName = prod ? prod.name : String(activeSub.productName || '프리미엄 멤버십').replace(/\s*\(\+학교확장.*$/, '');
+            activeSub.productName = extraSchoolCount > 0 ? `${baseProdName} (+학교확장 ${extraSchoolCount}구좌)` : baseProdName;
+            activeSub.amount = newTotal;
+            activeSub.baseAmount = basePrice;
+            activeSub.extraAmount = extraAmt;
+            activeSub.targetSchools = cleanSchools;
+            activeSub.extraSchoolSlots = extraSchoolCount;
+            writeJsonFileSafe(SUBSCRIPTIONS_PATH, subData);
+            await saveSubscriptionToDB(activeSub);
+
+            prevHistory.unshift({
+                id: `chg_${Date.now()}`,
+                subscriptionId: activeSub.id,
+                date: new Date().toISOString(),
+                category: extraSchoolCount > 0 ? '타깃 학교 / 확장구좌 설정' : '타깃 학교 변경',
+                productId: activeSub.productId,
+                productName: activeSub.productName,
+                baseAmount: basePrice,
+                extraAmount: extraAmt,
+                amount: newTotal,
+                targetSchools: cleanSchools,
+                extraSchoolSlots: extraSchoolCount,
+                paymentMethod: activeSub.paymentMethod || '카드 자동결제',
+                status: 'paid',
+                startDate: activeSub.startDate,
+                endDate: activeSub.endDate
+            });
+        }
+
+        businesses[bizIdx].academyProfile = {
+            ...(businesses[bizIdx].academyProfile || {}),
+            targetSchools: cleanSchools,
+            primaryTargetSchool: cleanSchools[0],
+            extraSchoolSlots: extraSchoolCount,
+            paymentHistory: prevHistory.slice(0, 100),
+            updatedAt: new Date().toISOString()
+        };
+
+        writeJsonFileSafe(BUSINESSES_PATH, businesses);
+        await saveBusinessToDB(businesses[bizIdx]);
+
+        return res.json({
+            success: true,
+            targetSchools: cleanSchools,
+            primaryTargetSchool: cleanSchools[0],
+            extraSchoolSlots: extraSchoolCount,
+            message: extraSchoolCount > 0
+                ? `타깃 학교 1곳(${cleanSchools[0]}) + 확장 옵션 ${extraSchoolCount}곳 설정이 저장되었습니다.`
+                : `타깃 학교 [${cleanSchools[0]}] 설정이 저장되었습니다.`
+        });
+    } catch (err) {
+        console.error('Update Target Schools Error:', err);
+        return res.status(500).json({ error: '타깃 학교 저장 중 오류가 발생했습니다.' });
+    }
+});
+
 // 7. 프리미엄 구독 결제 신청 및 서버 검증 (P-06)
 app.post('/api/subscription/checkout', async (req, res) => {
     try {
-        const { businessId, productId = 'prod_academy_premium', paymentMethod = '카드 자동결제' } = req.body;
+        const { businessId, productId = 'prod_academy_premium', paymentMethod = '카드 자동결제', targetSchools } = req.body;
         if (!businessId) {
             return res.status(400).json({ error: 'businessId가 누락되었습니다.' });
         }
 
-        const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+        const businesses = await syncBusinessesFromDB();
         const biz = businesses.find(b => b.id === businessId);
         if (!biz) {
             return res.status(404).json({ error: '사업자 정보를 찾을 수 없습니다.' });
@@ -7448,13 +7793,45 @@ app.post('/api/subscription/checkout', async (req, res) => {
             return res.status(403).json({ error: '관리자 승인이 완료된 사업자만 프리미엄 상품을 신청할 수 있습니다.' });
         }
 
-        const subData = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [], subscriptions: [] });
+        const subData = await syncSubscriptionsFromDB();
         const allProducts = getMergedProducts(subData);
         const product = allProducts.find(p => p.id === productId);
         if (!product) {
             return res.status(400).json({ error: '존재하지 않는 상품입니다.' });
         }
 
+        const allSchools = readJsonFileSafe(SCHOOLS_PATH, []);
+        let selectedSchools = [];
+        let extraSchoolCount = 0;
+        let extraAmount = 0;
+
+        if (product.type === 'academy') {
+            if (Array.isArray(targetSchools) && targetSchools.length > 0) {
+                selectedSchools = [...new Set(targetSchools.map(normalizeSchoolSlotName).filter(Boolean))];
+            } else {
+                selectedSchools = getBusinessTargetSchools(biz, allSchools);
+            }
+
+            if (selectedSchools.length === 0) {
+                return res.status(400).json({ error: '노출할 타깃 학교를 최소 1곳 선택해 주세요.' });
+            }
+
+            // 학교당 최대 3구좌 마감 여부 검증
+            const { otherSlotMap } = computeSchoolSlotsSummary(businesses, subData, allSchools, businessId);
+            for (const sName of selectedSchools) {
+                const usedByOthers = otherSlotMap[sName] || 0;
+                if (usedByOthers >= MAX_PREMIUM_SLOTS_PER_SCHOOL) {
+                    return res.status(400).json({
+                        error: `선택하신 [${sName}]는 프리미엄 광고 구좌(최대 ${MAX_PREMIUM_SLOTS_PER_SCHOOL}구좌)가 모두 마감되었습니다. 다른 학교를 선택해 주세요.`
+                    });
+                }
+            }
+
+            extraSchoolCount = Math.max(0, selectedSchools.length - 1);
+            extraAmount = extraSchoolCount * EXTRA_SCHOOL_SLOT_PRICE;
+        }
+
+        const totalAmount = product.price + extraAmount;
         const now = new Date();
         const endDate = new Date(now);
         endDate.setDate(endDate.getDate() + 30); // 30일 구독 기간
@@ -7464,8 +7841,12 @@ app.post('/api/subscription/checkout', async (req, res) => {
             id: subId,
             businessId,
             productId,
-            productName: product.name,
-            amount: product.price,
+            productName: extraSchoolCount > 0 ? `${product.name} (+학교확장 ${extraSchoolCount}구좌)` : product.name,
+            amount: totalAmount,
+            baseAmount: product.price,
+            extraAmount,
+            targetSchools: selectedSchools,
+            extraSchoolSlots: extraSchoolCount,
             status: 'active',
             startDate: now.toISOString(),
             endDate: endDate.toISOString(),
@@ -7475,15 +7856,66 @@ app.post('/api/subscription/checkout', async (req, res) => {
                 {
                     date: now.toISOString(),
                     action: 'subscribe',
-                    amount: product.price,
+                    amount: totalAmount,
+                    targetSchools: selectedSchools,
                     status: 'success'
                 }
             ]
         };
 
-        // 기존 구독 만료 처리 후 신규 추가
-        subData.subscriptions = subData.subscriptions.filter(s => s.businessId !== businessId);
-        subData.subscriptions.push(newSub);
+        const paymentEntry = {
+            id: subId,
+            subscriptionId: subId,
+            date: now.toISOString(),
+            category: '멤버십 정기구독',
+            productId,
+            productName: newSub.productName,
+            baseAmount: product.price,
+            extraAmount,
+            amount: totalAmount,
+            targetSchools: selectedSchools,
+            extraSchoolSlots: extraSchoolCount,
+            paymentMethod,
+            status: 'paid',
+            startDate: now.toISOString(),
+            endDate: endDate.toISOString()
+        };
+
+        // 학원/부동산 프로필에 결제 이력 및 타깃 학교·프리미엄 상태 동기화
+        if (product.type === 'academy') {
+            const prevHistory = Array.isArray(biz.academyProfile?.paymentHistory) ? [...biz.academyProfile.paymentHistory] : [];
+            prevHistory.unshift(paymentEntry);
+            biz.academyProfile = {
+                ...(biz.academyProfile || {}),
+                isPremium: true,
+                membershipPlan: productId === 'prod_academy_team' ? 'team' : (productId === 'prod_academy_pro' || productId === 'prod_academy_plus' ? 'pro' : 'basic'),
+                membershipPlanName: newSub.productName,
+                targetSchools: selectedSchools,
+                primaryTargetSchool: selectedSchools[0] || '',
+                extraSchoolSlots: extraSchoolCount,
+                paymentHistory: prevHistory.slice(0, 100)
+            };
+        } else {
+            const prevHistory = Array.isArray(biz.realEstateProfile?.paymentHistory) ? [...biz.realEstateProfile.paymentHistory] : [];
+            prevHistory.unshift(paymentEntry);
+            biz.realEstateProfile = {
+                ...(biz.realEstateProfile || {}),
+                isPremium: true,
+                membershipPlanName: newSub.productName,
+                paymentHistory: prevHistory.slice(0, 100)
+            };
+        }
+        writeJsonFileSafe(BUSINESSES_PATH, businesses);
+        await saveBusinessToDB(biz);
+
+        // 기존 활성 구독은 이력 보존을 위해 삭제하지 않고 'expired'(교체 만료) 상태로 변경 후 신규 구독 추가
+        const prevActives = (subData.subscriptions || []).filter(s => s.businessId === businessId && s.status === 'active');
+        for (const oldSub of prevActives) {
+            oldSub.status = 'expired';
+            await saveSubscriptionToDB(oldSub);
+        }
+        subData.subscriptions = subData.subscriptions || [];
+        subData.subscriptions.unshift(newSub);
         writeJsonFileSafe(SUBSCRIPTIONS_PATH, subData);
 
         // Supabase DB에 실시간 구독 정보 저장
@@ -7495,7 +7927,7 @@ app.post('/api/subscription/checkout', async (req, res) => {
             id: `evt_${Date.now()}`,
             businessId,
             eventType: 'subscription_started',
-            metadata: { productId, amount: product.price },
+            metadata: { productId, amount: totalAmount, targetSchools: selectedSchools, extraSchoolSlots: extraSchoolCount },
             createdAt: now.toISOString()
         });
         writeJsonFileSafe(ANALYTICS_PATH, events.slice(-5000));
@@ -7503,7 +7935,10 @@ app.post('/api/subscription/checkout', async (req, res) => {
         return res.json({
             success: true,
             subscription: newSub,
-            message: `${product.name} (월 ${product.price.toLocaleString()}원) 결제 및 구독 활성화가 완료되었습니다!`
+            paymentEntry,
+            targetSchools: selectedSchools,
+            extraSchoolSlots: extraSchoolCount,
+            message: `${newSub.productName} (월 ${totalAmount.toLocaleString()}원) 결제 및 타깃 학교(${selectedSchools.join(', ')}) 프리미엄 구좌 활성화가 완료되었습니다!`
         });
     } catch (err) {
         console.error('Checkout Error:', err);
@@ -7511,17 +7946,130 @@ app.post('/api/subscription/checkout', async (req, res) => {
     }
 });
 
+// 7-1. 파트너 결제 이력 조회 API
+app.get('/api/business/payment-history', async (req, res) => {
+    try {
+        const { businessId } = req.query;
+        if (!businessId) {
+            return res.status(400).json({ error: 'businessId가 필요합니다.' });
+        }
+
+        const businesses = await syncBusinessesFromDB();
+        const subData = await syncSubscriptionsFromDB();
+        const allSchools = readJsonFileSafe(SCHOOLS_PATH, []);
+
+        const biz = businesses.find(b => b.id === businessId);
+        if (!biz) {
+            return res.status(404).json({ error: '사업자 정보를 찾을 수 없습니다.' });
+        }
+
+        const prof = (biz.type === 'real_estate' ? biz.realEstateProfile : biz.academyProfile) || {};
+        const myTargetSchools = biz.type === 'real_estate' ? [] : getBusinessTargetSchools(biz, allSchools);
+        const extraSlots = Math.max(0, myTargetSchools.length - 1);
+
+        // 1) 사업자 프로필 내 저장된 상세 결제 이력
+        const profHistory = Array.isArray(prof.paymentHistory) ? [...prof.paymentHistory] : [];
+        const historyMap = new Map();
+        profHistory.forEach(item => {
+            if (item && item.id) {
+                historyMap.set(item.id, item);
+            }
+        });
+
+        // 2) 구독 테이블(partner_subscriptions) 내역 병합
+        const bizSubs = (subData.subscriptions || []).filter(s => s.businessId === businessId);
+        bizSubs.forEach(s => {
+            if (!s || !s.id) return;
+            if (!historyMap.has(s.id)) {
+                const sTargets = Array.isArray(s.targetSchools) && s.targetSchools.length > 0 ? s.targetSchools : myTargetSchools;
+                const sExtra = typeof s.extraSchoolSlots === 'number' ? s.extraSchoolSlots : Math.max(0, sTargets.length - 1);
+                const sExtraAmt = typeof s.extraAmount === 'number' ? s.extraAmount : (sExtra * EXTRA_SCHOOL_SLOT_PRICE);
+                const sBaseAmt = typeof s.baseAmount === 'number' ? s.baseAmount : Math.max(0, (s.amount || 0) - sExtraAmt);
+                historyMap.set(s.id, {
+                    id: s.id,
+                    subscriptionId: s.id,
+                    date: s.lastPaymentDate || s.startDate || s.createdAt || new Date().toISOString(),
+                    category: '멤버십 정기구독',
+                    productId: s.productId,
+                    productName: s.productName || '프리미엄 멤버십',
+                    baseAmount: sBaseAmt,
+                    extraAmount: sExtraAmt,
+                    amount: Number(s.amount) || 0,
+                    targetSchools: sTargets,
+                    extraSchoolSlots: sExtra,
+                    paymentMethod: s.paymentMethod || '카드 자동결제',
+                    status: s.status === 'cancelled' ? 'cancelled' : (s.status === 'expired' ? 'expired' : 'paid'),
+                    startDate: s.startDate,
+                    endDate: s.endDate
+                });
+            } else {
+                const existing = historyMap.get(s.id);
+                if (s.status === 'cancelled') existing.status = 'cancelled';
+            }
+        });
+
+        // 3) 단건 분석 보고서 구매 내역 병합
+        const reportOrdersPath = path.join(DATA_DIR, 'report_orders.json');
+        const reportOrders = readJsonFileSafe(reportOrdersPath, []).filter(r => r && r.businessId === businessId);
+        reportOrders.forEach(ro => {
+            if (!ro || !ro.id) return;
+            if (!historyMap.has(ro.id)) {
+                historyMap.set(ro.id, {
+                    id: ro.id,
+                    date: ro.createdAt || new Date().toISOString(),
+                    category: '전문 분석 보고서',
+                    productId: ro.reportId,
+                    productName: ro.reportName || '상권 분석 보고서',
+                    baseAmount: Number(ro.price) || 0,
+                    extraAmount: 0,
+                    amount: Number(ro.price) || 0,
+                    targetSchools: [],
+                    extraSchoolSlots: 0,
+                    paymentMethod: '카드 결제',
+                    status: 'paid',
+                    startDate: ro.createdAt,
+                    endDate: null
+                });
+            }
+        });
+
+        const historyList = Array.from(historyMap.values()).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+        const activeSub = bizSubs.find(s => s.status === 'active') || null;
+        const totalPaidAmount = historyList.reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
+
+        return res.json({
+            success: true,
+            currentSubscription: activeSub,
+            summary: {
+                totalCount: historyList.length,
+                totalPaidAmount,
+                activePlanName: activeSub ? activeSub.productName : '학원 FREE (무료 체험)',
+                activeStatus: activeSub ? activeSub.status : 'free',
+                endDate: activeSub ? activeSub.endDate : null,
+                targetSchools: myTargetSchools,
+                extraSchoolSlots: extraSlots
+            },
+            history: historyList
+        });
+    } catch (err) {
+        console.error('Payment History API Error:', err);
+        return res.status(500).json({ error: '결제 이력을 불러오지 못했습니다.' });
+    }
+});
+
 // 8. 구독 해지 요청 (P-06)
 app.post('/api/subscription/cancel', async (req, res) => {
     try {
         const { businessId, subscriptionId } = req.body;
-        const subData = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [], subscriptions: [] });
-        const target = subData.subscriptions.find(s => s.businessId === businessId && s.status === 'active');
+        const businesses = await syncBusinessesFromDB();
+        const subData = await syncSubscriptionsFromDB();
+        const target = (subData.subscriptions || []).find(s => s.businessId === businessId && s.status === 'active');
         if (!target) {
             return res.status(404).json({ error: '활성화된 구독을 찾을 수 없습니다.' });
         }
 
         target.status = 'cancelled';
+        target.history = Array.isArray(target.history) ? target.history : [];
         target.history.push({
             date: new Date().toISOString(),
             action: 'cancel',
@@ -7529,6 +8077,19 @@ app.post('/api/subscription/cancel', async (req, res) => {
             status: 'success'
         });
         writeJsonFileSafe(SUBSCRIPTIONS_PATH, subData);
+
+        // 사업자 프로필 내 paymentHistory 상태도 동기화
+        const biz = businesses.find(b => b.id === businessId);
+        if (biz) {
+            const profKey = biz.type === 'real_estate' ? 'realEstateProfile' : 'academyProfile';
+            if (biz[profKey] && Array.isArray(biz[profKey].paymentHistory)) {
+                biz[profKey].paymentHistory = biz[profKey].paymentHistory.map(h =>
+                    (h.id === target.id || h.subscriptionId === target.id) ? { ...h, status: 'cancelled' } : h
+                );
+                writeJsonFileSafe(BUSINESSES_PATH, businesses);
+                await saveBusinessToDB(biz);
+            }
+        }
 
         // Supabase DB에 실시간 구독 해지 반영
         await cancelSubscriptionInDB(target.id);
@@ -7844,6 +8405,7 @@ app.get('/api/academies/premium', async (req, res) => {
     try {
         const businesses = await syncBusinessesFromDB();
         const subData = await syncSubscriptionsFromDB();
+        const allSchools = readJsonFileSafe(SCHOOLS_PATH, []);
 
         const now = new Date();
         const activeSubBizIds = new Set(
@@ -7853,9 +8415,10 @@ app.get('/api/academies/premium', async (req, res) => {
         );
 
         const premiumAcademies = businesses
-            .filter(b => b.status === 'approved' && b.type !== 'real_estate' && activeSubBizIds.has(b.id))
+            .filter(b => b.status === 'approved' && b.type !== 'real_estate' && (activeSubBizIds.has(b.id) || Boolean(b.academyProfile?.isPremium)))
             .map(b => {
                 const prof = b.academyProfile || {};
+                const targetSchools = getBusinessTargetSchools(b, allSchools);
                 return {
                     businessId: b.id,
                     name: prof.targetAcademyName || b.name,
@@ -7863,7 +8426,15 @@ app.get('/api/academies/premium', async (req, res) => {
                     isPremium: true,
                     mapVerified: Boolean(prof.mapVerified),
                     badgeText: '광고',
-                    profile: prof,
+                    targetSchools,
+                    primaryTargetSchool: targetSchools[0] || '',
+                    extraSchoolSlots: Math.max(0, targetSchools.length - 1),
+                    maxSlotsPerSchool: MAX_PREMIUM_SLOTS_PER_SCHOOL,
+                    profile: {
+                        ...prof,
+                        targetSchools,
+                        primaryTargetSchool: targetSchools[0] || ''
+                    },
                     phone: prof.contactPhone || b.phone,
                     address: prof.address || b.address,
                     addressDetail: prof.addressDetail || b.addressDetail || '',
@@ -7884,6 +8455,7 @@ app.get('/api/academies/partners', async (req, res) => {
     try {
         const businesses = await syncBusinessesFromDB();
         const subData = await syncSubscriptionsFromDB();
+        const allSchools = readJsonFileSafe(SCHOOLS_PATH, []);
 
         const now = new Date();
         const activeSubBizIds = new Set(
@@ -7897,6 +8469,7 @@ app.get('/api/academies/partners', async (req, res) => {
             .map(b => {
                 const prof = b.academyProfile || {};
                 const isPrem = activeSubBizIds.has(b.id) || Boolean(prof.isPremium);
+                const targetSchools = isPrem ? getBusinessTargetSchools(b, allSchools) : (Array.isArray(prof.targetSchools) ? prof.targetSchools : []);
                 return {
                     businessId: b.id,
                     name: prof.targetAcademyName || b.name,
@@ -7904,7 +8477,15 @@ app.get('/api/academies/partners', async (req, res) => {
                     isPremium: isPrem,
                     mapVerified: Boolean(prof.mapVerified),
                     badgeText: isPrem ? '광고' : '인증학원',
-                    profile: prof,
+                    targetSchools,
+                    primaryTargetSchool: targetSchools[0] || '',
+                    extraSchoolSlots: Math.max(0, targetSchools.length - 1),
+                    maxSlotsPerSchool: MAX_PREMIUM_SLOTS_PER_SCHOOL,
+                    profile: {
+                        ...prof,
+                        targetSchools,
+                        primaryTargetSchool: targetSchools[0] || ''
+                    },
                     phone: prof.contactPhone || b.phone,
                     address: prof.address || b.address,
                     addressDetail: prof.addressDetail || b.addressDetail || '',
@@ -8593,6 +9174,37 @@ app.post('/api/business/upload-image', async (req, res) => {
         const fullDataUrl = `data:${mimeType};base64,${base64Content}`;
         uploadedImagesMemoryCache.set(uniqueFilename, { mimeType, buffer, dataUrl: fullDataUrl });
 
+        // Supabase DB에 에셋 영구 보존 (Vercel 서버리스 콜드스타트 대비)
+        try {
+            fetch(`${SUPABASE_URL}/rest/v1/blog_posts`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'resolution=merge-duplicates'
+                },
+                body: JSON.stringify({
+                    id: `asset_${uniqueFilename}`,
+                    slug: `asset_${uniqueFilename}`,
+                    title: filename || uniqueFilename,
+                    category: '__asset__',
+                    summary: fullDataUrl,
+                    content: mimeType,
+                    thumbnail: `/api/blog/image/${uniqueFilename}`,
+                    images: [{
+                        filename: uniqueFilename,
+                        url: `/api/blog/image/${uniqueFilename}`,
+                        dataUrl: fullDataUrl,
+                        size: buffer.length
+                    }],
+                    is_published: false
+                })
+            }).catch(e => console.warn('[Academy DB Asset Sync Warn]:', e.message));
+        } catch (dbErr) {
+            console.warn('[Academy DB Asset Exception]:', dbErr.message);
+        }
+
         const publicUrl = `/api/blog/image/${uniqueFilename}`;
 
         res.json({
@@ -8705,6 +9317,37 @@ app.post('/api/admin/blog/upload-image', async (req, res) => {
         const fullDataUrl = `data:${mimeType};base64,${base64Content}`;
         uploadedImagesMemoryCache.set(uniqueFilename, { mimeType, buffer, dataUrl: fullDataUrl });
 
+        // Supabase DB에 에셋 영구 보존 (Vercel 서버리스 콜드스타트 대비)
+        try {
+            fetch(`${SUPABASE_URL}/rest/v1/blog_posts`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'resolution=merge-duplicates'
+                },
+                body: JSON.stringify({
+                    id: `asset_${uniqueFilename}`,
+                    slug: `asset_${uniqueFilename}`,
+                    title: filename || uniqueFilename,
+                    category: '__asset__',
+                    summary: fullDataUrl,
+                    content: mimeType,
+                    thumbnail: `/api/blog/image/${uniqueFilename}`,
+                    images: [{
+                        filename: uniqueFilename,
+                        url: `/api/blog/image/${uniqueFilename}`,
+                        dataUrl: fullDataUrl,
+                        size: buffer.length
+                    }],
+                    is_published: false
+                })
+            }).catch(e => console.warn('[Academy DB Asset Sync Warn]:', e.message));
+        } catch (dbErr) {
+            console.warn('[Academy DB Asset Exception]:', dbErr.message);
+        }
+
         const publicUrl = `/api/blog/image/${uniqueFilename}`;
 
         res.json({
@@ -8755,7 +9398,36 @@ app.get(['/api/blog/image/:filename', '/uploads/blog/:filename', '/uploads/acade
             }
         }
 
-        // 2) Supabase blog_posts 테이블의 게시글 images 배열 내부 dataUrl에서 조회
+        // 2) Supabase blog_posts 테이블에서 영구 에셋(asset_*) 조회
+        try {
+            const assetRes = await fetch(`${SUPABASE_URL}/rest/v1/blog_posts?id=eq.asset_${encodeURIComponent(filename)}&select=summary,content,images`, {
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
+            });
+            if (assetRes.ok) {
+                const assetRows = await assetRes.json();
+                if (Array.isArray(assetRows) && assetRows.length > 0 && assetRows[0]) {
+                    const row = assetRows[0];
+                    const dataUrl = row.summary || (row.images && row.images[0] && row.images[0].dataUrl);
+                    if (dataUrl) {
+                        const m = String(dataUrl).match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+                        const mimeType = (m && m[1]) || row.content || 'image/jpeg';
+                        const b64 = (m && m[2]) ? m[2] : dataUrl;
+                        const imgBuffer = Buffer.from(b64, 'base64');
+                        uploadedImagesMemoryCache.set(filename, { mimeType, buffer: imgBuffer, dataUrl });
+                        res.setHeader('Content-Type', mimeType);
+                        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+                        return res.send(imgBuffer);
+                    }
+                }
+            }
+        } catch (assetErr) {
+            console.warn('[Asset DB Query Warn]:', assetErr.message);
+        }
+
+        // 3) Supabase blog_posts 테이블의 게시글 images 배열 내부 dataUrl에서 조회
         const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/blog_posts?select=images`, {
             headers: {
                 'apikey': SUPABASE_KEY,
@@ -8783,7 +9455,26 @@ app.get(['/api/blog/image/:filename', '/uploads/blog/:filename', '/uploads/acade
             }
         }
 
-        return res.status(404).send('Image not found');
+        // 4) [엑박 완전 방지 안전망] 파일이 유실되었더라도 엑박 대신 대표 교육/리서치 이미지를 200 OK로 제공
+        const fallbackCandidates = [
+            path.join(__dirname, 'public', 'uploads', 'blog', 'blog_1793663978667_38b2a_Korean_high_school_counseling_.jpg'),
+            path.join(__dirname, 'uploads', 'blog', 'blog_1793663978667_38b2a_Korean_high_school_counseling_.jpg'),
+            path.join(__dirname, 'dist', 'uploads', 'blog', 'blog_1793663978667_38b2a_Korean_high_school_counseling_.jpg'),
+            path.join(__dirname, 'public', 'uploads', 'blog', 'blog_1793403273338_atw39_Laptop_displaying_school_safet.jpg')
+        ];
+        for (const fb of fallbackCandidates) {
+            if (fs.existsSync(fb)) {
+                res.setHeader('Content-Type', 'image/jpeg');
+                res.setHeader('Cache-Control', 'public, max-age=3600');
+                return res.sendFile(fb);
+            }
+        }
+
+        // 5) SVG 기본 플레이스홀더 (최후의 안전장치 - 절대로 404/엑박을 내지 않음)
+        const placeholderSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450"><rect width="800" height="450" fill="#f1f5f9"/><g fill="#64748b" font-family="Pretendard, -apple-system, sans-serif" text-anchor="middle"><text x="400" y="215" font-size="22" font-weight="700">학업여지도 리서치 칼럼</text><text x="400" y="250" font-size="14" fill="#94a3b8">이미지를 준비 중입니다.</text></g></svg>`;
+        res.setHeader('Content-Type', 'image/svg+xml');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        return res.send(placeholderSvg);
     } catch (err) {
         console.error('[Blog Image Serve Error]:', err);
         return res.status(500).send('Error serving image');

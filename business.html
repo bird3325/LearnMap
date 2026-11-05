@@ -2659,6 +2659,9 @@
                     <button type="button" class="sidebar-nav-item tab-btn" data-tab="tab-pricing" onclick="openTab('tab-pricing')">
                         <span class="nav-icon">💎</span><span>상품 & 구독</span>
                     </button>
+                    <button type="button" class="sidebar-nav-item tab-btn" data-tab="tab-payments" onclick="openTab('tab-payments')">
+                        <span class="nav-icon">🧾</span><span>결제 이력</span>
+                    </button>
                     <button type="button" class="sidebar-nav-item tab-btn" data-tab="tab-register" onclick="openTab('tab-register')">
                         <span class="nav-icon" id="tabRegisterNavIcon">📝</span><span id="tabRegisterNavLabel">사업자 등록 정보</span>
                     </button>
@@ -4439,6 +4442,78 @@
             </div>
         </div><!-- /#tab-register -->
 
+        <!-- TAB 5: 결제 이력 (멤버십 구독 / 타깃 학교 확장구좌 / 보고서 결제 내역) -->
+        <div id="tab-payments" class="tab-content">
+            <div class="panel-card">
+                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h3>🧾 멤버십 및 프리미엄 구좌 결제 이력</h3>
+                        <p>유료 멤버십 정기구독, 타깃 학교 확장 구좌 설정 및 전문 분석 보고서 결제 내역을 확인하세요.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn-action btn-secondary-act" style="width: auto; padding: 8px 14px; font-size: 12.5px;" onclick="loadPaymentHistory()">
+                            🔄 내역 새로고침
+                        </button>
+                        <button type="button" class="btn-action btn-primary-act" style="width: auto; padding: 8px 16px; font-size: 12.5px;" onclick="openTab('tab-pricing')">
+                            💎 플랜 변경 / 확장 설정
+                        </button>
+                    </div>
+                </div>
+
+                <div class="panel-body">
+                    <!-- 상단 요약 카드 3종 -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px;">
+                            <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px;">현재 이용 중인 멤버십</div>
+                            <div id="payHistCurrentPlan" style="font-size: 16px; font-weight: 800; color: #0f172a;">불러오는 중...</div>
+                            <div id="payHistEndDate" style="font-size: 12px; color: #2563eb; font-weight: 600; margin-top: 4px;">-</div>
+                        </div>
+
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px;">
+                            <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px;">지정 타깃 학교 및 구좌 현황</div>
+                            <div id="payHistTargetSchools" style="font-size: 15px; font-weight: 800; color: #0f172a;">-</div>
+                            <div id="payHistSlotSub" style="font-size: 12px; color: #059669; font-weight: 600; margin-top: 4px;">학교당 최대 3구좌 제한 적용</div>
+                        </div>
+
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px;">
+                            <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px;">누적 결제 건수 / 총 결제 금액</div>
+                            <div style="display: flex; align-items: baseline; gap: 8px;">
+                                <span id="payHistTotalAmount" style="font-size: 18px; font-weight: 800; color: #2563eb;">0원</span>
+                                <span id="payHistTotalCount" style="font-size: 12.5px; font-weight: 700; color: #475569;">(총 0건)</span>
+                            </div>
+                            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">VAT 포함 정식 승인 내역</div>
+                        </div>
+                    </div>
+
+                    <!-- 결제 상세 내역 리스트 테이블 -->
+                    <div style="border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; background: #ffffff;">
+                        <div style="overflow-x: auto;">
+                            <table class="clean-school-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                                        <th style="padding: 12px 14px; font-size: 12px; font-weight: 700; color: #475569;">결제 일시</th>
+                                        <th style="padding: 12px 14px; font-size: 12px; font-weight: 700; color: #475569;">구분</th>
+                                        <th style="padding: 12px 14px; font-size: 12px; font-weight: 700; color: #475569;">결제 상품명 / 내역</th>
+                                        <th style="padding: 12px 14px; font-size: 12px; font-weight: 700; color: #475569;">지정 타깃 학교 (구좌)</th>
+                                        <th style="padding: 12px 14px; font-size: 12px; font-weight: 700; color: #475569;">결제 수단</th>
+                                        <th style="padding: 12px 14px; font-size: 12px; font-weight: 700; color: #475569; text-align: right;">결제 금액</th>
+                                        <th style="padding: 12px 14px; font-size: 12px; font-weight: 700; color: #475569; text-align: center;">상태 / 이용기간</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="paymentHistoryTableBody">
+                                    <tr>
+                                        <td colspan="7" style="padding: 36px 16px; text-align: center; color: #64748b; font-size: 13px;">
+                                            결제 이력을 불러오는 중입니다...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /#tab-payments -->
+
     </main>
         </div><!-- /.app-main-wrapper -->
     </div><!-- /.app-layout -->
@@ -5086,34 +5161,55 @@
                 }
             }
 
-            // 6. 프리미엄 광고 미리보기 실제 데이터 바인딩
+            // 6. 프리미엄 광고 미리보기 실제 데이터 바인딩 (타깃 학교 1곳 선택 + 학교당 3구좌 제한 + 확장 옵션 연동)
+            const myTargetSchools = (data.slotPolicy && Array.isArray(data.slotPolicy.targetSchools) && data.slotPolicy.targetSchools.length > 0)
+                ? data.slotPolicy.targetSchools
+                : ((data.business && Array.isArray(data.business.targetSchools) && data.business.targetSchools.length > 0)
+                    ? data.business.targetSchools
+                    : (schools[0] ? [schools[0].name] : []));
+            const primarySchoolName = myTargetSchools[0] || (schools[0] ? schools[0].name : '');
+            const extraCount = Math.max(0, myTargetSchools.length - 1);
+            const targetSchoolLabel = primarySchoolName
+                ? (extraCount > 0 ? `${primarySchoolName} 외 ${extraCount}개교(확장)` : `${primarySchoolName}`)
+                : nearestSchoolNames;
+
             const adBizName = document.getElementById('adPreviewBizName');
             const adAddr = document.getElementById('adPreviewAddress');
             const adPhone = document.getElementById('adPreviewPhone');
             const adPhoneLink = document.getElementById('adPreviewPhoneLink');
             if (adBizName) adBizName.innerText = bizName;
-            if (adAddr) adAddr.innerText = `${bizAddr}${nearestSchoolNames ? ' · ' + nearestSchoolNames + ' 통학로' : ''}`;
+            if (adAddr) adAddr.innerText = `${bizAddr}${targetSchoolLabel ? ' · ' + targetSchoolLabel + ' 타깃 노출' : ''}`;
             if (adPhone) adPhone.innerText = bizPhone;
             if (adPhoneLink && bizPhone) adPhoneLink.href = 'tel:' + bizPhone.replace(/[^0-9]/g, '');
 
-            // 가장 가까운 학교 거리 반영
-            const firstSchool = schools[0];
+            // 선택한 대표 타깃 학교(없으면 가장 가까운 학교) 거리 및 실시간 잔여 구좌 반영
+            const primarySchoolObj = schools.find(s => s.name === primarySchoolName) || schools[0];
             const distInfoEl = document.querySelector('#adPlanSection .font-headline-md.text-primary.font-bold');
-            if (distInfoEl && firstSchool) {
-                const fDist = firstSchool.distance < 1000 ? `${firstSchool.distance}m` : `${(firstSchool.distance / 1000).toFixed(1)}km`;
-                distInfoEl.innerText = `${firstSchool.walkMin || 7}분 (${fDist})`;
+            if (distInfoEl && primarySchoolObj) {
+                const fDist = primarySchoolObj.distance < 1000 ? `${primarySchoolObj.distance}m` : `${(primarySchoolObj.distance / 1000).toFixed(1)}km`;
+                distInfoEl.innerText = `${primarySchoolObj.walkMin || 7}분 (${fDist})`;
             }
 
-            // 하단 배지 노출 문구 지역명 반영
+            // 우측 잔여 구좌 배지 실시간 반영 (학교당 최대 3구좌 기준)
+            const slotBadgeEl = document.querySelector('#adPlanSection .text-amber-300.font-label-sm.font-bold');
+            if (slotBadgeEl && primarySchoolObj) {
+                const maxSlots = primarySchoolObj.maxSlots || 3;
+                const remSlots = typeof primarySchoolObj.remainingSlots === 'number' ? primarySchoolObj.remainingSlots : maxSlots;
+                const shortSch = primarySchoolObj.name.replace(/학교$/, '');
+                slotBadgeEl.innerHTML = `<span class="material-symbols-outlined text-[14px]">hourglass_top</span>${shortSch} 잔여 ${remSlots}/${maxSlots}구좌`;
+            }
+
+            // 하단 배지 노출 문구 타깃 학교 및 구좌 정책 반영
             const badgeNoticeEl = document.querySelector('#adPlanSection .text-secondary.font-label-sm span.flex');
-            if (badgeNoticeEl && regionName) {
-                badgeNoticeEl.innerHTML = `<span class="material-symbols-outlined text-[16px] text-tertiary">check_circle</span> ${regionName} 반경 2km 이내 학부모 검색 시 최우선 배지 노출`;
+            if (badgeNoticeEl) {
+                const targetDesc = targetSchoolLabel || `${regionName || '인근'} 대표 학교`;
+                badgeNoticeEl.innerHTML = `<span class="material-symbols-outlined text-[16px] text-tertiary">check_circle</span> 지정 타깃 학교(${targetDesc}) 클릭 시 최우선 배지 노출 (학교당 최대 3구좌 제한)`;
             }
 
             // 우측 광고 박스 배후 학교 설명 실제 반영
             const promoDescEl = document.querySelector('#adPlanSection p.font-body-sm.text-slate-300');
             if (promoDescEl) {
-                promoDescEl.innerHTML = `인근 ${totalSchools}개교(${nearestSchoolNames || '주요 학교'} 등) 학부모 검색 최상단 고정 노출로 학기 초 상담 문의율이 평균 <strong class="text-sky-300 font-bold">3.8배</strong> 증가합니다.`;
+                promoDescEl.innerHTML = `인근 ${totalSchools}개교 중 원하는 <strong class="text-sky-300 font-bold">타깃 학교 1곳 선택(기본) + 확장 옵션</strong> 및 학교당 최대 3구좌 제한으로 최상단 노출 효과를 보장합니다.`;
             }
         }
 
@@ -5402,7 +5498,7 @@
             const overlay = document.getElementById('unauthGaussianOverlay');
             if (!overlay) return;
 
-            const protectedTabs = ['tab-dashboard', 'tab-market', 'tab-pricing', 'tab-profile'];
+            const protectedTabs = ['tab-dashboard', 'tab-market', 'tab-pricing', 'tab-payments', 'tab-profile'];
             const isApproved = currentBiz && currentBiz.status === 'approved';
 
             // 등록 신청 탭이거나, 인증이 완료된 사업자인 경우 오버레이 해제
@@ -5459,6 +5555,10 @@
 
             updateAuthLockOverlay(tabId);
 
+            if (tabId === 'tab-payments') {
+                loadPaymentHistory();
+            }
+
             if (tabId === 'tab-market') {
                 const curPlan = (typeof getAcademyPlanInfo === 'function') ? getAcademyPlanInfo(currentSub) : { key: 'free' };
                 const marketMask = document.getElementById('marketPlanMaskOverlay');
@@ -5471,20 +5571,36 @@
                 }
             }
             if (tabId === 'tab-profile') {
-                setTimeout(() => {
-                    if (academyMap) {
-                        academyMap.relayout();
-                        if (academyMarker && academyMarker.getPosition()) {
-                            academyMap.setCenter(academyMarker.getPosition());
+                const refreshProfileMaps = () => {
+                    const isRe = currentBiz && currentBiz.type === 'real_estate';
+                    if (isRe) {
+                        const rLat = parseFloat(document.getElementById('profReLat')?.value || pendingReMapCoords?.lat);
+                        const rLng = parseFloat(document.getElementById('profReLng')?.value || pendingReMapCoords?.lng);
+                        if (!isNaN(rLat) && !isNaN(rLng)) {
+                            initOrUpdateReMap(rLat, rLng, true);
+                        } else if (reMap) {
+                            reMap.relayout();
+                            if (reMarker && reMarker.getPosition()) {
+                                reMap.setCenter(reMarker.getPosition());
+                            }
+                        }
+                    } else {
+                        const aLat = parseFloat(document.getElementById('profLat')?.value || pendingAcademyMapCoords?.lat);
+                        const aLng = parseFloat(document.getElementById('profLng')?.value || pendingAcademyMapCoords?.lng);
+                        if (!isNaN(aLat) && !isNaN(aLng)) {
+                            initOrUpdateAcademyMap(aLat, aLng, true);
+                        } else if (document.getElementById('profAddress')?.value?.trim()) {
+                            convertAddressToCoords(true);
+                        } else if (academyMap) {
+                            academyMap.relayout();
+                            if (academyMarker && academyMarker.getPosition()) {
+                                academyMap.setCenter(academyMarker.getPosition());
+                            }
                         }
                     }
-                    if (reMap) {
-                        reMap.relayout();
-                        if (reMarker && reMarker.getPosition()) {
-                            reMap.setCenter(reMarker.getPosition());
-                        }
-                    }
-                }, 100);
+                };
+                setTimeout(refreshProfileMaps, 60);
+                setTimeout(refreshProfileMaps, 250);
             }
         }
 
@@ -5627,10 +5743,23 @@
 
             if (actionArea) {
                 if (sub && sub.status === 'active') {
+                    const profTargets = (currentBiz && currentBiz.academyProfile && Array.isArray(currentBiz.academyProfile.targetSchools) && currentBiz.academyProfile.targetSchools.length > 0)
+                        ? currentBiz.academyProfile.targetSchools
+                        : (Array.isArray(sub.targetSchools) ? sub.targetSchools : []);
+                    const targetSummaryHtml = (!isRe)
+                        ? `<div style="font-size: 12px; color: #1e40af; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; text-align: left;">
+                               <strong>🎯 지정 타깃 학교:</strong> ${profTargets.length > 0 ? profTargets.join(', ') : '가장 가까운 학교 1곳 자동 지정'}
+                               <span style="display: block; font-size: 11px; color: #64748b; margin-top: 2px;">(기본 1곳 포함 · 확장 ${Math.max(0, profTargets.length - 1)}곳 · 학교당 최대 3구좌 제한)</span>
+                           </div>
+                           <button type="button" class="btn-action btn-secondary-act" style="margin-bottom: 8px;" onclick="openTargetSchoolManageModal()">
+                               🎯 타깃 학교 변경 / 확장 옵션 설정
+                           </button>`
+                        : '';
                     actionArea.innerHTML = `
-                        <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 12px; text-align: center; margin-bottom: 10px; font-size: 13.5px; font-weight: 700; color: #065f46;">
+                        <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 12px; text-align: center; margin-bottom: 8px; font-size: 13.5px; font-weight: 700; color: #065f46;">
                             ✅ 현재 파트너 이용 중 (만료일: ${sub.endDate.split('T')[0]})
                         </div>
+                        ${targetSummaryHtml}
                         <button class="btn-action btn-danger-act" onclick="cancelPlan('${sub.id}')">
                             구독 해지 신청하기
                         </button>
@@ -6361,9 +6490,16 @@
         let kakaoSdkLoadingPromise = null;
         let academyMap = null;
         let academyMarker = null;
+        let pendingAcademyMapCoords = null;
+        let pendingReMapCoords = null;
 
         async function ensureKakaoMapSDK() {
-            if (kakaoGeocoder && window.kakao && window.kakao.maps) return kakaoGeocoder;
+            if (window.kakao && window.kakao.maps && window.kakao.maps.Map) {
+                if (!kakaoGeocoder && window.kakao.maps.services && window.kakao.maps.services.Geocoder) {
+                    kakaoGeocoder = new window.kakao.maps.services.Geocoder();
+                }
+                return kakaoGeocoder || true;
+            }
             if (kakaoSdkLoadingPromise) return kakaoSdkLoadingPromise;
 
             kakaoSdkLoadingPromise = new Promise(async (resolve) => {
@@ -6383,6 +6519,7 @@
                     if (!script) {
                         script = document.createElement('script');
                         script.type = 'text/javascript';
+                        script.referrerPolicy = 'no-referrer';
                         script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appkey}&libraries=services&autoload=false`;
                         document.head.appendChild(script);
                     }
@@ -6393,9 +6530,10 @@
                                 if (window.kakao.maps.services && window.kakao.maps.services.Geocoder) {
                                     kakaoGeocoder = new window.kakao.maps.services.Geocoder();
                                 }
-                                resolve(kakaoGeocoder);
+                                resolve(kakaoGeocoder || true);
                             });
                         } else {
+                            kakaoSdkLoadingPromise = null;
                             resolve(null);
                         }
                     };
@@ -6406,11 +6544,13 @@
                         script.onload = onScriptReady;
                         script.onerror = () => {
                             console.error('카카오 지도 SDK 스크립트 로드 실패');
+                            kakaoSdkLoadingPromise = null;
                             resolve(null);
                         };
                     }
                 } catch (err) {
                     console.error('ensureKakaoMapSDK error:', err);
+                    kakaoSdkLoadingPromise = null;
                     resolve(null);
                 }
             });
@@ -6454,14 +6594,24 @@
         }
 
         async function initOrUpdateAcademyMap(lat, lng, hasMarker = true) {
-            if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
+            const numLat = parseFloat(lat);
+            const numLng = parseFloat(lng);
+            if (!numLat || !numLng || isNaN(numLat) || isNaN(numLng)) return;
+
+            pendingAcademyMapCoords = { lat: numLat, lng: numLng, hasMarker };
+
             await ensureKakaoMapSDK();
-            if (!window.kakao || !window.kakao.maps) return;
+            if (!window.kakao || !window.kakao.maps || !window.kakao.maps.Map) return;
 
             const container = document.getElementById('academyCoordMap');
             if (!container) return;
 
-            const coords = new window.kakao.maps.LatLng(lat, lng);
+            // 탭이 숨겨진 상태(display: none)일 경우 0x0 캔버스 깨짐 방지를 위해 탭 진입 시 초기화되도록 대기
+            if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+                return;
+            }
+
+            const coords = new window.kakao.maps.LatLng(numLat, numLng);
 
             if (!academyMap) {
                 const options = {
@@ -6505,6 +6655,8 @@
                     updateCoordInputs(latlng.getLat(), latlng.getLng());
                 });
             } else {
+                academyMap.relayout();
+                academyMap.setLevel(3);
                 academyMap.setCenter(coords);
                 if (hasMarker) {
                     if (!academyMarker) {
@@ -6522,13 +6674,16 @@
                         academyMarker.setMap(academyMap);
                     }
                 }
+            }
+
+            [50, 200].forEach((delay) => {
                 setTimeout(() => {
                     if (academyMap) {
                         academyMap.relayout();
                         academyMap.setCenter(coords);
                     }
-                }, 50);
-            }
+                }, delay);
+            });
         }
 
         function geocodeAddress(address) {
@@ -6536,15 +6691,48 @@
                 if (!address || !address.trim()) {
                     return resolve(null);
                 }
-                const geocoder = await ensureKakaoGeocoder();
-                if (!geocoder) {
+                const targetAddr = address.trim();
+                const acadName = document.getElementById('profAcademyName')?.value?.trim() || currentBiz?.name || '';
+
+                // 1) 서버사이드 다단계 지오코딩 API 우선 호출 (도메인/포트 제약 무관 & 도로명·지번·건물명 통합 매칭)
+                try {
+                    const res = await fetch(`/api/business/geocode?address=${encodeURIComponent(targetAddr)}&name=${encodeURIComponent(acadName)}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && data.success && !isNaN(parseFloat(data.lat)) && !isNaN(parseFloat(data.lng))) {
+                            return resolve({
+                                lat: parseFloat(data.lat),
+                                lng: parseFloat(data.lng),
+                                fullData: data.fullData || data
+                            });
+                        }
+                    }
+                } catch (apiErr) {
+                    console.warn('서버 지오코딩 호출 실패, 클라이언트 SDK 폴백 진행:', apiErr);
+                }
+
+                // 2) 클라이언트 카카오 Geocoder 및 Places 키워드 폴백
+                await ensureKakaoGeocoder();
+                if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
                     return resolve(null);
                 }
-                geocoder.addressSearch(address.trim(), (result, status) => {
+                const geocoder = kakaoGeocoder || new window.kakao.maps.services.Geocoder();
+                geocoder.addressSearch(targetAddr, (result, status) => {
                     if (status === window.kakao.maps.services.Status.OK && result && result.length > 0) {
                         const lat = parseFloat(result[0].y);
                         const lng = parseFloat(result[0].x);
                         resolve({ lat, lng, fullData: result[0] });
+                    } else if (window.kakao.maps.services.Places) {
+                        const ps = new window.kakao.maps.services.Places();
+                        ps.keywordSearch(targetAddr, (kwResult, kwStatus) => {
+                            if (kwStatus === window.kakao.maps.services.Status.OK && kwResult && kwResult.length > 0) {
+                                const lat = parseFloat(kwResult[0].y);
+                                const lng = parseFloat(kwResult[0].x);
+                                resolve({ lat, lng, fullData: kwResult[0] });
+                            } else {
+                                resolve(null);
+                            }
+                        });
                     } else {
                         resolve(null);
                     }
@@ -6560,7 +6748,7 @@
 
             new daum.Postcode({
                 oncomplete: async function (data) {
-                    const addr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
+                    const addr = (data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress) || data.roadAddress || data.jibunAddress || data.address || '';
                     const zonecode = data.zonecode;
 
                     let extraAddr = '';
@@ -6592,7 +6780,7 @@
                         statusEl.innerText = '🔍 입력된 주소로 지도 위치를 찾는 중입니다...';
                     }
 
-                    const geo = await geocodeAddress(addr);
+                    const geo = await geocodeAddress(addr || fullBaseAddr);
                     if (geo && !isNaN(geo.lat) && !isNaN(geo.lng)) {
                         updateCoordInputs(geo.lat, geo.lng);
                         await initOrUpdateAcademyMap(geo.lat, geo.lng, true);
@@ -6636,7 +6824,12 @@
 
         async function convertAddressToCoords(silent = false) {
             const addrEl = document.getElementById('profAddress');
-            const addr = addrEl ? addrEl.value.trim() : '';
+            let addr = addrEl ? addrEl.value.trim() : '';
+
+            if (!addr && currentBiz) {
+                addr = currentBiz.academyProfile?.address || currentBiz.registeredAddress || currentBiz.address || '';
+                if (addr && addrEl) addrEl.value = addr;
+            }
 
             if (!addr) {
                 if (!silent) {
@@ -6647,22 +6840,33 @@
             }
 
             const cleanAddr = addr.replace(/\s*\([^)]*\)/g, '').trim();
-            let geo = await geocodeAddress(cleanAddr);
+            let geo = await geocodeAddress(addr);
+            if (!geo && cleanAddr && cleanAddr !== addr) {
+                geo = await geocodeAddress(cleanAddr);
+            }
             if (!geo) {
                 const strippedAddr = cleanAddr.replace(/\s+(지하\s*)?\d+[층호].*$/i, '').trim();
                 if (strippedAddr && strippedAddr !== cleanAddr) {
                     geo = await geocodeAddress(strippedAddr);
                 }
             }
-            if (!geo) {
-                geo = await geocodeAddress(addr);
-            }
 
             if (geo && !isNaN(geo.lat) && !isNaN(geo.lng)) {
                 updateCoordInputs(geo.lat, geo.lng);
                 await initOrUpdateAcademyMap(geo.lat, geo.lng, true);
+                if (!silent && typeof showToast === 'function') {
+                    showToast('입력된 주소 위치로 지도 마커가 재설정되었습니다.', '📍');
+                }
             } else {
-                if (!silent) {
+                const fallbackLat = parseFloat(document.getElementById('profLat')?.value || currentBiz?.academyProfile?.lat || currentBiz?.lat);
+                const fallbackLng = parseFloat(document.getElementById('profLng')?.value || currentBiz?.academyProfile?.lng || currentBiz?.lng);
+                if (!isNaN(fallbackLat) && !isNaN(fallbackLng)) {
+                    updateCoordInputs(fallbackLat, fallbackLng);
+                    await initOrUpdateAcademyMap(fallbackLat, fallbackLng, true);
+                    if (!silent && typeof showToast === 'function') {
+                        showToast('등록된 학원 위치로 지도가 재설정되었습니다.', '📍');
+                    }
+                } else if (!silent) {
                     alert('주소에 해당하는 좌표를 찾지 못했습니다.\n지도 위를 직접 클릭하여 학원 위치를 지정해주세요.');
                 }
             }
@@ -6687,14 +6891,23 @@
         }
 
         async function initOrUpdateReMap(lat, lng, hasMarker = true) {
-            if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
+            const numLat = parseFloat(lat);
+            const numLng = parseFloat(lng);
+            if (!numLat || !numLng || isNaN(numLat) || isNaN(numLng)) return;
+
+            pendingReMapCoords = { lat: numLat, lng: numLng, hasMarker };
+
             await ensureKakaoMapSDK();
-            if (!window.kakao || !window.kakao.maps) return;
+            if (!window.kakao || !window.kakao.maps || !window.kakao.maps.Map) return;
 
             const container = document.getElementById('reCoordMap');
             if (!container) return;
 
-            const coords = new window.kakao.maps.LatLng(lat, lng);
+            if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+                return;
+            }
+
+            const coords = new window.kakao.maps.LatLng(numLat, numLng);
 
             if (!reMap) {
                 const options = {
@@ -6738,6 +6951,8 @@
                     updateReCoordInputs(latlng.getLat(), latlng.getLng());
                 });
             } else {
+                reMap.relayout();
+                reMap.setLevel(3);
                 reMap.setCenter(coords);
                 if (hasMarker) {
                     if (!reMarker) {
@@ -6755,13 +6970,16 @@
                         reMarker.setMap(reMap);
                     }
                 }
+            }
+
+            [50, 200].forEach((delay) => {
                 setTimeout(() => {
                     if (reMap) {
                         reMap.relayout();
                         reMap.setCenter(coords);
                     }
-                }, 50);
-            }
+                }, delay);
+            });
         }
 
         function openReKakaoPostcode() {
@@ -7423,6 +7641,292 @@
             });
         }
 
+        async function showTargetSchoolModalAsync({ titleText, basePrice = 99000, confirmBtnLabel = '결제 및 구좌 선점하기' }) {
+            // 모달 팝업 대신 [💎 학원 비즈니스 멤버십 플랜(tab-pricing)] 페이지 내 인라인 설정 영역에 렌더링
+            const pricingTab = document.getElementById('tab-pricing');
+            if (pricingTab && !pricingTab.classList.contains('active') && typeof openTab === 'function') {
+                openTab('tab-pricing');
+            }
+
+            let slotRes = null;
+            try {
+                const r = await fetch(`/api/academies/school-slots?businessId=${encodeURIComponent(currentBiz.id)}&radius=2000`);
+                if (r.ok) slotRes = await r.json();
+            } catch (e) {
+                console.warn('school-slots fetch error:', e);
+            }
+
+            const schools = (slotRes && Array.isArray(slotRes.schools) && slotRes.schools.length > 0)
+                ? slotRes.schools
+                : ((lastMarketData && Array.isArray(lastMarketData.nearbySchools)) ? lastMarketData.nearbySchools : []);
+            const maxSlots = (slotRes && slotRes.maxSlotsPerSchool) || 3;
+            const extraSlotPrice = (slotRes && slotRes.extraSlotPrice) || 29000;
+            const currentTargets = (slotRes && Array.isArray(slotRes.targetSchools) && slotRes.targetSchools.length > 0)
+                ? slotRes.targetSchools
+                : ((currentBiz && currentBiz.academyProfile && Array.isArray(currentBiz.academyProfile.targetSchools))
+                    ? currentBiz.academyProfile.targetSchools
+                    : []);
+
+            return new Promise((resolve) => {
+                // 기존 팝업 모달이 남아있다면 제거
+                const oldPopup = document.getElementById('targetSchoolSlotModal');
+                if (oldPopup) oldPopup.remove();
+
+                let inlinePanel = document.getElementById('inlineTargetSchoolConfigPanel');
+                if (!inlinePanel) {
+                    inlinePanel = document.createElement('div');
+                    inlinePanel.id = 'inlineTargetSchoolConfigPanel';
+                    inlinePanel.style.cssText = 'margin-top: 28px;';
+                    const acaGrid = document.getElementById('academyPricingGrid');
+                    if (acaGrid && acaGrid.parentNode) {
+                        acaGrid.insertAdjacentElement('afterend', inlinePanel);
+                    } else if (pricingTab) {
+                        pricingTab.appendChild(inlinePanel);
+                    }
+                }
+
+                const availableFirst = schools.find(s => !s.isFull);
+                const defaultPrimary = (currentTargets[0] && schools.some(s => s.name === currentTargets[0] && !s.isFull))
+                    ? currentTargets[0]
+                    : (availableFirst ? availableFirst.name : (schools[0]?.name || ''));
+                const defaultExtras = currentTargets.slice(1).filter(n => n !== defaultPrimary);
+                const hasDefaultExtras = defaultExtras.length > 0;
+
+                const renderPrimaryListHtml = (selectedPrimary) => {
+                    if (schools.length === 0) {
+                        return `<div style="padding:16px;text-align:center;color:#64748b;font-size:13px;grid-column:1/-1;">반경 2km 내 조회된 학교가 없습니다. 가장 가까운 학교 1곳이 자동 배정됩니다.</div>`;
+                    }
+                    return schools.map((s) => {
+                        const isFull = Boolean(s.isFull);
+                        const used = typeof s.usedSlots === 'number' ? s.usedSlots : 0;
+                        const rem = typeof s.remainingSlots === 'number' ? s.remainingSlots : Math.max(0, maxSlots - used);
+                        const distTxt = s.distance < 1000 ? `${s.distance}m` : `${(s.distance / 1000).toFixed(1)}km`;
+                        const checked = (!isFull && s.name === selectedPrimary) ? 'checked' : '';
+                        const disabled = isFull ? 'disabled' : '';
+                        const badgeHtml = isFull
+                            ? `<span style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;font-size:11px;font-weight:800;padding:3px 9px;border-radius:12px;white-space:nowrap;">마감 (${maxSlots}/${maxSlots}구좌)</span>`
+                            : `<span style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;font-size:11px;font-weight:800;padding:3px 9px;border-radius:12px;white-space:nowrap;">잔여 ${rem}구좌 (${used}/${maxSlots})</span>`;
+
+                        return `
+                            <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1.5px solid ${checked ? '#2563eb' : '#e2e8f0'};background:${isFull ? '#f8fafc' : (checked ? '#eff6ff' : '#ffffff')};border-radius:12px;cursor:${isFull ? 'not-allowed' : 'pointer'};opacity:${isFull ? '0.6' : '1'};transition:all 0.15s;gap:10px;">
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <input type="radio" name="primaryTargetSchoolRadio" value="${s.name}" ${checked} ${disabled} style="width:16px;height:16px;accent-color:#2563eb;">
+                                    <div>
+                                        <div style="font-size:13.5px;font-weight:700;color:#0f172a;">${s.name} <span style="font-size:11px;font-weight:600;color:#64748b;">(${s.type || '학교'})</span></div>
+                                        <div style="font-size:11.5px;color:#64748b;">도보 ${s.walkMin || 5}분 (${distTxt}) · 학생 ${(s.studentCount || 0).toLocaleString()}명</div>
+                                    </div>
+                                </div>
+                                ${badgeHtml}
+                            </label>
+                        `;
+                    }).join('');
+                };
+
+                const renderExtraListHtml = (selectedPrimary, checkedExtras) => {
+                    const candidates = schools.filter(s => s.name !== selectedPrimary);
+                    if (candidates.length === 0) {
+                        return `<div style="padding:12px;color:#64748b;font-size:12.5px;grid-column:1/-1;">추가로 선택 가능한 인근 학교가 없습니다.</div>`;
+                    }
+                    return candidates.map(s => {
+                        const isFull = Boolean(s.isFull);
+                        const used = typeof s.usedSlots === 'number' ? s.usedSlots : 0;
+                        const rem = typeof s.remainingSlots === 'number' ? s.remainingSlots : Math.max(0, maxSlots - used);
+                        const distTxt = s.distance < 1000 ? `${s.distance}m` : `${(s.distance / 1000).toFixed(1)}km`;
+                        const isChecked = !isFull && checkedExtras.includes(s.name);
+                        const badgeHtml = isFull
+                            ? `<span style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">마감 (${maxSlots}/${maxSlots})</span>`
+                            : `<span style="background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">+확장 가능 (잔여 ${rem}/${maxSlots})</span>`;
+
+                        return `
+                            <label style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1.5px solid ${isChecked ? '#10b981' : '#e2e8f0'};background:${isFull ? '#f8fafc' : (isChecked ? '#f0fdf4' : '#ffffff')};border-radius:10px;cursor:${isFull ? 'not-allowed' : 'pointer'};opacity:${isFull ? '0.6' : '1'};gap:10px;">
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <input type="checkbox" name="extraTargetSchoolChk" value="${s.name}" ${isChecked ? 'checked' : ''} ${isFull ? 'disabled' : ''} style="width:15px;height:15px;accent-color:#059669;">
+                                    <span style="font-size:13px;font-weight:700;color:#1e293b;">${s.name}</span>
+                                    <span style="font-size:11.5px;color:#64748b;">(${distTxt})</span>
+                                </div>
+                                ${badgeHtml}
+                            </label>
+                        `;
+                    }).join('');
+                };
+
+                inlinePanel.innerHTML = `
+                    <div style="background:#ffffff;border:2px solid #2563eb;border-radius:16px;box-shadow:0 10px 25px rgba(37,99,235,0.08);overflow:hidden;">
+                        <div style="padding:16px 22px;background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%);color:#ffffff;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                            <div>
+                                <div style="font-size:11.5px;font-weight:700;color:#bfdbfe;margin-bottom:2px;">🎯 프리미엄 스폰서 구좌 배정 설정 (학교당 최대 ${maxSlots}구좌 제한)</div>
+                                <h3 style="margin:0;font-size:16.5px;font-weight:800;">${titleText}</h3>
+                            </div>
+                            <button type="button" id="btnCloseTargetSchoolModal" style="background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:5px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;">접기 ✕</button>
+                        </div>
+
+                        <div style="padding:20px 22px;display:flex;flex-direction:column;gap:18px;">
+                            <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:12px 16px;font-size:12.5px;color:#334155;line-height:1.55;">
+                                💡 <strong>학교 1곳 선택 원칙:</strong> 학부모가 지도에서 <strong>선택하신 타깃 학교 핀을 클릭했을 때만</strong> 최상단 <code>[광고]</code>로 노출됩니다. 각 학교는 광고 효과를 보장하기 위해 <strong>선착순 최대 ${maxSlots}구좌</strong>까지만 신청 가능합니다.
+                            </div>
+
+                            <div>
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                                    <label style="font-size:14px;font-weight:800;color:#0f172a;">1. 기본 타깃 학교 1곳 선택 <span style="color:#dc2626;">*</span></label>
+                                    <span style="font-size:12px;color:#2563eb;font-weight:700;">기본 플랜 포함 (1개교)</span>
+                                </div>
+                                <div id="primarySchoolRadioContainer" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;">
+                                    ${renderPrimaryListHtml(defaultPrimary)}
+                                </div>
+                            </div>
+
+                            <div style="border-top:1px dashed #cbd5e1;padding-top:14px;">
+                                <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:#f0fdf4;border:1px solid #bbf7d0;padding:12px 16px;border-radius:10px;">
+                                    <div style="display:flex;align-items:center;gap:10px;">
+                                        <input type="checkbox" id="chkEnableExtraSchoolOption" ${hasDefaultExtras ? 'checked' : ''} style="width:16px;height:16px;accent-color:#059669;">
+                                        <div>
+                                            <div style="font-size:13.5px;font-weight:800;color:#065f46;">➕ 타깃 학교 확장 옵션 추가 (복수 학교 동시 노출)</div>
+                                            <div style="font-size:12px;color:#047857;">인근 다른 학교 클릭 시에도 최상단 스폰서로 노출 (+1개교당 월 ${extraSlotPrice.toLocaleString()}원)</div>
+                                        </div>
+                                    </div>
+                                    <span style="font-size:11.5px;font-weight:800;background:#dcfce7;color:#15803d;padding:4px 10px;border-radius:6px;">확장 옵션</span>
+                                </label>
+
+                                <div id="extraSchoolListWrapper" style="display:${hasDefaultExtras ? 'grid' : 'none'};grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;margin-top:12px;">
+                                    ${renderExtraListHtml(defaultPrimary, defaultExtras)}
+                                </div>
+                            </div>
+
+                            <div id="targetSchoolPriceSummaryBox" style="background:#0f172a;color:#ffffff;border-radius:12px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                                <div style="font-size:13px;color:#cbd5e1;" id="targetSchoolSummaryDesc">기본 1개교 선택</div>
+                                <div style="font-size:17px;font-weight:800;color:#38bdf8;" id="targetSchoolTotalAmountText">월 ${basePrice.toLocaleString()}원</div>
+                            </div>
+                        </div>
+
+                        <div style="padding:14px 22px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:10px;">
+                            <button type="button" id="btnCancelTargetSchoolModal" style="padding:10px 18px;border-radius:10px;border:1px solid #cbd5e1;background:#ffffff;color:#475569;font-size:13px;font-weight:700;cursor:pointer;">취소</button>
+                            <button type="button" id="btnConfirmTargetSchoolModal" style="padding:10px 24px;border-radius:10px;border:none;background:#2563eb;color:#ffffff;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(37,99,235,0.25);">
+                                ${confirmBtnLabel}
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                const getSelectedState = () => {
+                    const priEl = inlinePanel.querySelector('input[name="primaryTargetSchoolRadio"]:checked');
+                    const primary = priEl ? priEl.value : '';
+                    const extraEnabled = inlinePanel.querySelector('#chkEnableExtraSchoolOption')?.checked;
+                    const extras = extraEnabled
+                        ? Array.from(inlinePanel.querySelectorAll('input[name="extraTargetSchoolChk"]:checked')).map(el => el.value).filter(v => v && v !== primary)
+                        : [];
+                    return { primary, extras, extraEnabled };
+                };
+
+                const updateSummaryUI = () => {
+                    const { primary, extras } = getSelectedState();
+                    const totalSchoolsCount = (primary ? 1 : 0) + extras.length;
+                    const extraCost = extras.length * extraSlotPrice;
+                    const totalCost = basePrice + extraCost;
+
+                    const descEl = inlinePanel.querySelector('#targetSchoolSummaryDesc');
+                    const amtEl = inlinePanel.querySelector('#targetSchoolTotalAmountText');
+                    if (descEl) {
+                        descEl.innerHTML = primary
+                            ? `🎯 <strong>${primary}</strong> (기본 1곳)${extras.length > 0 ? ` + 확장 <strong>${extras.length}곳</strong>(${extras.join(', ')})` : ''}`
+                            : '타깃 학교를 선택해 주세요';
+                    }
+                    if (amtEl) {
+                        amtEl.innerText = `월 ${totalCost.toLocaleString()}원 (총 ${totalSchoolsCount}구좌)`;
+                    }
+                };
+
+                const bindDynamicEvents = () => {
+                    inlinePanel.querySelectorAll('input[name="primaryTargetSchoolRadio"]').forEach(r => {
+                        r.addEventListener('change', () => {
+                            const { primary, extras } = getSelectedState();
+                            inlinePanel.querySelector('#primarySchoolRadioContainer').innerHTML = renderPrimaryListHtml(primary);
+                            inlinePanel.querySelector('#extraSchoolListWrapper').innerHTML = renderExtraListHtml(primary, extras);
+                            bindDynamicEvents();
+                            updateSummaryUI();
+                        });
+                    });
+
+                    inlinePanel.querySelectorAll('input[name="extraTargetSchoolChk"]').forEach(chk => {
+                        chk.addEventListener('change', () => {
+                            const { primary, extras } = getSelectedState();
+                            inlinePanel.querySelector('#extraSchoolListWrapper').innerHTML = renderExtraListHtml(primary, extras);
+                            bindDynamicEvents();
+                            updateSummaryUI();
+                        });
+                    });
+                };
+
+                const chkEnableExtra = inlinePanel.querySelector('#chkEnableExtraSchoolOption');
+                if (chkEnableExtra) {
+                    chkEnableExtra.addEventListener('change', () => {
+                        const wrapper = inlinePanel.querySelector('#extraSchoolListWrapper');
+                        if (wrapper) wrapper.style.display = chkEnableExtra.checked ? 'grid' : 'none';
+                        updateSummaryUI();
+                    });
+                }
+
+                bindDynamicEvents();
+                updateSummaryUI();
+
+                const closeWith = (val) => {
+                    inlinePanel.style.display = 'none';
+                    resolve(val);
+                };
+
+                inlinePanel.querySelector('#btnCloseTargetSchoolModal').onclick = () => closeWith(null);
+                inlinePanel.querySelector('#btnCancelTargetSchoolModal').onclick = () => closeWith(null);
+                inlinePanel.querySelector('#btnConfirmTargetSchoolModal').onclick = () => {
+                    const { primary, extras } = getSelectedState();
+                    if (!primary && schools.length > 0) {
+                        alert('기본 타깃 학교 1곳을 선택해 주세요.');
+                        return;
+                    }
+                    const finalSchools = primary ? [primary, ...extras] : ['기본 타깃 학교'];
+                    closeWith(finalSchools);
+                };
+
+                inlinePanel.style.display = 'block';
+                setTimeout(() => {
+                    inlinePanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 60);
+            });
+        }
+
+        async function openTargetSchoolManageModal() {
+            if (!currentBiz || currentBiz.status !== 'approved') {
+                showApprovalNoticeModal('subscribe');
+                return;
+            }
+            const selectedSchools = await showTargetSchoolModalAsync({
+                titleText: '타깃 학교 1곳 선택 및 확장 구좌 변경',
+                basePrice: 99000,
+                confirmBtnLabel: '💾 타깃 학교 및 구좌 설정 저장'
+            });
+            if (!selectedSchools || selectedSchools.length === 0) return;
+
+            try {
+                const res = await fetch('/api/business/target-schools', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        businessId: currentBiz.id,
+                        targetSchools: selectedSchools
+                    })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    showToast(data.message || '타깃 학교 설정이 완료되었습니다!', '🎯');
+                    await loadSession();
+                    if (typeof loadMarketAnalysis === 'function') loadMarketAnalysis(currentMarketRadius || 1000);
+                } else {
+                    alert(data.error || '타깃 학교 설정 저장에 실패했습니다.');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('타깃 학교 설정 통신 중 오류가 발생했습니다.');
+            }
+        }
+
         async function subscribePlan(productId) {
             if (!currentBiz || currentBiz.status !== 'approved') {
                 showApprovalNoticeModal('subscribe');
@@ -7442,10 +7946,28 @@
                 'prod_re_partner': '부동산 교육환경 파트너(월 99,000원)',
                 'prod_re_local': '부동산 지역 전문(월 49,000원)'
             };
+            const priceMap = {
+                'prod_academy_basic': 29000,
+                'prod_academy_pro': 99000,
+                'prod_academy_team': 199000,
+                'prod_academy_premium': 29000,
+                'prod_academy_plus': 59000
+            };
             const planName = planMap[productId] || '비즈니스 멤버십 플랜';
+            const isAcademyPlan = String(productId).startsWith('prod_academy_');
 
-            if (!await showConfirmAsync(`${planName}을(를) 결제 및 활성화하시겠습니까?`)) {
-                return;
+            let selectedTargetSchools = undefined;
+            if (isAcademyPlan) {
+                selectedTargetSchools = await showTargetSchoolModalAsync({
+                    titleText: `${planName} · 타깃 학교 선택`,
+                    basePrice: priceMap[productId] || 99000,
+                    confirmBtnLabel: '🚀 결제 및 구좌 선점하기'
+                });
+                if (!selectedTargetSchools) return;
+            } else {
+                if (!await showConfirmAsync(`${planName}을(를) 결제 및 활성화하시겠습니까?`)) {
+                    return;
+                }
             }
 
             try {
@@ -7455,21 +7977,224 @@
                     body: JSON.stringify({
                         businessId: currentBiz.id,
                         productId: productId,
-                        paymentMethod: '카드 자동결제'
+                        paymentMethod: '카드 자동결제',
+                        targetSchools: selectedTargetSchools
                     })
                 });
 
                 const data = await res.json();
                 if (data.success) {
-                    showToast('결제 및 프리미엄 구독이 활성화되었습니다!', '🚀');
-                    loadSession();
-                    openTab('tab-dashboard');
+                    showToast(data.message || '결제 및 프리미엄 구독이 활성화되었습니다!', '🚀');
+                    await loadSession();
+                    if (typeof loadMarketAnalysis === 'function') loadMarketAnalysis(currentMarketRadius || 1000);
+                    openTab('tab-payments');
                 } else {
                     alert(data.error || '결제 처리에 실패했습니다.');
                 }
             } catch (err) {
                 console.error(err);
                 alert('결제 통신 중 오류가 발생했습니다.');
+            }
+        }
+
+        async function loadPaymentHistory() {
+            const tbody = document.getElementById('paymentHistoryTableBody');
+            if (!currentBiz || !currentBiz.id) {
+                if (tbody) {
+                    tbody.innerHTML = `<tr><td colspan="7" style="padding: 36px 16px; text-align: center; color: #64748b; font-size: 13px;">사업자 등록 및 승인 후 결제 이력을 확인할 수 있습니다.</td></tr>`;
+                }
+                return;
+            }
+
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="7" style="padding: 36px 16px; text-align: center; color: #64748b; font-size: 13px;">결제 이력을 불러오는 중입니다...</td></tr>`;
+            }
+
+            try {
+                let data = null;
+                try {
+                    const res = await fetch(`/api/business/payment-history?businessId=${encodeURIComponent(currentBiz.id)}`);
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json && json.success) data = json;
+                    }
+                } catch (apiErr) {
+                    console.warn('payment-history API fallback:', apiErr);
+                }
+
+                // 서버 재시작 전이거나 API 응답 실패 시 대시보드/세션 구독 데이터 기반 안전 폴백
+                if (!data) {
+                    let subObj = currentSub || null;
+                    try {
+                        const dashRes = await fetch(`/api/business/dashboard?businessId=${encodeURIComponent(currentBiz.id)}`);
+                        if (dashRes.ok) {
+                            const dashJson = await dashRes.json();
+                            if (dashJson && dashJson.subscription) subObj = dashJson.subscription;
+                        }
+                    } catch (e) {}
+
+                    const prof = (currentBiz && (currentBiz.academyProfile || currentBiz.realEstateProfile)) || {};
+                    const tSchools = Array.isArray(prof.targetSchools) && prof.targetSchools.length > 0
+                        ? prof.targetSchools
+                        : (subObj && Array.isArray(subObj.targetSchools) ? subObj.targetSchools : []);
+                    const profHist = Array.isArray(prof.paymentHistory) ? [...prof.paymentHistory] : [];
+
+                    if (subObj && !profHist.some(h => h.id === subObj.id)) {
+                        const extCnt = Math.max(0, tSchools.length - 1);
+                        const extAmt = typeof subObj.extraAmount === 'number' ? subObj.extraAmount : (extCnt * 29000);
+                        const baseAmt = typeof subObj.baseAmount === 'number' ? subObj.baseAmount : Math.max(0, (Number(subObj.amount) || 0) - extAmt);
+                        profHist.unshift({
+                            id: subObj.id || `sub_${Date.now()}`,
+                            date: subObj.lastPaymentDate || subObj.startDate || new Date().toISOString(),
+                            category: '멤버십 정기구독',
+                            productId: subObj.productId,
+                            productName: subObj.productName || '프리미엄 멤버십',
+                            baseAmount: baseAmt,
+                            extraAmount: extAmt,
+                            amount: Number(subObj.amount) || 0,
+                            targetSchools: tSchools,
+                            extraSchoolSlots: extCnt,
+                            paymentMethod: subObj.paymentMethod || '카드 자동결제',
+                            status: subObj.status === 'cancelled' ? 'cancelled' : 'paid',
+                            startDate: subObj.startDate,
+                            endDate: subObj.endDate
+                        });
+                    }
+
+                    const totalPaid = profHist.reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
+                    data = {
+                        success: true,
+                        summary: {
+                            totalCount: profHist.length,
+                            totalPaidAmount: totalPaid,
+                            activePlanName: (subObj && subObj.status === 'active') ? subObj.productName : '학원 FREE (무료 체험)',
+                            activeStatus: (subObj && subObj.status === 'active') ? 'active' : 'free',
+                            endDate: subObj ? subObj.endDate : null,
+                            targetSchools: tSchools,
+                            extraSchoolSlots: Math.max(0, tSchools.length - 1)
+                        },
+                        history: profHist
+                    };
+                }
+
+                const summary = data.summary || {};
+                const history = Array.isArray(data.history) ? data.history : [];
+
+                const planEl = document.getElementById('payHistCurrentPlan');
+                const endEl = document.getElementById('payHistEndDate');
+                const targetsEl = document.getElementById('payHistTargetSchools');
+                const slotSubEl = document.getElementById('payHistSlotSub');
+                const amtEl = document.getElementById('payHistTotalAmount');
+                const cntEl = document.getElementById('payHistTotalCount');
+
+                if (planEl) planEl.innerText = summary.activePlanName || '학원 FREE (무료 체험)';
+                if (endEl) {
+                    if (summary.endDate && summary.activeStatus === 'active') {
+                        endEl.innerText = `이용 만료/갱신 예정일: ${String(summary.endDate).split('T')[0]}`;
+                        endEl.style.color = '#2563eb';
+                    } else {
+                        endEl.innerText = '유료 정기구독 미이용 중';
+                        endEl.style.color = '#64748b';
+                    }
+                }
+
+                const tSchools = Array.isArray(summary.targetSchools) ? summary.targetSchools : [];
+                if (targetsEl) {
+                    targetsEl.innerText = tSchools.length > 0 ? tSchools.join(', ') : '지정된 타깃 학교 없음';
+                }
+                if (slotSubEl) {
+                    const extCnt = Math.max(0, tSchools.length - 1);
+                    slotSubEl.innerText = tSchools.length > 0
+                        ? `기본 1곳(${tSchools[0]})${extCnt > 0 ? ` + 확장 옵션 ${extCnt}곳` : ''} · 학교당 최대 3구좌`
+                        : '구독 시 타깃 학교 1곳 선택 + 확장 가능';
+                }
+
+                if (amtEl) amtEl.innerText = `${(Number(summary.totalPaidAmount) || 0).toLocaleString()}원`;
+                if (cntEl) cntEl.innerText = `(총 ${summary.totalCount || history.length}건)`;
+
+                if (!tbody) return;
+                if (history.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="padding: 44px 16px; text-align: center; color: #64748b; font-size: 13.5px;">
+                                아직 유료 결제 내역이 없습니다. <a href="javascript:void(0)" onclick="openTab('tab-pricing')" style="color: #2563eb; font-weight: 700; text-decoration: underline; margin-left: 6px;">[상품 & 구독]에서 플랜 신청하기 →</a>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                const formatDateTime = (iso) => {
+                    if (!iso) return '-';
+                    const d = new Date(iso);
+                    if (isNaN(d.getTime())) return String(iso).slice(0, 16).replace('T', ' ');
+                    const yyyy = d.getFullYear();
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    const hh = String(d.getHours()).padStart(2, '0');
+                    const mi = String(d.getMinutes()).padStart(2, '0');
+                    return `${yyyy}.${mm}.${dd} ${hh}:${mi}`;
+                };
+
+                tbody.innerHTML = history.map(item => {
+                    const dateTxt = formatDateTime(item.date);
+                    const catTxt = item.category || '멤버십 정기구독';
+                    const prodTxt = item.productName || '프리미엄 멤버십';
+                    const baseAmt = Number(item.baseAmount) || 0;
+                    const extraAmt = Number(item.extraAmount) || 0;
+                    const totalAmt = Number(item.amount) || 0;
+                    const itemSchools = Array.isArray(item.targetSchools) ? item.targetSchools : [];
+                    const extraCnt = Math.max(0, itemSchools.length - 1);
+
+                    const priceDetailSub = extraAmt > 0
+                        ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">기본 ${baseAmt.toLocaleString()}원 + 확장(${extraCnt}곳) ${extraAmt.toLocaleString()}원</div>`
+                        : '';
+
+                    const schoolBadges = itemSchools.length > 0
+                        ? `<div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                               <span style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px;">🎯 ${itemSchools[0]} (기본)</span>
+                               ${itemSchools.slice(1).map(s => `<span style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px;">➕ ${s} (확장)</span>`).join('')}
+                           </div>`
+                        : `<span style="color: #94a3b8; font-size: 12px;">-</span>`;
+
+                    let statusBadge = `<span class="badge badge-success">결제완료</span>`;
+                    if (item.status === 'cancelled') {
+                        statusBadge = `<span class="badge badge-danger">구독해지</span>`;
+                    } else if (item.status === 'expired') {
+                        statusBadge = `<span class="badge badge-warning">플랜변경/만료</span>`;
+                    }
+
+                    const periodTxt = (item.startDate && item.endDate)
+                        ? `<div style="font-size: 11px; color: #64748b; margin-top: 4px;">${String(item.startDate).split('T')[0]} ~ ${String(item.endDate).split('T')[0]}</div>`
+                        : '';
+
+                    return `
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 13px 14px; font-size: 12.5px; color: #334155; white-space: nowrap;">${dateTxt}</td>
+                            <td style="padding: 13px 14px; font-size: 12px;">
+                                <span style="background: #f1f5f9; color: #475569; font-weight: 700; padding: 3px 8px; border-radius: 6px; font-size: 11px; white-space: nowrap;">${catTxt}</span>
+                            </td>
+                            <td style="padding: 13px 14px;">
+                                <div style="font-size: 13px; font-weight: 800; color: #0f172a;">${prodTxt}</div>
+                                ${priceDetailSub}
+                            </td>
+                            <td style="padding: 13px 14px;">${schoolBadges}</td>
+                            <td style="padding: 13px 14px; font-size: 12.5px; color: #475569; white-space: nowrap;">💳 ${item.paymentMethod || '카드 자동결제'}</td>
+                            <td style="padding: 13px 14px; text-align: right; white-space: nowrap;">
+                                <strong style="font-size: 14px; font-weight: 800; color: #2563eb;">${totalAmt.toLocaleString()}원</strong>
+                            </td>
+                            <td style="padding: 13px 14px; text-align: center; white-space: nowrap;">
+                                ${statusBadge}
+                                ${periodTxt}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error('loadPaymentHistory error:', err);
+                if (tbody) {
+                    tbody.innerHTML = `<tr><td colspan="7" style="padding: 36px 16px; text-align: center; color: #dc2626; font-size: 13px;">결제 이력을 불러오는 중 오류가 발생했습니다.</td></tr>`;
+                }
             }
         }
 

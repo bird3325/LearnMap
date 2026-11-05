@@ -95,6 +95,20 @@
     "sigungu": "영도구",
     "lawdCd": "26200",
     "fileName": "26200.json",
-    "count": 199
+    "count": 237
+  },
+  {
+    "sido": "부산광역시",
+    "sigungu": "중구",
+    "lawdCd": "26110",
+    "fileName": "26110.json",
+    "count": 1469
+  },
+  {
+    "sido": "부산광역시",
+    "sigungu": "해운대구",
+    "lawdCd": "26350",
+    "fileName": "26350.json",
+    "count": 6859
   }
 ]

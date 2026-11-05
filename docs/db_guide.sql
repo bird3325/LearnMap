@@ -295,3 +295,15 @@ GRANT ALL ON TABLE public.partner_payments TO service_role;
 -- `blog_posts` 테이블에 불필요한 임시저장(에셋) 행이 생성되지 않도록,
 -- 업로드된 이미지 데이터(`dataUrl`)는 각 게시글의 `blog_posts.images` (JSONB 배열) 내부에 함께 저장하며
 -- 서버 메모리 캐시 및 `/api/blog/image/:filename`(`blog_posts.images` JSONB 조회 포함)을 통해 서빙합니다.
+
+
+-- =========================================================================
+-- 18. 프리미엄 학원 타깃 학교 1곳 선택 + 학교당 최대 3구좌 제한 + 확장 옵션 정책 (2026-11-05)
+-- =========================================================================
+-- `partner_businesses.profile_data -> academyProfile` (JSONB) 내 저장 필드:
+--   targetSchools: JSONB Array (프리미엄 광고 노출 대상 학교명 배열, 기본 1개교 + 확장 옵션 선택 학교)
+--   primaryTargetSchool: VARCHAR (대표 타깃 학교 1곳)
+--   extraSchoolSlots: INTEGER (확장 옵션으로 추가 선택한 학교 구좌 수, 기본 0)
+--   paymentHistory: JSONB Array (유료 멤버십 결제, 타깃 학교/확장구좌 변경, 해지 등 누적 결제 이력 배열)
+-- 학교별 최대 프리미엄 구좌 수(`MAX_PREMIUM_SLOTS_PER_SCHOOL = 3`)를 서버와 클라이언트에서 검증하며,
+-- `partner_subscriptions` 테이블과 병합하여 `GET /api/business/payment-history`에서 결제 이력을 제공합니다.

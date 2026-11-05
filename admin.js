@@ -2126,10 +2126,38 @@ function extractDongName(item) {
     return '';
 }
 
-function getParentCity(name) {
+const PARENT_CITY_SIDO_MAP = {
+    '고양시': ['경기도', '경기'],
+    '성남시': ['경기도', '경기'],
+    '수원시': ['경기도', '경기'],
+    '용인시': ['경기도', '경기'],
+    '안산시': ['경기도', '경기'],
+    '안양시': ['경기도', '경기'],
+    '부천시': ['경기도', '경기'],
+    '화성시': ['경기도', '경기'],
+    '청주시': ['충청북도', '충북'],
+    '천안시': ['충청남도', '충남'],
+    '전주시': ['전북특별자치도', '전라북도', '전북'],
+    '포항시': ['경상북도', '경북'],
+    '창원시': ['경상남도', '경남']
+};
+
+function getParentCity(name, sido = '') {
     if (!name) return name;
     for (const [parent, subs] of Object.entries(SUB_DISTRICT_MAP)) {
-        if (subs.includes(name)) return parent;
+        if (subs.includes(name)) {
+            if (parent === '포항시') {
+                if (sido && (sido.includes('경상북도') || sido.includes('경북'))) return parent;
+                return name;
+            }
+            if (sido && sido !== 'all' && sido !== '미분류') {
+                const validSidos = PARENT_CITY_SIDO_MAP[parent];
+                if (validSidos && !validSidos.some(vs => sido.includes(vs))) {
+                    return name;
+                }
+            }
+            return parent;
+        }
     }
     return name;
 }
@@ -2158,13 +2186,15 @@ function updateRealEstateSigunguDropdown(reset = false) {
 
     allStoredRealEstates.forEach(item => {
         if (item && (item.sido === sido || (item.address && item.address.includes(sido)))) {
-            if (item.sigungu) sigunguSet.add(getParentCity(item.sigungu));
+            if (item.sigungu) {
+                const cleanSig = item.sigungu.replace(/^[가-힣]+시\s+/, '');
+                sigunguSet.add(getParentCity(cleanSig, sido));
+            }
         }
     });
 
-    const allSubGus = new Set(Object.values(SUB_DISTRICT_MAP).flat());
     const sorted = Array.from(sigunguSet)
-        .filter(s => !allSubGus.has(s))
+        .filter(s => getParentCity(s, sido) === s)
         .sort((a, b) => a.localeCompare(b, 'ko'));
 
     const prevVal = realEstateSigunguFilter.value;
@@ -2654,7 +2684,7 @@ function renderRealEstateRegionStats() {
 
         // '고양시 덕양구' 같은 복합 주소 표준화
         const cleanSigungu = rawSigungu.replace(/^[가-힣]+시\s+/, '');
-        const parentCity = getParentCity(cleanSigungu);
+        const parentCity = getParentCity(cleanSigungu, sido);
         const displayName = (parentCity && parentCity !== cleanSigungu) ? `${parentCity} ${cleanSigungu}` : cleanSigungu;
 
         const hasTrade = !isMissingTradeRealEstate(item);
@@ -4630,7 +4660,7 @@ function renderMarkdownAdminPreview(md) {
             ? currentAttachedBlogImages.find(im => im.url === cleanUrl || (im.filename && cleanUrl.endsWith(im.filename)))
             : null;
         const resolvedSrc = (matchedImg && matchedImg.dataUrl) ? matchedImg.dataUrl : cleanUrl;
-        return `<figure style="margin: 16px 0; text-align: center;"><img src="${resolvedSrc}" alt="${altText}" style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: inline-block;" loading="lazy"><figcaption style="font-size: 12px; color: #64748b; margin-top: 6px;">${altText}</figcaption></figure>`;
+        return `<figure style="margin: 16px 0; text-align: center;"><img src="${resolvedSrc}" alt="${altText}" style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: inline-block;" loading="lazy" onerror="this.onerror=null; this.src='/uploads/blog/blog_1793663978667_38b2a_Korean_high_school_counseling_.jpg';"><figcaption style="font-size: 12px; color: #64748b; margin-top: 6px;">${altText}</figcaption></figure>`;
     });
 
     // Links: [text](url)
@@ -4819,7 +4849,7 @@ function renderAttachedBlogImages() {
 
         item.innerHTML = `
             <div style="position: relative; width: 100%; height: 90px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                <img src="${previewSrc}" alt="${img.name || '첨부 이미지'}" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;" title="클릭하여 원본 보기">
+                <img src="${previewSrc}" alt="${img.name || '첨부 이미지'}" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;" title="클릭하여 원본 보기" onerror="this.onerror=null; this.src='/uploads/blog/blog_1793663978667_38b2a_Korean_high_school_counseling_.jpg';">
                 <button type="button" class="btn-delete-img" title="이미지 제거" style="position: absolute; top: 4px; right: 4px; background: rgba(15, 23, 42, 0.7); border: none; border-radius: 50%; color: white; width: 20px; height: 20px; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center;">
                     ✕
                 </button>

@@ -35,7 +35,7 @@ function renderMarkdown(md, postImages = []) {
             ? postImages.find(im => im && (im.url === cleanUrl || (im.filename && cleanUrl.endsWith(im.filename))))
             : null;
         const resolvedSrc = (matchedImg && matchedImg.dataUrl) ? matchedImg.dataUrl : cleanUrl;
-        return `<figure class="blog-post-figure"><img src="${resolvedSrc}" alt="${altText}" class="blog-post-img" loading="lazy" /><figcaption class="blog-img-caption">${altText}</figcaption></figure>`;
+        return `<figure class="blog-post-figure"><img src="${resolvedSrc}" alt="${altText}" class="blog-post-img" loading="lazy" onerror="this.onerror=null; this.src='/uploads/blog/blog_1793663978667_38b2a_Korean_high_school_counseling_.jpg';" /><figcaption class="blog-img-caption">${altText}</figcaption></figure>`;
     });
 
     // Links: [text](url)
@@ -555,15 +555,94 @@ function checkUrlHash() {
 // 이벤트 리스너 등록
 function initEventListeners() {
     // 카테고리 탭
+    const categoryTabs = document.getElementById('categoryTabs');
     const tabs = document.querySelectorAll('.tab-btn');
+
+    let isDown = false;
+    let startX = 0;
+    let initialScrollLeft = 0;
+    let hasDragged = false;
+
     tabs.forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+            // 드래그 중 마우스를 뗀 경우에는 탭 클릭 동작 방지
+            if (hasDragged) {
+                e.preventDefault();
+                return;
+            }
+
             tabs.forEach(t => t.classList.remove('active'));
             btn.classList.add('active');
             currentCategory = btn.dataset.category || 'all';
             renderPosts();
+
+            // 가려진 메뉴 클릭 시 해당 메뉴 및 인접 메뉴가 보이도록 자연스럽게 가로 스크롤 이동
+            if (categoryTabs) {
+                const containerRect = categoryTabs.getBoundingClientRect();
+                const btnRect = btn.getBoundingClientRect();
+                const scrollOffset = (btnRect.left - containerRect.left) - (containerRect.width / 2) + (btnRect.width / 2);
+                categoryTabs.scrollTo({
+                    left: categoryTabs.scrollLeft + scrollOffset,
+                    behavior: 'smooth'
+                });
+            }
         });
     });
+
+    // 마우스 드래그 가로 스크롤 (Drag to scroll)
+    if (categoryTabs) {
+        categoryTabs.style.cursor = 'grab';
+
+        categoryTabs.addEventListener('mousedown', (e) => {
+            isDown = true;
+            hasDragged = false;
+            startX = e.pageX - categoryTabs.offsetLeft;
+            initialScrollLeft = categoryTabs.scrollLeft;
+            categoryTabs.style.cursor = 'grabbing';
+            categoryTabs.style.userSelect = 'none';
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDown) {
+                isDown = false;
+                categoryTabs.style.cursor = 'grab';
+                categoryTabs.style.removeProperty('user-select');
+                setTimeout(() => {
+                    hasDragged = false;
+                }, 50);
+            }
+        });
+
+        categoryTabs.addEventListener('mouseleave', () => {
+            if (isDown) {
+                isDown = false;
+                categoryTabs.style.cursor = 'grab';
+                categoryTabs.style.removeProperty('user-select');
+                setTimeout(() => {
+                    hasDragged = false;
+                }, 50);
+            }
+        });
+
+        categoryTabs.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - categoryTabs.offsetLeft;
+            const walk = (x - startX) * 1.2;
+            if (Math.abs(walk) > 4) {
+                hasDragged = true;
+            }
+            categoryTabs.scrollLeft = initialScrollLeft - walk;
+        });
+
+        // 마우스 휠 조작 시에도 가로 스크롤 지원
+        categoryTabs.addEventListener('wheel', (e) => {
+            if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                e.preventDefault();
+                categoryTabs.scrollLeft += e.deltaY;
+            }
+        }, { passive: false });
+    }
 
     // 실시간 검색
     const searchInput = document.getElementById('blogSearchInput');

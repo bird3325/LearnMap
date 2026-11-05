@@ -2654,10 +2654,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof SUB_DISTRICT_MAP !== 'undefined') {
                 for (const [parentCity, subList] of Object.entries(SUB_DISTRICT_MAP)) {
                     if (subList.includes(gugunA) && !gugunA.includes(parentCity)) {
-                        canonicalGuA = `${parentCity} ${gugunA}`;
+                        if (parentCity !== '포항시' || (sidoA && (sidoA.includes('경상북도') || sidoA.includes('경북')))) {
+                            canonicalGuA = `${parentCity} ${gugunA}`;
+                        }
                     }
                     if (subList.includes(gugunB) && !gugunB.includes(parentCity)) {
-                        canonicalGuB = `${parentCity} ${gugunB}`;
+                        if (parentCity !== '포항시' || (sidoB && (sidoB.includes('경상북도') || sidoB.includes('경북')))) {
+                            canonicalGuB = `${parentCity} ${gugunB}`;
+                        }
                     }
                 }
             }
@@ -8043,6 +8047,42 @@ document.addEventListener('DOMContentLoaded', () => {
             return Math.round(R * c);
         }
 
+        // 현재 선택된 학교(fullSchool)에 대해 해당 학원이 프리미엄 광고 타깃 학교로 지정되었는지 판별 (학교 1곳 선택 + 확장 옵션 + 최대 3구좌)
+        function resolveAcademyPremiumForSchool(place) {
+            if (typeof window.applyPartnerProfileToPlace === 'function') {
+                window.applyPartnerProfileToPlace(place);
+            }
+            const partnerProf = place._partnerProfile || null;
+            const acadName = ((partnerProf && partnerProf.targetAcademyName) ? partnerProf.targetAcademyName : (place.place_name || '')).trim();
+            const matchedPartner = (typeof window.findMatchedPartnerAcademy === 'function') ? window.findMatchedPartnerAcademy(place) : null;
+            const premInfo = (matchedPartner && matchedPartner.isPremium ? matchedPartner : null) || (window.premiumAcademiesMap && window.premiumAcademiesMap[acadName]) || null;
+            const rawIsPremium = Boolean(premInfo || place._isPremium);
+
+            if (!rawIsPremium) {
+                return { isPremium: false, premInfo: null };
+            }
+
+            const curSchoolName = ((fullSchool && (fullSchool.school_name || fullSchool.name)) || '').trim();
+            const targetSchools = (premInfo && Array.isArray(premInfo.targetSchools) && premInfo.targetSchools.length > 0)
+                ? premInfo.targetSchools
+                : (Array.isArray(place._targetSchools) && place._targetSchools.length > 0
+                    ? place._targetSchools
+                    : (partnerProf && Array.isArray(partnerProf.targetSchools) ? partnerProf.targetSchools : []));
+
+            if (curSchoolName && targetSchools.length > 0) {
+                const normCur = curSchoolName.replace(/\s+/g, '').replace(/학교$/, '');
+                const isTargeted = targetSchools.some(t => {
+                    const normT = String(t || '').trim().replace(/\s+/g, '').replace(/학교$/, '');
+                    return normT && (normT === normCur || String(t || '').trim() === curSchoolName);
+                });
+                if (!isTargeted) {
+                    return { isPremium: false, premInfo: null };
+                }
+            }
+
+            return { isPremium: true, premInfo };
+        }
+
         // 프리미엄 학원 카드 DOM 생성 헬퍼
         function createAcademyCard(place) {
             if (typeof window.applyPartnerProfileToPlace === 'function') {
@@ -8054,14 +8094,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? partnerProf.institutionType
                 : (acadName.includes('교습소') ? '교습소' : '학원');
 
-            // 프리미엄 유료 구독 여부 확인 (PRD v1.0 P-07)
+            // 프리미엄 유료 구독 및 현재 클릭한 학교 타깃 여부·3구좌 제한 확인 (PRD v1.0 P-07)
             const cleanAcadName = acadName.trim();
-            const matchedPartner = (typeof window.findMatchedPartnerAcademy === 'function') ? window.findMatchedPartnerAcademy(place) : null;
-            const premInfo = (matchedPartner && matchedPartner.isPremium ? matchedPartner : null) || (window.premiumAcademiesMap && window.premiumAcademiesMap[cleanAcadName]) || null;
-            const isPremium = Boolean(premInfo || place._isPremium);
+            const resolvedPrem = resolveAcademyPremiumForSchool(place);
+            const premInfo = resolvedPrem.premInfo;
+            const isPremium = (typeof place._isEffectivePremiumForSchool === 'boolean')
+                ? place._isEffectivePremiumForSchool
+                : resolvedPrem.isPremium;
 
             if (isPremium && typeof window.logAnalyticsEvent === 'function' && (premInfo?.businessId || place._businessId)) {
-                window.logAnalyticsEvent('premium_impression', premInfo?.businessId || place._businessId, { place_name: cleanAcadName });
+                window.logAnalyticsEvent('premium_impression', premInfo?.businessId || place._businessId, { place_name: cleanAcadName, school_name: fullSchool?.school_name || '' });
             }
 
             let subjectLabel = '';
@@ -8276,13 +8318,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 filtered.sort((a, b) => (b._computedRating || 0) - (a._computedRating || 0));
             }
 
-            // 프리미엄 우선 정렬 (PRD v1.0 P-07: 유료 활성 구독 학원 상단 스폰서 영역 배치)
-            const premMap = window.premiumAcademiesMap || {};
+            // 프리미엄 우선 정렬 (PRD v1.0 P-07: 타깃 학교 일치 & 학교당 최대 3구좌 제한 적용)
+            let assignedPremiumSlots = 0;
+            const MAX_PREMIUM_SLOTS = 3;
+            filtered.forEach(item => {
+                const resPrem = resolveAcademyPremiumForSchool(item);
+                if (resPrem.isPremium && assignedPremiumSlots < MAX_PREMIUM_SLOTS) {
+                    item._isEffectivePremiumForSchool = true;
+                    assignedPremiumSlots++;
+                } else {
+                    item._isEffectivePremiumForSchool = false;
+                }
+            });
             filtered.sort((a, b) => {
-                const aName = (a.place_name || '').trim();
-                const bName = (b.place_name || '').trim();
-                const aPrem = premMap[aName] ? 1 : 0;
-                const bPrem = premMap[bName] ? 1 : 0;
+                const aPrem = a._isEffectivePremiumForSchool ? 1 : 0;
+                const bPrem = b._isEffectivePremiumForSchool ? 1 : 0;
                 return bPrem - aPrem;
             });
 
@@ -12132,8 +12182,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (typeof SUB_DISTRICT_MAP !== 'undefined') {
                     for (const [parentCity, subList] of Object.entries(SUB_DISTRICT_MAP)) {
                         if (subList.includes(gugun) && !gugun.includes(parentCity)) {
-                            canonicalGu = `${parentCity} ${gugun}`;
-                            break;
+                            if (parentCity !== '포항시' || (sido && (sido.includes('경상북도') || sido.includes('경북')))) {
+                                canonicalGu = `${parentCity} ${gugun}`;
+                                break;
+                            }
                         }
                     }
                 }
