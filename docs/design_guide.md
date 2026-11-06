@@ -288,3 +288,14 @@
      - `[상세분석 ▲]` 버튼을 클릭하면 플래그(`window.__expandingMobileItemDetailExplicitly`)를 통해 커리큘럼, 강사진, 실거래가 추이 등의 60vh 전체 상세 패널이 오픈됩니다.
   4. **PC 환경 유지**:
      - 데스크톱 PC(`window.innerWidth > 1024px`)에서는 미니 카드가 항상 숨김 처리(`display: none !important`)되며, 기존 우측 다단 사이드바 동작을 100% 동일하게 유지합니다.
+
+
+## 27. 학원 상세 기본 정보 Skeleton UI 및 모바일 리스트-상세 연동 사양 (2026-11-06)
+- **적용 위치**: `app.js` (`getAcademyInfoSkeletonHtml`, `renderAcademyFeeCalculator`, `openAcademyDetailModal`, `openHousingDetailModal`), `style.css` (`.academy-skeleton-card`, `.academy-skeleton-bar`, `@keyframes academy-skeleton-shimmer`)
+- **도입 내용**:
+  1. **학원 상세 기본 정보 Skeleton UI (모바일 & 웹 공통)**:
+     - 학원 상세 모달 진입 시 공공데이터 포털(NEIS) 또는 비즈니스 프로필 로딩 전까지 깜빡임 없는 스켈레톤 쉬머 애니메이션(`academy-skeleton-shimmer`) 제공.
+     - 데이터를 조회하지 못하거나 NEIS 미등록 학원인 경우 빈 공간으로 방치하지 않고, 회색 스켈레톤 구조선과 함께 안내 배지를 부착하여 레이아웃 무결성 유지.
+  2. **모바일 주택 및 학원 리스트 클릭 시 상세 모달 직접 연결**:
+     - 기존에 지도 핀 클릭용 미니카드 인터셉트 분기로 인해 모바일 리스트 사이드바에서 카드를 탭했을 때 상세가 열리지 않던 문제를 해결.
+     - 리스트 사이드바 열림 상태 감지(`isAcademyListOpen`, `isHousingListOpen`) 및 `window.__expandingMobileItemDetailExplicitly` 명시적 플래그 바인딩을 통해 리스트에서 항목 클릭 시 즉시 해당 상세 모달이 열리도록 연동 완료.

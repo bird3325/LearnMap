@@ -2232,5 +2232,35 @@
       "area": "서초동"
     },
     "createdAt": "2026-11-06T01:59:02.813Z"
+  },
+  {
+    "id": "evt_1793931864695_iw0d",
+    "businessId": "biz_1793878533975",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "두진한아름",
+      "area": "서초동"
+    },
+    "createdAt": "2026-11-06T02:24:24.695Z"
+  },
+  {
+    "id": "evt_1793932806574_k4pd",
+    "businessId": "biz_1793878533975",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "서초 가람아파트",
+      "area": "서초동"
+    },
+    "createdAt": "2026-11-06T02:40:06.574Z"
+  },
+  {
+    "id": "evt_1793932815986_nd6m",
+    "businessId": "biz_1793878533975",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "래미안서초에스티지",
+      "area": "서초동"
+    },
+    "createdAt": "2026-11-06T02:40:15.986Z"
   }
 ]

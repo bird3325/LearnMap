@@ -8817,9 +8817,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isPremium && typeof window.logAnalyticsEvent === 'function') {
                     window.logAnalyticsEvent('profile_view', premInfo.businessId, { place_name: cleanAcadName });
                 }
+                window.__expandingMobileItemDetailExplicitly = true;
                 if (typeof window.openAcademyDetailModal === 'function') {
                     window.openAcademyDetailModal(place);
                 }
+                window.__expandingMobileItemDetailExplicitly = false;
             };
 
             return card;
@@ -17739,6 +17741,50 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // 학원 기본 정보 스켈레톤 UI 생성 헬퍼
+    window.getAcademyInfoSkeletonHtml = function (isNotFound = false) {
+        return `
+            <div class="academy-skeleton-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 12px; display: flex; flex-direction: column; gap: 12px; position: relative;">
+                <!-- 상단 헤더 스켈레톤 -->
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="academy-skeleton-bar" style="width: 22px; height: 22px; border-radius: 6px;"></div>
+                        <div class="academy-skeleton-bar" style="width: 140px; height: 16px; border-radius: 4px;"></div>
+                    </div>
+                    <div class="academy-skeleton-bar" style="width: 75px; height: 22px; border-radius: 9999px;"></div>
+                </div>
+                <!-- 바디 2열 스켈레톤 그리드 -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 4px 0;">
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <div class="academy-skeleton-bar" style="width: 45px; height: 11px; border-radius: 3px;"></div>
+                        <div class="academy-skeleton-bar" style="width: 110px; height: 15px; border-radius: 4px;"></div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <div class="academy-skeleton-bar" style="width: 50px; height: 11px; border-radius: 3px;"></div>
+                        <div class="academy-skeleton-bar" style="width: 85px; height: 15px; border-radius: 4px;"></div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <div class="academy-skeleton-bar" style="width: 60px; height: 11px; border-radius: 3px;"></div>
+                        <div class="academy-skeleton-bar" style="width: 120px; height: 15px; border-radius: 4px;"></div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <div class="academy-skeleton-bar" style="width: 55px; height: 11px; border-radius: 3px;"></div>
+                        <div class="academy-skeleton-bar" style="width: 70px; height: 15px; border-radius: 4px;"></div>
+                    </div>
+                </div>
+                <!-- 하단 주소/안내 스켈레톤 -->
+                <div style="border-top: 1px solid #f1f5f9; padding-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+                    <div class="academy-skeleton-bar" style="width: 85%; height: 13px; border-radius: 4px;"></div>
+                    <div class="academy-skeleton-bar" style="width: 60%; height: 13px; border-radius: 4px;"></div>
+                </div>
+                ${isNotFound ? `
+                <div style="margin-top: 4px; padding: 8px 12px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; font-size: 11.5px; color: #64748b; display: flex; align-items: center; justify-content: center; gap: 6px; text-align: center;">
+                    <span>ℹ️</span> <span>공공데이터 포털에서 기본 학원 정보를 가져오지 못하여 스켈레톤 안내 뷰가 적용되었습니다.</span>
+                </div>` : ''}
+            </div>
+        `;
+    };
+
     // 3. 학원비 비교 및 할인 계산기 위젯
     window.renderAcademyFeeCalculator = async function (acadName, subject, address = '', phone = '', typeLabel = '', lng = '', lat = '') {
         if (typeof window.clearAcademyMarker === 'function') window.clearAcademyMarker();
@@ -17746,7 +17792,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!calculatorContent) return;
 
         const basicInfoContainer = document.getElementById('academyBasicInfoContainer');
-        if (basicInfoContainer) basicInfoContainer.innerHTML = '';
+        // 초기 로딩 중 스켈레톤 UI 적용
+        if (basicInfoContainer) {
+            basicInfoContainer.innerHTML = window.getAcademyInfoSkeletonHtml(false);
+        }
 
         const safeLng = lng || (window.currentAcademyCoords && window.currentAcademyCoords.lng) || '';
         const safeLat = lat || (window.currentAcademyCoords && window.currentAcademyCoords.lat) || '';
@@ -17979,7 +18028,12 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         if (basicInfoContainer) {
-            basicInfoContainer.innerHTML = academyInfoHtml;
+            if (isNeisRegistered) {
+                basicInfoContainer.innerHTML = academyInfoHtml;
+            } else {
+                // 정보를 가져오지 못한 경우 Skeleton UI 적용
+                basicInfoContainer.innerHTML = window.getAcademyInfoSkeletonHtml(true);
+            }
         }
 
         const avgFee = 320000;
@@ -20739,8 +20793,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
             if (!placeOrName) return;
 
-            // [모바일 환경 분기]: 핀 클릭 시 화면을 덮는 60vh 전체 상세를 바로 띄우지 않고 1단계 미니 카드로 노출
-            if (window.innerWidth <= 1024 && !window.__expandingMobileItemDetailExplicitly) {
+            // [모바일 환경 분기]: 지도 핀 클릭 시에만 미니 카드로 노출 (리스트 사이드바가 열려있거나 명시적 오픈일 때는 상세 모달 즉시 오픈)
+            const isAcademyListOpen = Boolean(document.querySelector('.app-container')?.classList.contains('academy-open') || document.getElementById('academySidebar')?.style.display === 'flex');
+            if (window.innerWidth <= 1024 && !window.__expandingMobileItemDetailExplicitly && !isAcademyListOpen) {
                 if (typeof window.showMobileAcademyPeekCard === 'function') {
                     window.showMobileAcademyPeekCard(placeOrName);
                     return;
@@ -21041,8 +21096,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
             if (!placeOrName) return;
 
-            // [모바일 환경 분기]: 핀 클릭 시 화면을 덮는 60vh 전체 상세를 바로 띄우지 않고 1단계 미니 카드로 노출
-            if (window.innerWidth <= 1024 && !window.__expandingMobileItemDetailExplicitly) {
+            // [모바일 환경 분기]: 지도 핀 클릭 시에만 미니 카드로 노출 (리스트 사이드바가 열려있거나 명시적 오픈일 때는 상세 모달 즉시 오픈)
+            const isHousingListOpen = Boolean(document.querySelector('.app-container')?.classList.contains('housing-open') || document.getElementById('housingSidebar')?.style.display === 'flex');
+            if (window.innerWidth <= 1024 && !window.__expandingMobileItemDetailExplicitly && !isHousingListOpen) {
                 if (typeof window.showMobileHousingPeekCard === 'function') {
                     window.showMobileHousingPeekCard(placeOrName);
                     return;
@@ -23104,9 +23160,11 @@ window.addEventListener('DOMContentLoaded', () => {
     `;
 
             card.onclick = () => {
+                window.__expandingMobileItemDetailExplicitly = true;
                 if (typeof window.openHousingDetailModal === 'function') {
                     window.openHousingDetailModal(place);
                 }
+                window.__expandingMobileItemDetailExplicitly = false;
             };
 
             return card;
