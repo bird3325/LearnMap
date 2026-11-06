@@ -6177,10 +6177,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const badgeText = `${badgeType}·${foundClean}`;
 
         if (badgeEl) {
-            badgeEl.textContent = badgeText;
-            badgeEl.style.background = badgeBg;
-            badgeEl.style.color = badgeColor;
-            badgeEl.style.borderColor = badgeBorder;
+            badgeEl.textContent = '';
+            badgeEl.style.display = 'none';
         }
 
         // 관심학교 즐겨찾기 별 상태 동기화
@@ -22008,7 +22006,7 @@ window.addEventListener('DOMContentLoaded', () => {
             if (zoneTitle) zoneTitle.textContent = levelLabel;
             if (zoneTrack && zoneKnob) {
                 zoneTrack.style.background = isOn ? '#0052cc' : '#cbd5e1';
-                zoneKnob.style.left = isOn ? '20px' : '2px';
+                zoneKnob.style.left = isOn ? '16px' : '2px';
             }
 
             // 하위 호환성 칩 UI

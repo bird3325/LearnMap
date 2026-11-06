@@ -7199,13 +7199,12 @@
         <!-- 상단 드래그 힌트 바 -->
         <div style="width: 44px; height: 4px; background: #cbd5e1; border-radius: 2px; margin: 0 auto 6px auto; cursor: grab;" onclick="window.closeMobileSchoolPeekCard()" title="카드 닫기"></div>
 
-        <!-- 1행: 학교 뱃지, 학교명, 즐겨찾기, 도보시간, 상세분석 버튼 -->
+        <!-- 1행: 학교명, 즐겨찾기, 도보시간, 상세분석 버튼 (배지는 요청에 따라 제거) -->
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; width: 100%;">
             <div style="display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1;">
-                <span id="mobilePeekSchoolBadge"
-                    style="font-size: 11.5px; font-weight: 700; padding: 3px 7px; border-radius: 6px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; white-space: nowrap; flex-shrink: 0;">초등학교·공립</span>
+                <span id="mobilePeekSchoolBadge" style="display: none !important;"></span>
                 <h4 id="mobilePeekSchoolName" onclick="window.expandMobileSchoolDetail()"
-                    style="font-size: 17px; font-weight: 800; color: #0f172a; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; letter-spacing: -0.3px; max-width: 140px;">학교명</h4>
+                    style="font-size: 17.5px; font-weight: 800; color: #0f172a; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; letter-spacing: -0.3px;">학교명</h4>
                 <button type="button" id="btnMobilePeekFavorite" onclick="if(typeof window.toggleFavoriteSchool==='function')window.toggleFavoriteSchool();"
                     style="background: none; border: none; font-size: 19px; line-height: 1; cursor: pointer; color: #94a3b8; padding: 0; flex-shrink: 0;"
                     title="관심 학교 등록">☆</button>
@@ -7236,38 +7235,38 @@
             </button>
         </div>
 
-        <!-- 3행: 3분할 와이드 액션 카드 (인근 학원 / 배정 주택 / 통학구역 구역 표시 스위치) -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 2px;">
+        <!-- 3행: 3분할 와이드 액션 카드 (줄바꿈 없이 일정한 높이로 고정) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 2px;">
             <!-- 인근 학원 카드 -->
             <div id="mobilePeekAcademyChip" onclick="window.focusNearbyAcademiesMobile()"
-                style="background: #fbf9ff; border: 1px solid #ede9fe; border-radius: 12px; padding: 8px 10px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.15s ease;">
-                <div style="display: flex; flex-direction: column; gap: 2px; text-align: left;">
-                    <span style="font-size: 11px; font-weight: 700; color: #6d28d9; letter-spacing: -0.2px;">인근 학원</span>
-                    <span style="font-size: 13.5px; font-weight: 800; color: #4c1d95; letter-spacing: -0.3px;"><strong id="mobilePeekAcademyCount">0</strong>개소</span>
+                style="background: #fbf9ff; border: 1px solid #ede9fe; border-radius: 12px; padding: 6px 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; height: 46px; box-sizing: border-box; transition: all 0.15s ease;">
+                <div style="display: flex; flex-direction: column; gap: 1px; text-align: left; min-width: 0; overflow: hidden;">
+                    <span style="font-size: 10.5px; font-weight: 700; color: #6d28d9; letter-spacing: -0.2px; white-space: nowrap;">인근 학원</span>
+                    <span style="font-size: 13px; font-weight: 800; color: #4c1d95; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><strong id="mobilePeekAcademyCount">0</strong>개소</span>
                 </div>
-                <span style="font-size: 14px; font-weight: 800; color: #8b5cf6;">&gt;</span>
+                <span style="font-size: 13px; font-weight: 800; color: #8b5cf6; flex-shrink: 0; margin-left: 2px;">&gt;</span>
             </div>
 
             <!-- 배정 주택 카드 -->
             <div id="mobilePeekHousingChip" onclick="window.focusNearbyHousingMobile()"
-                style="background: #fff1f2; border: 1px solid #ffe4e6; border-radius: 12px; padding: 8px 10px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.15s ease;">
-                <div style="display: flex; flex-direction: column; gap: 2px; text-align: left;">
-                    <span style="font-size: 11px; font-weight: 700; color: #be123c; letter-spacing: -0.2px;">배정 주택</span>
-                    <span style="font-size: 13.5px; font-weight: 800; color: #9f1239; letter-spacing: -0.3px;"><strong id="mobilePeekHousingCount">0</strong>개 단지</span>
+                style="background: #fff1f2; border: 1px solid #ffe4e6; border-radius: 12px; padding: 6px 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; height: 46px; box-sizing: border-box; transition: all 0.15s ease;">
+                <div style="display: flex; flex-direction: column; gap: 1px; text-align: left; min-width: 0; overflow: hidden;">
+                    <span style="font-size: 10.5px; font-weight: 700; color: #be123c; letter-spacing: -0.2px; white-space: nowrap;">배정 주택</span>
+                    <span style="font-size: 13px; font-weight: 800; color: #9f1239; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><strong id="mobilePeekHousingCount">0</strong>개 단지</span>
                 </div>
-                <span style="font-size: 14px; font-weight: 800; color: #f43f5e;">&gt;</span>
+                <span style="font-size: 13px; font-weight: 800; color: #f43f5e; flex-shrink: 0; margin-left: 2px;">&gt;</span>
             </div>
 
-            <!-- 통학구역 구역 표시 스위치 카드 -->
+            <!-- 통학구역 구역 표시 스위치 카드 (슬림 스위치 & 줄바꿈 방지) -->
             <div id="mobilePeekZoneToggleBtn" class="btn-school-zone-toggle" onclick="window.toggleMobileSchoolZoneBoundary()"
-                style="background: #eff6ff; border: 1px solid #dbeafe; border-radius: 12px; padding: 8px 10px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.15s ease;">
-                <div style="display: flex; flex-direction: column; gap: 1px; text-align: left;">
-                    <span id="mobilePeekZoneCardTitle" style="font-size: 11px; font-weight: 800; color: #1e40af; letter-spacing: -0.2px;">통학구역</span>
-                    <span style="font-size: 12px; font-weight: 900; color: #0f172a; letter-spacing: -0.3px;">구역 표시</span>
+                style="background: #eff6ff; border: 1px solid #dbeafe; border-radius: 12px; padding: 6px 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; height: 46px; box-sizing: border-box; transition: all 0.15s ease;">
+                <div style="display: flex; flex-direction: column; gap: 1px; text-align: left; min-width: 0; overflow: hidden; flex: 1; margin-right: 4px;">
+                    <span id="mobilePeekZoneCardTitle" style="font-size: 10.5px; font-weight: 800; color: #1e40af; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">통학구역</span>
+                    <span style="font-size: 11.5px; font-weight: 900; color: #0f172a; letter-spacing: -0.3px; white-space: nowrap;">구역 표시</span>
                 </div>
-                <!-- ON/OFF 슬라이더 스위치 -->
-                <div id="mobilePeekZoneToggleTrack" style="width: 38px; height: 20px; border-radius: 10px; background: #cbd5e1; position: relative; transition: background 0.22s ease; flex-shrink: 0;">
-                    <div id="mobilePeekZoneToggleKnob" style="width: 16px; height: 16px; border-radius: 50%; background: #ffffff; position: absolute; top: 2px; left: 2px; transition: all 0.22s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.25);"></div>
+                <!-- ON/OFF 슬라이더 스위치 (32px x 18px 슬림 스위치) -->
+                <div id="mobilePeekZoneToggleTrack" style="width: 32px; height: 18px; border-radius: 9px; background: #cbd5e1; position: relative; transition: background 0.22s ease; flex-shrink: 0;">
+                    <div id="mobilePeekZoneToggleKnob" style="width: 14px; height: 14px; border-radius: 50%; background: #ffffff; position: absolute; top: 2px; left: 2px; transition: all 0.22s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.25);"></div>
                 </div>
             </div>
         </div>
