@@ -17772,8 +17772,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 학원 기본 정보 스켈레톤 UI 생성 헬퍼
-    window.getAcademyInfoSkeletonHtml = function (isNotFound = false) {
+    // 학원 기본 정보 로딩 스켈레톤 UI 생성 헬퍼
+    window.getAcademyInfoSkeletonHtml = function () {
         return `
             <div class="academy-skeleton-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 12px; display: flex; flex-direction: column; gap: 12px; position: relative;">
                 <!-- 상단 헤더 스켈레톤 -->
@@ -17808,10 +17808,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="academy-skeleton-bar" style="width: 85%; height: 13px; border-radius: 4px;"></div>
                     <div class="academy-skeleton-bar" style="width: 60%; height: 13px; border-radius: 4px;"></div>
                 </div>
-                ${isNotFound ? `
-                <div style="margin-top: 4px; padding: 8px 12px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; font-size: 11.5px; color: #64748b; display: flex; align-items: center; justify-content: center; gap: 6px; text-align: center;">
-                    <span>ℹ️</span> <span>공공데이터 포털에서 기본 학원 정보를 가져오지 못하여 스켈레톤 안내 뷰가 적용되었습니다.</span>
-                </div>` : ''}
             </div>
         `;
     };
@@ -17825,7 +17821,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const basicInfoContainer = document.getElementById('academyBasicInfoContainer');
         // 초기 로딩 중 스켈레톤 UI 적용
         if (basicInfoContainer) {
-            basicInfoContainer.innerHTML = window.getAcademyInfoSkeletonHtml(false);
+            basicInfoContainer.innerHTML = window.getAcademyInfoSkeletonHtml();
         }
 
         const safeLng = lng || (window.currentAcademyCoords && window.currentAcademyCoords.lng) || '';
@@ -18062,8 +18058,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isNeisRegistered) {
                 basicInfoContainer.innerHTML = academyInfoHtml;
             } else {
-                // 정보를 가져오지 못한 경우 Skeleton UI 적용
-                basicInfoContainer.innerHTML = window.getAcademyInfoSkeletonHtml(true);
+                // 기본 학원 정보 데이터가 없을 경우 스켈레톤 UI를 노출하지 않고 비움
+                basicInfoContainer.innerHTML = '';
             }
         }
 
@@ -21007,6 +21003,9 @@ window.addEventListener('DOMContentLoaded', () => {
             if (typeof window.clearAcademyMarker === 'function') window.clearAcademyMarker();
             const panel = document.getElementById('communityPanel');
             if (panel) panel.style.display = 'none';
+
+            const basicInfoContainer = document.getElementById('academyBasicInfoContainer');
+            if (basicInfoContainer) basicInfoContainer.innerHTML = '';
 
             const sb = document.querySelector('.sidebar-section');
             if (sb) sb.classList.remove('active-community');
