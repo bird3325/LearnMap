@@ -60,6 +60,10 @@ function utf8HeadersPlugin() {
           const query = req.url.includes('?') ? '?' + req.url.split('?')[1] : '';
           req.url = '/blog.html' + query;
         }
+        if (cleanUrl === '/partner-auth' || cleanUrl === '/partner-login' || cleanUrl === '/partner/login' || cleanUrl === '/partner/register') {
+          const query = req.url.includes('?') ? '?' + req.url.split('?')[1] : '';
+          req.url = '/partner-auth.html' + query;
+        }
 
         const origSetHeader = res.setHeader;
         res.setHeader = function (name, val) {
@@ -114,7 +118,8 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         admin: resolve(__dirname, 'admin.html'),
         business: resolve(__dirname, 'business.html'),
-        blog: resolve(__dirname, 'blog.html')
+        blog: resolve(__dirname, 'blog.html'),
+        partnerAuth: resolve(__dirname, 'partner-auth.html')
       }
     }
   }

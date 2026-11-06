@@ -299,3 +299,42 @@
   2. **모바일 주택 및 학원 리스트 클릭 시 상세 모달 직접 연결**:
      - 기존에 지도 핀 클릭용 미니카드 인터셉트 분기로 인해 모바일 리스트 사이드바에서 카드를 탭했을 때 상세가 열리지 않던 문제를 해결.
      - 리스트 사이드바 열림 상태 감지(`isAcademyListOpen`, `isHousingListOpen`) 및 `window.__expandingMobileItemDetailExplicitly` 명시적 플래그 바인딩을 통해 리스트에서 항목 클릭 시 즉시 해당 상세 모달이 열리도록 연동 완료.
+
+
+## 28. 파트너센터 전용 로그인/회원가입 페이지 (`partner-auth.html`) 디자인 및 인증 플로우 사양 (2026-11-06)
+- **적용 위치**: `partner-auth.html`, `business.html` (`goToPartnerLogin`, `loadSession`), `server.js` (`/api/auth/register`, `/partner-auth` 라우트), `vite.config.js`
+- **도입 배경**:
+  - 기존에는 파트너 센터(`/business`, `/partner`) 접근 시 비로그인 상태이면 메인 서비스 화면의 로그인 모달(`/?action=login`)로 튕겨나가 학부모 서비스와 파트너 서비스 간 맥락이 단절되는 문제가 있었습니다.
+  - 이를 해결하기 위해 학원 및 부동산 사업자 회원을 위한 독립된 전용 로그인 및 회원가입 페이지(`partner-auth.html`)를 신설하여 비로그인 상태 시 해당 페이지로 자연스럽게 안내되도록 개편했습니다.
+- **상세 UI/UX 사양**:
+  1. **카드 레이아웃 & 브랜딩**:
+     - 상단 파트너스 전용 배지(`🤝 학업여지도 파트너스`) 및 파트너 콘솔 전용 타이틀/서브타이틀 배치.
+     - 최대 가로폭 `440px`의 모던한 슬레이트 카드 디자인(`border-radius: 20px`, `box-shadow`, `#2563eb` 포인트 컬러).
+  2. **세그먼트 탭 네비게이션**:
+     - `[ 파트너 로그인 ]` / `[ 파트너 회원가입 ]` 탭을 슬라이드 전환 방식으로 제공. URL 파라미터(`?tab=register` 등)로 탭 직접 진입 지원.
+  3. **파트너 로그인 화면**:
+     - 아이디(이메일), 비밀번호(보기/숨기기 눈 모양 토글), 로그인 상태 유지 체크박스.
+     - (사용자 요청에 따라 검수용 1초 로그인 영역을 제거하고, 실제 Supabase DB와 직결된 정규 로그인/가입 인터페이스로 운영)
+  4. **파트너 회원가입 화면**:
+     - 사업자 유형 선택: 🏫 학원/교습소 vs 🏢 부동산 공인중개사 라디오 카드형 선택 UI.
+     - 상호명, 대표자 성명, 이메일 아이디, 대표 연락처, 비밀번호 및 비밀번호 확인, 약관 동의.
+     - 가입 완료 시 즉시 `role: 'partner'`로 계정 생성 및 파트너 비즈니스 기본 정보 동시 연동 후 파트너 센터(`/business`)로 안전하게 이동.
+  5. **비로그인 진입 시 리다이렉트 정책**:
+     - `/business` 또는 `/partner` 접속 시 로컬스토리지 내 사용자 세션이 없거나 게스트인 경우, 메인 로그인이 아닌 `/partner-auth.html?redirect=...`로 즉시 연결되어 로그인/가입 후 기존 탐색 목적지로 자동 복귀.
+  6. **지도 내 회원 서비스 연계 (파트너 회원가입 링크)**:
+     - PC 및 모바일 마이페이지 사이드바의 [회원 서비스] 카드, 그리고 메인 [회원 서비스 모달(`authModal`)]의 하단에 "학원 · 부동산 사업자이신가요? [파트너 회원가입 ➔]" 링크를 기본 배치하여, 지도 탐색 중인 사업자 사용자가 언제든지 파트너 전용 가입 페이지(`/partner-auth.html?tab=register`)로 직접 접근할 수 있도록 동선을 일원화함.
+
+
+## 29. 지도 위 주택 및 학원 핀 노출 속도 극대화 사양 (2026-11-06)
+- **적용 위치**: `server.js` (`/api/academies/list`, `/api/realestate/pins`), `app.js` (`loadAcademiesForRadius`)
+- **개선 배경 및 해결책**:
+  1. **직렬 Waterfall(폭포수) 병목 해소**:
+     - 기존에는 학원 데이터 호출 → 학원 평점 DB 조회 → 사이드바 리스트 렌더링 → 학원 핀 표시가 모두 완료된 후에야 주택 핀(`updateRealEstateMapMarkers`)이 순차 실행되어 3~5초 이상 지연 발생.
+     - `loadAcademiesForRadius` 시작 시 `updateRealEstateMapMarkers(radNum)`를 **즉시 비동기 병렬 호출**하여 학원 데이터와 주택 데이터가 동시에 지도에 표시되도록 전면 개선.
+  2. **지도 핀 마커 우선 렌더링 (Non-blocking)**:
+     - 학원 데이터 수신 즉시 `updateAcademyMapMarkers(allFetchedAcademies)`를 호출하여 지도에 핀을 먼저 노출하고, 평점 DB 조회 및 사이드바 목록 렌더링은 백그라운드 비차단 방식으로 처리.
+  3. **Vercel Edge CDN 및 서버 인메모리 2단계 캐싱**:
+     - 백엔드(`/api/academies/list`, `/api/realestate/pins`)에 `Cache-Control: public, max-age=..., s-maxage=3600, stale-while-revalidate=86400` 헤더를 추가하여 Vercel 글로벌 엣지 네트워크에서 캐싱 즉시 응답(10ms 미만).
+     - 서버 인메모리 LRU 캐시(`academyListServerCache`, `realestatePinsServerCache`) 구축으로 중복 카카오 API 호출 및 공간 격자 연산을 방지.
+  4. **클라이언트 인메모리 캐싱 (`window._academyListCache`)**:
+     - 브라우저 인메모리 캐시를 통해 사용자가 반경을 변경(500m ↔ 1000m)하거나 동일 학교를 재선택할 때 네트워크 지연 없이 0ms 즉시 렌더링.

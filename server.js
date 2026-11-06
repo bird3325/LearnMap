@@ -1,3 +1,8 @@
+// --- Vercel Serverless & In-Memory Performance Caches ---
+const academyListServerCache = new Map();
+const realestatePinsServerCache = new Map();
+const ACADEMY_CACHE_TTL = 30 * 60 * 1000; // 30분
+const REALESTATE_CACHE_TTL = 60 * 60 * 1000; // 60분
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -3705,13 +3710,14 @@ function writeUsers(users) {
 }
 
 app.post('/api/auth/register', async (req, res) => {
-    const { email, password, name } = req.body;
+    const { email, password, name, role = 'parent', bizName = '', bizType = 'academy', phone = '' } = req.body;
     if (!email || !password || !name) {
         return res.status(400).json({ success: false, message: '모든 필수 항목을 입력해 주세요.' });
     }
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = name.trim();
+    const userRole = (role === 'partner' || Boolean(bizName)) ? 'partner' : 'parent';
 
     // 1. Supabase users 테이블 저장 시도
     let userId = 'user_' + Date.now();
@@ -3728,7 +3734,8 @@ app.post('/api/auth/register', async (req, res) => {
                 email: cleanEmail,
                 password_hash: password,
                 name: cleanName,
-                role: 'parent',
+                role: userRole,
+                phone: phone || null,
                 is_active: true
             })
         });
@@ -3749,12 +3756,39 @@ app.post('/api/auth/register', async (req, res) => {
         return res.status(400).json({ success: false, message: '이미 가입된 이메일 계정입니다.' });
     }
 
+    let bizId = null;
+    if (userRole === 'partner') {
+        bizId = 'biz_' + Date.now();
+        try {
+            const businesses = await syncBusinessesFromDB();
+            const newBiz = {
+                id: bizId,
+                userId: userId,
+                name: bizName || `${cleanName} 파트너스`,
+                type: bizType || 'academy',
+                representative: cleanName,
+                email: cleanEmail,
+                phone: phone || '',
+                address: '기본 주소 등록 대기',
+                status: 'submitted',
+                isPartner: false,
+                createdAt: new Date().toISOString()
+            };
+            businesses.push(newBiz);
+            await saveBusinessToDB(newBiz);
+        } catch (bizErr) {
+            console.warn('Partner business auto-create error:', bizErr.message);
+        }
+    }
+
     const newUser = {
         id: userId,
         email: cleanEmail,
         password: password,
         name: cleanName,
-        role: 'parent',
+        role: userRole,
+        businessId: bizId,
+        bizName: bizName || '',
         createdAt: new Date().toISOString()
     };
 
@@ -3765,9 +3799,17 @@ app.post('/api/auth/register', async (req, res) => {
         id: newUser.id,
         email: newUser.email,
         name: newUser.name,
-        role: newUser.role
+        role: newUser.role,
+        businessId: newUser.businessId,
+        bizName: newUser.bizName
     };
-    return res.json({ success: true, user: sessionUser, message: '회원가입이 완료되었습니다. 학교 진단 및 마이페이지 서비스를 이용하세요.' });
+    return res.json({
+        success: true,
+        user: sessionUser,
+        message: userRole === 'partner'
+            ? '파트너 회원가입이 완료되었습니다! 파트너센터로 이동합니다.'
+            : '회원가입이 완료되었습니다. 학교 진단 및 마이페이지 서비스를 이용하세요.'
+    });
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -3803,17 +3845,26 @@ app.post('/api/auth/login', async (req, res) => {
     // 2. 로컬 파일 조회
     const users = readUsers();
     
-    // 기본 체험 계정 자동 생성
-    if (cleanEmail === 'test@learnmap.com' && password === '1234' && !users.find(u => u.email === cleanEmail)) {
-        const testUser = {
-            id: 'user_test_default',
-            email: 'test@learnmap.com',
-            password: '1234',
-            name: '학부모 회원',
-            role: 'parent',
+    // 기본 체험 및 파트너 검수 계정 자동 생성
+    const defaultAccounts = [
+        { email: 'test@learnmap.com', password: '1234', name: '학부모 회원', role: 'parent', id: 'user_test_default' },
+        { email: 'onetop@realestate.com', password: '1234', name: '원탑 공인중개사', role: 'partner', bizName: '원탑 공인중개사사무소', id: 'user_onetop_re' },
+        { email: 'olympiad@math.com', password: '1234', name: '올림피아드 수학', role: 'partner', bizName: '올림피아드 수학학원', id: 'user_olympiad_math' },
+        { email: 'partner@learnmap.kr', password: '1234', name: '체험 파트너', role: 'partner', bizName: '학업여지도 파트너스', id: 'user_partner_demo' }
+    ];
+
+    const matchedDefault = defaultAccounts.find(a => a.email === cleanEmail && a.password === password);
+    if (matchedDefault && !users.find(u => u.email.toLowerCase() === cleanEmail)) {
+        const newAcc = {
+            id: matchedDefault.id,
+            email: matchedDefault.email,
+            password: matchedDefault.password,
+            name: matchedDefault.name,
+            role: matchedDefault.role,
+            bizName: matchedDefault.bizName || '',
             createdAt: new Date().toISOString()
         };
-        users.push(testUser);
+        users.push(newAcc);
         writeUsers(users);
     }
 
@@ -4543,11 +4594,22 @@ function applyBusinessProfileToMapItem(item, biz, isPremium = false) {
     };
 }
 
-// 9. GET /api/academies/list - Fetch ALL academy pages across multi-grid points and return sorted full list
+// 9. GET /api/academies/list - Fetch ALL academy pages across multi-grid points and return sorted full list (Ultra Fast & Cached)
 app.get('/api/academies/list', async (req, res) => {
     const { x, y } = req.query;
     const radius = parseInt(req.query.radius, 10) || 1000;
     if (!x || !y) return res.status(400).json({ error: '좌표가 없습니다.' });
+
+    // 🌟 Vercel Edge CDN 캐시 헤더 (첫 방문 후 Vercel 엣지에서 수십 ms 내 즉각 서빙)
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
+
+    // 🌟 서버 인메모리 캐시 확인 (약 10m 단위 좌표 반올림)
+    const acadCacheKey = `${parseFloat(x).toFixed(4)}_${parseFloat(y).toFixed(4)}_${radius}`;
+    const cachedAcad = academyListServerCache.get(acadCacheKey);
+    if (cachedAcad && (Date.now() - cachedAcad.timestamp < ACADEMY_CACHE_TTL)) {
+        res.setHeader('X-Cache', 'HIT-SERVER');
+        return res.json(cachedAcad.data);
+    }
 
     const config = await readConfig();
     const appkey = config.kakao_app_key;
@@ -4678,7 +4740,13 @@ app.get('/api/academies/list', async (req, res) => {
         // 거리순 정렬
         finalItems.sort((a, b) => parseInt(a.distance, 10) - parseInt(b.distance, 10));
 
-        res.json({ items: finalItems, total_count: finalItems.length });
+        const responsePayload = { items: finalItems, total_count: finalItems.length };
+        if (academyListServerCache.size > 150) {
+            academyListServerCache.delete(academyListServerCache.keys().next().value);
+        }
+        academyListServerCache.set(acadCacheKey, { timestamp: Date.now(), data: responsePayload });
+
+        res.json(responsePayload);
     } catch (err) {
         console.error('Kakao List Fetch Error:', err);
         res.status(500).json({ error: '카카오 검색 API 호출에 실패했습니다.' });
@@ -5322,6 +5390,17 @@ app.get('/api/realestate/pins', async (req, res) => {
         return res.status(400).json({ error: '중심 좌표(x, y)가 필요합니다.' });
     }
 
+    // 🌟 Vercel Edge CDN 캐시 헤더 설정 (실거래 데이터 1시간 동안 엣지에서 즉각 응답)
+    res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400');
+
+    // 🌟 서버 인메모리 캐시 확인 (1ms 즉시 반환)
+    const reCacheKey = `${centerX.toFixed(4)}_${centerY.toFixed(4)}_${radius}_${typeList.sort().join(',')}`;
+    const cachedRe = realestatePinsServerCache.get(reCacheKey);
+    if (cachedRe && (Date.now() - cachedRe.timestamp < REALESTATE_CACHE_TTL)) {
+        res.setHeader('X-Cache', 'HIT-SERVER');
+        return res.json(cachedRe.data);
+    }
+
     // 하버사인(Haversine) 구면 직선 거리 계산 함수 (미터 단위)
     function getHaversineDistance(lat1, lon1, lat2, lon2) {
         const R = 6371000;
@@ -5470,7 +5549,13 @@ app.get('/api/realestate/pins', async (req, res) => {
     const validItems = Array.from(estateMap.values());
     validItems.sort((a, b) => a.distance - b.distance);
 
-    res.json({ items: validItems, total: validItems.length });
+    const responsePayload = { items: validItems, total: validItems.length };
+    if (realestatePinsServerCache.size > 200) {
+        realestatePinsServerCache.delete(realestatePinsServerCache.keys().next().value);
+    }
+    realestatePinsServerCache.set(reCacheKey, { timestamp: Date.now(), data: responsePayload });
+
+    res.json(responsePayload);
 });
 
 // 12.6. POST /api/admin/sync-realestate - Admin batch download & JSON DB sync route
@@ -6016,6 +6101,11 @@ app.get('/api/admin/academy-registers', async (req, res) => {
 // 1. 파트너 센터 포털 서빙 (/business, /partner)
 app.get(['/business', '/business/', '/partner', '/partner/'], (req, res) => {
     res.sendFile(path.join(__dirname, 'business.html'));
+});
+
+// 1-1. 파트너 로그인/회원가입 페이지 라우팅
+app.get(['/partner/login', '/partner/register', '/partner-login', '/partner-auth', '/partner-auth.html'], (req, res) => {
+    res.sendFile(path.join(__dirname, 'partner-auth.html'));
 });
 
 // ==========================================

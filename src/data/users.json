@@ -18,5 +18,78 @@
     "avatarUrl": "http://k.kakaocdn.net/dn/dV4SyJ/btrT5TMQ2O1/N1sWUGlC3sj4UNKbKx0aE0/img_640x640.jpg",
     "accessToken": "vIQXMMz75onPb6ZLJx_AjQrOI0NPqysuAAAAAQoNGVMAAAGhixmWHC2N1GIgzv2p",
     "createdAt": "2026-10-30T04:37:53.455Z"
+  },
+  {
+    "id": "user_test_default",
+    "email": "test@learnmap.com",
+    "password": "1234",
+    "name": "학부모 회원",
+    "role": "parent",
+    "createdAt": "2026-11-06T04:17:07.390Z"
+  },
+  {
+    "id": "user_onetop_re",
+    "email": "onetop@realestate.com",
+    "password": "1234",
+    "name": "원탑 공인중개사",
+    "role": "partner",
+    "bizName": "원탑 공인중개사사무소",
+    "createdAt": "2026-11-06T04:17:07.390Z"
+  },
+  {
+    "id": "user_olympiad_math",
+    "email": "olympiad@math.com",
+    "password": "1234",
+    "name": "올림피아드 수학",
+    "role": "partner",
+    "bizName": "올림피아드 수학학원",
+    "createdAt": "2026-11-06T04:17:07.390Z"
+  },
+  {
+    "id": "user_partner_demo",
+    "email": "partner@learnmap.kr",
+    "password": "1234",
+    "name": "체험 파트너",
+    "role": "partner",
+    "bizName": "학업여지도 파트너스",
+    "createdAt": "2026-11-06T04:17:07.390Z"
+  },
+  {
+    "id": "66db7e1b-b422-40f3-9afb-9f8f671e8899",
+    "email": "test_partner_1793938638102@learnmap.kr",
+    "password": "password123",
+    "name": "테스트대표",
+    "role": "parent",
+    "createdAt": "2026-11-06T04:17:18.350Z"
+  },
+  {
+    "id": "5c99145d-06d2-4440-ac21-67af0ccff8de",
+    "email": "partner_test_1793938660757@learnmap.kr",
+    "password": "password123",
+    "name": "원탑대표",
+    "role": "partner",
+    "businessId": "biz_1793938661062",
+    "bizName": "원탑수학학원",
+    "createdAt": "2026-11-06T04:17:41.142Z"
+  },
+  {
+    "id": "9fa5df5c-5871-41f5-b14d-d8715327351e",
+    "email": "partner_auto_1793938703054@learnmap.kr",
+    "password": "password123",
+    "name": "테스트원장",
+    "role": "partner",
+    "businessId": "biz_1793938703299",
+    "bizName": "대치탑수학학원",
+    "createdAt": "2026-11-06T04:18:23.579Z"
+  },
+  {
+    "id": "5cad8b03-20f1-455f-a8d1-0e9431fd7cbd",
+    "email": "partner_real_1793939137322@learnmap.kr",
+    "password": "mySecretPassword99!",
+    "name": "박대표",
+    "role": "partner",
+    "businessId": "biz_1793939138007",
+    "bizName": "목동 대치탑학원",
+    "createdAt": "2026-11-06T04:25:38.326Z"
   }
 ]

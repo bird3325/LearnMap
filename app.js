@@ -10307,11 +10307,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const envHeroSub0 = document.getElementById('envHeroSub0');
             if (envHeroSub0) envHeroSub0.innerText = '검색 중...';
 
+            // ⚡ [초고속 최적화 1] 학원 로딩을 기다리지 않고 주택 핀을 즉시 병렬(비동기) 로드 시작
+            if (typeof updateRealEstateMapMarkers === 'function') {
+                updateRealEstateMapMarkers(radNum);
+            }
+
             try {
-                let res = await fetch(`/api/academies/list?x=${targetLng}&y=${targetLat}&radius=${radNum}`);
-                let result = res.ok ? await res.json() : null;
-                if (!result || result.error || !result.items || result.items.length === 0) {
-                    result = await fetchAcademiesClientSide(targetLat, targetLng, radNum);
+                if (!window._academyListCache) {
+                    window._academyListCache = new Map();
+                }
+                const acadCacheKey = `${targetLng.toFixed(5)}_${targetLat.toFixed(5)}_${radNum}`;
+                let result = window._academyListCache.get(acadCacheKey);
+
+                if (!result) {
+                    let res = await fetch(`/api/academies/list?x=${targetLng}&y=${targetLat}&radius=${radNum}`);
+                    result = res.ok ? await res.json() : null;
+                    if (!result || result.error || !result.items || result.items.length === 0) {
+                        result = await fetchAcademiesClientSide(targetLat, targetLng, radNum);
+                    }
+                    if (result && Array.isArray(result.items)) {
+                        if (window._academyListCache.size > 50) {
+                            window._academyListCache.delete(window._academyListCache.keys().next().value);
+                        }
+                        window._academyListCache.set(acadCacheKey, result);
+                    }
                 }
 
                 allFetchedAcademies = [...(result.items || [])];
@@ -10354,10 +10373,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (typeof window.updateMobilePeekCounts === 'function') {
                     window.updateMobilePeekCounts();
                 }
-                await fetchAcademyRatingsFromDb();
-                await applyFiltersAndRender();
+
+                // ⚡ [초고속 최적화 2] 학원 핀 마커를 지도에 즉시 표시 (평점 DB 조회 및 리스트 렌더링 대기 없이 즉각 노출)
                 updateAcademyMapMarkers(allFetchedAcademies);
-                updateRealEstateMapMarkers(radNum);
+
+                // ⚡ [초고속 최적화 3] 평점 DB와 사이드바 리스트 렌더링은 백그라운드 비차단 방식으로 처리
+                fetchAcademyRatingsFromDb().then(() => {
+                    applyFiltersAndRender();
+                }).catch(err => {
+                    console.warn('Rating fetch error in background:', err);
+                    applyFiltersAndRender();
+                });
             } catch (err) {
                 console.warn('Backend academy fetch failed, using client SDK fallback:', err);
                 try {
@@ -10372,10 +10398,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (totalBadge) totalBadge.innerText = `총 ${totalCount}개소`;
                     if (env2Val) env2Val.innerText = `${totalCount}개`;
                     if (envHeroSub0) envHeroSub0.innerText = `${totalCount}개 집중`;
-                    await fetchAcademyRatingsFromDb();
-                    await applyFiltersAndRender();
+
+                    // 폴백 시에도 학원 마커 즉시 표시
                     updateAcademyMapMarkers(allFetchedAcademies);
-                    updateRealEstateMapMarkers(radNum);
+
+                    fetchAcademyRatingsFromDb().then(() => {
+                        applyFiltersAndRender();
+                    }).catch(err => {
+                        applyFiltersAndRender();
+                    });
                 } catch (clientErr) {
                     console.error('Academy list fetch error:', clientErr);
                     academyListContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">학원 목록을 불러오는 데 실패했습니다.</div>';
@@ -24064,7 +24095,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (resizer && container && container.classList.contains('sidebar-open') && window.innerWidth > 1024) {
                     resizer.style.display = 'block';
                 }
-                window.open('/business?tab=register', '_blank');
+                window.open('/partner-auth.html?tab=register', '_blank');
             };
 
             if (partnerSwitchModal) {

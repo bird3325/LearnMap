@@ -4573,7 +4573,7 @@
             <div style="display: flex; flex-direction: column; gap: 10px;">
                 <button type="button" onclick="goToPartnerLogin()"
                     style="width: 100%; height: 46px; border: none; border-radius: 10px; background: #2563eb; color: #ffffff; font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                    <span>학업여지도 로그인하기</span> ➔
+                    <span>파트너 로그인 / 회원가입하기</span> ➔
                 </button>
                 <button type="button" onclick="window.location.href='/'"
                     style="width: 100%; height: 40px; border: 1px solid #cbd5e1; border-radius: 10px; background: #ffffff; color: #64748b; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
@@ -4810,7 +4810,7 @@
         let chartInstance = null;
 
         function goToPartnerLogin() {
-            window.location.href = '/?action=login&redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = '/partner-auth.html?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
         }
 
         function showToast(msg, icon = '✅') {
@@ -5706,21 +5706,9 @@
                 const barrierModal = document.getElementById('partnerLoginBarrierModal');
                 const demoBadge = document.getElementById('demoModeBanner');
 
-                // 비로그인 사용자 파트너 콘솔 접근 원천 차단 (로그인 장벽)
+                // 비로그인 사용자 파트너 콘솔 접근 시 전용 로그인/회원가입 페이지로 즉시 안내
                 if (isGuestOrNotLoggedIn && !isDemoMode) {
-                    if (barrierModal) barrierModal.style.display = 'flex';
-                    if (demoBadge) demoBadge.style.display = 'none';
-                    // 타인 정보 및 통계 잔류 방지 초기화
-                    document.getElementById('metricProfileViews').innerText = '0';
-                    document.getElementById('metricImpressions').innerText = '0';
-                    document.getElementById('metricPhoneClicks').innerText = '0';
-                    document.getElementById('metricInquiriesCount').innerText = '0';
-                    document.getElementById('inquiryCountBadge').innerText = '0건 접수됨';
-                    document.getElementById('dashSubProductName').innerText = '로그인 필요';
-                    document.getElementById('dashSubAmount').innerText = '0원';
-                    document.getElementById('dashSubEndDate').innerText = '-';
-                    renderChart([]);
-                    renderInquiries([]);
+                    window.location.href = '/partner-auth.html?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
                     return;
                 }
 
