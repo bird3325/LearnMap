@@ -510,5 +510,1727 @@
       "place_name": "플레이팩토 신원7단지플팩"
     },
     "createdAt": "2026-11-05T02:25:03.192Z"
+  },
+  {
+    "id": "evt_1793868797723_g0m1",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T08:53:17.723Z"
+  },
+  {
+    "id": "evt_1793868798149_521r",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T08:53:18.149Z"
+  },
+  {
+    "id": "evt_1793869152760_9rcm",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T08:59:12.760Z"
+  },
+  {
+    "id": "evt_1793869154132_w9o2",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T08:59:14.132Z"
+  },
+  {
+    "id": "evt_1793878534161",
+    "businessId": "biz_1793878533975",
+    "eventType": "business_signup",
+    "metadata": {
+      "type": "real_estate",
+      "name": "원탑 공인중개사"
+    },
+    "createdAt": "2026-11-05T11:35:34.161Z"
+  },
+  {
+    "id": "evt_1793878882019_vjxg",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T11:41:22.019Z"
+  },
+  {
+    "id": "evt_1793878882373_660j",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T11:41:22.373Z"
+  },
+  {
+    "id": "evt_1793879289818",
+    "businessId": "biz_1793878533975",
+    "eventType": "subscription_started",
+    "metadata": {
+      "productId": "prod_re_pro",
+      "amount": 59000,
+      "byAdmin": true,
+      "reason": "관리자 직권 유료 결제 승인 및 구독 플랜 변경"
+    },
+    "createdAt": "2026-11-05T11:48:09.592Z"
+  },
+  {
+    "id": "evt_1793879508066_t9dl",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T11:51:48.066Z"
+  },
+  {
+    "id": "evt_1793879508253_1kme",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T11:51:48.253Z"
+  },
+  {
+    "id": "evt_1793879816778_7drm",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T11:56:56.778Z"
+  },
+  {
+    "id": "evt_1793879817250_1v4c",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T11:56:57.250Z"
+  },
+  {
+    "id": "evt_1793879839560_kdme",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T11:57:19.560Z"
+  },
+  {
+    "id": "evt_1793879840755_239a",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T11:57:20.755Z"
+  },
+  {
+    "id": "evt_1793880090283_pz8b",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:01:30.283Z"
+  },
+  {
+    "id": "evt_1793880090537_utt3",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:01:30.537Z"
+  },
+  {
+    "id": "evt_1793880118798_9vzn",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:01:58.799Z"
+  },
+  {
+    "id": "evt_1793880119788_zgue",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:01:59.788Z"
+  },
+  {
+    "id": "evt_1793880255089_bvdb",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:04:15.090Z"
+  },
+  {
+    "id": "evt_1793880255584_8hvl",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:04:15.584Z"
+  },
+  {
+    "id": "evt_1793880281742_wrp7",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:04:41.742Z"
+  },
+  {
+    "id": "evt_1793880282768_ldkt",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:04:42.768Z"
+  },
+  {
+    "id": "evt_1793880316115_oelb",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:05:16.115Z"
+  },
+  {
+    "id": "evt_1793880316722_c8lz",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:05:16.722Z"
+  },
+  {
+    "id": "evt_1793880336652_d6ao",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:05:36.652Z"
+  },
+  {
+    "id": "evt_1793880337144_iw86",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:05:37.144Z"
+  },
+  {
+    "id": "evt_1793880469070_1ts0",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:07:49.070Z"
+  },
+  {
+    "id": "evt_1793880469506_vcax",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:07:49.506Z"
+  },
+  {
+    "id": "evt_1793880497337_6lc5",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:08:17.338Z"
+  },
+  {
+    "id": "evt_1793880497621_zktc",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:08:17.621Z"
+  },
+  {
+    "id": "evt_1793880526178_6kwi",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:08:46.178Z"
+  },
+  {
+    "id": "evt_1793880526486_idkg",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:08:46.486Z"
+  },
+  {
+    "id": "evt_1793880534921_9zej",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:08:54.921Z"
+  },
+  {
+    "id": "evt_1793880535258_arps",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:08:55.258Z"
+  },
+  {
+    "id": "evt_1793880620410_4syz",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:10:20.410Z"
+  },
+  {
+    "id": "evt_1793880828317_3b2j",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:13:48.317Z"
+  },
+  {
+    "id": "evt_1793880828744_2ywg",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:13:48.744Z"
+  },
+  {
+    "id": "evt_1793880860649_gjak",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:14:20.649Z"
+  },
+  {
+    "id": "evt_1793880861822_kbtj",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:14:21.822Z"
+  },
+  {
+    "id": "evt_1793880923361_1h4b",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:15:23.361Z"
+  },
+  {
+    "id": "evt_1793880923492_u4zd",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:15:23.492Z"
+  },
+  {
+    "id": "evt_1793880949903_wcdz",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:15:49.903Z"
+  },
+  {
+    "id": "evt_1793881045313_idsq",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:17:25.313Z"
+  },
+  {
+    "id": "evt_1793881052910_293j",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:17:32.910Z"
+  },
+  {
+    "id": "evt_1793881077836_qfcr",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:17:57.836Z"
+  },
+  {
+    "id": "evt_1793881087490_xu1m",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:18:07.490Z"
+  },
+  {
+    "id": "evt_1793881109086_sdwx",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:18:29.086Z"
+  },
+  {
+    "id": "evt_1793881109474_j4fs",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:18:29.474Z"
+  },
+  {
+    "id": "evt_1793881131387_yuwo",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:18:51.387Z"
+  },
+  {
+    "id": "evt_1793881131827_12tj",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:18:51.827Z"
+  },
+  {
+    "id": "evt_1793881139016_90mf",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:18:59.016Z"
+  },
+  {
+    "id": "evt_1793881139330_603q",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:18:59.330Z"
+  },
+  {
+    "id": "evt_1793881197184_zgvh",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:19:57.184Z"
+  },
+  {
+    "id": "evt_1793881210522_ywe6",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원중학교"
+    },
+    "createdAt": "2026-11-05T12:20:10.522Z"
+  },
+  {
+    "id": "evt_1793881211851_8of7",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원중학교"
+    },
+    "createdAt": "2026-11-05T12:20:11.851Z"
+  },
+  {
+    "id": "evt_1793881223361_7pnf",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원중학교"
+    },
+    "createdAt": "2026-11-05T12:20:23.361Z"
+  },
+  {
+    "id": "evt_1793881266055_q2m3",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원중학교"
+    },
+    "createdAt": "2026-11-05T12:21:06.055Z"
+  },
+  {
+    "id": "evt_1793881281207_naf7",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:21:21.207Z"
+  },
+  {
+    "id": "evt_1793881285282_gfzd",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:21:25.282Z"
+  },
+  {
+    "id": "evt_1793881303212_ett0",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:21:43.212Z"
+  },
+  {
+    "id": "evt_1793881482722_b55t",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:24:42.722Z"
+  },
+  {
+    "id": "evt_1793881518824_iphb",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:25:18.824Z"
+  },
+  {
+    "id": "evt_1793881520169_s65l",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:25:20.169Z"
+  },
+  {
+    "id": "evt_1793881540611_58dg",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:25:40.611Z"
+  },
+  {
+    "id": "evt_1793881541573_km2s",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:25:41.573Z"
+  },
+  {
+    "id": "evt_1793881646093_9goa",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:27:26.093Z"
+  },
+  {
+    "id": "evt_1793881655430_7s5g",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:27:35.430Z"
+  },
+  {
+    "id": "evt_1793881655767_5nsa",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:27:35.767Z"
+  },
+  {
+    "id": "evt_1793881928619_zrxz",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:32:08.619Z"
+  },
+  {
+    "id": "evt_1793881929886_2es0",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:32:09.886Z"
+  },
+  {
+    "id": "evt_1793881950173_fi06",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:32:30.173Z"
+  },
+  {
+    "id": "evt_1793881950543_5gpi",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:32:30.543Z"
+  },
+  {
+    "id": "evt_1793882424649_qid5",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:40:24.649Z"
+  },
+  {
+    "id": "evt_1793882425590_tz0j",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:40:25.590Z"
+  },
+  {
+    "id": "evt_1793882443707_xcde",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:40:43.707Z"
+  },
+  {
+    "id": "evt_1793882444592_lrc3",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:40:44.592Z"
+  },
+  {
+    "id": "evt_1793882495304_6keb",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:41:35.304Z"
+  },
+  {
+    "id": "evt_1793882497166_tevq",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:41:37.166Z"
+  },
+  {
+    "id": "evt_1793882513361_aq48",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:41:53.361Z"
+  },
+  {
+    "id": "evt_1793882514471_he7e",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:41:54.471Z"
+  },
+  {
+    "id": "evt_1793882541069_d3wq",
+    "businessId": "biz_1793878533975",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "삼송 동일스위트",
+      "area": "신원동"
+    },
+    "createdAt": "2026-11-05T12:42:21.069Z"
+  },
+  {
+    "id": "evt_1793882559493_8i7j",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:42:39.493Z"
+  },
+  {
+    "id": "evt_1793882559781_99y2",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:42:39.781Z"
+  },
+  {
+    "id": "evt_1793882782976_uxbe",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:46:22.976Z"
+  },
+  {
+    "id": "evt_1793882783252_n8mf",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:46:23.252Z"
+  },
+  {
+    "id": "evt_1793882798758_sz3l",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:46:38.758Z"
+  },
+  {
+    "id": "evt_1793882799345_gq82",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:46:39.345Z"
+  },
+  {
+    "id": "evt_1793882823001_h6lc",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:47:03.001Z"
+  },
+  {
+    "id": "evt_1793882824006_rgeb",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:47:04.006Z"
+  },
+  {
+    "id": "evt_1793882843964_6233",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:47:23.964Z"
+  },
+  {
+    "id": "evt_1793882844373_twbw",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:47:24.373Z"
+  },
+  {
+    "id": "evt_1793882862534_g5b4",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:47:42.534Z"
+  },
+  {
+    "id": "evt_1793882862845_9g4l",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T12:47:42.845Z"
+  },
+  {
+    "id": "evt_1793889740172_l92v",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T14:42:20.172Z"
+  },
+  {
+    "id": "evt_1793889740676_swj5",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T14:42:20.676Z"
+  },
+  {
+    "id": "evt_1793889750314_03gl",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T14:42:30.314Z"
+  },
+  {
+    "id": "evt_1793889750451_cp1f",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T14:42:30.451Z"
+  },
+  {
+    "id": "evt_1793921316552_0z8u",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:28:36.552Z"
+  },
+  {
+    "id": "evt_1793921316941_347r",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:28:36.941Z"
+  },
+  {
+    "id": "evt_1793921321491_cy4z",
+    "businessId": "biz_1793878533975",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "신원마을엘에이치2단지",
+      "area": "신원동"
+    },
+    "createdAt": "2026-11-05T23:28:41.491Z"
+  },
+  {
+    "id": "evt_1793921331680_40zk",
+    "businessId": "biz_1793878533975",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "신원마을엘에이치3단지",
+      "area": "신원동"
+    },
+    "createdAt": "2026-11-05T23:28:51.680Z"
+  },
+  {
+    "id": "evt_1793921461638_idkk",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:31:01.638Z"
+  },
+  {
+    "id": "evt_1793921461881_w8cf",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:31:01.881Z"
+  },
+  {
+    "id": "evt_1793921515181_royh",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:31:55.181Z"
+  },
+  {
+    "id": "evt_1793921754764_kaw9",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:35:54.764Z"
+  },
+  {
+    "id": "evt_1793921755185_h7kw",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:35:55.185Z"
+  },
+  {
+    "id": "evt_1793921756843_5n4h",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:35:56.843Z"
+  },
+  {
+    "id": "evt_1793921757380_7q0j",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:35:57.380Z"
+  },
+  {
+    "id": "evt_1793922568064_9y8d",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:49:28.064Z"
+  },
+  {
+    "id": "evt_1793922568641_b9e0",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:49:28.641Z"
+  },
+  {
+    "id": "evt_1793922571222_ftlx",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:49:31.222Z"
+  },
+  {
+    "id": "evt_1793922575280_pmg0",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:49:35.280Z"
+  },
+  {
+    "id": "evt_1793922625790_s1e8",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:50:25.790Z"
+  },
+  {
+    "id": "evt_1793922626123_t28y",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:50:26.123Z"
+  },
+  {
+    "id": "evt_1793922628553_d4ru",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:50:28.553Z"
+  },
+  {
+    "id": "evt_1793922633061_1zcz",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:50:33.061Z"
+  },
+  {
+    "id": "evt_1793922642640_t6p6",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:50:42.640Z"
+  },
+  {
+    "id": "evt_1793922645829_af2j",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:50:45.829Z"
+  },
+  {
+    "id": "evt_1793922652595_o5r5",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:50:52.595Z"
+  },
+  {
+    "id": "evt_1793922652907_d1o0",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:50:52.907Z"
+  },
+  {
+    "id": "evt_1793922711200_8whe",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:51:51.200Z"
+  },
+  {
+    "id": "evt_1793922713739_xp3e",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:51:53.739Z"
+  },
+  {
+    "id": "evt_1793922714082_gcst",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:51:54.082Z"
+  },
+  {
+    "id": "evt_1793922722122_kcte",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:52:02.122Z"
+  },
+  {
+    "id": "evt_1793923042813_zzq7",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:57:22.813Z"
+  },
+  {
+    "id": "evt_1793923043058_whrc",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:57:23.058Z"
+  },
+  {
+    "id": "evt_1793923044659_gx85",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:57:24.659Z"
+  },
+  {
+    "id": "evt_1793923045126_af6a",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:57:25.126Z"
+  },
+  {
+    "id": "evt_1793923096982_fu14",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:58:16.982Z"
+  },
+  {
+    "id": "evt_1793923097409_nxpt",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:58:17.409Z"
+  },
+  {
+    "id": "evt_1793923099479_s5sx",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:58:19.479Z"
+  },
+  {
+    "id": "evt_1793923099845_1f70",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-05T23:58:19.845Z"
+  },
+  {
+    "id": "evt_1793923529869_ysfk",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T00:05:29.869Z"
+  },
+  {
+    "id": "evt_1793923530063_hf1x",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T00:05:30.063Z"
+  },
+  {
+    "id": "evt_1793924838378_bof0",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T00:27:18.378Z"
+  },
+  {
+    "id": "evt_1793924838617_wys1",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T00:27:18.617Z"
+  },
+  {
+    "id": "evt_1793926305569_y1k6",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T00:51:45.569Z"
+  },
+  {
+    "id": "evt_1793926305993_0epk",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T00:51:45.993Z"
+  },
+  {
+    "id": "evt_1793926313156_aj1y",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T00:51:53.156Z"
+  },
+  {
+    "id": "evt_1793926313592_rpvo",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T00:51:53.592Z"
+  },
+  {
+    "id": "evt_1793926328839_0z73",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T00:52:08.839Z"
+  },
+  {
+    "id": "evt_1793926329164_bqec",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T00:52:09.164Z"
+  },
+  {
+    "id": "evt_1793927312503_4gku",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:08:32.503Z"
+  },
+  {
+    "id": "evt_1793927313091_bg3k",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:08:33.091Z"
+  },
+  {
+    "id": "evt_1793927319163_acwv",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:08:39.163Z"
+  },
+  {
+    "id": "evt_1793927319587_dkwj",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:08:39.587Z"
+  },
+  {
+    "id": "evt_1793927361675_hcij",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:09:21.676Z"
+  },
+  {
+    "id": "evt_1793927362243_6q7r",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:09:22.243Z"
+  },
+  {
+    "id": "evt_1793927364145_4bfo",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:09:24.145Z"
+  },
+  {
+    "id": "evt_1793927367891_x9dy",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:09:27.891Z"
+  },
+  {
+    "id": "evt_1793927820067_vdy9",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:17:00.068Z"
+  },
+  {
+    "id": "evt_1793927820715_r2y6",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:17:00.715Z"
+  },
+  {
+    "id": "evt_1793927831672_co5t",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:17:11.672Z"
+  },
+  {
+    "id": "evt_1793927832343_e1ux",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:17:12.343Z"
+  },
+  {
+    "id": "evt_1793927849114_d562",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:17:29.114Z"
+  },
+  {
+    "id": "evt_1793927849544_xnw5",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:17:29.544Z"
+  },
+  {
+    "id": "evt_1793927885033_owxo",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:18:05.033Z"
+  },
+  {
+    "id": "evt_1793927885469_fx47",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:18:05.469Z"
+  },
+  {
+    "id": "evt_1793927891984_qxa7",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:18:11.984Z"
+  },
+  {
+    "id": "evt_1793927892391_y1li",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:18:12.391Z"
+  },
+  {
+    "id": "evt_1793927909549_uazu",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:18:29.549Z"
+  },
+  {
+    "id": "evt_1793927909906_dk4z",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:18:29.906Z"
+  },
+  {
+    "id": "evt_1793927928332_mxic",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:18:48.332Z"
+  },
+  {
+    "id": "evt_1793927928644_0aod",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:18:48.644Z"
+  },
+  {
+    "id": "evt_1793927933687_00xg",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:18:53.687Z"
+  },
+  {
+    "id": "evt_1793927934091_wtpf",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:18:54.091Z"
+  },
+  {
+    "id": "evt_1793928169206_i1u9",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:22:49.206Z"
+  },
+  {
+    "id": "evt_1793928169481_0k0c",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T01:22:49.481Z"
+  },
+  {
+    "id": "evt_1793930085540_tjks",
+    "businessId": "biz_1793878533975",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "두진한아름",
+      "area": "서초동"
+    },
+    "createdAt": "2026-11-06T01:54:45.540Z"
+  },
+  {
+    "id": "evt_1793930095524_ut1u",
+    "businessId": "biz_1793878533975",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "두진한아름",
+      "area": "서초동"
+    },
+    "createdAt": "2026-11-06T01:54:55.524Z"
+  },
+  {
+    "id": "evt_1793930102620_jy2l",
+    "businessId": "biz_1793878533975",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "두진한아름",
+      "area": "서초동"
+    },
+    "createdAt": "2026-11-06T01:55:02.620Z"
+  },
+  {
+    "id": "evt_1793930342813_4f8o",
+    "businessId": "biz_1793878533975",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "서초 가람아파트",
+      "area": "서초동"
+    },
+    "createdAt": "2026-11-06T01:59:02.813Z"
   }
 ]

@@ -310,7 +310,11 @@ function renderPosts() {
     grid.innerHTML = filtered.map(post => {
         const tagsHtml = (post.tags || []).slice(0, 3).map(tag => `<span class="tag-pill">#${escapeHtmlAttr(tag)}</span>`).join('');
         const fallbackThumb = getFallbackThumbnail(post.category);
-        const rawThumb = (post.thumbnail && typeof post.thumbnail === 'string') ? post.thumbnail.trim() : '';
+        // 본문에 등록된 첫 번째 마크다운 이미지 URL 추출 (본문 등록 이미지와 리스트 썸네일 100% 일치 보장)
+        const contentImgMatch = (post.content || '').match(/!\[.*?\]\((.*?)\)/);
+        const contentImgUrl = contentImgMatch ? contentImgMatch[1].trim() : '';
+        const explicitThumb = (post.thumbnail && typeof post.thumbnail === 'string') ? post.thumbnail.trim() : '';
+        const rawThumb = contentImgUrl || explicitThumb || (Array.isArray(post.images) && post.images.length > 0 && post.images[0] && post.images[0].url ? post.images[0].url.trim() : '');
         const matchedThumbImg = (rawThumb && Array.isArray(post.images))
             ? post.images.find(im => im && (im.url === rawThumb || (im.filename && rawThumb.endsWith(im.filename))))
             : null;

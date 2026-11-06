@@ -4968,12 +4968,10 @@ document.addEventListener('DOMContentLoaded', () => {
             showSchoolDetails(summary, school);
 
             const container = document.querySelector('.app-container');
-            if (container) {
-                container.classList.add('sidebar-open');
-            }
             const sidebar = document.querySelector('.sidebar-section');
-            if (sidebar && sidebar.style.display === 'none') {
-                sidebar.style.display = 'block';
+            if (window.innerWidth > 1024) {
+                if (container) container.classList.add('sidebar-open');
+                if (sidebar && sidebar.style.display === 'none') sidebar.style.display = 'block';
             }
             highlightSelectedPin(schoolId);
             if (typeof window.updateAcademyMapMarkers === 'function') {
@@ -6109,6 +6107,488 @@ document.addEventListener('DOMContentLoaded', () => {
         if (finalEl) finalEl.innerText = `약 ${formatNum(finalFee)} / 월`;
     };
 
+    // --- 모바일 학교 선택 1단계 미니 바텀 카드 (Peek 카드) 전역 제어 함수 ---
+    window.updateMobilePeekCounts = function() {
+        const acadCountEl = document.getElementById('mobilePeekAcademyCount');
+        const houseCountEl = document.getElementById('mobilePeekHousingCount');
+        const school = window.currentSelectedSchool || (orchestrator && orchestrator.state && orchestrator.state.selectedSchool);
+
+        // 학원 수 산출 (실제 fetch된 학원 배열 또는 학교 객체 메타)
+        let acadCount = 0;
+        if (Array.isArray(window.allFetchedAcademies) && window.allFetchedAcademies.length > 0) {
+            acadCount = window.allFetchedAcademies.length;
+        } else if (school && school.academy_count) {
+            acadCount = Number(school.academy_count) || 0;
+        } else if (Array.isArray(window.academyData) && window.academyData.length > 0) {
+            acadCount = window.academyData.length;
+        }
+
+        // 주택 수 산출 (유효 반경 내 필터링된 주택 전체 배열)
+        let houseCount = 0;
+        if (Array.isArray(window.allFetchedHousings) && window.allFetchedHousings.length > 0) {
+            houseCount = window.allFetchedHousings.length;
+        }
+
+        if (acadCountEl) {
+            acadCountEl.textContent = acadCount.toLocaleString();
+        }
+        if (houseCountEl) {
+            houseCountEl.textContent = houseCount.toLocaleString();
+        }
+    };
+
+    window.showMobileSchoolPeekCard = function(school) {
+        if (!school || window.innerWidth > 1024) return;
+        const peekCard = document.getElementById('mobileSchoolPeekCard');
+        if (!peekCard) return;
+
+        // 학교명 설정
+        const nameEl = document.getElementById('mobilePeekSchoolName');
+        const sName = school.name || school.school_name || '학교 정보';
+        if (nameEl) nameEl.textContent = sName;
+
+        // 학교 분류 뱃지 설정 (예: 초등학교·공립)
+        const badgeEl = document.getElementById('mobilePeekSchoolBadge');
+        const sType = school.school_type || school.type || '';
+        let badgeType = '초등학교';
+        let badgeBg = '#ecfdf5';
+        let badgeColor = '#047857';
+        let badgeBorder = '#a7f3d0';
+
+        if (sName.includes('초등') || sType.includes('초등')) {
+            badgeType = '초등학교';
+            badgeBg = '#ecfdf5';
+            badgeColor = '#047857';
+            badgeBorder = '#a7f3d0';
+        } else if (sName.includes('중학교') || sType.includes('중')) {
+            badgeType = '중학교';
+            badgeBg = '#eff6ff';
+            badgeColor = '#2563eb';
+            badgeBorder = '#bfdbfe';
+        } else if (sName.includes('고등') || sType.includes('고')) {
+            badgeType = '고등학교';
+            badgeBg = '#fdf4ff';
+            badgeColor = '#9333ea';
+            badgeBorder = '#f0abfc';
+        }
+
+        const foundRaw = school.establishment_type || school.founding_type || school.fond_sc_code || '공립';
+        const foundClean = String(foundRaw).replace(/학교/g, '').trim() || '공립';
+        const badgeText = `${badgeType}·${foundClean}`;
+
+        if (badgeEl) {
+            badgeEl.textContent = badgeText;
+            badgeEl.style.background = badgeBg;
+            badgeEl.style.color = badgeColor;
+            badgeEl.style.borderColor = badgeBorder;
+        }
+
+        // 관심학교 즐겨찾기 별 상태 동기화
+        const favBtn = document.getElementById('btnMobilePeekFavorite');
+        if (favBtn) {
+            try {
+                const favs = JSON.parse(localStorage.getItem('favoriteSchools') || '[]');
+                const isFav = favs.some(f => (f.id && f.id === school.school_id) || (f.school_name && (f.school_name === sName || f.school_name === school.school_name)));
+                favBtn.textContent = isFav ? '⭐' : '☆';
+                favBtn.style.color = isFav ? '#f59e0b' : '#94a3b8';
+            } catch (e) {
+                favBtn.textContent = '☆';
+                favBtn.style.color = '#94a3b8';
+            }
+        }
+
+        // 도보시간 뱃지
+        const walkEl = document.getElementById('mobilePeekWalkTimeText');
+        if (walkEl) {
+            const walkMin = school.walk_minutes || school.walk_time || 3;
+            walkEl.textContent = `${walkMin}분`;
+        }
+
+        // 주소 텍스트
+        const metaEl = document.getElementById('mobilePeekSchoolMeta');
+        const addr = school.address || school.road_address || school.region || '';
+        if (metaEl) metaEl.textContent = addr || sName;
+
+        // 학원 및 주택 수 실시간 바인딩
+        window.updateMobilePeekCounts();
+
+        // 부드럽게 노출
+        peekCard.style.display = 'flex';
+
+        // 아직 데이터가 fetch 중이거나 비어있을 경우 비동기 갱신 재시도
+        setTimeout(() => {
+            if (typeof window.updateMobilePeekCounts === 'function') {
+                window.updateMobilePeekCounts();
+            }
+        }, 300);
+        setTimeout(() => {
+            if (typeof window.updateMobilePeekCounts === 'function') {
+                window.updateMobilePeekCounts();
+            }
+        }, 800);
+    };
+
+    window.copySchoolAddressMobile = function() {
+        const metaEl = document.getElementById('mobilePeekSchoolMeta');
+        const text = metaEl ? metaEl.textContent.trim() : '';
+        if (!text) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('학교 주소가 복사되었습니다:\n' + text);
+            }).catch(() => {
+                prompt('학교 주소를 복사하세요:', text);
+            });
+        } else {
+            prompt('학교 주소를 복사하세요:', text);
+        }
+    };
+
+    window.toggleMobileSchoolFavorite = function() {
+        if (typeof window.toggleFavoriteSchool === 'function') {
+            window.toggleFavoriteSchool();
+            const favBtn = document.getElementById('btnMobilePeekFavorite');
+            const school = window.currentSelectedSchool || (orchestrator && orchestrator.state && orchestrator.state.selectedSchool);
+            if (favBtn && school) {
+                try {
+                    const favs = JSON.parse(localStorage.getItem('favoriteSchools') || '[]');
+                    const sName = school.name || school.school_name;
+                    const isFav = favs.some(f => (f.id && f.id === school.school_id) || (f.school_name && (f.school_name === sName || f.school_name === school.school_name)));
+                    favBtn.textContent = isFav ? '⭐' : '☆';
+                    favBtn.style.color = isFav ? '#f59e0b' : '#94a3b8';
+                } catch (e) {}
+            }
+        }
+    };
+
+    window.expandMobileSchoolDetail = function() {
+        const peekCard = document.getElementById('mobileSchoolPeekCard');
+        if (peekCard) peekCard.style.display = 'none';
+
+        window.__schoolDetailOpenedDirectly = true; // 🌟 학교 상세를 명시적으로 직접 열었음을 표시
+        window.__expandingMobileDetailExplicitly = true;
+        const selectedSchool = (orchestrator && orchestrator.state && orchestrator.state.selectedSchool);
+        if (selectedSchool) {
+            const summary = orchestrator.analysisAgent ? orchestrator.analysisAgent.getSchoolSummary(selectedSchool) : null;
+            showSchoolDetails(summary, selectedSchool);
+        }
+        window.__expandingMobileDetailExplicitly = false;
+    };
+
+    window.closeMobileSchoolPeekCard = function() {
+        const peekCard = document.getElementById('mobileSchoolPeekCard');
+        if (peekCard) peekCard.style.display = 'none';
+        if (typeof window.clearSchoolZonePolygon === 'function') {
+            window.clearSchoolZonePolygon();
+        }
+    };
+
+    window.toggleMobileSchoolZoneBoundary = function() {
+        const school = window.currentSelectedSchool ||
+            (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) ||
+            null;
+        if (!school) return;
+
+        const sLat = school.lat || school.y;
+        const sLng = school.lng || school.x;
+        const sName = school.school_name || school.name;
+        const sAddr = school.address || school.road_address || sName;
+        const sType = String(school.school_type || school.type || '');
+        const zoneLevel = sType.includes('고') ? 'high' : (sType.includes('중') ? 'middle' : 'elementary');
+
+        if (typeof window.toggleHousingSchoolZoneOnMap === 'function') {
+            window.toggleHousingSchoolZoneOnMap(sLat, sLng, sName, sAddr, zoneLevel);
+        }
+    };
+
+    // --- 모바일 학원 및 주택 1단계 미니 바텀 카드 (Peek 카드) 전역 제어 ---
+    window.currentMobilePeekItem = null;
+
+    window.copyItemAddressMobile = function() {
+        const addrEl = document.getElementById('mobileItemPeekAddress');
+        const text = addrEl ? addrEl.textContent.trim() : '';
+        if (!text) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('주소가 복사되었습니다:\n' + text);
+            }).catch(() => {
+                prompt('주소를 복사하세요:', text);
+            });
+        } else {
+            prompt('주소를 복사하세요:', text);
+        }
+    };
+
+    window.showMobileAcademyPeekCard = function(placeOrName) {
+        if (!placeOrName || window.innerWidth > 1024) return;
+        const peekCard = document.getElementById('mobileItemPeekCard');
+        if (!peekCard) return;
+
+        let place = null;
+        let acadName = '';
+        if (typeof placeOrName === 'string') {
+            acadName = placeOrName;
+            if (Array.isArray(window.allFetchedAcademies)) {
+                place = window.allFetchedAcademies.find(p => (p.place_name || '').trim() === acadName.trim());
+            }
+        } else if (typeof placeOrName === 'object') {
+            place = placeOrName;
+            acadName = place.place_name || place.name || '학원';
+        }
+
+        window.currentMobilePeekItem = { type: 'academy', data: place || { place_name: acadName } };
+
+        // 학교 미니 카드 숨김
+        const schPeek = document.getElementById('mobileSchoolPeekCard');
+        if (schPeek) schPeek.style.display = 'none';
+
+        // 1행: 뱃지 및 이름 설정
+        const badgeEl = document.getElementById('mobileItemPeekBadge');
+        const nameEl = document.getElementById('mobileItemPeekName');
+
+        if (badgeEl) {
+            const isInst = acadName.includes('교습소');
+            badgeEl.textContent = isInst ? '교습소' : '학원';
+            badgeEl.style.background = '#eff6ff';
+            badgeEl.style.color = '#2563eb';
+            badgeEl.style.borderColor = '#bfdbfe';
+        }
+        if (nameEl) nameEl.textContent = acadName;
+
+        // 하단 박스 1행: 기준 학교 및 도보/거리 뱃지
+        const schLabel = document.getElementById('mobileItemSchoolLabel');
+        if (schLabel) schLabel.textContent = '기준 학교';
+
+        let walkMin = 3;
+        let distM = 230;
+        const curSchool = window.currentSelectedSchool || (orchestrator && orchestrator.state && orchestrator.state.selectedSchool);
+        const schName = (curSchool && (curSchool.school_name || curSchool.name)) ? (curSchool.school_name || curSchool.name) : '선택 학교';
+
+        const schNameEl = document.getElementById('mobileItemSchoolName');
+        if (schNameEl) schNameEl.textContent = schName;
+
+        if (curSchool && place && (place.x || place.lng) && (place.y || place.lat)) {
+            const sLat = parseFloat(curSchool.lat || curSchool.y);
+            const sLng = parseFloat(curSchool.lng || curSchool.x);
+            const aLat = parseFloat(place.y || place.lat);
+            const aLng = parseFloat(place.x || place.lng);
+            if (!isNaN(sLat) && !isNaN(sLng) && !isNaN(aLat) && !isNaN(aLng)) {
+                distM = (typeof calculateAcademyDistance === 'function')
+                    ? calculateAcademyDistance(sLat, sLng, aLat, aLng)
+                    : Math.round(Math.hypot(sLat - aLat, sLng - aLng) * 111000);
+                walkMin = Math.max(1, Math.round(distM / 65));
+            }
+        }
+        const walkTextEl = document.getElementById('mobileItemWalkText');
+        const distTextEl = document.getElementById('mobileItemDistText');
+        if (walkTextEl) walkTextEl.textContent = `도보 ${walkMin}분`;
+        if (distTextEl) distTextEl.textContent = `(${distM}m)`;
+
+        // 하단 박스 2행: 주소 및 스펙(과목·문의)
+        const addr = place ? (place.road_address_name || place.address_name || place.address || '') : '';
+        const addrEl = document.getElementById('mobileItemPeekAddress');
+        if (addrEl) addrEl.textContent = addr || acadName;
+
+        let subjectStr = '';
+        if (place && place.category_name) {
+            const parts = place.category_name.split('>').map(s => s.trim());
+            subjectStr = parts.length > 2 ? parts[parts.length - 1] : (parts.length === 2 ? parts[1] : parts[0]);
+        }
+        subjectStr = subjectStr.replace('학원', '').replace('교습소', '').trim() || '단과';
+
+        const specsEl = document.getElementById('mobileItemSpecs');
+        if (specsEl) {
+            const phone = (place && place.phone) ? `📞 ${place.phone}` : '';
+            const fee = (place && place.fee) ? place.fee : '';
+            const specList = [`과목 ${subjectStr}`, phone, fee].filter(Boolean);
+            specsEl.textContent = specList.length > 0 ? specList.join(' · ') : '상세정보 확인';
+        }
+
+        // 하위 호환성 엘리먼트 값 바인딩
+        const metaEl = document.getElementById('mobileItemPeekMeta');
+        if (metaEl) metaEl.textContent = `과목: ${subjectStr}`;
+        const subMetaEl = document.getElementById('mobileItemPeekSubMeta');
+        if (subMetaEl) subMetaEl.textContent = addr || acadName;
+
+        peekCard.style.display = 'flex';
+
+        // 학원 핀 위치 지도 가시영역 중앙 조정
+        if (place && (place.x || place.lng) && (place.y || place.lat)) {
+            const aLng = place.x || place.lng;
+            const aLat = place.y || place.lat;
+            if (typeof window.checkAndAdjustMapForAcademyPin === 'function') {
+                window.checkAndAdjustMapForAcademyPin(aLng, aLat);
+            }
+        }
+    };
+
+    window.showMobileHousingPeekCard = function(placeOrName) {
+        if (!placeOrName || window.innerWidth > 1024) return;
+        const peekCard = document.getElementById('mobileItemPeekCard');
+        if (!peekCard) return;
+
+        let place = null;
+        let propName = '';
+        if (typeof placeOrName === 'string') {
+            propName = placeOrName;
+            if (Array.isArray(window.allFetchedHousings)) {
+                place = window.allFetchedHousings.find(p => (p.name || '').trim() === propName.trim());
+            }
+        } else if (typeof placeOrName === 'object') {
+            place = placeOrName;
+            propName = place.name || '주택 단지';
+        }
+
+        window.currentMobilePeekItem = { type: 'housing', data: place || { name: propName } };
+
+        // 학교 미니 카드 숨김
+        const schPeek = document.getElementById('mobileSchoolPeekCard');
+        if (schPeek) schPeek.style.display = 'none';
+
+        // 1행: 뱃지 및 이름 설정 (아파트는 영문 대표 글자만 노출: APT, OFFI, VILLA)
+        const badgeEl = document.getElementById('mobileItemPeekBadge');
+        const nameEl = document.getElementById('mobileItemPeekName');
+
+        const pType = (place && place.type) ? place.type.toLowerCase() : 'apt';
+        let typeLabel = 'APT';
+        let typeBg = '#eff6ff';
+        let typeColor = '#2563eb';
+        let typeBorder = '#bfdbfe';
+
+        if (pType === 'offi') {
+            typeLabel = 'OFFI';
+            typeBg = '#faf5ff';
+            typeColor = '#7c3aed';
+            typeBorder = '#ddd6fe';
+        } else if (pType === 'rh' || pType === 'sh') {
+            typeLabel = 'VILLA';
+            typeBg = '#fff7ed';
+            typeColor = '#c2410c';
+            typeBorder = '#fed7aa';
+        }
+
+        if (badgeEl) {
+            badgeEl.textContent = typeLabel;
+            badgeEl.style.background = typeBg;
+            badgeEl.style.color = typeColor;
+            badgeEl.style.borderColor = typeBorder;
+        }
+        if (nameEl) nameEl.textContent = propName;
+
+        // 하단 박스 1행: 배정 학교 및 도보/거리 뱃지
+        const schLabel = document.getElementById('mobileItemSchoolLabel');
+        if (schLabel) schLabel.textContent = '배정 학교';
+
+        let walkMin = 3;
+        let distM = 230;
+        const curSchool = window.currentSelectedSchool || (orchestrator && orchestrator.state && orchestrator.state.selectedSchool);
+        const schName = (curSchool && (curSchool.school_name || curSchool.name)) ? (curSchool.school_name || curSchool.name) : '신원초등학교';
+
+        const schNameEl = document.getElementById('mobileItemSchoolName');
+        if (schNameEl) schNameEl.textContent = schName;
+
+        if (curSchool && place && (place.x || place.lng) && (place.y || place.lat)) {
+            const sLat = parseFloat(curSchool.lat || curSchool.y);
+            const sLng = parseFloat(curSchool.lng || curSchool.x);
+            const hLat = parseFloat(place.y || place.lat);
+            const hLng = parseFloat(place.x || place.lng);
+            if (!isNaN(sLat) && !isNaN(sLng) && !isNaN(hLat) && !isNaN(hLng)) {
+                distM = (typeof calculateAcademyDistance === 'function')
+                    ? calculateAcademyDistance(sLat, sLng, hLat, hLng)
+                    : Math.round(Math.hypot(sLat - hLat, sLng - hLng) * 111000);
+                walkMin = Math.max(1, Math.round(distM / 65));
+            }
+        }
+        const walkTextEl = document.getElementById('mobileItemWalkText');
+        const distTextEl = document.getElementById('mobileItemDistText');
+        if (walkTextEl) walkTextEl.textContent = `도보 ${walkMin}분`;
+        if (distTextEl) distTextEl.textContent = `(${distM}m)`;
+
+        // 하단 박스 2행: 주소 및 스펙 (예: 968세대 · 2015년 준공 · 용적률 169%)
+        const addr = place ? (place.address || place.road_address || '') : '';
+        const addrEl = document.getElementById('mobileItemPeekAddress');
+        if (addrEl) addrEl.textContent = addr || propName;
+
+        const specsEl = document.getElementById('mobileItemSpecs');
+        if (specsEl) {
+            const houseUnits = (place && place.total_households) ? (`${place.total_households}세대`) : '';
+            const buildYear = (place && place.build_year) ? (`${place.build_year}년 준공`) : '';
+            const far = (place && place.floor_area_ratio) ? (`용적률 ${place.floor_area_ratio}%`) : '';
+            const specList = [houseUnits, buildYear, far].filter(Boolean);
+            specsEl.textContent = specList.length > 0 ? specList.join(' · ') : '단지 상세정보';
+        }
+
+        // 하위 호환성 엘리먼트 값 바인딩
+        const metaEl = document.getElementById('mobileItemPeekMeta');
+        if (metaEl) metaEl.textContent = addr || propName;
+        const subMetaEl = document.getElementById('mobileItemPeekSubMeta');
+        if (subMetaEl) subMetaEl.textContent = addr || propName;
+
+        peekCard.style.display = 'flex';
+
+        // 주택 핀 위치 지도 가시영역 중앙 조정
+        if (place && (place.x || place.lng) && (place.y || place.lat)) {
+            const hLng = place.x || place.lng;
+            const hLat = place.y || place.lat;
+            if (typeof window.checkAndAdjustMapForHousingPin === 'function') {
+                window.checkAndAdjustMapForHousingPin(hLng, hLat);
+            }
+        }
+    };
+
+    window.expandMobileItemDetail = function() {
+        const peekCard = document.getElementById('mobileItemPeekCard');
+        if (peekCard) peekCard.style.display = 'none';
+        if (!window.currentMobilePeekItem) return;
+
+        window.__schoolDetailOpenedDirectly = false; // 🌟 학교 상세를 직접 연 것이 아님!
+        window.__openedFromItemPeek = true; // 🌟 아이템 미니카드에서 상세를 직접 열었음을 표시
+        window.__expandingMobileItemDetailExplicitly = true;
+        if (window.currentMobilePeekItem.type === 'academy') {
+            if (typeof window.openAcademyDetailModal === 'function') {
+                window.openAcademyDetailModal(window.currentMobilePeekItem.data);
+            }
+        } else if (window.currentMobilePeekItem.type === 'housing') {
+            if (typeof window.openHousingDetailModal === 'function') {
+                window.openHousingDetailModal(window.currentMobilePeekItem.data);
+            }
+        }
+        window.__expandingMobileItemDetailExplicitly = false;
+    };
+
+    window.closeMobileItemPeekCard = function() {
+        const peekCard = document.getElementById('mobileItemPeekCard');
+        if (peekCard) peekCard.style.display = 'none';
+        window.currentMobilePeekItem = null;
+
+        // 기준 학교 미니 카드로 안전 복귀
+        const curSchool = window.currentSelectedSchool || (orchestrator && orchestrator.state && orchestrator.state.selectedSchool);
+        if (curSchool && typeof window.showMobileSchoolPeekCard === 'function') {
+            window.showMobileSchoolPeekCard(curSchool);
+            const sLng = curSchool.lng || curSchool.x;
+            const sLat = curSchool.lat || curSchool.y;
+            if (sLng && sLat && typeof window.checkAndAdjustMapForSchoolPin === 'function') {
+                window.checkAndAdjustMapForSchoolPin(sLng, sLat);
+            }
+        }
+    };
+
+    window.returnToSchoolPeekCard = function() {
+        window.closeMobileItemPeekCard();
+    };
+
+
+    window.focusNearbyAcademiesMobile = function() {
+        if (typeof window.toggleAcademySidebar === 'function') {
+            window.toggleAcademySidebar(true);
+        }
+    };
+
+    window.focusNearbyHousingMobile = function() {
+        if (typeof window.toggleHousingSidebar === 'function') {
+            window.toggleHousingSidebar(true);
+        }
+    };
+
     function showSchoolDetails(summary, fullSchool) {
         if (typeof window.clearAcademyMarker === 'function') window.clearAcademyMarker();
 
@@ -6133,21 +6613,42 @@ document.addEventListener('DOMContentLoaded', () => {
         const ep = document.getElementById('eduCultureDetailPanel');
         if (ep) ep.style.display = 'none';
 
-        // 4) 컨테이너 및 메인 사이드바 상태 복구 (학교 상세 단독 노출)
+        // 4) 컨테이너 및 메인 사이드바 상태 복구 (모바일 2단계 Peek 카드 / PC 전체 확장 분기)
+        const isMobile = window.innerWidth <= 1024;
         const container = document.querySelector('.app-container');
-        if (container) {
-            container.classList.add('sidebar-open');
-            container.classList.remove('academy-open');
-            container.classList.remove('housing-open');
-            container.classList.remove('edu-culture-open');
-        }
         const sidebar = document.querySelector('.sidebar-section');
-        if (sidebar) {
-            sidebar.classList.remove('active-community');
-            sidebar.classList.remove('active-housing');
-            sidebar.classList.remove('active-educulture');
-            if (sidebar.style.display === 'none') sidebar.style.display = 'block';
+
+        if (isMobile && !window.__expandingMobileDetailExplicitly) {
+            // [모바일 1단계] 지도를 가리지 않도록 전체 사이드바 확장을 보류하고 1단계 미니 바텀 카드(Peek Card)만 띄움
+            if (container) {
+                container.classList.remove('sidebar-open');
+                container.classList.remove('academy-open');
+                container.classList.remove('housing-open');
+                container.classList.remove('edu-culture-open');
+            }
+            if (sidebar) sidebar.style.display = 'none';
+
+            if (typeof window.showMobileSchoolPeekCard === 'function') {
+                window.showMobileSchoolPeekCard(fullSchool || (orchestrator && orchestrator.state && orchestrator.state.selectedSchool));
+            }
+        } else {
+            // [PC 화면 또는 모바일 2단계 상세보기 확장] 사이드바 전체 노출
+            if (container) {
+                container.classList.add('sidebar-open');
+                container.classList.remove('academy-open');
+                container.classList.remove('housing-open');
+                container.classList.remove('edu-culture-open');
+            }
+            if (sidebar) {
+                sidebar.classList.remove('active-community');
+                sidebar.classList.remove('active-housing');
+                sidebar.classList.remove('active-educulture');
+                if (sidebar.style.display === 'none') sidebar.style.display = 'block';
+            }
+            const peekCard = document.getElementById('mobileSchoolPeekCard');
+            if (peekCard) peekCard.style.display = 'none';
         }
+
         const sc = document.getElementById('sidebarContent');
         if (sc) sc.style.display = 'block';
         const btnTop = document.getElementById('btnToggleSidebarTop');
@@ -7767,14 +8268,36 @@ document.addEventListener('DOMContentLoaded', () => {
             let offsetY = 0;
 
             if (isMobile) {
-                // 모바일: 하단 바텀시트 영역을 제외한 상단 가시 영역 중앙
+                // 모바일: 상세 사이드바가 실제로 열려 있을 때만 하단 바텀시트 가림 영역 보정
+                const containerEl = document.querySelector('.app-container');
+                const isSidebarOpen = containerEl && containerEl.classList.contains('sidebar-open');
                 const mainSidebar = document.querySelector('.sidebar-section');
-                let bottomBlocked = (mainSidebar && mainSidebar.offsetHeight > 0) ? mainSidebar.offsetHeight : Math.round(window.innerHeight * 0.6);
-                if (bottomBlocked >= containerHeight) bottomBlocked = Math.round(containerHeight * 0.6);
-                const visibleHeight = Math.max(80, containerHeight - bottomBlocked);
-                targetX = Math.round(containerWidth / 2);
-                targetY = Math.round(visibleHeight / 2);
-                offsetY = Math.round(bottomBlocked / 2);
+
+                if (isSidebarOpen && mainSidebar && mainSidebar.offsetHeight > 0) {
+                    let bottomBlocked = mainSidebar.offsetHeight;
+                    if (bottomBlocked >= containerHeight) bottomBlocked = Math.round(containerHeight * 0.6);
+                    const visibleHeight = Math.max(80, containerHeight - bottomBlocked);
+                    targetX = Math.round(containerWidth / 2);
+                    targetY = Math.round(visibleHeight / 2);
+                    offsetY = Math.round(bottomBlocked / 2);
+                } else {
+                    // 미니 요약 카드(#mobileSchoolPeekCard) 노출 시 해당 영역을 제외한 가시 영역 가운데로 정렬
+                    const peekCard = document.getElementById('mobileSchoolPeekCard');
+                    let bottomBlocked = 0;
+                    if (peekCard && window.getComputedStyle(peekCard).display !== 'none') {
+                        const cardRect = peekCard.getBoundingClientRect();
+                        if (cardRect && cardRect.top > 0 && cardRect.top < containerHeight) {
+                            bottomBlocked = Math.max(120, containerHeight - cardRect.top);
+                        } else if (peekCard.offsetHeight > 0) {
+                            bottomBlocked = peekCard.offsetHeight + 75;
+                        }
+                    }
+                    const visibleHeight = Math.max(100, containerHeight - bottomBlocked);
+                    targetX = Math.round(containerWidth / 2);
+                    targetY = Math.round(visibleHeight / 2);
+                    offsetX = 0;
+                    offsetY = Math.round(bottomBlocked / 2);
+                }
             } else {
                 // PC: 우측 사이드바(메인 사이드바 + 학원/주택 목록 사이드바) 영역을 제외한 좌측 가시 영역 중앙
                 const mainSidebar = document.querySelector('.sidebar-section');
@@ -7845,7 +8368,86 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         window.checkAndAdjustMapForHousingPin = window.checkAndAdjustMapForAcademyPin;
         window.checkAndAdjustMapForEduCulturePin = window.checkAndAdjustMapForAcademyPin;
-        window.checkAndAdjustMapForSchoolPin = window.checkAndAdjustMapForAcademyPin;
+
+        // 학교 핀 전용: 모바일에서 학교 핀 클릭 시 미니 요약 카드의 영역을 제외한 가시 영역 가운데로 정렬
+        window.checkAndAdjustMapForSchoolPin = function (lng, lat) {
+            if (!lng || !lat) return;
+            const numLng = parseFloat(lng);
+            const numLat = parseFloat(lat);
+            if (isNaN(numLng) || isNaN(numLat)) return;
+
+            const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
+            if (!mapObj || !window.kakao || !window.kakao.maps) return;
+
+            const isMobile = window.innerWidth <= 1024;
+            const containerEl = document.querySelector('.app-container');
+            const isSidebarOpen = containerEl && containerEl.classList.contains('sidebar-open');
+
+            // 모바일에서 상세 사이드바가 닫혀 있는 일반 상태(미니 요약 카드 노출 상태)
+            if (isMobile && !isSidebarOpen) {
+                const pos = new kakao.maps.LatLng(numLat, numLng);
+                const container = typeof mapObj.getContainer === 'function' ? mapObj.getContainer() : (document.getElementById('mapCanvas') || document.body);
+                const containerWidth = container ? container.offsetWidth : window.innerWidth;
+                const containerHeight = container ? container.offsetHeight : window.innerHeight;
+
+                // 미니 요약 카드(#mobileSchoolPeekCard) 및 바텀 네비게이션이 차지하는 하단 영역 높이 계산
+                const peekCard = document.getElementById('mobileSchoolPeekCard');
+                let bottomBlocked = 160; // 기본 fallback (하단 네비 60px + 마진 10px + 카드 높이 약 90px)
+                if (peekCard) {
+                    const cardRect = peekCard.getBoundingClientRect();
+                    if (cardRect && cardRect.top > 0 && cardRect.top < containerHeight) {
+                        bottomBlocked = Math.max(120, containerHeight - cardRect.top);
+                    } else if (peekCard.offsetHeight > 0) {
+                        bottomBlocked = peekCard.offsetHeight + 75;
+                    }
+                }
+
+                // 미니 요약 카드 영역을 제외한 가시 영역 높이 및 정중앙 타깃 좌표 계산
+                const visibleHeight = Math.max(100, containerHeight - bottomBlocked);
+                const targetX = Math.round(containerWidth / 2);
+                const targetY = Math.round(visibleHeight / 2);
+                const offsetY = Math.round(bottomBlocked / 2);
+
+                let curPt = null;
+                if (typeof mapObj.getProjection === 'function') {
+                    const proj = mapObj.getProjection();
+                    if (proj) {
+                        curPt = (typeof proj.containerPointFromCoords === 'function')
+                            ? proj.containerPointFromCoords(pos)
+                            : (typeof proj.containerPointFromCoordinate === 'function' ? proj.containerPointFromCoordinate(pos) : null);
+                    }
+                }
+
+                if (curPt && typeof curPt.x === 'number' && typeof curPt.y === 'number') {
+                    const dx = Math.round(curPt.x - targetX);
+                    const dy = Math.round(curPt.y - targetY);
+                    if (Math.abs(dx) <= 10 && Math.abs(dy) <= 10) return;
+                    if (curPt.x >= -150 && curPt.x <= (containerWidth + 150) && curPt.y >= -150 && curPt.y <= (containerHeight + 150)) {
+                        if (typeof mapObj.panBy === 'function') {
+                            mapObj.panBy(dx, dy);
+                            return;
+                        }
+                    }
+                }
+
+                // 화면 밖이거나 투영 계산 불가 시: 지도의 중심을 pos로 잡고 미니 요약 카드 영역 오프셋 적용
+                if (typeof mapObj.setCenter === 'function') {
+                    mapObj.setCenter(pos);
+                } else if (typeof mapObj.panTo === 'function') {
+                    mapObj.panTo(pos);
+                }
+
+                if (offsetY !== 0 && typeof mapObj.panBy === 'function') {
+                    mapObj.panBy(0, offsetY);
+                }
+                return;
+            }
+
+            // PC이거나 모바일 상세 사이드바가 열려있는 상태: 기존 가시영역 계산기 활용
+            if (typeof window.checkAndAdjustMapForAcademyPin === 'function') {
+                window.checkAndAdjustMapForAcademyPin(numLng, numLat);
+            }
+        };
 
         // 사이드 리스트가 닫힐 때 현재 활성 핀(주택, 학원, 자원, 학교)을 다시 중앙으로 자동 정렬
         window.recenterActivePinOnMap = function () {
@@ -9090,6 +9692,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         // 주택 사이드바 및 상세 정보용 전체 데이터 저장 및 리스트 업데이트
                         window.allFetchedHousings = validHousings;
+                        if (typeof window.updateMobilePeekCounts === 'function') {
+                            window.updateMobilePeekCounts();
+                        }
                         const hSchoolNameEl = document.getElementById('housingSchoolName');
                         if (hSchoolNameEl) {
                             const curSchoolName = schoolObj ? (schoolObj.name || schoolObj.school_name || schoolObj.place_name || '선택 학교') : '선택 학교';
@@ -9746,6 +10351,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (typeof window.updateEduCultureSchoolCardBadge === 'function') window.updateEduCultureForSelectedSchool(schoolObj);
 
                 window.allFetchedAcademies = allFetchedAcademies;
+                if (typeof window.updateMobilePeekCounts === 'function') {
+                    window.updateMobilePeekCounts();
+                }
                 await fetchAcademyRatingsFromDb();
                 await applyFiltersAndRender();
                 updateAcademyMapMarkers(allFetchedAcademies);
@@ -9756,6 +10364,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const fallbackResult = await fetchAcademiesClientSide(targetLat, targetLng, radNum);
                     allFetchedAcademies = [...(fallbackResult.items || [])];
                     window.allFetchedAcademies = allFetchedAcademies;
+                    if (typeof window.updateMobilePeekCounts === 'function') {
+                        window.updateMobilePeekCounts();
+                    }
                     const totalCount = fallbackResult.total_count || allFetchedAcademies.length;
                     if (schoolAcademiesEl) schoolAcademiesEl.innerText = `${totalCount}개`;
                     if (totalBadge) totalBadge.innerText = `총 ${totalCount}개소`;
@@ -15624,7 +16235,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // Reset Selected School event handler
     const btnDeselectSchool = document.getElementById('btnDeselectSchool');
     if (btnDeselectSchool) {
-        btnDeselectSchool.addEventListener('click', () => {
+        btnDeselectSchool.addEventListener('click', (e) => {
+            // [모바일 환경 분기]: 상세 패널에서 닫기(뒤로가기) 시 학교 선택/배정권역 폴리곤을 지우지 않고 1단계 미니 카드로 안전 복귀
+            if (window.innerWidth <= 1024) {
+                const curSchool = window.currentSelectedSchool || (orchestrator && orchestrator.state && orchestrator.state.selectedSchool);
+                const sidebar = document.querySelector('.sidebar-section');
+                const container = document.querySelector('.app-container');
+                if (curSchool && container && container.classList.contains('sidebar-open')) {
+                    container.classList.remove('sidebar-open');
+                    if (sidebar) sidebar.style.display = 'none';
+                    if (typeof window.showMobileSchoolPeekCard === 'function') {
+                        window.showMobileSchoolPeekCard(curSchool);
+                    }
+                    if (typeof window.checkAndAdjustMapForSchoolPin === 'function') {
+                        const sLng = curSchool.lng || curSchool.x;
+                        const sLat = curSchool.lat || curSchool.y;
+                        if (sLng && sLat) window.checkAndAdjustMapForSchoolPin(sLng, sLat);
+                    }
+                    return;
+                }
+            }
+
             orchestrator.state.selectedSchool = null;
             window.currentSelectedSchool = null;
             window.selectedTargetSchool = null;
@@ -20110,6 +20741,14 @@ window.addEventListener('DOMContentLoaded', () => {
 
             if (!placeOrName) return;
 
+            // [모바일 환경 분기]: 핀 클릭 시 화면을 덮는 60vh 전체 상세를 바로 띄우지 않고 1단계 미니 카드로 노출
+            if (window.innerWidth <= 1024 && !window.__expandingMobileItemDetailExplicitly) {
+                if (typeof window.showMobileAcademyPeekCard === 'function') {
+                    window.showMobileAcademyPeekCard(placeOrName);
+                    return;
+                }
+            }
+
             let place = null;
             let acadName = '';
             if (typeof placeOrName === 'string') {
@@ -20284,16 +20923,43 @@ window.addEventListener('DOMContentLoaded', () => {
             if (typeof window.clearAcademyMarker === 'function') window.clearAcademyMarker();
             const panel = document.getElementById('communityPanel');
             if (panel) panel.style.display = 'none';
-            const sidebarContent = document.getElementById('sidebarContent');
-            if (sidebarContent) sidebarContent.style.display = 'block';
+
+            const sb = document.querySelector('.sidebar-section');
+            if (sb) sb.classList.remove('active-community');
+
+            // 🌟 모바일 환경 처리: 상세를 닫으면 학원 리스트가 온전히 보이고, 학교 상세는 숨김 유지
+            if (window.innerWidth <= 1024) {
+                const container = document.querySelector('.app-container');
+                const academySidebar = document.getElementById('academySidebar');
+
+                // 학원 리스트가 열려있다면 계속 유지하여 사용자가 리스트를 탐색할 수 있도록 함
+                if (academySidebar) {
+                    academySidebar.style.display = 'flex';
+                }
+                if (container) {
+                    container.classList.add('academy-open');
+                }
+
+                // 학교 상세를 직접 열었던 경우가 아니라면 학교 상세 본문(#sidebarContent)은 절대 노출하지 않음
+                if (!window.__schoolDetailOpenedDirectly) {
+                    const sidebarContent = document.getElementById('sidebarContent');
+                    if (sidebarContent) sidebarContent.style.display = 'none';
+                } else {
+                    const sidebarContent = document.getElementById('sidebarContent');
+                    if (sidebarContent) sidebarContent.style.display = 'block';
+                }
+            } else {
+                const sidebarContent = document.getElementById('sidebarContent');
+                if (sidebarContent) sidebarContent.style.display = 'block';
+            }
+
             const btnToggle = document.getElementById('btnToggleSidebarTop');
             if (btnToggle) btnToggle.style.display = 'flex';
             const btnTutorial = document.getElementById('btnShowTutorial');
             if (btnTutorial) btnTutorial.style.display = 'flex';
             const btnSettings = document.getElementById('btnOpenSettings');
             if (btnSettings) btnSettings.style.display = 'flex';
-            const sb = document.querySelector('.sidebar-section');
-            if (sb) sb.classList.remove('active-community');
+
             if (typeof window.recenterActivePinOnMap === 'function') {
                 setTimeout(() => window.recenterActivePinOnMap(), 100);
             }
@@ -20376,6 +21042,14 @@ window.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => { window.isOpeningFromHousingDetail = false; }, 600);
 
             if (!placeOrName) return;
+
+            // [모바일 환경 분기]: 핀 클릭 시 화면을 덮는 60vh 전체 상세를 바로 띄우지 않고 1단계 미니 카드로 노출
+            if (window.innerWidth <= 1024 && !window.__expandingMobileItemDetailExplicitly) {
+                if (typeof window.showMobileHousingPeekCard === 'function') {
+                    window.showMobileHousingPeekCard(placeOrName);
+                    return;
+                }
+            }
 
             if (typeof window.closeActiveAcademyClusterPopup === 'function') {
                 window.closeActiveAcademyClusterPopup();
@@ -20649,19 +21323,45 @@ window.addEventListener('DOMContentLoaded', () => {
             const panel = document.getElementById('housingDetailPanel');
             if (panel) panel.style.display = 'none';
 
-            const commPanel = document.getElementById('communityPanel');
-            if (!commPanel || commPanel.style.display === 'none') {
-                const sidebarContent = document.getElementById('sidebarContent');
-                if (sidebarContent) sidebarContent.style.display = 'block';
-                const btnToggle = document.getElementById('btnToggleSidebarTop');
-                if (btnToggle) btnToggle.style.display = 'flex';
-                const btnTutorial = document.getElementById('btnShowTutorial');
-                if (btnTutorial) btnTutorial.style.display = 'flex';
-                const btnSettings = document.getElementById('btnOpenSettings');
-                if (btnSettings) btnSettings.style.display = 'flex';
-            }
             const sb = document.querySelector('.sidebar-section');
             if (sb) sb.classList.remove('active-housing');
+
+            // 🌟 모바일 환경 처리: 상세를 닫으면 주택 리스트가 온전히 보이고, 학교 상세는 숨김 유지
+            if (window.innerWidth <= 1024) {
+                const container = document.querySelector('.app-container');
+                const housingSidebar = document.getElementById('housingSidebar');
+
+                // 주택 리스트가 열려있다면 계속 유지하여 사용자가 리스트를 탐색할 수 있도록 함
+                if (housingSidebar) {
+                    housingSidebar.style.display = 'flex';
+                }
+                if (container) {
+                    container.classList.add('housing-open');
+                }
+
+                // 학교 상세를 직접 열었던 경우가 아니라면 학교 상세 본문(#sidebarContent)은 절대 노출하지 않음
+                if (!window.__schoolDetailOpenedDirectly) {
+                    const sidebarContent = document.getElementById('sidebarContent');
+                    if (sidebarContent) sidebarContent.style.display = 'none';
+                } else {
+                    const sidebarContent = document.getElementById('sidebarContent');
+                    if (sidebarContent) sidebarContent.style.display = 'block';
+                }
+            } else {
+                const commPanel = document.getElementById('communityPanel');
+                if (!commPanel || commPanel.style.display === 'none') {
+                    const sidebarContent = document.getElementById('sidebarContent');
+                    if (sidebarContent) sidebarContent.style.display = 'block';
+                }
+            }
+
+            const btnToggle = document.getElementById('btnToggleSidebarTop');
+            if (btnToggle) btnToggle.style.display = 'flex';
+            const btnTutorial = document.getElementById('btnShowTutorial');
+            if (btnTutorial) btnTutorial.style.display = 'flex';
+            const btnSettings = document.getElementById('btnOpenSettings');
+            if (btnSettings) btnSettings.style.display = 'flex';
+
             if (typeof window.recenterActivePinOnMap === 'function') {
                 setTimeout(() => window.recenterActivePinOnMap(), 100);
             }
@@ -21296,7 +21996,39 @@ window.addEventListener('DOMContentLoaded', () => {
 
         window.syncSchoolZoneToggleButtons = function () {
             const isOn = Boolean(window.activeSchoolZonePolygon);
+
+            // 모바일 미니 바텀 카드 내 3분할 와이드 스위치 카드 동기화
+            const zoneTrack = document.getElementById("mobilePeekZoneToggleTrack");
+            const zoneKnob = document.getElementById("mobilePeekZoneToggleKnob");
+            const zoneTitle = document.getElementById("mobilePeekZoneCardTitle");
+            const school = window.currentSelectedSchool || (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool);
+            const sType = String((school && (school.school_type || school.type)) || '');
+            const levelLabel = sType.includes('고') ? '고교학군' : (sType.includes('중') ? '중학군' : '통학구역');
+
+            if (zoneTitle) zoneTitle.textContent = levelLabel;
+            if (zoneTrack && zoneKnob) {
+                zoneTrack.style.background = isOn ? '#0052cc' : '#cbd5e1';
+                zoneKnob.style.left = isOn ? '20px' : '2px';
+            }
+
+            // 하위 호환성 칩 UI
+            const peekBtn = document.getElementById("mobilePeekZoneToggleBtn");
+            if (peekBtn) {
+                const peekText = document.getElementById("mobilePeekZoneToggleText");
+                const peekStatus = document.getElementById("mobilePeekZoneToggleStatus");
+                if (peekText) peekText.textContent = levelLabel;
+                if (peekStatus) {
+                    peekStatus.textContent = isOn ? 'ON' : 'OFF';
+                    peekStatus.style.color = isOn ? '#ffffff' : '#64748b';
+                    peekStatus.style.background = isOn ? '#2563eb' : '#f1f5f9';
+                }
+                peekBtn.style.background = isOn ? '#eff6ff' : '#ffffff';
+                peekBtn.style.borderColor = isOn ? '#2563eb' : '#cbd5e1';
+                peekBtn.style.color = isOn ? '#1d4ed8' : '#334155';
+            }
+
             document.querySelectorAll(".btn-school-zone-toggle").forEach(btn => {
+                if (btn.id === "mobilePeekZoneToggleBtn") return; // 미니 카드 칩은 별도 전용 UI 적용
                 const level = btn.getAttribute("data-zone-level") || "elementary";
                 const levelName = level === "middle" ? "중학군 배정 권역" : (level === "high" ? "고교학군 권역" : "초등 통학구역");
                 const track = btn.querySelector(".zone-switch-track");
@@ -23502,42 +24234,19 @@ window.addEventListener('DOMContentLoaded', () => {
                     if (userNameElMobile) userNameElMobile.innerText = currentUser.nickname ? `${currentUser.name} (${currentUser.nickname})` : currentUser.name;
                     if (userEmailElMobile) userEmailElMobile.innerText = currentUser.email;
 
-                    const isPartner = currentUser.role === 'partner';
-                    if (isPartner) {
-                        if (badgeEl) {
-                            badgeEl.innerText = '🏢 파트너 회원 (인증완료)';
-                            badgeEl.className = 'neis-badge neis-badge-success';
-                        }
-                        if (badgeElMobile) {
-                            badgeElMobile.innerText = '🏢 파트너 회원 (인증완료)';
-                            badgeElMobile.className = 'neis-badge neis-badge-success';
-                        }
-                        if (btnSettings) {
-                            btnSettings.setAttribute('data-title', `${currentUser.name} (파트너/설정)`);
-                        }
-                        const mypageProfileName = document.getElementById('mypageProfileName');
-                        if (mypageProfileName) {
-                            mypageProfileName.innerText = `${currentUser.name} 파트너님`;
-                        }
-                    } else {
-                        if (badgeEl) {
-                            badgeEl.innerText = '🟢 인증 100% 완료';
-                            badgeEl.className = 'neis-badge neis-badge-success';
-                        }
-                        if (badgeElMobile) {
-                            badgeElMobile.innerText = '🟢 인증 100% 완료';
-                            badgeElMobile.className = 'neis-badge neis-badge-success';
-                        }
-                        if (btnSettings) {
-                            btnSettings.setAttribute('data-title', `${currentUser.name} (회원/설정)`);
-                        }
-                        const mypageProfileName = document.getElementById('mypageProfileName');
-                        if (mypageProfileName) {
-                            mypageProfileName.innerText = `${currentUser.nickname || currentUser.name} 학부모님`;
-                        }
+                    // 게스트 계정 또는 미로그인 상태는 절대 파트너가 될 수 없도록 강제 일반회원 처리
+                    const isGuest = !currentUser || !currentUser.email || currentUser.email === 'guest@learnmap.kr';
+                    if (isGuest && currentUser) {
+                        currentUser.role = 'parent';
+                        delete currentUser.bizName;
+                        delete currentUser.businessId;
+                        delete currentUser.isPartner;
                     }
 
-                    // 회원 서비스 내 파트너 전환 버튼 상태 제어 (인증 완료 시 파트너센터 바로가기 버튼으로 자동 전환)
+                    // 파트너 여부 판별 (승인된 파트너 계정인지 검증)
+                    let isPartner = !isGuest && (currentUser.role === 'partner');
+
+                    // 회원 서비스 내 파트너 전환 버튼 상태 제어 (승인 완료 시 파트너센터 바로가기, 일반 계정은 파트너 전환)
                     function applyPartnerButtonUI(isPartnerNow, u) {
                         const btnSwitchPartner = document.getElementById('btnSettingsSwitchPartner');
                         const btnSwitchPartnerMobile = document.getElementById('btnSettingsSwitchPartnerMobile');
@@ -23563,6 +24272,13 @@ window.addEventListener('DOMContentLoaded', () => {
                                 badgeElMobile.innerText = '🏢 파트너 회원 (인증완료)';
                                 badgeElMobile.className = 'neis-badge neis-badge-success';
                             }
+                            if (btnSettings && u) {
+                                btnSettings.setAttribute('data-title', `${u.name} (파트너/설정)`);
+                            }
+                            const mypageProfileName = document.getElementById('mypageProfileName');
+                            if (mypageProfileName && u) {
+                                mypageProfileName.innerText = `${u.name} 파트너님`;
+                            }
                             const pCard = document.getElementById('mypagePartnerActionCard');
                             const pCardM = document.getElementById('mypagePartnerActionCardMobile');
                             if (pCard) pCard.style.display = 'flex';
@@ -23586,6 +24302,13 @@ window.addEventListener('DOMContentLoaded', () => {
                                 badgeElMobile.innerText = '🟢 인증 100% 완료';
                                 badgeElMobile.className = 'neis-badge neis-badge-success';
                             }
+                            if (btnSettings && u) {
+                                btnSettings.setAttribute('data-title', `${u.name} (회원/설정)`);
+                            }
+                            const mypageProfileName = document.getElementById('mypageProfileName');
+                            if (mypageProfileName && u) {
+                                mypageProfileName.innerText = `${u.nickname || u.name} 학부모님`;
+                            }
                             const pCard = document.getElementById('mypagePartnerActionCard');
                             const pCardM = document.getElementById('mypagePartnerActionCardMobile');
                             if (pCard) pCard.style.display = 'none';
@@ -23593,14 +24316,15 @@ window.addEventListener('DOMContentLoaded', () => {
                         }
                     }
 
+                    // 초기 UI 반영: 게스트이거나 일반 회원이면 확실하게 '파트너 전환'으로 렌더링
                     applyPartnerButtonUI(isPartner, currentUser);
 
-                    // 파트너 전환/승인 완료 여부 백엔드 실시간 동기화 (DB 삭제 시 일반 회원으로 즉각 롤백)
-                    if (currentUser && currentUser.email && currentUser.email !== 'guest@learnmap.kr') {
+                    // 파트너 전환/승인 완료 여부 백엔드 실시간 동기화
+                    if (!isGuest) {
                         fetch(`/api/business/check-approval?email=${encodeURIComponent(currentUser.email)}`)
                             .then(res => res.ok ? res.json() : null)
                             .then(data => {
-                                const isApproved = data && data.exists && data.status === 'approved';
+                                const isApproved = Boolean(data && data.exists && data.status === 'approved');
                                 if (isApproved) {
                                     let changed = false;
                                     if (currentUser.role !== 'partner') {
@@ -23614,18 +24338,19 @@ window.addEventListener('DOMContentLoaded', () => {
                                     }
                                     if (changed) {
                                         localStorage.setItem('learnmap_current_user', JSON.stringify(currentUser));
-                                        applyPartnerButtonUI(true, currentUser);
                                     }
+                                    applyPartnerButtonUI(true, currentUser);
                                 } else {
-                                    // [핵심 해결]: DB에서 사업자 데이터가 삭제되었거나 미승인 상태이면 즉시 '파트너 전환' 버튼으로 롤백!
+                                    // 승인된 사업자가 아닌 일반 계정이면 무조건 '파트너 전환' 버튼 유지 및 role 롤백
                                     let changed = false;
                                     if (currentUser.role === 'partner') {
                                         currentUser.role = 'parent';
                                         changed = true;
                                     }
-                                    if (currentUser.bizName || currentUser.businessId) {
+                                    if (currentUser.bizName || currentUser.businessId || currentUser.isPartner) {
                                         delete currentUser.bizName;
                                         delete currentUser.businessId;
+                                        delete currentUser.isPartner;
                                         changed = true;
                                     }
                                     if (changed) {
@@ -23634,7 +24359,13 @@ window.addEventListener('DOMContentLoaded', () => {
                                     applyPartnerButtonUI(false, currentUser);
                                 }
                             })
-                            .catch(() => {});
+                            .catch(() => {
+                                if (currentUser.role !== 'partner') {
+                                    applyPartnerButtonUI(false, currentUser);
+                                }
+                            });
+                    } else {
+                        applyPartnerButtonUI(false, currentUser);
                     }
 
                     // 마이페이지 파트너사 카드 상태 제어 (PC 및 모바일)

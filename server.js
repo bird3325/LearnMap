@@ -4099,7 +4099,9 @@ function httpsGet(url, headers, timeoutMs = 7000) {
 
         // 🌟 타임아웃 안전망: 공공데이터포털 무응답/지연 시 소켓을 닫고 다음 작업으로 진행
         req.setTimeout(timeoutMs, () => {
-            req.destroy(new Error(`요청 시간 초과 (${timeoutMs}ms)`));
+            try {
+                req.destroy();
+            } catch (e) {}
             safeReject(new Error(`Request timeout after ${timeoutMs}ms`));
         });
 
@@ -6245,14 +6247,52 @@ async function saveReportOrderToDB(order) {
 app.get('/api/business/session', async (req, res) => {
     try {
         const { bizId } = req.query;
+        const email = (req.query.email || '').trim().toLowerCase();
+        const userId = (req.query.userId || '').trim();
         const businesses = await syncBusinessesFromDB();
+
+        const isGuestOrEmpty = !email || email === 'guest@learnmap.kr';
+        let userBusinesses = [];
         let biz = null;
-        if (bizId) {
-            biz = businesses.find(b => b.id === bizId);
-        }
-        if (!biz && businesses.length > 0) {
-            // 기본 활성 데모 학원 제공
-            biz = businesses[0];
+
+        if (!isGuestOrEmpty) {
+            // 로그인한 계정(email 또는 userId)에 등록된 사업자만 정확히 필터링
+            userBusinesses = businesses.filter(b => {
+                const matchEmail = email && (b.email || '').trim().toLowerCase() === email;
+                const matchUser = userId && b.userId === userId;
+                return matchEmail || matchUser;
+            });
+
+            if (bizId) {
+                biz = userBusinesses.find(b => b.id === bizId) || null;
+            }
+            if (!biz && userBusinesses.length > 0) {
+                // 승인된 사업자 우선, 없으면 대기 중인 사업자 선택
+                biz = userBusinesses.find(b => b.status === 'approved') || userBusinesses[0];
+            }
+            // 미승인 또는 미등록 계정인 경우 biz는 null 유지 (타 계정의 사업자 정보 노출 원천 차단)
+        } else {
+            // 비로그인 또는 게스트 상태: 명시적인 데모 체험 요청(?demo=true)일 때만 데모 샘플 제공, 그 외 타인 계정 노출 원천 차단
+            const isDemoRequest = req.query.demo === 'true';
+            if (isDemoRequest) {
+                const sampleTarget = (bizId ? businesses.find(b => b.id === bizId) : null) || businesses[0];
+                if (sampleTarget) {
+                    biz = {
+                        ...sampleTarget,
+                        name: `${sampleTarget.name} (체험용 샘플)`,
+                        isDemo: true
+                    };
+                }
+                userBusinesses = businesses.map(b => ({
+                    id: b.id,
+                    name: `${b.name} (체험용 샘플)`,
+                    status: 'approved',
+                    type: b.type,
+                    isDemo: true
+                }));
+            } else {
+                biz = null;
+            }
         }
 
         const subData = await syncSubscriptionsFromDB();
@@ -6260,10 +6300,15 @@ app.get('/api/business/session', async (req, res) => {
             ? subData.subscriptions.find(s => s.businessId === biz.id && s.status === 'active') || null
             : null;
 
+        // 다른 사업자 정보 유출 방지: 해당 사용자 소유의 사업자 목록만 내려줌
+        const allBusinesses = userBusinesses.length > 0
+            ? userBusinesses.map(b => ({ id: b.id, name: b.name, status: b.status, type: b.type }))
+            : (biz ? [{ id: biz.id, name: biz.name, status: biz.status, type: biz.type }] : []);
+
         return res.json({
             business: biz,
             subscription,
-            allBusinesses: businesses.map(b => ({ id: b.id, name: b.name, status: b.status }))
+            allBusinesses
         });
     } catch (err) {
         console.error('Business Session Error:', err);
@@ -6979,8 +7024,8 @@ app.get('/api/business/dashboard', (req, res) => {
             const d = new Date(now);
             d.setDate(d.getDate() - i);
             const dateStr = d.toISOString().split('T')[0];
-            const count = bizEvents.filter(e => e.eventType === 'profile_view' && e.createdAt.startsWith(dateStr)).length;
-            const impCount = bizEvents.filter(e => e.eventType === 'premium_impression' && e.createdAt.startsWith(dateStr)).length;
+            const count = bizEvents.filter(e => e.eventType === 'profile_view' && typeof e.createdAt === 'string' && e.createdAt.startsWith(dateStr)).length;
+            const impCount = bizEvents.filter(e => e.eventType === 'premium_impression' && typeof e.createdAt === 'string' && e.createdAt.startsWith(dateStr)).length;
             dailyViews.push({ date: dateStr.slice(5), views: count, impressions: impCount });
         }
 
@@ -8260,6 +8305,7 @@ app.post('/api/admin/subscription/change', async (req, res) => {
         // 사업자 프로필 동기화 (membershipPlan, membershipPlanName, isPremium)
         let planKey = 'basic';
         if (targetProduct.id.includes('team')) planKey = 'team';
+        else if (targetProduct.id.includes('premium')) planKey = 'premium';
         else if (targetProduct.id.includes('pro') || targetProduct.id.includes('plus')) planKey = 'pro';
 
         if (biz.type === 'academy') {
@@ -8670,11 +8716,15 @@ app.get('/api/admin/subscriptions', (req, res) => {
         const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
         const bizMap = new Map(businesses.map(b => [b.id, b]));
 
-        const enriched = (subData.subscriptions || []).map(s => ({
-            ...s,
-            businessName: bizMap.get(s.businessId)?.name || '알 수 없음',
-            businessOwner: bizMap.get(s.businessId)?.representative || '-'
-        }));
+        const enriched = (subData.subscriptions || []).map(s => {
+            const biz = bizMap.get(s.businessId);
+            return {
+                ...s,
+                businessName: biz?.name || '알 수 없음',
+                businessOwner: biz?.representative || '-',
+                businessType: biz?.type || 'academy'
+            };
+        });
 
         const mrr = enriched
             .filter(s => s.status === 'active')
@@ -9036,6 +9086,10 @@ app.post('/api/admin/blog/posts', async (req, res) => {
         }
 
         const now = new Date().toISOString();
+        const contentImgMatch = (content || '').match(/!\[.*?\]\((.*?)\)/);
+        const autoThumb = contentImgMatch ? contentImgMatch[1].trim() : '';
+        const finalThumbnail = autoThumb || thumbnail || (Array.isArray(images) && images[0] ? images[0].url : '') || '';
+
         const newPost = {
             id: `post-${Date.now()}`,
             slug: `post-${Date.now()}`,
@@ -9043,7 +9097,7 @@ app.post('/api/admin/blog/posts', async (req, res) => {
             category: category || '학군 분석',
             summary: summary || '',
             content: content || '',
-            thumbnail: thumbnail || '',
+            thumbnail: finalThumbnail,
             tags: Array.isArray(tags) ? tags : (typeof tags === 'string' ? tags.split(',').map(t => t.trim()).filter(Boolean) : []),
             author: author || '학업여지도 리서치팀',
             authorRole: authorRole || '수석연구원',
@@ -9077,6 +9131,14 @@ app.put('/api/admin/blog/posts/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const updateData = req.body;
+
+        // 본문에 등록된 첫 마크다운 이미지가 있다면 썸네일과 항상 일치되도록 자동 보정
+        if (updateData.content !== undefined) {
+            const m = String(updateData.content).match(/!\[.*?\]\((.*?)\)/);
+            if (m && m[1]) {
+                updateData.thumbnail = m[1].trim();
+            }
+        }
 
         // 1) Supabase DB Update 시도
         const dbUpdated = await updateBlogPostInDb(id, updateData);

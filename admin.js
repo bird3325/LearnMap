@@ -4260,7 +4260,7 @@ async function loadAdminSubscriptions() {
                             <td style="padding: 10px 12px; color: #0f172a; font-weight: 600;">${s.endDate ? s.endDate.split('T')[0] : '-'}</td>
                             <td style="padding: 10px 12px; color: var(--adm-text-muted);">${escapeHtml(s.paymentMethod || '카드 자동결제')}</td>
                             <td style="padding: 8px 12px; text-align: center;">
-                                <button type="button" onclick="openAdminSubChangeModal('${s.businessId}', '${escapeHtml(s.businessName)}', 'academy', '${s.productId}')" class="btn-secondary" style="padding: 4px 10px; font-size: 11.5px; color: #2563eb; border-color: #bfdbfe; font-weight: 700; width: auto; margin: 0; background: #eff6ff; border-radius: 6px;">
+                                <button type="button" onclick="openAdminSubChangeModal('${s.businessId}', '${escapeHtml(s.businessName)}', '${s.businessType || 'academy'}', '${s.productId}')" class="btn-secondary" style="padding: 4px 10px; font-size: 11.5px; color: #2563eb; border-color: #bfdbfe; font-weight: 700; width: auto; margin: 0; background: #eff6ff; border-radius: 6px;">
                                     플랜 변경
                                 </button>
                             </td>
@@ -4403,6 +4403,92 @@ async function loadBlogManagement() {
 }
 window.loadBlogManagement = loadBlogManagement;
 
+let adminBlogCurrentPage = 1;
+let adminBlogPageSize = 10;
+
+function renderAdminBlogPagination(totalPages, filteredCount, startIndex, endIndex) {
+    const paginationEl = document.getElementById('adminBlogPagination');
+    if (!paginationEl) return;
+    if (filteredCount === 0 || totalPages <= 1) {
+        paginationEl.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+
+    // [이전 페이지] 버튼
+    const prevDisabled = adminBlogCurrentPage <= 1;
+    html += `
+        <button type="button" class="btn-secondary" onclick="window.goToAdminBlogPage(${adminBlogCurrentPage - 1})"
+            ${prevDisabled ? 'disabled style="opacity: 0.45; cursor: not-allowed; padding: 5px 12px; font-size: 12px;"' : 'style="cursor: pointer; padding: 5px 12px; font-size: 12px;"'}>
+            ‹ 이전
+        </button>
+    `;
+
+    // 페이지 번호 슬라이딩 계산 (최대 5개 노출)
+    let startPage = Math.max(1, adminBlogCurrentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+    if (endPage - startPage < 4) {
+        startPage = Math.max(1, endPage - 4);
+    }
+
+    if (startPage > 1) {
+        html += `<button type="button" class="btn-secondary" onclick="window.goToAdminBlogPage(1)" style="padding: 5px 10px; font-size: 12px;">1</button>`;
+        if (startPage > 2) {
+            html += `<span style="padding: 0 4px; color: #94a3b8; font-size: 12px;">…</span>`;
+        }
+    }
+
+    for (let p = startPage; p <= endPage; p++) {
+        const isActive = p === adminBlogCurrentPage;
+        if (isActive) {
+            html += `
+                <button type="button" style="background: #2563eb; color: #ffffff; border: 1px solid #2563eb; border-radius: 6px; padding: 5px 11px; font-size: 12px; font-weight: 700; cursor: default;">
+                    ${p}
+                </button>
+            `;
+        } else {
+            html += `
+                <button type="button" class="btn-secondary" onclick="window.goToAdminBlogPage(${p})" style="padding: 5px 11px; font-size: 12px; cursor: pointer;">
+                    ${p}
+                </button>
+            `;
+        }
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            html += `<span style="padding: 0 4px; color: #94a3b8; font-size: 12px;">…</span>`;
+        }
+        html += `<button type="button" class="btn-secondary" onclick="window.goToAdminBlogPage(${totalPages})" style="padding: 5px 10px; font-size: 12px;">${totalPages}</button>`;
+    }
+
+    // [다음 페이지] 버튼
+    const nextDisabled = adminBlogCurrentPage >= totalPages;
+    html += `
+        <button type="button" class="btn-secondary" onclick="window.goToAdminBlogPage(${adminBlogCurrentPage + 1})"
+            ${nextDisabled ? 'disabled style="opacity: 0.45; cursor: not-allowed; padding: 5px 12px; font-size: 12px;"' : 'style="cursor: pointer; padding: 5px 12px; font-size: 12px;"'}>
+            다음 ›
+        </button>
+    `;
+
+    // 페이지 위치 및 건수 상세 정보
+    html += `
+        <span style="font-size: 11.5px; color: var(--adm-text-muted); margin-left: 8px;">
+            ${adminBlogCurrentPage} / ${totalPages} 페이지 (${filteredCount}건 중 ${startIndex + 1}~${endIndex}번째)
+        </span>
+    `;
+
+    paginationEl.innerHTML = html;
+}
+
+window.goToAdminBlogPage = function(page) {
+    adminBlogCurrentPage = page;
+    renderAdminBlogTable();
+    const container = document.getElementById('adminBlogListContainer');
+    if (container) container.scrollTop = 0;
+};
+
 function renderAdminBlogTable() {
     const container = document.getElementById('adminBlogListContainer');
     if (!container) return;
@@ -4423,10 +4509,42 @@ function renderAdminBlogTable() {
         });
     }
 
-    if (list.length === 0) {
+    const totalCount = allAdminBlogPosts.length;
+    const filteredCount = list.length;
+
+    // 상단 게시글 수 뱃지 실시간 갱신
+    const totalCountEl = document.getElementById('adminBlogTotalCount');
+    const filteredCountEl = document.getElementById('adminBlogFilteredCount');
+    if (totalCountEl) totalCountEl.textContent = totalCount.toLocaleString();
+
+    const publishedCount = allAdminBlogPosts.filter(p => p.isPublished !== false).length;
+    const draftCount = totalCount - publishedCount;
+
+    if (filteredCountEl) {
+        if (catFilter !== 'all' || searchQuery) {
+            filteredCountEl.textContent = `검색 결과: ${filteredCount}건 (전체 ${totalCount}건)`;
+            filteredCountEl.style.display = 'inline-block';
+        } else {
+            filteredCountEl.textContent = `발행 ${publishedCount}건 / 임시보관 ${draftCount}건`;
+            filteredCountEl.style.display = 'inline-block';
+        }
+    }
+
+    if (filteredCount === 0) {
         container.innerHTML = '<div style="text-align: center; color: var(--adm-text-muted); padding: 30px;">등록된 칼럼/게시글이 없습니다. [새 칼럼 작성] 버튼을 눌러 등록해 보세요.</div>';
+        const paginationEl = document.getElementById('adminBlogPagination');
+        if (paginationEl) paginationEl.innerHTML = '';
         return;
     }
+
+    // 페이지네이션 슬라이싱
+    const totalPages = Math.ceil(filteredCount / adminBlogPageSize) || 1;
+    if (adminBlogCurrentPage > totalPages) adminBlogCurrentPage = totalPages;
+    if (adminBlogCurrentPage < 1) adminBlogCurrentPage = 1;
+
+    const startIndex = (adminBlogCurrentPage - 1) * adminBlogPageSize;
+    const endIndex = Math.min(startIndex + adminBlogPageSize, filteredCount);
+    const pagedList = list.slice(startIndex, endIndex);
 
     let html = `
         <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left;">
@@ -4444,7 +4562,7 @@ function renderAdminBlogTable() {
             <tbody>
     `;
 
-    list.forEach(post => {
+    pagedList.forEach(post => {
         const dateStr = post.createdAt ? post.createdAt.split('T')[0] : '-';
         const isPub = post.isPublished !== false;
         const pubBadge = isPub
@@ -4483,6 +4601,9 @@ function renderAdminBlogTable() {
 
     html += '</tbody></table>';
     container.innerHTML = html;
+
+    // 하단 페이지네이션 컨트롤 렌더링
+    renderAdminBlogPagination(totalPages, filteredCount, startIndex, endIndex);
 }
 
 let currentAttachedBlogImages = [];
@@ -5198,12 +5319,17 @@ window.saveBlogPostAdmin = async function() {
         return;
     }
 
+    // 본문에 등록된 첫 번째 마크다운 이미지가 있다면 대표 썸네일과 100% 일치하도록 자동 동기화
+    const contentImgMatch = (content || '').match(/!\[.*?\]\((.*?)\)/);
+    const contentFirstImg = contentImgMatch ? contentImgMatch[1].trim() : '';
+    const finalThumbnail = contentFirstImg || thumbnail || (currentAttachedBlogImages && currentAttachedBlogImages[0] ? currentAttachedBlogImages[0].url : '');
+
     const payload = {
         title,
         category,
         author,
         readTime,
-        thumbnail,
+        thumbnail: finalThumbnail,
         summary,
         tags: tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) : [],
         content,
@@ -5270,17 +5396,54 @@ function initBlogAdminEvents() {
     const btnSave = document.getElementById('btnSaveBlogPost');
     if (btnSave) btnSave.addEventListener('click', window.saveBlogPostAdmin);
 
+    // 블로그 페이지당 표시 개수 선택 이벤트
+    const pageSizeSelect = document.getElementById('adminBlogPageSizeSelect');
+    if (pageSizeSelect) {
+        pageSizeSelect.addEventListener('change', (e) => {
+            adminBlogPageSize = Number(e.target.value) || 10;
+            adminBlogCurrentPage = 1;
+            renderAdminBlogTable();
+        });
+    }
+
     const filter = document.getElementById('adminBlogCategoryFilter');
-    if (filter) filter.addEventListener('change', renderAdminBlogTable);
+    if (filter) {
+        filter.addEventListener('change', () => {
+            adminBlogCurrentPage = 1;
+            renderAdminBlogTable();
+        });
+    }
 
     const searchInput = document.getElementById('adminBlogSearchInput');
-    if (searchInput) searchInput.addEventListener('input', renderAdminBlogTable);
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            adminBlogCurrentPage = 1;
+            renderAdminBlogTable();
+        });
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                adminBlogCurrentPage = 1;
+                renderAdminBlogTable();
+            }
+        });
+    }
 
     const btnSearch = document.getElementById('btnSearchBlogPosts');
-    if (btnSearch) btnSearch.addEventListener('click', renderAdminBlogTable);
+    if (btnSearch) {
+        btnSearch.addEventListener('click', () => {
+            adminBlogCurrentPage = 1;
+            renderAdminBlogTable();
+        });
+    }
 
     const btnRefresh = document.getElementById('btnRefreshBlogPosts');
-    if (btnRefresh) btnRefresh.addEventListener('click', loadBlogManagement);
+    if (btnRefresh) {
+        btnRefresh.addEventListener('click', () => {
+            adminBlogCurrentPage = 1;
+            loadBlogManagement();
+        });
+    }
 
     // 툴바 포맷팅 버튼 이벤트 바인딩
     document.querySelectorAll('.blog-tool-btn').forEach(btn => {
@@ -5597,16 +5760,17 @@ window.openAdminSubChangeModal = function(bizId, bizName, bizType, curProductId)
     if (selectPlan) {
         if (bizType === 'real_estate') {
             selectPlan.innerHTML = `
-                <option value="free" ${isFree ? 'selected' : ''}>부동산 FREE (평생 무료 / 월 0원)</option>
-                <option value="prod_re_basic" ${curProductId === 'prod_re_basic' ? 'selected' : ''}>부동산 BASIC (월 29,000원 - 매물 관리 & 기본 교육환경)</option>
-                <option value="prod_re_pro" ${curProductId === 'prod_re_pro' || isFree ? 'selected' : ''}>부동산 PRO (월 59,000원 - 교육환경 분석 & 프리미엄 홍보)</option>
-                <option value="prod_re_team" ${curProductId === 'prod_re_team' ? 'selected' : ''}>부동산 TEAM (월 199,000원 - 다수 사무소 & 지점 통합 관리)</option>
+                <option value="free" ${isFree ? 'selected' : ''}>부동산 FREE (평생 무료 / 월 0원 - 중개사무소 기본 등록)</option>
+                <option value="prod_re_basic" ${curProductId === 'prod_re_basic' ? 'selected' : ''}>부동산 BASIC (월 29,000원 - 매물 및 기본 교육환경 관리)</option>
+                <option value="prod_re_pro" ${curProductId === 'prod_re_pro' || isFree ? 'selected' : ''}>부동산 PRO (월 59,000원 - BEST 주력 추천 / 교육환경 분석 & 프리미엄 매물 홍보)</option>
+                <option value="prod_re_premium" ${curProductId === 'prod_re_premium' ? 'selected' : ''}>부동산 PREMIUM (월 99,000원 - 단지 파트너 배너 & 골드 인증)</option>
+                <option value="prod_re_team" ${curProductId === 'prod_re_team' ? 'selected' : ''}>부동산 TEAM (월 199,000원 - 복수 지점 및 소속 중개사 관리)</option>
             `;
         } else {
             selectPlan.innerHTML = `
-                <option value="free" ${isFree ? 'selected' : ''}>학원 FREE (기본 정보 등록 및 무료 체험 / 월 0원 / 시설 사진 0장)</option>
+                <option value="free" ${isFree ? 'selected' : ''}>학원 FREE (평생 무료 / 월 0원 - 기본 정보 등록 및 무료 체험)</option>
                 <option value="prod_academy_basic" ${curProductId === 'prod_academy_basic' ? 'selected' : ''}>학원 BASIC (월 29,000원 - 상세페이지 & 소개글 활성, 시설 사진 3장, 1:1 상담)</option>
-                <option value="prod_academy_pro" ${curProductId === 'prod_academy_pro' || isFree ? 'selected' : ''}>학원 PRO (월 99,000원 - 주력 추천 / 상단 프리미엄 노출, 시설 사진 최대 10장, 상권분석)</option>
+                <option value="prod_academy_pro" ${curProductId === 'prod_academy_pro' || isFree ? 'selected' : ''}>학원 PRO (월 99,000원 - BEST 주력 추천 / 상단 프리미엄 노출, 시설 사진 최대 10장, 상권분석)</option>
                 <option value="prod_academy_team" ${curProductId === 'prod_academy_team' ? 'selected' : ''}>학원 TEAM (월 199,000원 - 다수 지점 통합 프로필 & 관리, 시설 사진 최대 10장)</option>
             `;
         }
@@ -5634,6 +5798,7 @@ window.onAdminPlanSelectChange = function() {
         'prod_academy_team': '199,000원 / 월',
         'prod_re_basic': '29,000원 / 월',
         'prod_re_pro': '59,000원 / 월',
+        'prod_re_premium': '99,000원 / 월',
         'prod_re_team': '199,000원 / 월'
     };
     priceText.innerText = priceMap[val] || '0원';

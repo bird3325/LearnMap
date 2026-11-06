@@ -280,6 +280,9 @@
                         container.classList.remove('sidebar-open');
                         container.classList.remove('academy-open');
                         button.innerHTML = iconMenu;
+                        if (window.innerWidth <= 1024 && typeof window.showMobileSchoolPeekCard === 'function' && typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) {
+                            window.showMobileSchoolPeekCard(orchestrator.state.selectedSchool);
+                        }
                         setTimeout(() => {
                             if (!container.classList.contains('sidebar-open')) {
                                 sidebar.style.display = 'none';
@@ -381,6 +384,16 @@
                         const btnToggle = document.getElementById('btnToggleSidebarTop');
                         if (btnToggle) btnToggle.style.display = 'flex';
 
+                        // 🌟 모바일에서 사용자가 학교 상세를 직접 연 경우가 아니라면, 학교 상세는 노출하지 않고 지도/미니카드로 복귀!
+                        if (window.innerWidth <= 1024 && !window.__schoolDetailOpenedDirectly) {
+                            if (container) container.classList.remove('sidebar-open');
+                            if (sidebar) sidebar.style.display = 'none';
+                            const curSchool = window.currentSelectedSchool || (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool);
+                            if (curSchool && typeof window.showMobileSchoolPeekCard === 'function') {
+                                window.showMobileSchoolPeekCard(curSchool);
+                            }
+                        }
+
                         setTimeout(() => {
                             if (container && !container.classList.contains('academy-open')) {
                                 if (academySidebar) academySidebar.style.display = 'none';
@@ -467,6 +480,16 @@
                             if (sidebarContent) sidebarContent.style.display = 'block';
                             const btnToggle = document.getElementById('btnToggleSidebarTop');
                             if (btnToggle) btnToggle.style.display = 'flex';
+                        }
+
+                        // 🌟 모바일에서 사용자가 학교 상세를 직접 연 경우가 아니라면, 학교 상세는 노출하지 않고 지도/미니카드로 복귀!
+                        if (window.innerWidth <= 1024 && !window.__schoolDetailOpenedDirectly) {
+                            if (container) container.classList.remove('sidebar-open');
+                            if (sidebar) sidebar.style.display = 'none';
+                            const curSchool = window.currentSelectedSchool || (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool);
+                            if (curSchool && typeof window.showMobileSchoolPeekCard === 'function') {
+                                window.showMobileSchoolPeekCard(curSchool);
+                            }
                         }
 
                         setTimeout(() => {
@@ -2051,6 +2074,15 @@
                                         <span>로그아웃</span>
                                     </button>
                                 </div>
+                                <button type="button" id="btnSettingsSwitchPartner"
+                                    onclick="if(window.handlePartnerButtonClick) window.handlePartnerButtonClick(); else if(window.openPartnerSwitchModal) window.openPartnerSwitchModal();"
+                                    style="width: 100%; height: 38px; margin-top: 10px; background: #ffffff; border: 1.5px solid #2563eb; border-radius: 10px; font-size: 12.5px; font-weight: 700; color: #2563eb; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: all 0.2s;">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                                    </svg>
+                                    <span id="btnSettingsSwitchPartnerText">파트너 전환</span>
+                                </button>
                             </div>
 
                             <!-- 미로그인 시 노출되는 간편 로그인 & 이메일 폼 -->
@@ -2728,6 +2760,15 @@
                                         <span>로그아웃</span>
                                     </button>
                                 </div>
+                                <button type="button" id="btnSettingsSwitchPartnerMobile"
+                                    onclick="if(window.handlePartnerButtonClick) window.handlePartnerButtonClick(); else if(window.openPartnerSwitchModal) window.openPartnerSwitchModal();"
+                                    style="width: 100%; height: 36px; margin-top: 8px; background: #ffffff; border: 1.5px solid #2563eb; border-radius: 8px; font-size: 12px; font-weight: 700; color: #2563eb; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; transition: all 0.2s;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                                    </svg>
+                                    <span id="btnSettingsSwitchPartnerMobileText">파트너 전환</span>
+                                </button>
                             </div>
 
                             <!-- 미로그인 시 노출되는 간편 로그인 & 이메일 폼 -->
@@ -7152,6 +7193,154 @@
         </div>
     </div>
 
+    <!-- 모바일 학교 선택 시 1단계 미니 바텀 카드 (Peek 카드 - 신규 3분할 와이드 디자인) -->
+    <div id="mobileSchoolPeekCard" class="mobile-school-peek-card"
+        style="display: none; position: fixed; bottom: 70px; left: 12px; right: 12px; background: #ffffff; border-radius: 20px; border: 1px solid var(--border-color, #e2e8f0); box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.16), 0 4px 12px -2px rgba(15, 23, 42, 0.08); padding: 10px 14px 14px 14px; z-index: 10050; flex-direction: column; gap: 8px; transition: transform 0.25s ease, opacity 0.2s ease; box-sizing: border-box;">
+        <!-- 상단 드래그 힌트 바 -->
+        <div style="width: 44px; height: 4px; background: #cbd5e1; border-radius: 2px; margin: 0 auto 6px auto; cursor: grab;" onclick="window.closeMobileSchoolPeekCard()" title="카드 닫기"></div>
+
+        <!-- 1행: 학교 뱃지, 학교명, 즐겨찾기, 도보시간, 상세분석 버튼 -->
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1;">
+                <span id="mobilePeekSchoolBadge"
+                    style="font-size: 11.5px; font-weight: 700; padding: 3px 7px; border-radius: 6px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; white-space: nowrap; flex-shrink: 0;">초등학교·공립</span>
+                <h4 id="mobilePeekSchoolName" onclick="window.expandMobileSchoolDetail()"
+                    style="font-size: 17px; font-weight: 800; color: #0f172a; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; letter-spacing: -0.3px; max-width: 140px;">학교명</h4>
+                <button type="button" id="btnMobilePeekFavorite" onclick="if(typeof window.toggleFavoriteSchool==='function')window.toggleFavoriteSchool();"
+                    style="background: none; border: none; font-size: 19px; line-height: 1; cursor: pointer; color: #94a3b8; padding: 0; flex-shrink: 0;"
+                    title="관심 학교 등록">☆</button>
+                <div id="mobilePeekWalkBadge" style="display: flex; align-items: center; gap: 2px; background: #eef2ff; color: #2563eb; font-size: 12px; font-weight: 800; padding: 3px 8px; border-radius: 12px; white-space: nowrap; flex-shrink: 0;">
+                    <span style="font-size: 13px;">🚶</span>
+                    <span id="mobilePeekWalkTimeText">3분</span>
+                </div>
+            </div>
+            <button type="button" onclick="window.expandMobileSchoolDetail()"
+                style="background: #0052cc; color: #ffffff; border: none; border-radius: 20px; padding: 7px 15px; font-size: 12.5px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(0,82,204,0.3); white-space: nowrap; flex-shrink: 0;">
+                <span>상세분석</span>
+                <span style="font-size: 14px; font-weight: 900; line-height: 1;">↑</span>
+            </button>
+        </div>
+
+        <!-- 2행: 주소 및 주소 복사 아이콘 -->
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #334155;">
+            <span id="mobilePeekSchoolMeta" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.2px;">
+                학교 주소 정보
+            </span>
+            <button type="button" id="btnCopyMobileSchoolAddress" onclick="window.copySchoolAddressMobile()"
+                style="background: none; border: none; padding: 2px; cursor: pointer; color: #64748b; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"
+                title="주소 복사">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- 3행: 3분할 와이드 액션 카드 (인근 학원 / 배정 주택 / 통학구역 구역 표시 스위치) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 2px;">
+            <!-- 인근 학원 카드 -->
+            <div id="mobilePeekAcademyChip" onclick="window.focusNearbyAcademiesMobile()"
+                style="background: #fbf9ff; border: 1px solid #ede9fe; border-radius: 12px; padding: 8px 10px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.15s ease;">
+                <div style="display: flex; flex-direction: column; gap: 2px; text-align: left;">
+                    <span style="font-size: 11px; font-weight: 700; color: #6d28d9; letter-spacing: -0.2px;">인근 학원</span>
+                    <span style="font-size: 13.5px; font-weight: 800; color: #4c1d95; letter-spacing: -0.3px;"><strong id="mobilePeekAcademyCount">0</strong>개소</span>
+                </div>
+                <span style="font-size: 14px; font-weight: 800; color: #8b5cf6;">&gt;</span>
+            </div>
+
+            <!-- 배정 주택 카드 -->
+            <div id="mobilePeekHousingChip" onclick="window.focusNearbyHousingMobile()"
+                style="background: #fff1f2; border: 1px solid #ffe4e6; border-radius: 12px; padding: 8px 10px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.15s ease;">
+                <div style="display: flex; flex-direction: column; gap: 2px; text-align: left;">
+                    <span style="font-size: 11px; font-weight: 700; color: #be123c; letter-spacing: -0.2px;">배정 주택</span>
+                    <span style="font-size: 13.5px; font-weight: 800; color: #9f1239; letter-spacing: -0.3px;"><strong id="mobilePeekHousingCount">0</strong>개 단지</span>
+                </div>
+                <span style="font-size: 14px; font-weight: 800; color: #f43f5e;">&gt;</span>
+            </div>
+
+            <!-- 통학구역 구역 표시 스위치 카드 -->
+            <div id="mobilePeekZoneToggleBtn" class="btn-school-zone-toggle" onclick="window.toggleMobileSchoolZoneBoundary()"
+                style="background: #eff6ff; border: 1px solid #dbeafe; border-radius: 12px; padding: 8px 10px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.15s ease;">
+                <div style="display: flex; flex-direction: column; gap: 1px; text-align: left;">
+                    <span id="mobilePeekZoneCardTitle" style="font-size: 11px; font-weight: 800; color: #1e40af; letter-spacing: -0.2px;">통학구역</span>
+                    <span style="font-size: 12px; font-weight: 900; color: #0f172a; letter-spacing: -0.3px;">구역 표시</span>
+                </div>
+                <!-- ON/OFF 슬라이더 스위치 -->
+                <div id="mobilePeekZoneToggleTrack" style="width: 38px; height: 20px; border-radius: 10px; background: #cbd5e1; position: relative; transition: background 0.22s ease; flex-shrink: 0;">
+                    <div id="mobilePeekZoneToggleKnob" style="width: 16px; height: 16px; border-radius: 50%; background: #ffffff; position: absolute; top: 2px; left: 2px; transition: all 0.22s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.25);"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모바일 학원/주택 선택 시 1단계 미니 바텀 카드 (Peek 카드 - 첨부 이미지 최신 디자인) -->
+    <div id="mobileItemPeekCard" class="mobile-item-peek-card"
+        style="display: none; position: fixed; bottom: 70px; left: 12px; right: 12px; background: #ffffff; border-radius: 22px; border: 1px solid #e2e8f0; box-shadow: 0 12px 32px -4px rgba(15, 23, 42, 0.16), 0 4px 12px -2px rgba(15, 23, 42, 0.06); padding: 10px 14px 14px 14px; z-index: 10050; flex-direction: column; gap: 8px; transition: transform 0.25s ease, opacity 0.2s ease;">
+        <!-- 상단 드래그 핸들 바 -->
+        <div style="width: 44px; height: 4px; background: #cbd5e1; border-radius: 9999px; margin: 0 auto 6px auto;"></div>
+
+        <!-- 1행: 분류뱃지 / 명칭 / 상세분석 버튼 -->
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; cursor: pointer;" onclick="window.expandMobileItemDetail()">
+                <span id="mobileItemPeekBadge"
+                    style="font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 7px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; white-space: nowrap; flex-shrink: 0;">APT</span>
+                <h4 id="mobileItemPeekName"
+                    style="font-size: 17.5px; font-weight: 800; color: #0f172a; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.3px;">삼송 동일스위트 1차</h4>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                <button type="button" id="btnMobileItemPeekExpandTop" onclick="window.expandMobileItemDetail()"
+                    style="background: #2563eb; color: #ffffff; border: none; border-radius: 9999px; padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(37,99,235,0.28); white-space: nowrap;">
+                    <span>상세분석</span>
+                    <span style="font-size: 11px;">↑</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 하단 정보 컨테이너 박스 -->
+        <div style="background: #ffffff; border: 1px solid #eef2f6; border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+            <!-- 박스 1행: 배정/기준 학교 + 도보시간 뱃지 -->
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 6px; min-width: 0; cursor: pointer;" onclick="window.closeMobileItemPeekCard()" title="학교 카드로 복귀">
+                    <span id="mobileItemSchoolLabel" style="font-size: 12.5px; color: #64748b; font-weight: 500; white-space: nowrap;">배정 학교</span>
+                    <span style="display: inline-flex; align-items: center; color: #059669; font-size: 14px;">🏫</span>
+                    <span id="mobileItemSchoolName" style="font-size: 13.5px; font-weight: 800; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">신원초등학교</span>
+                </div>
+                <div id="mobileItemPeekWalkBadge"
+                    style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 9999px; padding: 3px 9px; display: flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 700; color: #047857; flex-shrink: 0; white-space: nowrap;">
+                    <span>🏃</span>
+                    <span id="mobileItemWalkText">도보 3분</span>
+                    <span id="mobileItemDistText" style="font-size: 11px; font-weight: 500; color: #059669;">(230m)</span>
+                </div>
+            </div>
+
+            <!-- 박스 구분선 -->
+            <div style="height: 1px; background: #f1f5f9; width: 100%;"></div>
+
+            <!-- 박스 2행: 주소 및 복사 아이콘 + 스펙 정보 -->
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #475569;">
+                <div style="display: flex; align-items: center; gap: 4px; min-width: 0; flex: 1;">
+                    <span id="mobileItemPeekAddress" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #334155;">경기 고양시 덕양구 신원로 40</span>
+                    <button type="button" id="btnCopyMobileItemAddress" onclick="window.copyItemAddressMobile()"
+                        style="background: transparent; border: none; padding: 1px; cursor: pointer; color: #64748b; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"
+                        title="주소 복사">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div id="mobileItemSpecs" style="white-space: nowrap; flex-shrink: 0; color: #475569; font-weight: 500; font-size: 11.5px;">
+                    968세대 · 2015년 준공 · 용적률 169%
+                </div>
+            </div>
+        </div>
+
+        <!-- 하위 호환 숨김 요소 -->
+        <span id="mobileItemPeekMeta" style="display: none;"></span>
+        <span id="mobileItemPeekSubMeta" style="display: none;"></span>
+        <div id="mobileItemPeekSchoolContext" style="display: none;"><span id="mobileItemPeekSchoolText"></span></div>
+    </div>
+
     <!-- 모바일 하단 탭바 메뉴 -->
     <div id="mobileBottomNav" class="mobile-bottom-nav">
         <button class="nav-item active" onclick="window.onMobileNavClick('map', this)">
@@ -7533,6 +7722,101 @@
                 <button type="button"
                     onclick="if(window.closeTargetSchoolSelectModal) window.closeTargetSchoolSelectModal();"
                     style="padding: 8px 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; color: #475569; font-size: 12px; font-weight: 600; cursor: pointer;">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 파트너스 전환 안내 모달 -->
+    <div id="partnerSwitchModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(8px); z-index: 100100; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+        <div class="auth-modal-content"
+            style="background: var(--bg-card, #ffffff); width: 100%; max-width: 480px; border-radius: 18px; box-shadow: 0 24px 50px rgba(0,0,0,0.25); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-color, #e2e8f0);">
+
+            <!-- Header Bar -->
+            <div
+                style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 18px 24px; color: white; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div
+                        style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #2563eb, #1d4ed8); display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                        🏢</div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #ffffff;">파트너스 전환 안내</h3>
+                        <span style="font-size: 11px; color: #94a3b8;">학원 및 부동산 사업자 전용 파트너십</span>
+                    </div>
+                </div>
+                <button type="button" onclick="if(window.closePartnerSwitchModal) window.closePartnerSwitchModal();"
+                    style="background: rgba(255,255,255,0.1); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; justify-content: center; align-items: center;"
+                    aria-label="닫기">&times;</button>
+            </div>
+
+            <!-- Content Body -->
+            <div style="padding: 24px; max-height: calc(85vh - 140px); overflow-y: auto;">
+                <!-- 설명 요약 박스 -->
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;">
+                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                        <span style="font-size: 18px; line-height: 1.2;">💡</span>
+                        <div style="font-size: 13px; color: #1e3a8a; line-height: 1.5;">
+                            <strong>러닝맵 파트너스로 전환</strong>하시면 학원 홍보, 부동산 매물 연계, 지역 상권·학군 정밀 분석 대시보드를 이용하실 수 있습니다.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 전환 절차 3단계 -->
+                <div style="margin-bottom: 18px;">
+                    <div style="font-size: 13px; font-weight: 800; color: #1e293b; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                        <span>📋</span> 파트너스 전환은 어떻게 진행되나요?
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <!-- STEP 1 -->
+                        <div style="display: flex; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                            <div style="width: 24px; height: 24px; border-radius: 50%; background: #2563eb; color: #ffffff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">1</div>
+                            <div style="flex: 1;">
+                                <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 2px;">사업자등록 신청</div>
+                                <div style="font-size: 12px; color: #64748b; line-height: 1.4;">아래 전환 버튼을 클릭하여 파트너 센터로 이동한 후 상호명, 사업자번호 등 사업자 정보를 등록합니다.</div>
+                            </div>
+                        </div>
+
+                        <!-- STEP 2 -->
+                        <div style="display: flex; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                            <div style="width: 24px; height: 24px; border-radius: 50%; background: #2563eb; color: #ffffff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">2</div>
+                            <div style="flex: 1;">
+                                <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 2px;">서류 및 사업자 확인</div>
+                                <div style="font-size: 12px; color: #64748b; line-height: 1.4;">제출해주신 정보를 바탕으로 신속하게 사업자 인증 및 확인 절차가 진행됩니다.</div>
+                            </div>
+                        </div>
+
+                        <!-- STEP 3 -->
+                        <div style="display: flex; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                            <div style="width: 24px; height: 24px; border-radius: 50%; background: #10b981; color: #ffffff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">3</div>
+                            <div style="flex: 1;">
+                                <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 2px;">파트너스 전환 완료 및 솔루션 이용</div>
+                                <div style="font-size: 12px; color: #64748b; line-height: 1.4;">승인 즉시 파트너 센터 전용 기능(학원 홍보, 학부모 안심 노출, 상권 분석)을 바로 시작할 수 있습니다.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 안내 유의사항 -->
+                <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px; font-size: 11.5px; color: #64748b; line-height: 1.5;">
+                    💡 기존 학부모 회원 계정 정보는 유지되며, 파트너 등록 후에도 학부모 지도 및 파트너 센터를 자유롭게 전환하며 이용하실 수 있습니다.
+                </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div
+                style="padding: 14px 24px 20px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" onclick="if(window.closePartnerSwitchModal) window.closePartnerSwitchModal();"
+                    style="flex: 1; height: 42px; border: 1px solid #cbd5e1; border-radius: 10px; background: #ffffff; color: #475569; font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.2s;">
+                    닫기
+                </button>
+                <a href="/business?tab=register" target="_blank" rel="noopener noreferrer"
+                    onclick="if(window.closePartnerSwitchModal) window.closePartnerSwitchModal();"
+                    style="flex: 2; height: 42px; border: none; border-radius: 10px; background: #2563eb; color: #ffffff; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); text-decoration: none; transition: background 0.2s; box-sizing: border-box;">
+                    <span>파트너 센터에서 사업자등록 신청</span>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </a>
             </div>
         </div>
     </div>

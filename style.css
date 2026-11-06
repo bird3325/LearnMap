@@ -3412,3 +3412,24 @@ body.is-resizing-sidebar .housing-sidebar-section {
 
 
 
+
+
+/* Mobile School & Academy/Housing 2-Stage Peek Bottom Sheet Card */
+@media (min-width: 1025px) {
+    #mobileSchoolPeekCard,
+    #mobileItemPeekCard {
+        display: none !important;
+    }
+}
+@media (max-width: 1024px) {
+    .app-container.sidebar-open #mobileSchoolPeekCard,
+    .app-container.sidebar-open #mobileItemPeekCard {
+        display: none !important;
+    }
+    .mobile-school-peek-card,
+    .mobile-item-peek-card {
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+    }
+}

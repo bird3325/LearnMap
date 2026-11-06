@@ -103,6 +103,14 @@
   - 인터랙션 (Hover): 마우스 오버 시 소프트 레드 배경(`#FEF2F2`), 테두리 `#FECACA`, 텍스트 `#DC2626`로 전환되어 직관적인 종료 액션 피드백 제공
   - 클릭 동작: 로그아웃 여부 확인(`confirm`) 후 브라우저 내 유저 세션 및 캐시 스토리지를 정리하고 메인 서비스 화면(`/`)으로 안전하게 이동
 
+### 6.7 파트너센터 상단 헤더 사업자 선택기 (`#bizSelector`) 업종 뱃지 동기화 (2026-11-06)
+- **적용 위치**: `server.js` (`/api/business/session` 엔드포인트), `business.html` (`#bizSelector`)
+- **문제점 개선**:
+  - 기존 세션 조회 API에서 사용자 보유 사업자 목록(`allBusinesses`) 매핑 시 `type` 필드가 누락되어, 부동산/공인중개사 사업자임에도 기본값인 `🏫 [학원]` 태그로 헤더에 오표기되던 현상을 해결했습니다.
+- **수정 사양**:
+  - 백엔드 `allBusinesses` 응답 필드에 `type: b.type`을 포함하도록 수정했습니다.
+  - 프론트엔드 셀렉터 렌더링 시 `b.type === 'real_estate'` 및 상호명 내 키워드('부동산', '공인중개사')를 정밀 판별하여, 부동산 사업자인 경우 정확히 `🏠 [부동산] 원탑 공인중개사 (승인)`으로 표시되도록 일관성을 확보했습니다.
+
 
 
 ---
@@ -127,6 +135,19 @@
   - **시/도 칩 정렬**: 강원, 경기, 경남, 경북, 서울, 인천, 제주 등 지역명 가나다 오름차순(`a.localeCompare(b, 'ko')`) 정렬을 적용하여 관리자가 원하는 광역 시/도를 알파벳 순서대로 직관적으로 탐색 가능
   - **시/군/구 칩 정렬**: 세부 지역 칩 역시 가나다 오름차순으로 정렬되어, 다량의 수집 지역 중 원하는 시/군/구를 빠르게 찾아 필터링할 수 있도록 제공
 - **인터랙션**: 칩 클릭 시 해당 지역으로 실시간 필터링되며, `[전체 보기 (필터 해제)]` 버튼을 통해 초기화 지원
+
+### 7.3 블로그 & 학군 칼럼 관리 게시글 수 요약 및 페이지네이션 (`#blogManagementCard`)
+- **게시글 수 요약 바 (`#adminBlogSummaryBar`)**:
+  - **컨테이너**: `display: flex`, `justify-content: space-between`, `align-items: center`, `font-size: 12.5px`, `margin-bottom: 12px`
+  - **전체 건수 뱃지**: `총 <strong id="adminBlogTotalCount" style="color: #2563EB;">N</strong>건`
+  - **필터/상태 뱃지 (`#adminBlogFilteredCount`)**: `background: #F1F5F9`, `color: #64748B`, `border: 1px solid #E2E8F0`, `border-radius: 12px` (기본: `발행 N건 / 임시보관 N건`, 검색/필터 시: `검색 결과: N건 (전체 N건)`)
+  - **페이지당 표시 개수 셀렉트 (`#adminBlogPageSizeSelect`)**: 10개씩 / 20개씩 / 50개씩 보기 지원
+- **페이지네이션 컨트롤 바 (`#adminBlogPagination`)**:
+  - **컨테이너**: `display: flex`, `justify-content: center`, `align-items: center`, `gap: 6px`, `margin-top: 16px`
+  - **이전/다음 버튼**: 기본 `btn-secondary` 폰트 12px, 비활성화(1페이지 또는 마지막 페이지) 시 `opacity: 0.45; cursor: not-allowed`
+  - **활성 페이지 번호**: `background: #2563EB`, `color: #FFFFFF`, `border: 1px solid #2563EB`, `font-weight: 700`, `border-radius: 6px`
+  - **비활성 페이지 번호**: `background: #FFFFFF`, `color: #334155`, `border: 1px solid var(--adm-border)`, `border-radius: 6px`
+  - **페이지 정보 표시**: `N / N 페이지 (N건 중 N~N번째)` 안내
 
 
 
@@ -168,3 +189,102 @@
 - **주소 노출 및 독립 수정 정책**:
   - 최초 사업자 등록정보에서 주소 등록 시 학원 프로필 주소(`academyProfile.address`, `academyProfile.addressDetail`)에 초기값으로 그대로 노출됩니다.
   - 이후 학원 프로필에서 주소를 수정하더라도 사업자 등록정보의 주소(`address`, `addressDetail`, `registeredAddress`, `registeredAddressDetail`)는 변경되지 않으며, 반대로 사업자 등록정보에서 주소를 수정하더라도 이미 등록된 학원 프로필의 주소는 변경되지 않도록 독립적으로 관리됩니다.
+
+
+## 25. 모바일 지도 학교 선택 2단계 미니 바텀 카드 (Peek Card) 및 탐색 인터랙션 (2026-11-05)
+- **적용 위치**: `index.html` (`#mobileSchoolPeekCard`), `style.css`, `app.js` (`showMobileSchoolPeekCard`, `expandMobileSchoolDetail`, `closeMobileSchoolPeekCard`)
+- **도입 배경**:
+  - 기존 모바일 환경(`window.innerWidth <= 1024px`)에서는 학교 핀 클릭 시 화면 높이의 60%를 차지하는 상세 사이드바(`.sidebar-section`)가 즉시 올라와 배정 영역(폴리곤), 주변 학원 핀, 주변 주택 핀 등 지도의 주요 탐색 영역을 가리는 문제가 있었습니다.
+- **2단계 바텀 인터랙션 사양**:
+  1. **1단계 (미니 Peek Card 노출)**:
+     - 모바일에서 학교 핀 클릭 시 사이드바를 즉시 열지 않고, 하단 바텀 네비게이션 위에 컴팩트한 요약 카드(`#mobileSchoolPeekCard`, 높이 약 85~95px, `bottom: 70px; left: 12px; right: 12px; z-index: 10050; border-radius: 14px; background: #FFFFFF; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15)`)를 띄웁니다.
+     - 지도의 80~85% 이상이 시원하게 유지되므로 학교 배정 영역 및 반경 내 학원/주택 핀을 그대로 확인하고 자유롭게 지도 조작 및 핀 터치가 가능합니다.
+     - **미니 카드 구성**:
+       - 학교 분류 뱃지(초/중/고) 및 학교명 (`#mobileSchoolPeekName`)
+       - 메타 정보 (설립 구분, 학생 수) (`#mobileSchoolPeekMeta`)
+       - `[📚 학원 N개]` 칩 버튼 (`#mobileSchoolPeekAcademyChip`): 클릭 시 반경 내 학원 핀으로 포커스
+       - `[🏢 주택 N단지]` 칩 버튼 (`#mobileSchoolPeekHousingChip`): 클릭 시 반경 내 주택 핀으로 포커스
+       - `[상세분석 ▲]` 버튼 (`.btn-peek-expand`): 클릭 시 전체 상세로 확장
+       - 우측 닫기 버튼 (`#btnCloseMobileSchoolPeek`): 미니 카드 닫기
+  2. **2단계 (전체 상세 패널 확장)**:
+     - 사용자가 미니 카드를 터치하거나 `[상세분석 ▲]` 버튼을 클릭하면 플래그(`window.__expandingMobileDetailExplicitly`)를 통해 기존 60vh 높이의 상세 사이드바(`.sidebar-section`)가 부드럽게 확장 오픈됩니다.
+     - 사이드바가 열려 있는 동안에는 미니 카드가 자동으로 숨겨집니다 (`.app-container.sidebar-open #mobileSchoolPeekCard { display: none !important; }`).
+  3. **PC 환경 유지**:
+     - 데스크톱(`window.innerWidth > 1024px`)에서는 미니 카드가 항상 숨김 처리(`display: none !important`)되며, 기존 우측 사이드바가 즉시 열리는 PC 동작을 100% 동일하게 유지합니다.
+
+  4. **모바일 미니 요약 카드 제외 영역 정중앙(Center) 정렬 정책 (2026-11-05)**:
+     - **문제점 개선**: 기존에는 모바일에서 상세 사이드바가 열려있지 않음에도 과거 60vh 바텀시트를 가정한 하단 블록 오프셋(`offsetY = bottomBlocked / 2`)이 적용되어, 학교 핀이 화면 위쪽으로 과도하게 밀려 올라가 상단 검색 헤더 및 지역/학교급 필터 버튼에 가려지는 현상이 있었습니다.
+     - **정렬 로직 수정 (미니 요약 카드 영역 제외 정중앙)**:
+       - 모바일(`window.innerWidth <= 1024px`)에서 사이드바가 닫혀 있는 일반 상태(미니 요약 카드 노출 상태)에서는 하단 미니 요약 카드(`#mobileSchoolPeekCard`)와 바텀 네비게이션이 차지하는 높이(`bottomBlocked`, 약 160px)를 동적으로 실시간 측정합니다.
+       - 지도의 전체 높이에서 미니 요약 카드 영역을 제외한 남은 가시 높이(`visibleHeight = containerHeight - bottomBlocked`)의 정확한 수직 가운데(`targetY = Math.round(visibleHeight / 2)`)에 학교 핀이 안착하도록 보정(`window.checkAndAdjustMapForSchoolPin`)했습니다.
+       - 이를 통해 상단 검색 헤더와도 220px 이상 여유를 유지하고, 하단 미니 카드와도 시각적으로 균형 잡힌 가시 지도 영역의 정가운데에 핀이 표시됩니다.
+       - 모바일에서 사용자가 명시적으로 2단계 상세 패널을 오픈한 경우에만 기존 60vh 바텀시트 가시 영역 보정이 활성화됩니다.
+
+  5. **미니 요약 카드 배정 권역 경계 토글 및 상세 닫기 시 폴리곤 보존 정책 (2026-11-05)**:
+     - **미니 카드 전용 토글 칩 (`#mobilePeekZoneToggleBtn`)**:
+       - 모바일 미니 요약 카드 하단에 배정 권역 경계 토글 칩을 추가하여, 전체 상세 화면에 진입하지 않고도 미니 카드에서 바로 학교의 배정 권역 경계(초등 통학구역 / 중학군 배정 권역 / 고교학군 경계)를 원터치로 지도에 ON/OFF 할 수 있습니다.
+       - 학교급(초/중/고)에 맞춰 텍스트 라벨이 동적 반영(`초등 통학구역`, `중학군 배정 경계`, `고교학군 경계`)되며, ON 시 블루 테두리 및 반전 하이라이트로 활성 상태를 피드백합니다.
+     - **상세 패널 닫기/뒤로가기 시 폴리곤 및 미니 카드 보존**:
+       - 상세 패널에서 배정 권역 경계를 켜고 상단 뒤로가기 또는 닫기(`btnDeselectSchool`)를 눌렀을 때, 학교 선택이 완전히 해제되거나 폴리곤이 지워지던 문제를 개선했습니다.
+       - 모바일에서는 상세 패널을 닫더라도 지도 위에 켜둔 배정 권역 경계(폴리곤)가 그대로 유지되며, 하단에는 1단계 미니 요약 카드가 복귀하여 지도 탐색을 연속적으로 이어갈 수 있습니다.
+       - 미니 카드의 우측 `✕` 닫기 버튼을 누를 때에만 배정 권역 경계와 학교 선택이 완전히 정리됩니다.
+
+  6. **미니 요약 카드 학원 및 주택 수 실시간 비동기 동기화 (`window.updateMobilePeekCounts`) (2026-11-05)**:
+     - **원인 분석**:
+       - 학교 핀 클릭 시 학원(`allFetchedAcademies`)과 주택(`allFetchedHousings`)은 비동기로 네트워크 조회가 이뤄지는데, 기존에는 미니 카드가 열리는 초기에만 1회성으로 읽고 조회 완료 후 재갱신되지 않았으며, 주택 변수명 불일치로 인해 주택 단지 수가 0단지로 멈춰 있던 문제를 확인했습니다.
+     - **개선 조치**:
+       - `window.updateMobilePeekCounts()` 전역 동기화 함수를 구현하여, 학원 및 주택 목록 조회가 완료될 때마다 미니 카드의 `[📚 학원 N개]` 및 `[🏢 주택 N단지]` 카운트가 즉시 최신 실제 개수로 실시간 자동 업데이트되도록 연동을 완료했습니다.
+
+
+   7. **모바일 하단 학교 미니 카드 3분할 와이드 액션 카드 디자인 개편 (2026-11-06)**:
+      - **도입 목적**:
+        - 모바일 하단 학교 미니 요약 카드(`mobileSchoolPeekCard`)의 사용성을 극대화하기 위해 제공된 최신 시안(라운드 카드 + 상단 드래그 핸들 바 + 3분할 와이드 액션 카드 구조)으로 디자인을 정밀 리뉴얼했습니다.
+      - **상세 레이아웃 구성**:
+        1. **카드 외형**: `border-radius: 20px`, 상단 드래그 핸들 바(`width: 44px; height: 4px; background: #cbd5e1; border-radius: 9999px;`).
+        2. **1행 (헤더 영역)**:
+           - **설립구분 뱃지 (`#mobilePeekSchoolBadge`)**: `[초등학교·공립]` (연한 민트 `#ecfdf5`, 초록 텍스트 `#047857`, 테두리 `#a7f3d0`). 학교급과 설립구분(공립/사립/국립)을 동적으로 결합 표기.
+           - **학교명 (`#mobilePeekSchoolName`)**: 17px 볼드, 긴 학교명 자동 말줄임(`ellipsis`).
+           - **관심학교 별 버튼 (`#btnMobilePeekFavorite`)**: 원터치 즐겨찾기 저장/해제 토글 연동 (`☆` / `⭐`).
+           - **도보시간 뱃지 (`#mobilePeekWalkBadge`)**: `🚶 3분` 연한 블루 알약 뱃지 (`#eef2ff`, 텍스트 `#2563eb`).
+           - **상세분석 버튼 (`#btnMobilePeekExpandTop`)**: 블루 알약 버튼 (`#0052cc`, 텍스트 `상세분석 ↑`), 클릭 시 60vh 전체 상세 사이드바로 확장.
+        3. **2행 (주소 및 복사 액션)**:
+           - **학교 주소 (`#mobilePeekSchoolMeta`)**: 정돈된 도로명/지번 주소 텍스트 (`color: #334155`).
+           - **주소 복사 버튼 (`#btnCopyMobileSchoolAddress`)**: 겹침 사각형 아이콘, 터치 시 클립보드로 주소를 즉시 복사.
+        4. **3행 (3분할 와이드 액션 카드 그리드 - 1:1:1)**:
+           - **인근 학원 카드 (`#mobilePeekAcademyCard`)**: 연한 퍼플 카드 (`#FBF9FF`, 테두리 `#EDE9FE`), `인근 학원` / `<strong id="mobilePeekAcademyCount">N</strong>개소` / 우측 화살표 `>`.
+           - **배정 주택 카드 (`#mobilePeekHousingCard`)**: 연한 핑크 카드 (`#FFF1F2`, 테두리 `#FFE4E6`), `배정 주택` / `<strong id="mobilePeekHousingCount">N</strong>개 단지` / 우측 화살표 `>`.
+           - **배정 구역 스위치 카드 (`#mobilePeekZoneCard`)**: 연한 블루 카드 (`#EFF6FF`, 테두리 `#DBEAFE`), 좌측 2줄 라벨(`통학구역`/`중학군`/`고교학군` + `구역 표시`) 및 우측 슬라이더 스위치 토글(`mobilePeekZoneToggleTrack` & `mobilePeekZoneToggleKnob`). 지도 위 배정 권역 폴리곤 표시 상태와 실시간 양방향 연동.
+      - **기능 무결성 유지**:
+        - 기존의 비동기 학원 수 / 주택 수 동기화(`updateMobilePeekCounts`), 배정구역 폴리곤 토글(`toggleMobileSchoolZoneBoundary`), 주소 복사, 관심학교 토글, 상세분석 확장이 100% 정상 작동하며, PC 레이아웃에는 영향을 주지 않습니다.
+
+## 26. 모바일 학원 및 주택 핀 터치 시 2단계 미니 바텀 카드 (Peek Card) 및 기준 학교 맥락 유지 정책 (2026-11-05)
+- **적용 위치**: `index.html` (`#mobileItemPeekCard`), `style.css`, `app.js` (`showMobileAcademyPeekCard`, `showMobileHousingPeekCard`, `expandMobileItemDetail`, `closeMobileItemPeekCard`, `returnToSchoolPeekCard`)
+- **도입 배경**:
+  - 기존에는 모바일에서 지도 위 학원 핀이나 주택 핀을 클릭했을 때 화면의 60vh를 덮는 전체 상세 패널(`#communityPanel`, `#housingDetailPanel`)이 즉시 올라와 지도의 주변 탐색 맥락이 단절되고 매번 닫기를 눌러야 하는 불편이 있었습니다.
+- **모바일 2단계 인터랙션 사양**:
+  1. **1단계 (학원/주택 미니 Peek Card 전환)**:
+     - 모바일(`window.innerWidth <= 1024px`)에서 학원 핀이나 주택 핀 클릭 시 사이드바를 즉시 열지 않고, 하단 네비게이션 위에 컴팩트한 요약 카드(`#mobileItemPeekCard`)로 전환합니다.
+     - **학교 맥락 유지**: 상단에 `🏫 [선택 학교명] 기준 도보 N분 (Nm)` (주택의 경우 `배정 유력 · 도보 N분`) 뱃지가 부착되어 현재 탐색 기준 학교의 맥락을 잃지 않습니다.
+     - **첨부 이미지 최신 디자인 개편 (2026-11-06)**:
+         - **카드 외형**: border-radius 22px, 상단 드래그 핸들 바 (44px x 4px, #cbd5e1).
+         - **1행 (헤더 영역)**: 뱃지(APT/OFFI/VILLA, 연한 블루), 명칭(17.5px 볼드), 상세분석 알약 버튼(#2563eb, 상세분석 ↑).
+         - **하단 정보 컨테이너 박스**:
+           - 1행: 배정/기준 학교 + 학교 아이콘(🏫) + 학교명(터치 시 학교 미니카드로 복귀) + 우측 연녹색 도보시간 뱃지(🏃 도보 3분 (230m)).
+           - 구분선: 얇은 가로선(#f1f5f9).
+           - 2행: 도로명 주소 + 주소 복사 버튼 + 우측 단지 스펙(968세대 · 2015년 준공 · 용적률 169%, 면적 정보는 제외하여 간결성 유지).
+   2. **기준 학교 복귀 인터랙션**:
+      - 하단 박스의 학교명 터치 시 언제든지 원래 보고 있던 [학교 미니카드]로 지도 중심과 함께 자연스럽게 복귀합니다.
+   3. **2단계 (학원/주택 상세 모달 및 리스트 탐색 플로우)**:
+      - **상세 닫기 시 리스트 유지**:
+        - 모바일에서 학원이나 주택 상세 모달의 닫기(`✕`)를 누르면, **학원 리스트 / 주택 리스트가 온전히 나타나 다른 학원이나 주택들을 계속 탐색**할 수 있습니다.
+        - 이때 배경에 위치한 학교 상세 본문(`#sidebarContent`)은 숨김 상태(`display: none`)로 유지되어 학교 상세가 겹치거나 노출되지 않습니다.
+      - **리스트 닫기 시 학교 상세 숨김 및 지도/학교 미니카드 복귀**:
+        - 학원 리스트나 주택 리스트의 상단 닫기(`✕`) 버튼을 누르면, **학교 상세를 직접 연 경우가 아니라면 학교 상세는 노출되지 않고 지도 화면 및 학교 미니카드로 깔끔하게 복귀**합니다.
+        - 오직 사용자가 학교 미니카드에서 `[상세분석 ↑]`을 직접 눌렀던 경우(`window.__schoolDetailOpenedDirectly = true`)에만 학교 상세가 유지됩니다.
+      - **학교 미니카드에서 리스트 바로 열기**:
+        - 학교 미니카드 3행의 `[인근 학원 N개소 >]` 또는 `[배정 주택 N단지 >]` 카드를 원터치하면 언제든지 전체 리스트 사이드바를 바로 열어볼 수 있습니다.
+
+   4. **PC 환경 유지**:
+     - `[상세분석 ▲]` 버튼을 클릭하면 플래그(`window.__expandingMobileItemDetailExplicitly`)를 통해 커리큘럼, 강사진, 실거래가 추이 등의 60vh 전체 상세 패널이 오픈됩니다.
+  4. **PC 환경 유지**:
+     - 데스크톱 PC(`window.innerWidth > 1024px`)에서는 미니 카드가 항상 숨김 처리(`display: none !important`)되며, 기존 우측 다단 사이드바 동작을 100% 동일하게 유지합니다.

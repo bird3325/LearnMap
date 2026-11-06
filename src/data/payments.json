@@ -11,5 +11,18 @@
     "paymentMethod": "관리자 수동 결제 승인 (Master Admin)",
     "paidAt": "2026-11-01T07:21:46.455Z",
     "createdAt": "2026-11-01T07:21:46.455Z"
+  },
+  {
+    "id": "pay_1793879289718_mloj",
+    "businessId": "biz_1793878533975",
+    "businessName": "원탑 공인중개사",
+    "subscriptionId": "sub_1793879289592_adm",
+    "productId": "prod_re_pro",
+    "productName": "부동산 PRO (주력)",
+    "amount": 59000,
+    "status": "success",
+    "paymentMethod": "관리자 직권 수동 결제 승인 (Master Admin)",
+    "paidAt": "2026-11-05T11:48:09.592Z",
+    "createdAt": "2026-11-05T11:48:09.592Z"
   }
 ]
