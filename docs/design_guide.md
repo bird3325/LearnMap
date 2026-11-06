@@ -338,3 +338,18 @@
      - 서버 인메모리 LRU 캐시(`academyListServerCache`, `realestatePinsServerCache`) 구축으로 중복 카카오 API 호출 및 공간 격자 연산을 방지.
   4. **클라이언트 인메모리 캐싱 (`window._academyListCache`)**:
      - 브라우저 인메모리 캐시를 통해 사용자가 반경을 변경(500m ↔ 1000m)하거나 동일 학교를 재선택할 때 네트워크 지연 없이 0ms 즉시 렌더링.
+
+
+## 30. 모바일 핀 간 전환 인터랙션 및 회원 주소 기준 도보시간 연동 사양 (2026-11-06)
+- **적용 위치**: `app.js` (`showMobileSchoolPeekCard`, `showSchoolDetails`, `showFloatingToast`), `index.html` (`#mobilePeekWalkBadge`)
+- **개선 내용**:
+  1. **주택/학원 핀 $\rightarrow$ 학교 핀 미니카드 즉시 전환 무결성 보장**:
+     - 기존에는 주택이나 학원 핀을 선택해 `#mobileItemPeekCard`가 열려 있을 때 지도 위의 학교 핀을 다시 클릭하면, 주택/학원 미니카드가 닫히지 않고 화면 상단에 남아 있어 학교 정보로 바뀌지 않던 문제 발생.
+     - `showMobileSchoolPeekCard` 및 `showSchoolDetails` 시작 시점에 `#mobileItemPeekCard`를 즉시 숨기도록 분기 처리하여, 학교 핀 탭 즉시 학교 요약 카드로 100% 깔끔하게 전환되도록 구현.
+  2. **학교 도보시간의 단일 진실 소스(SSOT) - 회원정보 집 주소 기준 동기화**:
+     - 기존의 임의 고정값(3분) 대신, 로그인된 회원정보(`currentUser.address`)를 단일 진실 소스로 바인딩.
+     - 회원 주소의 위·경도 좌표와 선택된 학교의 좌표 간 하버사인(Haversine) 실거리 및 보행 속도(분당 67m)를 계산하여 실제 `도보 N분`으로 정확하게 노출.
+  3. **도보 뱃지 전용 고시인성 플로팅 토스트 재설계 (`#walkDistanceFloatingToast`) (2026-11-06)**:
+     - **위치 최적화**: 사용자의 시선이 머무는 하단 미니카드 바로 위(`position: fixed; bottom: 175px; left: 50%; transform: translateX(-50%)`)에 배치하여 즉시 눈에 띄도록 개편.
+     - **고대비 프리미엄 비주얼**: 다크 슬레이트(#0f172a) 배경, 선명한 블루 보더 링(rgba(59, 130, 246, 0.4)), 화이트 볼드 텍스트(13px), 딥 섀도우를 적용하여 지도 및 배경과 완벽하게 분리.
+     - **플로팅 바 전체 클릭 링크 인터랙션**: 별도의 버튼을 두지 않고 플로팅 바 전체를 터치 영역으로 구성하여, 클릭 시 즉시 부드러운 스케일 피드백(`scale(0.93)`)과 함께 회원 주소 등록 화면으로 자연스럽게 링크되도록 UX 개선.

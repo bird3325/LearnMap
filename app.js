@@ -6137,8 +6137,71 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // 도보 뱃지 및 주소 안내 전용 플로팅 토스트 알림 헬퍼
+    window.showFloatingToast = function(msg, duration = 3500) {
+        let toastEl = document.getElementById('walkDistanceFloatingToast');
+        if (!toastEl) toastEl = document.getElementById('mobileFilterToast');
+        if (!toastEl) return;
+
+        const msgEl = document.getElementById('walkToastMsg');
+        const iconEl = document.getElementById('walkToastIcon');
+
+        const cleanMsg = msg.replace(/^[💡🏡📍🚶\s]+/, '');
+        if (msgEl) {
+            msgEl.textContent = cleanMsg;
+        } else {
+            toastEl.innerText = msg;
+        }
+
+        // 아이콘 동적 설정
+        if (iconEl) {
+            if (msg.includes('🏡')) iconEl.textContent = '🏡';
+            else if (msg.includes('📍')) iconEl.textContent = '📍';
+            else if (msg.includes('🚶')) iconEl.textContent = '🚶';
+            else iconEl.textContent = '💡';
+        }
+
+        toastEl.style.display = 'flex';
+        // 부드러운 팝업 애니메이션 시작
+        requestAnimationFrame(() => {
+            toastEl.style.opacity = '1';
+            toastEl.style.transform = 'translateX(-50%) translateY(0) scale(1)';
+        });
+
+        // 🌟 플로팅 알림 클릭 시 회원정보 설정 및 주소 입력 모달로 즉시 연결
+        toastEl.onclick = () => {
+            toastEl.style.transform = 'translateX(-50%) scale(0.93)';
+            setTimeout(() => {
+                toastEl.style.transform = 'translateX(-50%) scale(1)';
+            }, 120);
+
+            if (typeof window.toggleSettingsModal === 'function') {
+                window.toggleSettingsModal();
+                if (typeof window.handleEditMemberProfile === 'function') {
+                    setTimeout(() => { window.handleEditMemberProfile(); }, 250);
+                }
+            }
+        };
+
+        if (window._floatingToastTimer) clearTimeout(window._floatingToastTimer);
+        window._floatingToastTimer = setTimeout(() => {
+            toastEl.style.opacity = '0';
+            toastEl.style.transform = 'translateX(-50%) translateY(12px) scale(0.96)';
+            setTimeout(() => {
+                if (toastEl.style.opacity === '0') {
+                    toastEl.style.display = 'none';
+                }
+            }, 280);
+        }, duration);
+    };
+
     window.showMobileSchoolPeekCard = function(school) {
         if (!school || window.innerWidth > 1024) return;
+
+        // 🌟 [핵심 수정 1] 주택/학원 미니 바텀 카드 즉시 닫기 (학교 핀 선택 시 확실한 카드 전환 보장)
+        const itemPeekCard = document.getElementById('mobileItemPeekCard');
+        if (itemPeekCard) itemPeekCard.style.display = 'none';
+        window.currentMobilePeekItem = null;
         const peekCard = document.getElementById('mobileSchoolPeekCard');
         if (!peekCard) return;
 
@@ -6195,11 +6258,95 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // 도보시간 뱃지
+        // 🌟 [핵심 수정 2] 도보시간 뱃지 및 회원 주소 기준 거리 계산 로직
+        const walkBadge = document.getElementById('mobilePeekWalkBadge');
         const walkEl = document.getElementById('mobilePeekWalkTimeText');
-        if (walkEl) {
-            const walkMin = school.walk_minutes || school.walk_time || 3;
-            walkEl.textContent = `${walkMin}분`;
+
+        // 회원 정보 및 등록된 집 주소 확인
+        let currentUser = null;
+        if (typeof authService !== 'undefined' && authService.getCurrentUser) {
+            currentUser = authService.getCurrentUser();
+        }
+        if (!currentUser) {
+            try { currentUser = JSON.parse(localStorage.getItem('learnmap_current_user') || 'null'); } catch (e) { }
+        }
+        const userAddress = (currentUser && currentUser.address && currentUser.address.trim()) ? currentUser.address.trim() : null;
+        const sLat = parseFloat(school.lat || school.y || school.latitude);
+        const sLng = parseFloat(school.lng || school.x || school.longitude);
+
+        const promptAddressGuide = () => {
+            if (typeof window.showFloatingToast === 'function') {
+                window.showFloatingToast('💡 회원정보의 주소를 입력하면 도보 시간이 제대로 나옵니다.', 4000, true);
+            }
+        };
+
+        if (!userAddress) {
+            if (walkEl) walkEl.textContent = '도보 -분';
+            if (walkBadge) {
+                walkBadge.style.cursor = 'pointer';
+                walkBadge.title = '회원정보 주소 입력 시 도보시간 계산 (클릭하여 주소 입력)';
+                walkBadge.onclick = (e) => {
+                    if (e) e.stopPropagation();
+                    walkBadge.style.transform = 'scale(0.92)';
+                    setTimeout(() => { walkBadge.style.transform = 'scale(1)'; }, 150);
+                    promptAddressGuide();
+                };
+            }
+        } else {
+            const applyWalkDistance = (uLat, uLng) => {
+                if (isNaN(uLat) || isNaN(uLng) || isNaN(sLat) || isNaN(sLng)) {
+                    if (walkEl) walkEl.textContent = '도보 3분';
+                    return;
+                }
+                const distM = (typeof calculateAcademyDistance === 'function')
+                    ? calculateAcademyDistance(uLat, uLng, sLat, sLng)
+                    : Math.round(Math.hypot(uLat - sLat, uLng - sLng) * 111000);
+                const walkMin = Math.max(1, Math.round(distM / 67));
+                if (walkEl) {
+                    walkEl.textContent = `${walkMin}분`;
+                }
+                if (walkBadge) {
+                    walkBadge.style.cursor = 'pointer';
+                    const distStr = distM < 1000 ? `${distM}m` : `${(distM / 1000).toFixed(1)}km`;
+                    walkBadge.title = `회원 등록 주소 기준: 도보 ${walkMin}분 (${distStr})`;
+                    walkBadge.onclick = (e) => {
+                        if (e) e.stopPropagation();
+                        walkBadge.style.transform = 'scale(0.92)';
+                        setTimeout(() => { walkBadge.style.transform = 'scale(1)'; }, 150);
+                        if (typeof window.showFloatingToast === 'function') {
+                            window.showFloatingToast(`🏡 회원 주소 기준: 도보 ${walkMin}분 (${distStr})`, 3500, false);
+                        }
+                    };
+                }
+            };
+
+            if (currentUser && currentUser.lat && currentUser.lng) {
+                applyWalkDistance(parseFloat(currentUser.lat), parseFloat(currentUser.lng));
+            } else if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+                const geocoder = new kakao.maps.services.Geocoder();
+                const cleanAddr = userAddress.replace(/\([^)]*\)/g, '').trim();
+                geocoder.addressSearch(cleanAddr || userAddress, function(result, status) {
+                    if (status === kakao.maps.services.Status.OK && result && result.length > 0) {
+                        const uLat = parseFloat(result[0].y);
+                        const uLng = parseFloat(result[0].x);
+                        if (currentUser) {
+                            currentUser.lat = uLat;
+                            currentUser.lng = uLng;
+                            try {
+                                localStorage.setItem('learnmap_current_user', JSON.stringify(currentUser));
+                                if (typeof authService !== 'undefined' && authService.saveUserToLocalStorage) {
+                                    authService.saveUserToLocalStorage(currentUser);
+                                }
+                            } catch(e) {}
+                        }
+                        applyWalkDistance(uLat, uLng);
+                    } else {
+                        if (walkEl) walkEl.textContent = '도보 3분';
+                    }
+                });
+            } else {
+                if (walkEl) walkEl.textContent = '도보 3분';
+            }
         }
 
         // 주소 텍스트
@@ -6589,6 +6736,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showSchoolDetails(summary, fullSchool) {
         if (typeof window.clearAcademyMarker === 'function') window.clearAcademyMarker();
+
+        // 🌟 주택/학원 미니 바텀 카드 닫기
+        const itemPeekCard = document.getElementById('mobileItemPeekCard');
+        if (itemPeekCard) itemPeekCard.style.display = 'none';
+        window.currentMobilePeekItem = null;
 
         // 1) 학원 리스트 & 상세 패널 닫기
         const academySidebar = document.getElementById('academySidebar');
