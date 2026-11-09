@@ -2262,5 +2262,155 @@
       "area": "서초동"
     },
     "createdAt": "2026-11-06T02:40:15.986Z"
+  },
+  {
+    "id": "evt_1794002091253_268v",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T21:54:51.253Z"
+  },
+  {
+    "id": "evt_1794002091283_7ecj",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T21:54:51.283Z"
+  },
+  {
+    "id": "evt_1794004302948_1c9s",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T22:31:42.949Z"
+  },
+  {
+    "id": "evt_1794004303021_to4w",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T22:31:43.021Z"
+  },
+  {
+    "id": "evt_1794004595413_0qj8",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T22:36:35.413Z"
+  },
+  {
+    "id": "evt_1794004596120_06se",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T22:36:36.120Z"
+  },
+  {
+    "id": "evt_1794004639170_x0bd",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T22:37:19.171Z"
+  },
+  {
+    "id": "evt_1794004639236_v8j0",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T22:37:19.236Z"
+  },
+  {
+    "id": "evt_1794004666105_4plc",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원중학교"
+    },
+    "createdAt": "2026-11-06T22:37:46.105Z"
+  },
+  {
+    "id": "evt_1794004704449_gf7f",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T22:38:24.449Z"
+  },
+  {
+    "id": "evt_1794004834157_a7kv",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T22:40:34.158Z"
+  },
+  {
+    "id": "evt_1794004834189_k0o0",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T22:40:34.189Z"
+  },
+  {
+    "id": "evt_1794004892717_fk81",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원중학교"
+    },
+    "createdAt": "2026-11-06T22:41:32.717Z"
+  },
+  {
+    "id": "evt_1794004905486_f7og",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T22:41:45.486Z"
+  },
+  {
+    "id": "evt_1794004905547_j94r",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-06T22:41:45.547Z"
   }
 ]

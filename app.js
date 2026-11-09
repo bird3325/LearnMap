@@ -18210,8 +18210,23 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isNeisRegistered) {
                 basicInfoContainer.innerHTML = academyInfoHtml;
             } else {
-                // 기본 학원 정보 데이터가 없을 경우 스켈레톤 UI를 노출하지 않고 비움
-                basicInfoContainer.innerHTML = '';
+                // 기본 학원 정보 데이터가 없을 경우
+                basicInfoContainer.innerHTML = `
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 16px;">🏫</span>
+                                <strong style="color: #0f172a; font-size: 15px; font-weight: 700;">기본 학원 정보</strong>
+                            </div>
+                            <span style="background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px;">
+                                정보 미등록
+                            </span>
+                        </div>
+                        <div style="text-align: center; padding: 20px 10px; color: #64748b; font-size: 13.5px; font-weight: 600;">
+                            기본 학원 정보가 없습니다.
+                        </div>
+                    </div>
+                `;
             }
         }
 

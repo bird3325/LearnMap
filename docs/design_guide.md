@@ -353,3 +353,16 @@
      - **위치 최적화**: 사용자의 시선이 머무는 하단 미니카드 바로 위(`position: fixed; bottom: 175px; left: 50%; transform: translateX(-50%)`)에 배치하여 즉시 눈에 띄도록 개편.
      - **고대비 프리미엄 비주얼**: 다크 슬레이트(#0f172a) 배경, 선명한 블루 보더 링(rgba(59, 130, 246, 0.4)), 화이트 볼드 텍스트(13px), 딥 섀도우를 적용하여 지도 및 배경과 완벽하게 분리.
      - **플로팅 바 전체 클릭 링크 인터랙션**: 별도의 버튼을 두지 않고 플로팅 바 전체를 터치 영역으로 구성하여, 클릭 시 즉시 부드러운 스케일 피드백(`scale(0.93)`)과 함께 회원 주소 등록 화면으로 자연스럽게 링크되도록 UX 개선.
+
+
+### 8.8 푸터 약관 링크 및 통합 약관 모달 (`termsModal`) 디자인 가이드 (2026-11-07)
+- **푸터 약관 링크**:
+  - 배치: 사이드바 최하단 저작권 표기 상단에 가로 정렬(`display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 6px;`).
+  - 폰트/색상: 11px, `var(--text-muted)` (#64748b), 개인정보처리방침은 법적 강조를 위해 `font-weight: 700` 적용. 호버 시 `var(--primary-blue, #2563eb)`로 부드러운 전환.
+  - 구분자: `|` (opacity: 0.35, 10px).
+- **약관 모달 (`termsModal`)**:
+  - 오버레이: `background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(8px); z-index: 10100;`.
+  - 카드 규격: `max-width: 660px; max-height: 86vh; border-radius: 16px; background: #ffffff;`.
+  - 헤더: 다크 슬레이트 그라데이션(`linear-gradient(135deg, #1e293b, #0f172a)`), 16px Bold 타이틀, 32px 원형 닫기 버튼.
+  - 탭 네비게이션: 토스 스타일 슬라이드 탭(`background: #f1f5f9; padding: 4px; border-radius: 10px;`), 활성 탭 화이트 카드 섀도우 적용.
+  - 스크롤 본문: `font-size: 12.5px; line-height: 1.75; color: #334155; word-break: keep-all;`, 조항별 다크 헤딩(`13.5px #0f172a`) 및 상단 알림 배너 박스 적용.

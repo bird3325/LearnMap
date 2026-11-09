@@ -941,7 +941,11 @@ const KNOWN_DISTRICT_DONGS = {
     '효행구': ['봉담읍', '매송면', '비봉면', '정남면', '기안동', '배양동', '동화리', '와우리', '수영리', '상리', '내리', '수기리'],
     '병점구': ['진안동', '병점동', '반월동', '기산동', '안녕동', '송산동', '황계동', '반정동'],
     '동탄구': ['반송동', '석우동', '청계동', '영천동', '중동', '오산동', '신동', '목동', '산척동', '장지동', '송동', '방교동', '금곡동', '능동', '여울동'],
-    '화성시': ['우정읍', '향남읍', '남양읍', '마도면', '송산면', '서신면', '팔탄면', '장안면', '양감면', '새솔동', '행정리', '상신리', '하길리', '남양리', '북양리', '조암리', '봉담읍', '매송면', '비봉면', '정남면', '기안동', '배양동', '동화리', '와우리', '수영리', '상리', '내리', '수기리', '진안동', '병점동', '반월동', '기산동', '안녕동', '송산동', '황계동', '반정동', '반송동', '석우동', '청계동', '영천동', '중동', '오산동', '신동', '목동', '산척동', '장지동', '송동', '방교동', '금곡동', '능동', '여울동']
+    '화성시': ['우정읍', '향남읍', '남양읍', '마도면', '송산면', '서신면', '팔탄면', '장안면', '양감면', '새솔동', '행정리', '상신리', '하길리', '남양리', '북양리', '조암리', '봉담읍', '매송면', '비봉면', '정남면', '기안동', '배양동', '동화리', '와우리', '수영리', '상리', '내리', '수기리', '진안동', '병점동', '반월동', '기산동', '안녕동', '송산동', '황계동', '반정동', '반송동', '석우동', '청계동', '영천동', '중동', '오산동', '신동', '목동', '산척동', '장지동', '송동', '방교동', '금곡동', '능동', '여울동'],
+    '인천광역시_동구': ['만석동', '화수동', '송현동', '화평동', '창영동', '금곡동', '송림동'],
+    '인천광역시_중구': ['신포동', '신흥동1가', '신흥동2가', '신흥동3가', '선린동', '북성동1가', '북성동2가', '북성동3가', '항동1가', '항동2가', '항동3가', '항동4가', '항동5가', '항동6가', '항동7가', '중산동', '운서동', '운남동', '운북동', '을왕동', '남북동', '덕교동', '무의동', '유동', '율목동', '도원동', '내동', '경동', '용동', '인현동', '전동', '송월동1가', '송월동2가', '송월동3가', '신생동', '해안동1가', '해안동2가', '해안동3가', '해안동4가', '관동1가', '관동2가', '관동3가', '송학동1가', '송학동2가', '송학동3가', '사동', '답동'],
+    '동구': ['만석동', '화수동', '송현동', '화평동', '창영동', '금곡동', '송림동'],
+    '중구': ['신포동', '신흥동1가', '신흥동2가', '신흥동3가', '선린동', '북성동1가', '북성동2가', '북성동3가', '항동1가', '항동2가', '항동3가', '항동4가', '항동5가', '항동6가', '항동7가', '중산동', '운서동', '운남동', '운북동', '을왕동', '남북동', '덕교동', '무의동', '유동', '율목동', '도원동', '내동', '경동', '용동', '인현동', '전동', '송월동1가', '송월동2가', '송월동3가', '신생동', '해안동1가', '해안동2가', '해안동3가', '해안동4가', '관동1가', '관동2가', '관동3가', '송학동1가', '송학동2가', '송학동3가', '사동', '답동']
 };
 
 function findParentCity(guName, sido = '') {
@@ -1277,8 +1281,9 @@ app.post('/api/realestate/collect-master', async (req, res) => {
 
                 // 1) 해당 구의 동 목록 탐색 (표준 마스터 + 기존 DB + 카카오 행정복지센터/주민센터/초등학교/아파트 검색 다각화)
                 const dongsInGu = new Set();
-                if (KNOWN_DISTRICT_DONGS[gu]) {
-                    KNOWN_DISTRICT_DONGS[gu].forEach(d => dongsInGu.add(d));
+                const knownList = KNOWN_DISTRICT_DONGS[`${sido}_${gu}`] || KNOWN_DISTRICT_DONGS[gu];
+                if (knownList) {
+                    knownList.forEach(d => dongsInGu.add(d));
                 }
 
                 // (A) 기존 DB에 등록된 해당 구의 동 먼저 수집
@@ -1307,7 +1312,11 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                             if (centerRes.ok) {
                                 const cData = await centerRes.json();
                                 (cData.documents || []).forEach(doc => {
-                                    if (doc.address_name && !doc.address_name.includes(gu)) return;
+                                    const isMatchingAddr = doc.address_name && (
+                                        doc.address_name.includes(gu) ||
+                                        ((gu === '동구' || gu === '중구') && sido.includes('인천') && doc.address_name.includes('제물포구'))
+                                    );
+                                    if (!isMatchingAddr) return;
                                     const tokens = (doc.address_name || '').split(/\s+/);
                                     const t = tokens.find(tok => /^[가-힣0-9]+(?:동|읍|면|리|[0-9]가)$/.test(tok) && !/(?:시|군|구)$/.test(tok));
                                     if (t) {
@@ -1353,7 +1362,10 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                         for (let pageNo = 1; pageNo <= targetPages; pageNo++) {
                             if (isStopped()) break;
                             try {
-                                const fetchUrl = `${ep.url}?serviceKey=${encodeURIComponent(serviceKey)}&sigunguCd=${lawdCd}&bjdongCd=${bjdongCd}&numOfRows=100&pageNo=${pageNo}`;
+                                const hubSigunguCd = (sido.includes('인천') && (gu === '동구' || gu === '중구' || lawdCd === '28140' || lawdCd === '28110'))
+                                    ? '28125'
+                                    : (bCode && bCode.startsWith(lawdCd) ? lawdCd : (bCode ? bCode.substring(0, 5) : lawdCd));
+                                const fetchUrl = `${ep.url}?serviceKey=${encodeURIComponent(serviceKey)}&sigunguCd=${hubSigunguCd}&bjdongCd=${bjdongCd}&numOfRows=100&pageNo=${pageNo}`;
                                 const xmlText = await httpsGet(fetchUrl);
                                 const totalCount = parseInt((xmlText.match(/<totalCount>(.*?)<\/totalCount>/) || [])[1], 10) || 0;
                                 const items = xmlText.match(/<item>[\s\S]*?<\/item>/g) || [];
@@ -1408,7 +1420,8 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                                     }
                                 }
 
-                                const pnu = (lawdCd && bjdongCd && bun) ? buildPNU(lawdCd, bjdongCd, `${parseInt(bun, 10) || 0}-${parseInt(ji, 10) || 0}`, platGbCd === '1' ? '2' : '1') : '';
+                                const pnuSigunguCd = (sido.includes('인천') && (gu === '동구' || gu === '중구')) ? hubSigunguCd : lawdCd;
+                                const pnu = (pnuSigunguCd && bjdongCd && bun) ? buildPNU(pnuSigunguCd, bjdongCd, `${parseInt(bun, 10) || 0}-${parseInt(ji, 10) || 0}`, platGbCd === '1' ? '2' : '1') : '';
 
                                 // 🌟 건물명이 없어 지번 기반 주택명(예: 고양동 103번지 주택)으로 생성되는 경우:
                                 // 해당 지번에 이미 정식 단지명(화성아파트 등)이 등록되어 있다면 중복 가짜 단지 생성 방지 및 스킵
@@ -1556,7 +1569,8 @@ app.post('/api/realestate/collect-master', async (req, res) => {
                     for (const ymd of scanMonths) {
                         if (isStopped()) break;
                         try {
-                            const fetchUrl = `${ep.url}?serviceKey=${encodeURIComponent(serviceKey)}&pageNo=1&numOfRows=1000&LAWD_CD=${lawdCd}&DEAL_YMD=${ymd}`;
+                            const callLawdCd = (sido.includes('인천') && (gu === '동구' || gu === '중구' || lawdCd === '28140' || lawdCd === '28110')) ? '28125' : lawdCd;
+                        const fetchUrl = `${ep.url}?serviceKey=${encodeURIComponent(serviceKey)}&pageNo=1&numOfRows=1000&LAWD_CD=${callLawdCd}&DEAL_YMD=${ymd}`;
                             const xmlText = await httpsGet(fetchUrl);
                             if (xmlText.includes('LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR') || xmlText.includes('등록되지 않은 서비스키')) {
                                 break;
@@ -2492,7 +2506,8 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
                     const progressPct = Math.min(95, Math.round(78 + (stepCount / Math.max(1, totalTargetSteps)) * 17));
 
                     try {
-                        const fetchUrl = `${ep.url}?serviceKey=${encodeURIComponent(serviceKey)}&pageNo=1&numOfRows=1000&LAWD_CD=${lawdCd}&DEAL_YMD=${ymd}`;
+                        const callLawdCd = (sido.includes('인천') && (gu === '동구' || gu === '중구' || lawdCd === '28140' || lawdCd === '28110')) ? '28125' : lawdCd;
+                        const fetchUrl = `${ep.url}?serviceKey=${encodeURIComponent(serviceKey)}&pageNo=1&numOfRows=1000&LAWD_CD=${callLawdCd}&DEAL_YMD=${ymd}`;
                         const xmlText = await httpsGet(fetchUrl);
 
                         // 공공데이터 일일 쿼터 초과 또는 트래픽 제한 에러 감지 시 안전 조기 종료
@@ -2516,6 +2531,17 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
                             };
 
                             const dong = getTag('umdNm') || getTag('법정동');
+                            // 🌟 인천 동구/중구(통합 제물포구 28125) 거래 시 관할 구역 필터링
+                            if (sido.includes('인천')) {
+                                const INCHEON_DONG_DONGS = new Set(['만석동', '화수동', '송현동', '화평동', '창영동', '금곡동', '송림동']);
+                                const baseDong = (dong || '').replace(/\d+가$/, '동');
+                                if (gu === '동구' && dong && !INCHEON_DONG_DONGS.has(dong) && !INCHEON_DONG_DONGS.has(baseDong)) {
+                                    continue;
+                                }
+                                if (gu === '중구' && dong && (INCHEON_DONG_DONGS.has(dong) || INCHEON_DONG_DONGS.has(baseDong))) {
+                                    continue;
+                                }
+                            }
                             const jibun = getTag('jibun') || getTag('지번');
                             const houseType = getTag('houseType') || '단독';
                             let rawName = getTag(ep.nameTag) || getTag('aptNm') || getTag('mhouseNm') || getTag('offiNm') || getTag('연립다세대') || getTag('단지');
@@ -2572,9 +2598,14 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
 
                             let existing = null;
 
-                            // 1순위: PNU 매칭
+                            // 1순위: PNU 매칭 (인천 제물포구 28125 및 기존 28140/28110 상호 호환)
                             if (tradePnu && pnuMap.has(tradePnu)) {
                                 existing = pnuMap.get(tradePnu);
+                            } else if (tradePnu && tradePnu.startsWith('28125')) {
+                                const altPnu1 = '28140' + tradePnu.substring(5);
+                                const altPnu2 = '28110' + tradePnu.substring(5);
+                                if (pnuMap.has(altPnu1)) existing = pnuMap.get(altPnu1);
+                                else if (pnuMap.has(altPnu2)) existing = pnuMap.get(altPnu2);
                             }
 
                             // 2순위: 시도_구_이름 키 일치 매칭
@@ -2748,6 +2779,7 @@ app.post('/api/realestate/sync-trades', async (req, res) => {
                                     area: area ? `${area}㎡` : '-',
                                     areaList: initialAreaList,
                                     pnu: tradePnu || '',
+                                    lawdCd: lawdCd || (tradePnu ? tradePnu.substring(0, 5) : ''),
                                     buildYear: tradeBuildYear ? String(tradeBuildYear).trim() : '',
                                     source: '실거래가 수집',
                                     x: coordX || '',
