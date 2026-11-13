@@ -3992,18 +3992,19 @@ document.addEventListener('DOMContentLoaded', () => {
                                 updateCompareFloatingButton();
                             }
 
-                            // 모바일 환경에서 지도 빈 곳 터치 시 학교/아이템 미니바 닫기
+                            // 핀 터치 직후 지도 클릭 이벤트로 잘못 전파된 경우 방어
+                            const now = Date.now();
+                            if ((window.__justSelectedSchoolPinTimestamp && (now - window.__justSelectedSchoolPinTimestamp < 400)) ||
+                                (window.__justSelectedItemPinTimestamp && (now - window.__justSelectedItemPinTimestamp < 400))) {
+                                return;
+                            }
+
+                            // 모바일 환경에서 학교핀 외의 다른 지도 영역 클릭 시 학교 선택 해제 및 영역표시, 주택/학원핀 초기화
                             if (window.innerWidth <= 1024 && window.mapClickMode !== 'setStart' && window.mapClickMode !== 'setEnd') {
-                                if (typeof window.closeMobileSchoolPeekCard === 'function') {
+                                if (typeof window.deselectSchoolEntirely === 'function') {
+                                    window.deselectSchoolEntirely();
+                                } else if (typeof window.closeMobileSchoolPeekCard === 'function') {
                                     window.closeMobileSchoolPeekCard();
-                                }
-                                const itemPeek = document.getElementById('mobileItemPeekCard');
-                                if (itemPeek && itemPeek.style.display !== 'none') {
-                                    if (typeof window.closeMobileItemPeekCard === 'function') {
-                                        window.closeMobileItemPeekCard();
-                                    } else {
-                                        itemPeek.style.display = 'none';
-                                    }
                                 }
                             }
 
@@ -4682,6 +4683,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     position: new kakao.maps.LatLng(school.lat, school.lng)
                 });
                 kakao.maps.event.addListener(marker, 'click', () => {
+                    window.__justSelectedSchoolPinTimestamp = Date.now();
                     window.__isSchoolPinSelectedByUser = true;
                     const summary = orchestrator.selectSchool(school);
                     showSchoolDetails(summary, school);
@@ -5039,7 +5041,9 @@ document.addEventListener('DOMContentLoaded', () => {
         overlayEl.style.zIndex = '999';
 
         // 클릭 시 상세 정보 바인딩
-        overlayEl.onclick = () => {
+        overlayEl.onclick = (e) => {
+            if (e && e.stopPropagation) e.stopPropagation();
+            window.__justSelectedSchoolPinTimestamp = Date.now();
             window.__isSchoolPinSelectedByUser = true;
             if (typeof window.closeActiveAcademyClusterPopup === 'function') {
                 window.closeActiveAcademyClusterPopup();
@@ -5128,6 +5132,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
 
                         kakao.maps.event.addListener(marker, 'click', () => {
+                            window.__justSelectedSchoolPinTimestamp = Date.now();
                             window.__isSchoolPinSelectedByUser = true;
                             window.selectSchoolById(school.school_id);
                         });
@@ -5237,7 +5242,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 labelEl.style.left = `${xOffset + 19}px`;
                 labelEl.style.top = `${yOffset}px`;
 
-                pinEl.addEventListener('click', () => {
+                pinEl.addEventListener('click', (e) => {
+                    if (e && e.stopPropagation) e.stopPropagation();
+                    window.__justSelectedSchoolPinTimestamp = Date.now();
                     window.__isSchoolPinSelectedByUser = true;
                     if (typeof window.closeActiveAcademyClusterPopup === 'function') {
                         window.closeActiveAcademyClusterPopup();
@@ -6446,23 +6453,119 @@ document.addEventListener('DOMContentLoaded', () => {
         window.__expandingMobileDetailExplicitly = false;
     };
 
-    window.closeMobileSchoolPeekCard = function() {
+    window.deselectSchoolEntirely = function() {
+        // 1. 선택 상태 플래그 및 미니바 숨김
+        window.__isSchoolPinSelectedByUser = false;
         const peekCard = document.getElementById('mobileSchoolPeekCard');
         if (peekCard) peekCard.style.display = 'none';
-        window.__isSchoolPinSelectedByUser = false;
+        const itemPeekCard = document.getElementById('mobileItemPeekCard');
+        if (itemPeekCard) itemPeekCard.style.display = 'none';
+        window.currentMobilePeekItem = null;
+
+        // 2. 오케스트레이터 및 전역 선택 학교 객체 초기화
         if (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state) {
             orchestrator.state.selectedSchool = null;
         }
         window.currentSelectedSchool = null;
         window.selectedTargetSchool = null;
+
+        // 3. 학교 핀 하이라이트 해제
         if (typeof highlightSelectedPin === 'function') {
             highlightSelectedPin(null);
         }
+
+        // 4. 영역 표시(배정권역 폴리곤, 통학로, 학교 안심서클, 안전시설 마커 등) 초기화
         if (typeof window.clearSchoolZonePolygon === 'function') {
             window.clearSchoolZonePolygon();
         }
         if (typeof clearMapLayers === 'function') {
             clearMapLayers();
+        }
+
+        // 5. 학원 핀 및 반경 서클 초기화
+        if (typeof window.clearAcademyMapMarkers === 'function') {
+            window.clearAcademyMapMarkers();
+        }
+        if (Array.isArray(window.academyMapOverlays)) {
+            window.academyMapOverlays.forEach(ov => ov && ov.setMap(null));
+        }
+        window.academyMapOverlays = [];
+        window.allFetchedAcademies = [];
+        if (window.academyRadiusCircle) {
+            window.academyRadiusCircle.setMap(null);
+            window.academyRadiusCircle = null;
+        }
+        if (typeof window.clearAcademyMarker === 'function') {
+            window.clearAcademyMarker();
+        }
+
+        // 6. 주택 핀 및 반경 서클 초기화 (학교 선택 해제 시 주택핀도 제거)
+        if (typeof window.clearRealEstateMapMarkers === 'function') {
+            window.realEstateReqSeq = (window.realEstateReqSeq || 0) + 1;
+            window.clearRealEstateMapMarkers();
+        }
+        if (Array.isArray(window.realEstateMapOverlays)) {
+            window.realEstateMapOverlays.forEach(ov => ov && ov.setMap(null));
+        }
+        window.realEstateMapOverlays = [];
+        window.allFetchedHousings = [];
+        if (window.housingRadiusCircle) {
+            window.housingRadiusCircle.setMap(null);
+            window.housingRadiusCircle = null;
+        }
+        if (typeof window.clearHousingMarker === 'function') {
+            window.clearHousingMarker();
+        }
+
+        // 7. 교육문화 자원 마커 초기화
+        if (typeof window.clearEduCultureMapMarkers === 'function') {
+            window.clearEduCultureMapMarkers();
+        }
+
+        // 8. 사이드바 카드 및 패널 UI 리셋
+        const schoolCard = document.getElementById('schoolCard');
+        if (schoolCard) schoolCard.style.display = 'none';
+        const childFormCard = document.getElementById('childFormCard');
+        if (childFormCard) childFormCard.style.display = 'none';
+        const diagnosisResultCard = document.getElementById('diagnosisResultCard');
+        if (diagnosisResultCard) diagnosisResultCard.style.display = 'none';
+        const welcomeCard = document.getElementById('welcomeCard');
+        if (welcomeCard) welcomeCard.style.display = 'block';
+        const serviceInquiryCardEl = document.getElementById('serviceInquiryCard');
+        if (serviceInquiryCardEl) serviceInquiryCardEl.style.display = 'block';
+
+        const communityPanel = document.getElementById('communityPanel');
+        if (communityPanel) communityPanel.style.display = 'none';
+        const housingDetailPanel = document.getElementById('housingDetailPanel');
+        if (housingDetailPanel) housingDetailPanel.style.display = 'none';
+        const eduDetailPanel = document.getElementById('eduCultureDetailPanel');
+        if (eduDetailPanel) eduDetailPanel.style.display = 'none';
+        const eduSidebar = document.getElementById('eduCultureSidebar');
+        if (eduSidebar) eduSidebar.style.display = 'none';
+        const sidebarContent = document.getElementById('sidebarContent');
+        if (sidebarContent) sidebarContent.style.display = 'block';
+
+        // 9. 모바일 사이드바 닫기
+        if (window.innerWidth <= 1024) {
+            const sidebar = document.querySelector('.sidebar-section');
+            if (sidebar) sidebar.style.display = 'none';
+            const container = document.querySelector('.app-container');
+            if (container) {
+                container.classList.remove('sidebar-open');
+                container.classList.remove('academy-open');
+                container.classList.remove('housing-open');
+                container.classList.remove('edu-culture-open');
+            }
+        }
+    };
+
+    window.closeMobileSchoolPeekCard = function() {
+        if (typeof window.deselectSchoolEntirely === 'function') {
+            window.deselectSchoolEntirely();
+        } else {
+            const peekCard = document.getElementById('mobileSchoolPeekCard');
+            if (peekCard) peekCard.style.display = 'none';
+            window.__isSchoolPinSelectedByUser = false;
         }
     };
 
@@ -6504,6 +6607,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.showMobileAcademyPeekCard = function(placeOrName) {
         if (!placeOrName || window.innerWidth > 1024) return;
+        window.__justSelectedItemPinTimestamp = Date.now();
         const peekCard = document.getElementById('mobileItemPeekCard');
         if (!peekCard) return;
 
@@ -6607,6 +6711,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.showMobileHousingPeekCard = function(placeOrName) {
         if (!placeOrName || window.innerWidth > 1024) return;
+        window.__justSelectedItemPinTimestamp = Date.now();
         const peekCard = document.getElementById('mobileItemPeekCard');
         if (!peekCard) return;
 
@@ -16460,102 +16565,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnDeselectSchool = document.getElementById('btnDeselectSchool');
     if (btnDeselectSchool) {
         btnDeselectSchool.addEventListener('click', (e) => {
-            // 학교 선택 해제 시 플래그 초기화 및 미니바 숨김
-            window.__isSchoolPinSelectedByUser = false;
-            const peekCard = document.getElementById('mobileSchoolPeekCard');
-            if (peekCard) peekCard.style.display = 'none';
-
-            orchestrator.state.selectedSchool = null;
-            window.currentSelectedSchool = null;
-            window.selectedTargetSchool = null;
-            if (typeof highlightSelectedPin === 'function') highlightSelectedPin(null);
-            if (typeof clearMapLayers === 'function') clearMapLayers();
-            if (schoolCard) schoolCard.style.display = 'none';
-            if (childFormCard) childFormCard.style.display = 'none';
-            if (diagnosisResultCard) diagnosisResultCard.style.display = 'none';
-            if (welcomeCard) welcomeCard.style.display = 'block';
-            const serviceInquiryCardEl = document.getElementById('serviceInquiryCard');
-            if (serviceInquiryCardEl) serviceInquiryCardEl.style.display = 'block';
-
-            // 모바일 환경일 경우, 학교 카드가 닫힐 때 상세페이지(사이드바)도 자동으로 함께 숨김 처리하여 지도로 복귀
-            if (window.innerWidth <= 1024) {
-                const sidebar = document.querySelector('.sidebar-section');
-                if (sidebar) sidebar.style.display = 'none';
-                const container = document.querySelector('.app-container');
-                if (container) {
-                    container.classList.remove('sidebar-open');
-                }
-            }
-
-            // 학원 핀 및 반경 서클 초기화
-            if (typeof window.clearAcademyMapMarkers === 'function') {
-                window.clearAcademyMapMarkers();
-            }
-            if (Array.isArray(window.academyMapOverlays)) {
-                window.academyMapOverlays.forEach(ov => ov && ov.setMap(null));
-            }
-            window.academyMapOverlays = [];
-            window.allFetchedAcademies = [];
-            if (window.academyRadiusCircle) {
-                window.academyRadiusCircle.setMap(null);
-                window.academyRadiusCircle = null;
-            }
-            if (typeof window.clearAcademyMarker === 'function') {
-                window.clearAcademyMarker();
-            }
-
-            // 주택 핀 및 반경 서클 초기화 (학교 선택 해제 시 주택핀도 학원핀처럼 보이지 않도록 제거)
-            if (typeof window.clearRealEstateMapMarkers === 'function') {
-                window.realEstateReqSeq = (window.realEstateReqSeq || 0) + 1;
-                window.clearRealEstateMapMarkers();
-            }
-            if (Array.isArray(window.realEstateMapOverlays)) {
-                window.realEstateMapOverlays.forEach(ov => ov && ov.setMap(null));
-            }
-            window.realEstateMapOverlays = [];
-            window.allFetchedHousings = [];
-            if (window.housingRadiusCircle) {
-                window.housingRadiusCircle.setMap(null);
-                window.housingRadiusCircle = null;
-            }
-            if (typeof window.clearHousingMarker === 'function') {
-                window.clearHousingMarker();
-            }
-
-            // Hide community panel & housing detail panel & eduCulture detail panel
-            const communityPanel = document.getElementById('communityPanel');
-            if (communityPanel) communityPanel.style.display = 'none';
-            const housingDetailPanel = document.getElementById('housingDetailPanel');
-            if (housingDetailPanel) housingDetailPanel.style.display = 'none';
-            const eduDetailPanel = document.getElementById('eduCultureDetailPanel');
-            if (eduDetailPanel) eduDetailPanel.style.display = 'none';
-            const eduSidebar = document.getElementById('eduCultureSidebar');
-            if (eduSidebar) eduSidebar.style.display = 'none';
-            const sidebarContent = document.getElementById('sidebarContent');
-            if (sidebarContent) sidebarContent.style.display = 'block';
-
-            // Hide academy sidebar if open
-            const academySidebar = document.getElementById('academySidebar');
-            if (academySidebar && academySidebar.style.display === 'flex') {
-                if (typeof window.toggleAcademySidebar === 'function') {
-                    window.toggleAcademySidebar();
-                } else {
-                    academySidebar.style.display = 'none';
-                    const appContainer = document.querySelector('.app-container');
-                    if (appContainer) appContainer.classList.remove('academy-open');
-                }
-            }
-
-            // Hide housing sidebar if open
-            const housingSidebar = document.getElementById('housingSidebar');
-            if (housingSidebar && housingSidebar.style.display === 'flex') {
-                if (typeof window.toggleHousingSidebar === 'function') {
-                    window.toggleHousingSidebar();
-                } else {
-                    housingSidebar.style.display = 'none';
-                    const appContainer = document.querySelector('.app-container');
-                    if (appContainer) appContainer.classList.remove('housing-open');
-                }
+            if (typeof window.deselectSchoolEntirely === 'function') {
+                window.deselectSchoolEntirely();
             }
         });
     }

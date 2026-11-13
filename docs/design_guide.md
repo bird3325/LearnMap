@@ -262,9 +262,13 @@
       - **적용 정책**:
         1. 학교 미니바(mobileSchoolPeekCard)는 사용자가 지도 위의 학교 핀(오버레이 핀, 클러스터 마커, SVG 핀)을 직접 선택(클릭/탭)하거나 명시적으로 검색/즐겨찾기 선택을 했을 때에만 플래그(window.__isSchoolPinSelectedByUser = true)를 통해 노출됩니다.
         2. 초기 페이지 로딩 시(centerMapOnChildSchool) 모바일 환경에서는 지도 중심 이동 및 필터 설정만 진행하고, 사용자가 핀을 직접 선택하기 전까지는 미니바가 자동으로 뜨지 않습니다.
-        3. 학교 상세 패널 닫기/초기화(tnDeselectSchool) 및 미니바 상단 닫기(closeMobileSchoolPeekCard) 터치 시, 학교 선택 상태(selectedSchool = null, window.__isSchoolPinSelectedByUser = false)를 완전히 초기화하고 미니바를 즉시 숨김 처리합니다.
-        4. 지도 빈 공간(바탕) 터치/클릭 시에도 열려 있는 학교 미니바 및 아이템 미니바가 자연스럽게 닫히도록 카카오맵 클릭 리스너를 연동했습니다.
-        5. 모바일 하단 네비게이션 탭('story', 'filter', 'region', 'mypage') 이동 시에도 미니바가 가리지 않도록 숨김 처리했습니다.
+         3. **학교 선택 해제 통합 초기화 엔진 (window.deselectSchoolEntirely)**:
+            - 학교 상세 패널 닫기/초기화(tnDeselectSchool), 미니바 상단 닫기(closeMobileSchoolPeekCard), 또는 모바일에서 학교 핀 외 다른 지도 빈 영역 클릭 시 일관되게 전체 초기화를 수행합니다.
+            - **영역 표시 초기화**: 학교 배정권역 폴리곤(clearSchoolZonePolygon), 안심 통학로 및 안전서클/시설물 마커(clearMapLayers)를 지도에서 완전 제거합니다.
+            - **학원 및 주택 핀 초기화**: 학교 선택 시 표시되던 반경 내 학원 핀/오버레이/반경원(clearAcademyMapMarkers)과 주택 핀/오버레이/반경원(clearRealEstateMapMarkers), 교육문화 핀을 지도에서 즉시 제거합니다.
+            - **선택 상태 및 미니바 숨김**: selectedSchool = null, window.__isSchoolPinSelectedByUser = false, 학교/아이템 미니바를 즉시 display: none으로 정리합니다.
+         4. 지도 빈 공간(바탕) 터치/클릭 시 핀 터치 고스트 클릭 방어 딜레이(400ms)와 함께 window.deselectSchoolEntirely()를 호출하여 영역표시 및 학원/주택 핀이 잔존하지 않고 깔끔하게 리셋됩니다.
+         5. 모바일 하단 네비게이션 탭('story', 'filter', 'region', 'mypage') 이동 시에도 미니바가 가리지 않도록 숨김 처리했습니다.
 
 ## 26. 모바일 학원 및 주택 핀 터치 시 2단계 미니 바텀 카드 (Peek Card) 및 기준 학교 맥락 유지 정책 (2026-11-05)
 - **적용 위치**: `index.html` (`#mobileItemPeekCard`), `style.css`, `app.js` (`showMobileAcademyPeekCard`, `showMobileHousingPeekCard`, `expandMobileItemDetail`, `closeMobileItemPeekCard`, `returnToSchoolPeekCard`)
