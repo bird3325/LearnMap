@@ -257,6 +257,15 @@
       - **기능 무결성 유지**:
         - 기존의 비동기 학원 수 / 주택 수 동기화(`updateMobilePeekCounts`), 배정구역 폴리곤 토글(`toggleMobileSchoolZoneBoundary`), 주소 복사, 관심학교 토글, 상세분석 확장이 100% 정상 작동하며, PC 레이아웃에는 영향을 주지 않습니다.
 
+   8. **모바일 미니 요약 카드 노출 조건 엄격화 (학교 핀 선택 시에만 노출 정책) (2026-11-13)**:
+      - **개선 배경**: 모바일 환경에서 사용자가 학교 핀을 선택하지 않았음에도 초기 로딩 시(자녀 학교 자동 포커싱 등) 또는 상세/사이드바 닫기 시 미니바가 계속 노출되는 문제 개선.
+      - **적용 정책**:
+        1. 학교 미니바(mobileSchoolPeekCard)는 사용자가 지도 위의 학교 핀(오버레이 핀, 클러스터 마커, SVG 핀)을 직접 선택(클릭/탭)하거나 명시적으로 검색/즐겨찾기 선택을 했을 때에만 플래그(window.__isSchoolPinSelectedByUser = true)를 통해 노출됩니다.
+        2. 초기 페이지 로딩 시(centerMapOnChildSchool) 모바일 환경에서는 지도 중심 이동 및 필터 설정만 진행하고, 사용자가 핀을 직접 선택하기 전까지는 미니바가 자동으로 뜨지 않습니다.
+        3. 학교 상세 패널 닫기/초기화(tnDeselectSchool) 및 미니바 상단 닫기(closeMobileSchoolPeekCard) 터치 시, 학교 선택 상태(selectedSchool = null, window.__isSchoolPinSelectedByUser = false)를 완전히 초기화하고 미니바를 즉시 숨김 처리합니다.
+        4. 지도 빈 공간(바탕) 터치/클릭 시에도 열려 있는 학교 미니바 및 아이템 미니바가 자연스럽게 닫히도록 카카오맵 클릭 리스너를 연동했습니다.
+        5. 모바일 하단 네비게이션 탭('story', 'filter', 'region', 'mypage') 이동 시에도 미니바가 가리지 않도록 숨김 처리했습니다.
+
 ## 26. 모바일 학원 및 주택 핀 터치 시 2단계 미니 바텀 카드 (Peek Card) 및 기준 학교 맥락 유지 정책 (2026-11-05)
 - **적용 위치**: `index.html` (`#mobileItemPeekCard`), `style.css`, `app.js` (`showMobileAcademyPeekCard`, `showMobileHousingPeekCard`, `expandMobileItemDetail`, `closeMobileItemPeekCard`, `returnToSchoolPeekCard`)
 - **도입 배경**:

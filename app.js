@@ -793,15 +793,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const targetId = targetSchool.school_id || targetSchool.id;
             if (!isSettingsOpen) {
-                if (typeof window.selectSchoolById === 'function') {
-                    window.selectSchoolById(targetId);
-                } else if (typeof orchestrator !== 'undefined' && typeof orchestrator.selectSchool === 'function') {
-                    const summary = orchestrator.selectSchool(targetSchool);
-                    if (typeof showSchoolDetails === 'function') {
-                        showSchoolDetails(summary, targetSchool);
-                    }
-                    if (typeof highlightSelectedPin === 'function') {
-                        highlightSelectedPin(targetId);
+                if (window.innerWidth <= 1024) {
+                    // 모바일에서는 초기 로딩 시 학교 핀을 직접 선택하지 않았으므로 미니바를 자동 노출하지 않음
+                    window.__isSchoolPinSelectedByUser = false;
+                } else {
+                    if (typeof window.selectSchoolById === 'function') {
+                        window.selectSchoolById(targetId);
+                    } else if (typeof orchestrator !== 'undefined' && typeof orchestrator.selectSchool === 'function') {
+                        const summary = orchestrator.selectSchool(targetSchool);
+                        if (typeof showSchoolDetails === 'function') {
+                            showSchoolDetails(summary, targetSchool);
+                        }
+                        if (typeof highlightSelectedPin === 'function') {
+                            highlightSelectedPin(targetId);
+                        }
                     }
                 }
             }
@@ -3987,6 +3992,21 @@ document.addEventListener('DOMContentLoaded', () => {
                                 updateCompareFloatingButton();
                             }
 
+                            // 모바일 환경에서 지도 빈 곳 터치 시 학교/아이템 미니바 닫기
+                            if (window.innerWidth <= 1024 && window.mapClickMode !== 'setStart' && window.mapClickMode !== 'setEnd') {
+                                if (typeof window.closeMobileSchoolPeekCard === 'function') {
+                                    window.closeMobileSchoolPeekCard();
+                                }
+                                const itemPeek = document.getElementById('mobileItemPeekCard');
+                                if (itemPeek && itemPeek.style.display !== 'none') {
+                                    if (typeof window.closeMobileItemPeekCard === 'function') {
+                                        window.closeMobileItemPeekCard();
+                                    } else {
+                                        itemPeek.style.display = 'none';
+                                    }
+                                }
+                            }
+
                             if (window.mapClickMode === 'setStart') {
                                 window.customCommuteStart = mouseEvent.latLng;
                                 window.mapClickMode = 'none';
@@ -4339,6 +4359,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 5) 최우선 검색 학교 자동 선택 및 사이드바 상세정보 카드 오픈
         if (topSchool && typeof window.selectSchoolById === 'function') {
+            window.__isSchoolPinSelectedByUser = true;
             window.selectSchoolById(topSchool.school_id || topSchool.id);
         }
     }
@@ -4661,6 +4682,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     position: new kakao.maps.LatLng(school.lat, school.lng)
                 });
                 kakao.maps.event.addListener(marker, 'click', () => {
+                    window.__isSchoolPinSelectedByUser = true;
                     const summary = orchestrator.selectSchool(school);
                     showSchoolDetails(summary, school);
                     const sidebar = document.querySelector('.sidebar-section');
@@ -5018,6 +5040,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 클릭 시 상세 정보 바인딩
         overlayEl.onclick = () => {
+            window.__isSchoolPinSelectedByUser = true;
             if (typeof window.closeActiveAcademyClusterPopup === 'function') {
                 window.closeActiveAcademyClusterPopup();
             }
@@ -5105,6 +5128,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
 
                         kakao.maps.event.addListener(marker, 'click', () => {
+                            window.__isSchoolPinSelectedByUser = true;
                             window.selectSchoolById(school.school_id);
                         });
                         return marker;
@@ -5214,6 +5238,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 labelEl.style.top = `${yOffset}px`;
 
                 pinEl.addEventListener('click', () => {
+                    window.__isSchoolPinSelectedByUser = true;
                     if (typeof window.closeActiveAcademyClusterPopup === 'function') {
                         window.closeActiveAcademyClusterPopup();
                     }
@@ -6197,6 +6222,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.showMobileSchoolPeekCard = function(school) {
         if (!school || window.innerWidth > 1024) return;
+        // 🌟 학교핀을 선택했을 때에만 미니바 노출
+        if (!window.__isSchoolPinSelectedByUser) return;
 
         // 🌟 [핵심 수정 1] 주택/학원 미니 바텀 카드 즉시 닫기 (학교 핀 선택 시 확실한 카드 전환 보장)
         const itemPeekCard = document.getElementById('mobileItemPeekCard');
@@ -6422,8 +6449,20 @@ document.addEventListener('DOMContentLoaded', () => {
     window.closeMobileSchoolPeekCard = function() {
         const peekCard = document.getElementById('mobileSchoolPeekCard');
         if (peekCard) peekCard.style.display = 'none';
+        window.__isSchoolPinSelectedByUser = false;
+        if (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state) {
+            orchestrator.state.selectedSchool = null;
+        }
+        window.currentSelectedSchool = null;
+        window.selectedTargetSchool = null;
+        if (typeof highlightSelectedPin === 'function') {
+            highlightSelectedPin(null);
+        }
         if (typeof window.clearSchoolZonePolygon === 'function') {
             window.clearSchoolZonePolygon();
+        }
+        if (typeof clearMapLayers === 'function') {
+            clearMapLayers();
         }
     };
 
@@ -6705,9 +6744,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (peekCard) peekCard.style.display = 'none';
         window.currentMobilePeekItem = null;
 
-        // 기준 학교 미니 카드로 안전 복귀
+        // 기준 학교 미니 카드로 안전 복귀 (사용자가 학교핀을 선택했던 경우에만 복귀)
         const curSchool = window.currentSelectedSchool || (orchestrator && orchestrator.state && orchestrator.state.selectedSchool);
-        if (curSchool && typeof window.showMobileSchoolPeekCard === 'function') {
+        if (curSchool && window.__isSchoolPinSelectedByUser && typeof window.showMobileSchoolPeekCard === 'function') {
             window.showMobileSchoolPeekCard(curSchool);
             const sLng = curSchool.lng || curSchool.x;
             const sLat = curSchool.lat || curSchool.y;
@@ -6778,7 +6817,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (sidebar) sidebar.style.display = 'none';
 
-            if (typeof window.showMobileSchoolPeekCard === 'function') {
+            if (window.__isSchoolPinSelectedByUser && typeof window.showMobileSchoolPeekCard === 'function') {
                 window.showMobileSchoolPeekCard(fullSchool || (orchestrator && orchestrator.state && orchestrator.state.selectedSchool));
             }
         } else {
@@ -15801,6 +15840,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     btn.onmouseout = () => btn.style.borderColor = 'var(--border-color)';
 
                     btn.onclick = () => {
+                        window.__isSchoolPinSelectedByUser = true;
                         window.selectSchoolById(school.id);
                     };
 
@@ -15835,6 +15875,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     btn.onmouseout = () => btn.style.borderColor = 'var(--border-color)';
 
                     btn.onclick = () => {
+                        window.__isSchoolPinSelectedByUser = true;
                         if (window.innerWidth <= 1024 && typeof window.onMobileNavClick === 'function') {
                             const mapTabBtn = document.querySelector('.mobile-bottom-nav .nav-item');
                             window.onMobileNavClick('map', mapTabBtn);
@@ -16419,25 +16460,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnDeselectSchool = document.getElementById('btnDeselectSchool');
     if (btnDeselectSchool) {
         btnDeselectSchool.addEventListener('click', (e) => {
-            // [모바일 환경 분기]: 상세 패널에서 닫기(뒤로가기) 시 학교 선택/배정권역 폴리곤을 지우지 않고 1단계 미니 카드로 안전 복귀
-            if (window.innerWidth <= 1024) {
-                const curSchool = window.currentSelectedSchool || (orchestrator && orchestrator.state && orchestrator.state.selectedSchool);
-                const sidebar = document.querySelector('.sidebar-section');
-                const container = document.querySelector('.app-container');
-                if (curSchool && container && container.classList.contains('sidebar-open')) {
-                    container.classList.remove('sidebar-open');
-                    if (sidebar) sidebar.style.display = 'none';
-                    if (typeof window.showMobileSchoolPeekCard === 'function') {
-                        window.showMobileSchoolPeekCard(curSchool);
-                    }
-                    if (typeof window.checkAndAdjustMapForSchoolPin === 'function') {
-                        const sLng = curSchool.lng || curSchool.x;
-                        const sLat = curSchool.lat || curSchool.y;
-                        if (sLng && sLat) window.checkAndAdjustMapForSchoolPin(sLng, sLat);
-                    }
-                    return;
-                }
-            }
+            // 학교 선택 해제 시 플래그 초기화 및 미니바 숨김
+            window.__isSchoolPinSelectedByUser = false;
+            const peekCard = document.getElementById('mobileSchoolPeekCard');
+            if (peekCard) peekCard.style.display = 'none';
 
             orchestrator.state.selectedSchool = null;
             window.currentSelectedSchool = null;
@@ -18478,6 +18504,20 @@ window.onMobileNavClick = function (menu, btnEl) {
     }
     if (sidebar) sidebar.style.display = 'none';
     if (academySidebar) academySidebar.style.display = 'none';
+
+    // 다른 하단 탭 이동 시 학교 미니바 및 아이템 미니바 숨김
+    if (menu !== 'map') {
+        const navPeekCard = document.getElementById('mobileSchoolPeekCard');
+        if (navPeekCard) navPeekCard.style.display = 'none';
+        const navItemPeek = document.getElementById('mobileItemPeekCard');
+        if (navItemPeek) navItemPeek.style.display = 'none';
+    } else {
+        // 지도 탭으로 복귀 시에도 사용자가 학교핀을 선택한 상태가 아니면 미니바 숨김 유지
+        if (!window.__isSchoolPinSelectedByUser) {
+            const navPeekCard = document.getElementById('mobileSchoolPeekCard');
+            if (navPeekCard) navPeekCard.style.display = 'none';
+        }
+    }
 
     // 모든 팝업 모달 및 리뷰 닫기 목록
     const modals = [
