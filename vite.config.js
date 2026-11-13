@@ -84,7 +84,7 @@ export default defineConfig({
   appType: 'mpa',
   plugins: [expressBackendPlugin(), utf8HeadersPlugin()],
   server: {
-    port: 3000,
+    port: 3002,
     strictPort: false,
     watch: {
       ignored: [

@@ -23,18 +23,23 @@ export class AuthService {
      */
     getCurrentUser() {
         try {
-            return JSON.parse(localStorage.getItem(this.userStorageKey) || 'null');
+            const user = JSON.parse(localStorage.getItem(this.userStorageKey) || 'null');
+            if (user && (user.email === 'guest@learnmap.kr' || user.isGuest)) {
+                localStorage.removeItem(this.userStorageKey);
+                return null;
+            }
+            return user;
         } catch (e) {
             return null;
         }
     }
 
     /**
-     * 로그인 상태 여부 검증
+     * 로그인 상태 여부 검증 (정식 회원만 true 반환)
      */
     isLoggedIn() {
         const user = this.getCurrentUser();
-        return user !== null && typeof user === 'object' && !!user.email;
+        return user !== null && typeof user === 'object' && !!user.email && user.email !== 'guest@learnmap.kr';
     }
 
     /**

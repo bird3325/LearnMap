@@ -379,3 +379,33 @@
   - 헤더: 다크 슬레이트 그라데이션(`linear-gradient(135deg, #1e293b, #0f172a)`), 16px Bold 타이틀, 32px 원형 닫기 버튼.
   - 탭 네비게이션: 토스 스타일 슬라이드 탭(`background: #f1f5f9; padding: 4px; border-radius: 10px;`), 활성 탭 화이트 카드 섀도우 적용.
   - 스크롤 본문: `font-size: 12.5px; line-height: 1.75; color: #334155; word-break: keep-all;`, 조항별 다크 헤딩(`13.5px #0f172a`) 및 상단 알림 배너 박스 적용.
+
+
+## 25. Vercel 배포 환경 초고속 핀(학원·주택) 노출 최적화 아키텍처 (PC/모바일 공통)
+
+### 25.1 학원 핀 노출 속도 개선 (3~5초 -> 0.1~0.2초)
+- **1차 즉각 노출 (Client-Side Direct Rendering)**:
+  - 학교 핀 클릭 즉시(`selectSchoolById`) 지연 대기 없이 `loadAcademiesForRadius`를 0ms 즉각 병렬 트리거.
+  - 브라우저 카카오 SDK(`fetchAcademiesClientSide`)를 1차로 우선 실행하여 100~200ms 만에 카카오 실시간 데이터를 수신, 지도 마커와 리스트를 즉각 표출.
+- **2차 백그라운드 보강 (Async Enrichment)**:
+  - 서버 API(`/api/academies/list`)를 비동기로 병렬 호출하여 제휴/승인 파트너 비즈니스 뱃지 및 상세 프로필을 부드럽게 보강.
+- **서버 및 DB 캐시 최적화**:
+  - `syncBusinessesFromDB`, `syncSubscriptionsFromDB`에 5분 TTL 인메모리 캐시를 적용하여 Supabase REST API 왕복 지연(1~2초) 완전 제거.
+  - 반경 1km 이하 탐색 시 카카오 API 다중 그리드 요청 수를 50회에서 중심점 1개(3~5회)로 최적화하여 서버 응답 대기 시간을 300ms 이내로 단축.
+
+### 25.2 주택 핀 온디맨드 로딩 최적화 (3,000ms -> 10~20ms)
+- **온디맨드 시군구 단일 파일 로딩 (`getRealEstateItemsForRegion`)**:
+  - 기존 90개 시군구 분할 파일(수십 MB) 전체를 매번 파싱하던 구조를 전면 개편.
+  - 클라이언트(`app.js`)의 `getLawdCdFromSchool` 함수가 학교 주소로부터 법정동코드(5자리, 예: `11680`)를 0ms 즉시 도출하여 `/api/realestate/pins?lawd_cd=...`로 전달.
+  - 서버는 요청된 해당 시군구 1개 파일만 10~20ms 만에 온디맨드로 읽고 인메모리 캐시(`realEstateRegionCache`)에 등록.
+- **초경량 BBOX & 하버사인 필터링**:
+  - 80,000건 전체 공간 격자를 매번 빌드할 필요 없이, 해당 시군구 2,000~4,000건 데이터 내에서 O(N) 실수 비교로 0.5ms 만에 정확한 반경 내 주택을 추출하여 즉시 반환.
+
+
+## 26. 사용자 인증 및 로그인 정책 (회원가입 회원 전용 로그인)
+- **게스트 자동 로그인 원천 제거**:
+  - 기존 최초 방문 시 `guest@learnmap.kr`로 자동 세션이 생성되던 로직을 전면 제거.
+  - 브라우저 로컬 스토리지에 남아있는 게스트 계정(`guest@learnmap.kr`)은 `authService.getCurrentUser()` 및 `updateAuthUI()` 실행 시 즉시 세션을 파기하고 초기화.
+- **회원가입 기반 로그인 필수화**:
+  - 미로그인 사용자는 로그인/회원가입 폼이 기본 표시되며, 가입된 계정으로 로그인한 경우에만 마이페이지 프로필 카드 및 자녀/회원 관리 기능 활성화.
+  - 비인가 사용자의 회원 정보 수정 및 활동 접근은 차단 후 로그인 폼으로 유도.

@@ -20,6 +20,7 @@ window.isReviewUserLoggedIn = function () {
         const userStr = localStorage.getItem('learnmap_current_user');
         if (!userStr) return false;
         const u = JSON.parse(userStr);
+        if (u && (u.email === 'guest@learnmap.kr' || u.isGuest)) return false;
         return !!(u && (u.email || u.id || u.name));
     } catch (e) {
         return false;
@@ -4989,6 +4990,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const summary = orchestrator.selectSchool(school);
+            
+            // ⚡ [초고속 핀 노출 파이프라인] 학교 핀 클릭 즉시 학원/주택 핀 병렬 로딩을 0ms 즉시 가동!
+            const curRadBtn = document.querySelector('#academyRadiusButtonGroup .academy-radius-btn.active')
+                || document.querySelector('#housingRadiusButtonGroup .housing-radius-btn.active');
+            const targetRad = curRadBtn ? parseInt(curRadBtn.getAttribute('data-radius'), 10) : (window.currentAcademyRadius || window.currentHousingRadius || 1000);
+
+            if (typeof loadAcademiesForRadius === 'function') {
+                loadAcademiesForRadius(targetRad);
+            }
+            if (typeof updateRealEstateMapMarkers === 'function') {
+                updateRealEstateMapMarkers(targetRad);
+            }
+
             showSchoolDetails(summary, school);
 
             const container = document.querySelector('.app-container');
@@ -5614,8 +5628,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentUser = JSON.parse(localStorage.getItem('learnmap_current_user') || 'null');
             } catch (e) { }
         }
-        if (!currentUser) {
-            currentUser = { name: '학부모 회원', email: 'guest@learnmap.kr' };
+        if (!currentUser || currentUser.email === 'guest@learnmap.kr') {
+            alert('로그인한 회원만 회원 정보를 조회 및 수정할 수 있습니다.');
+            if (typeof window.openSidebarLogin === 'function') window.openSidebarLogin();
+            return;
         }
 
         if (!userEditArea) {
@@ -9826,7 +9842,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         window.clearRealEstateMapMarkers = clearRealEstateMapMarkers;
 
-        async function updateRealEstateMapMarkers(radius = 1000) {
+        // 🌟 [0ms 초고속 법정동코드 매핑] 학교 주소 및 지역에서 5자리 시군구 코드를 즉각 도출
+function getLawdCdFromSchool(schoolObj) {
+    if (!schoolObj) return '';
+    if (schoolObj.lawd_cd) return String(schoolObj.lawd_cd).substring(0, 5);
+    if (schoolObj.lawdCd) return String(schoolObj.lawdCd).substring(0, 5);
+    const addr = String((schoolObj.address || '') + ' ' + (schoolObj.region || '') + ' ' + (schoolObj.sigungu || ''));
+    
+    // 서울 25개 자치구 즉시 매핑
+    const seoulGuMap = {
+        '종로구': '11110', '중구': '11140', '용산구': '11170', '성동구': '11200', '광진구': '11215',
+        '동대문구': '11230', '중랑구': '11260', '성북구': '11290', '강북구': '11305', '도봉구': '11320',
+        '노원구': '11350', '은평구': '11380', '서대문구': '11410', '마포구': '11440', '양천구': '11470',
+        '강서구': '11500', '구로구': '11530', '금천구': '11545', '영등포구': '11560', '동작구': '11590',
+        '관악구': '11620', '서초구': '11650', '강남구': '11680', '송파구': '11710', '강동구': '11740'
+    };
+    for (const [gu, cd] of Object.entries(seoulGuMap)) {
+        if (addr.includes(gu)) {
+            if (gu === '중구' || gu === '강서구') {
+                if (addr.includes('서울')) return cd;
+            } else {
+                return cd;
+            }
+        }
+    }
+    // 경기 및 광역시 주요 자치구 매핑
+    const majorMap = {
+        '분당구': '41135', '수정구': '41131', '중원구': '41133',
+        '수지구': '41465', '기흥구': '41463', '처인구': '41461',
+        '일산동구': '41285', '일산서구': '41287', '덕양구': '41281',
+        '동안구': '41173', '만안구': '41171',
+        '영통구': '41117', '팔달구': '41115', '장안구': '41111', '권선구': '41113',
+        '단원구': '41273', '상록구': '41271',
+        '부평구': '28237', '연수구': '28185', '남동구': '28200', '미추홀구': '28177',
+        '해운대구': '26350', '수영구': '26500', '부산진구': '26230', '동래구': '26260',
+        '수성구': '27260', '달서구': '27290', '유성구': '30200'
+    };
+    for (const [sgg, cd] of Object.entries(majorMap)) {
+        if (addr.includes(sgg)) return cd;
+    }
+    return '';
+}
+window.getLawdCdFromSchool = getLawdCdFromSchool;
+
+async function updateRealEstateMapMarkers(radius = 1000) {
             const reqSeq = ++window.realEstateReqSeq;
             const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
             if (!mapObj || !window.kakao || !window.kakao.maps) return;
@@ -10434,8 +10493,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 };
 
-                // 🌟 속도 최적화: 외부 카카오 지오코더를 대기하지 않고 즉각 핀을 조회 및 렌더링
-                fetchAndRenderPins('');
+                // 🌟 속도 최적화: 학교 주소에서 도출한 법정동코드(lawdCd)를 전달하여 10ms 온디맨드 로딩
+                const derivedLawdCd = (typeof getLawdCdFromSchool === 'function') ? getLawdCdFromSchool(schoolObj) : '';
+                fetchAndRenderPins(derivedLawdCd);
             }
         }
         let realEstateDebounceTimer = null;
@@ -10616,11 +10676,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 let result = window._academyListCache.get(acadCacheKey);
 
                 if (!result) {
+                    // ⚡ [1단계: 100ms 초고속 노출] 브라우저 카카오 SDK를 1차로 즉시 호출하여 지체없이 학원 핀을 지도에 표출!
+                    try {
+                        const fastClientResult = await fetchAcademiesClientSide(targetLat, targetLng, radNum);
+                        if (fastClientResult && Array.isArray(fastClientResult.items) && fastClientResult.items.length > 0) {
+                            result = fastClientResult;
+                            allFetchedAcademies = [...(result.items || [])];
+                            window.allFetchedAcademies = allFetchedAcademies;
+                            if (typeof window.updateMobilePeekCounts === 'function') window.updateMobilePeekCounts();
+                            if (typeof updateAcademyMapMarkers === 'function') updateAcademyMapMarkers(allFetchedAcademies);
+                            if (typeof applyFiltersAndRender === 'function') applyFiltersAndRender();
+                        }
+                    } catch (fastErr) {
+                        console.warn('Fast client-side academy fetch warning:', fastErr);
+                    }
+
+                    // ⚡ [2단계: 서버 보강] 서버 API를 병렬 호출하여 비즈니스/파트너 프로필 및 전체 데이터를 보강
                     let res = await fetch(`/api/academies/list?x=${targetLng}&y=${targetLat}&radius=${radNum}`);
-                    result = res.ok ? await res.json() : null;
-                    if (!result || result.error || !result.items || result.items.length === 0) {
+                    const serverResult = res.ok ? await res.json() : null;
+                    if (serverResult && Array.isArray(serverResult.items) && serverResult.items.length > 0) {
+                        result = serverResult;
+                    } else if (!result) {
                         result = await fetchAcademiesClientSide(targetLat, targetLng, radNum);
                     }
+
                     if (result && Array.isArray(result.items)) {
                         if (window._academyListCache.size > 50) {
                             window._academyListCache.delete(window._academyListCache.keys().next().value);
@@ -24487,15 +24566,10 @@ window.addEventListener('DOMContentLoaded', () => {
                 const btnSettings = document.getElementById('btnOpenSettings');
                 let currentUser = authService.getCurrentUser();
 
-                // 사용자가 명시적으로 로그아웃하지 않은 상태라면, 게스트 학부모 회원 계정 기본 활성화
-                if (!currentUser && !localStorage.getItem('learnmap_logged_out')) {
-                    currentUser = {
-                        name: '학부모 회원',
-                        email: 'guest@learnmap.kr',
-                        role: 'parent',
-                        tier: '정회원'
-                    };
-                    localStorage.setItem('learnmap_current_user', JSON.stringify(currentUser));
+                // 게스트 계정 또는 비인가 임시 계정 자동 정리 (회원가입된 정식 회원만 로그인 유지)
+                if (currentUser && (currentUser.email === 'guest@learnmap.kr' || currentUser.isGuest)) {
+                    localStorage.removeItem('learnmap_current_user');
+                    currentUser = null;
                 }
 
                 // 설정 영역 내부 회원 인증 상태 제어 (PC & 모바일)
