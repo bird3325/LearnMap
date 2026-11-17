@@ -6,7 +6,6 @@
     "role": "parent",
     "provider": "kakao",
     "avatarUrl": "",
-    "accessToken": "demo_access_token_learnmap",
     "createdAt": "2026-09-28T04:28:59.401Z"
   },
   {
@@ -16,7 +15,6 @@
     "role": "parent",
     "provider": "kakao",
     "avatarUrl": "http://k.kakaocdn.net/dn/dV4SyJ/btrT5TMQ2O1/N1sWUGlC3sj4UNKbKx0aE0/img_640x640.jpg",
-    "accessToken": "vIQXMMz75onPb6ZLJx_AjQrOI0NPqysuAAAAAQoNGVMAAAGhixmWHC2N1GIgzv2p",
     "createdAt": "2026-10-30T04:37:53.455Z"
   },
   {
@@ -91,15 +89,5 @@
     "businessId": "biz_1793939138007",
     "bizName": "목동 대치탑학원",
     "createdAt": "2026-11-06T04:25:38.326Z"
-  },
-  {
-    "id": "cef2bb33-d516-4d25-b9d2-e80937b08505",
-    "email": "parent_9466@learnmap.kr",
-    "name": "학부모 회원",
-    "role": "parent",
-    "provider": "kakao",
-    "avatarUrl": "",
-    "accessToken": "kakao_mobile_token_1794888269466",
-    "createdAt": "2026-11-17T04:04:29.937Z"
   }
 ]

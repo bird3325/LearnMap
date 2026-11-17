@@ -492,7 +492,7 @@ export class AuthService {
             return { success: false, message: '카카오 사용자 정보를 가져오지 못했습니다. 카카오 계정의 이메일 제공에 동의해주세요.' };
         }
 
-        const { id, email, nickname, avatarUrl, accessToken } = kakaoProfile;
+        const { id, email, nickname, avatarUrl } = kakaoProfile;
         const cleanEmail = email.toLowerCase().trim();
         const cleanName = (nickname || '카카오 회원').trim();
 
