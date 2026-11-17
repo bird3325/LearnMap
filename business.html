@@ -5755,7 +5755,7 @@
                         topUserName.innerText = currentBiz.representative ? `${currentBiz.representative} 대표` : (currentUser?.name || '파트너 회원');
                     }
                     if (topUserRole) {
-                        topUserRole.innerText = currentBiz.status === 'approved' ? '공식 파트너' : '심사 대기';
+                        topUserRole.innerText = currentBiz.status === 'approved' ? '공식 파트너' : (currentBiz.status === 'rejected' ? '반려됨 (재신청 필요)' : '심사 대기');
                     }
 
                     if (data.allBusinesses && data.allBusinesses.length > 0) {
@@ -5865,6 +5865,10 @@
                 pill.style.background = 'rgba(245, 158, 11, 0.2)';
                 pill.style.borderColor = '#f59e0b';
                 pillText.innerText = '관리자 승인 대기 중';
+            } else if (biz.status === 'rejected') {
+                pill.style.background = 'rgba(239, 68, 68, 0.2)';
+                pill.style.borderColor = '#ef4444';
+                pillText.innerText = '사업자 신청 반려됨 (수정 후 재신청 필요)';
             } else {
                 pill.style.background = 'rgba(255, 255, 255, 0.15)';
                 pillText.innerText = '일반 무료 등록 상태';
@@ -6282,6 +6286,7 @@
 
             const isApproved = biz && biz.status === 'approved';
             const isSubmitted = biz && biz.status === 'submitted';
+            const isRejected = biz && biz.status === 'rejected';
 
             if (isApproved) {
                 if (navIcon) navIcon.innerText = '🏢';
@@ -6294,6 +6299,19 @@
                 }
                 if (submitBtn) {
                     submitBtn.innerHTML = '💾 사업자 등록 정보 수정 저장';
+                }
+            } else if (isRejected) {
+                if (navIcon) navIcon.innerText = '⚠️';
+                if (navLabel) navLabel.innerText = '사업자 신청 반려';
+                if (panelTitle) {
+                    panelTitle.innerHTML = '⚠️ 사업자 신청 반려 <span style="font-size: 12px; font-weight: 700; color: #dc2626; background: #fee2e2; padding: 3px 8px; border-radius: 6px; margin-left: 8px; vertical-align: middle;">심사 반려됨</span>';
+                }
+                if (panelDesc) {
+                    const reason = biz.rejectionReason ? ` (반려 사유: ${biz.rejectionReason})` : '';
+                    panelDesc.innerText = `사업자 신청이 반려되었습니다${reason}. 사업자 정보를 수정하신 후 다시 승인 신청을 진행해 주세요.`;
+                }
+                if (submitBtn) {
+                    submitBtn.innerHTML = '🚀 정보 수정 후 승인 재신청하기';
                 }
             } else if (isSubmitted) {
                 if (navIcon) navIcon.innerText = '⏳';
@@ -8644,7 +8662,10 @@
                     if (eErr) eErr.style.display = 'none';
 
                     if (data.isUpdated) {
-                        showToast('사업자 등록 정보가 안전하게 수정되었습니다!');
+                        const alertMsg = (data.wasRejected || (currentBiz && currentBiz.status === 'rejected'))
+                            ? '승인 신청하였습니다.'
+                            : (data.message || '사업자 등록 정보가 안전하게 수정되었습니다!');
+                        showToast(alertMsg);
                         loadSession();
                     } else {
                         document.getElementById('newBizForm').reset();

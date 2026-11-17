@@ -6843,6 +6843,8 @@ app.post('/api/business/register', async (req, res) => {
         // 기존 사업자 등록정보 수정인 경우: 사업자 등록정보만 갱신하며, 이미 등록된 학원 프로필 주소는 변경하지 않음
         if (existingIdx !== -1) {
             const targetBiz = businesses[existingIdx];
+            const wasRejected = targetBiz.status === 'rejected';
+
             targetBiz.type = type || targetBiz.type || 'academy';
             targetBiz.name = name.trim();
             targetBiz.representative = representative.trim();
@@ -6855,6 +6857,12 @@ app.post('/api/business/register', async (req, res) => {
             targetBiz.registeredAddressDetail = addressDetail;
             if (description !== undefined) {
                 targetBiz.description = (description || '').trim();
+            }
+
+            // 반려 상태였던 사업자가 정보 수정 시, 관리자 재심사 상태('submitted')로 전환
+            if (wasRejected) {
+                targetBiz.status = 'submitted';
+                targetBiz.rejectionReason = ''; // 이전 반려 사유 리셋
             }
 
             // 학원 프로필에 주소가 최초 미등록(비어있음) 상태인 경우에만 초기 주소를 노출하고, 이미 학원 프로필 주소가 있으면 절대 변경하지 않음
@@ -6874,11 +6882,16 @@ app.post('/api/business/register', async (req, res) => {
             writeJsonFileSafe(BUSINESSES_PATH, businesses);
             await saveBusinessToDB(targetBiz);
 
+            const resMessage = wasRejected
+                ? '승인 신청하였습니다.'
+                : '사업자 등록 정보가 안전하게 수정되었습니다.';
+
             return res.json({
                 success: true,
                 isUpdated: true,
+                wasRejected: wasRejected,
                 business: targetBiz,
-                message: '사업자 등록 정보가 안전하게 수정되었습니다.'
+                message: resMessage
             });
         }
 
