@@ -2412,5 +2412,25 @@
       "school_name": "신원초등학교"
     },
     "createdAt": "2026-11-06T22:41:45.547Z"
+  },
+  {
+    "id": "evt_1794888917955_y4oz",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-17T04:15:17.955Z"
+  },
+  {
+    "id": "evt_1794888918002_nevw",
+    "businessId": "biz_1793495258331",
+    "eventType": "premium_impression",
+    "metadata": {
+      "place_name": "플레이팩토 신원7단지플팩",
+      "school_name": "신원초등학교"
+    },
+    "createdAt": "2026-11-17T04:15:18.002Z"
   }
 ]

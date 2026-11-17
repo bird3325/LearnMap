@@ -377,6 +377,21 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="regBizNumber">사업자 등록번호 (10자리) <span class="required">*</span></label>
+                    <div style="display: flex; gap: 8px;">
+                        <div class="input-wrap" style="flex: 1;">
+                            <input type="text" id="regBizNumber" class="form-input" required placeholder="예: 123-45-67890" maxlength="12"
+                                oninput="formatBizNumberInput(this); resetAuthBizVerification();">
+                        </div>
+                        <button type="button" id="btnVerifyBizNumberAuth" onclick="verifyPartnerAuthBizNumber()"
+                            style="white-space: nowrap; padding: 0 14px; font-size: 13px; border-radius: 10px; font-weight: 700; color: #2563eb; border: 1.5px solid #bfdbfe; background: #eff6ff; cursor: pointer; transition: all 0.2s;">
+                            국세청 확인
+                        </button>
+                    </div>
+                    <div id="regBizNumberStatus" style="font-size: 12px; margin-top: 5px; display: none; line-height: 1.4;"></div>
+                </div>
+
+                <div class="form-group">
                     <label for="regName">대표자 성명 <span class="required">*</span></label>
                     <div class="input-wrap">
                         <input type="text" id="regName" class="form-input" required placeholder="홍길동 대표">
@@ -572,6 +587,90 @@
         }
 
         // 회원가입 처리 핸들러
+                let isAuthBizVerified = false;
+        let verifiedAuthBizNum = '';
+
+        function formatBizNumberInput(input) {
+            let val = input.value.replace(/[^0-9]/g, '');
+            if (val.length > 10) val = val.substring(0, 10);
+            if (val.length > 5) {
+                input.value = val.substring(0, 3) + '-' + val.substring(3, 5) + '-' + val.substring(5);
+            } else if (val.length > 3) {
+                input.value = val.substring(0, 3) + '-' + val.substring(3);
+            } else {
+                input.value = val;
+            }
+        }
+
+        function resetAuthBizVerification() {
+            isAuthBizVerified = false;
+            const statusEl = document.getElementById('regBizNumberStatus');
+            if (statusEl) {
+                statusEl.style.display = 'none';
+                statusEl.innerHTML = '';
+            }
+        }
+
+        async function verifyPartnerAuthBizNumber() {
+            const input = document.getElementById('regBizNumber');
+            const statusEl = document.getElementById('regBizNumberStatus');
+            const btn = document.getElementById('btnVerifyBizNumberAuth');
+
+            const val = input ? input.value.trim() : '';
+            const clean = val.replace(/[^0-9]/g, '');
+
+            if (!clean || clean.length !== 10) {
+                showToast('사업자등록번호 10자리를 입력해주세요.', '⚠️');
+                if (input) input.focus();
+                return;
+            }
+
+            try {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerText = '확인 중...';
+                }
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.style.color = '#2563eb';
+                    statusEl.innerHTML = '⏳ 국세청 사업자등록 실시간 상태 조회 중...';
+                }
+
+                const res = await fetch('/api/business/verify-biznumber?bizNumber=' + encodeURIComponent(clean));
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    isAuthBizVerified = true;
+                    verifiedAuthBizNum = clean;
+                    if (input) input.value = data.bizNumber || val;
+                    if (statusEl) {
+                        statusEl.style.display = 'block';
+                        statusEl.style.color = '#059669';
+                        statusEl.style.fontWeight = '700';
+                        statusEl.innerHTML = '✅ 국세청 실사용 인증 완료 (' + (data.status || '계속사업자') + ' / ' + (data.taxType || '일반과세자') + ')';
+                    }
+                    showToast('국세청에 등록된 정상 계속사업자임이 확인되었습니다!', '✅');
+                } else {
+                    isAuthBizVerified = false;
+                    if (statusEl) {
+                        statusEl.style.display = 'block';
+                        statusEl.style.color = '#dc2626';
+                        statusEl.style.fontWeight = '700';
+                        statusEl.innerHTML = '❌ ' + (data.error || '사용할 수 없는 사업자등록번호입니다.');
+                    }
+                    showToast(data.error || '국세청에 등록되지 않았거나 폐업된 사업자번호입니다.', '❌');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('국세청 확인 중 오류가 발생했습니다.', '❌');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = '국세청 확인';
+                }
+            }
+        }
+
         async function handlePartnerRegister(e) {
             if (e && e.preventDefault) e.preventDefault();
 
@@ -582,6 +681,20 @@
             const passwordConfirm = document.getElementById('regPasswordConfirm').value;
             const bizName = document.getElementById('regBizName').value.trim();
             const bizType = document.querySelector('input[name="bizType"]:checked')?.value || 'academy';
+            const bizNumberInput = document.getElementById('regBizNumber');
+            const bizNumberVal = bizNumberInput ? bizNumberInput.value.trim() : '';
+
+            if (!bizNumberVal) {
+                showToast('사업자등록번호는 필수 항목입니다.', '⚠️');
+                if (bizNumberInput) bizNumberInput.focus();
+                return;
+            }
+
+            const cleanAuthBiz = bizNumberVal.replace(/[^0-9]/g, '');
+            if (!isAuthBizVerified || verifiedAuthBizNum !== cleanAuthBiz) {
+                showToast('사업자등록번호의 [국세청 확인]을 완료해주세요.', '⚠️');
+                return;
+            }
             const btn = document.getElementById('btnSubmitRegister');
 
             if (!name || !email || !phone || !password || !bizName) {
@@ -613,7 +726,8 @@
                         phone,
                         role: 'partner',
                         bizName,
-                        bizType
+                        bizType,
+                        bizNumber: bizNumberVal
                     })
                 });
 

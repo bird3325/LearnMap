@@ -4095,7 +4095,7 @@ async function loadAdminBusinesses() {
     if (!tableArea) return;
 
     try {
-        const res = await fetch('/api/admin/businesses');
+        const res = await fetch('/api/admin/businesses?t=' + Date.now(), { cache: 'no-store' });
         const data = await res.json();
         allAdminBusinesses = data.businesses || [];
 
@@ -4192,7 +4192,7 @@ function renderAdminBizTable(businesses) {
                                 </button>
                             ` : ''}
                             ${b.status !== 'rejected' ? `
-                                <button onclick="rejectBusinessPrompt('${b.id}')" class="btn-secondary" style="padding: 7px 12px; font-size: 12px; color: #dc2626; border-color: #fecaca; justify-content: center;">
+                                <button type="button" onclick="openAdminRejectModal('${b.id}', '${escapeHtml(b.name)}')" class="btn-secondary" style="padding: 7px 12px; font-size: 12px; color: #dc2626; border-color: #fecaca; justify-content: center;">
                                     ✕ 신청 반려
                                 </button>
                             ` : ''}
@@ -4298,7 +4298,109 @@ window.setBusinessStatus = function(businessId, status, rejectionReason = '') {
     });
 };
 
+// ==========================================
+// [관리자] 사업자 신청 반려 모달 제어 함수군
+// ==========================================
+window.openAdminRejectModal = function(businessId, businessName) {
+    const modal = document.getElementById('adminRejectModal');
+    if (!modal) {
+        window.rejectBusinessPromptFallback(businessId);
+        return;
+    }
+
+    const idInput = document.getElementById('adminRejectModalBizId');
+    const nameEl = document.getElementById('adminRejectModalBizName');
+    const reasonInput = document.getElementById('adminRejectModalReason');
+
+    if (idInput) idInput.value = businessId;
+    if (nameEl) nameEl.innerText = businessName || '선택된 사업자';
+    if (reasonInput) {
+        reasonInput.value = '';
+        reasonInput.placeholder = '반려 사유를 구체적으로 입력해주세요 (사업자에게 전달됩니다)';
+    }
+
+    modal.style.display = 'flex';
+    setTimeout(() => {
+        if (reasonInput) reasonInput.focus();
+    }, 100);
+};
+
+window.closeAdminRejectModal = function() {
+    const modal = document.getElementById('adminRejectModal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.setQuickRejectReason = function(reasonText) {
+    const reasonInput = document.getElementById('adminRejectModalReason');
+    if (reasonInput) {
+        reasonInput.value = reasonText;
+        reasonInput.focus();
+    }
+};
+
+window.submitAdminReject = async function() {
+    const idInput = document.getElementById('adminRejectModalBizId');
+    const reasonInput = document.getElementById('adminRejectModalReason');
+    const btnConfirm = document.getElementById('btnConfirmAdminReject');
+
+    const businessId = idInput ? idInput.value : '';
+    const rejectionReason = reasonInput ? reasonInput.value.trim() : '';
+
+    if (!businessId) {
+        showAlert('대상 사업자 정보가 올바르지 않습니다.');
+        return;
+    }
+
+    if (!rejectionReason) {
+        showAlert('반려 사유를 입력해주세요.');
+        if (reasonInput) reasonInput.focus();
+        return;
+    }
+
+    try {
+        if (btnConfirm) {
+            btnConfirm.disabled = true;
+            btnConfirm.innerText = '반려 처리 중...';
+        }
+
+        const res = await fetch('/api/admin/business/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                businessId,
+                status: 'rejected',
+                rejectionReason
+            })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            window.closeAdminRejectModal();
+            showAlert(data.message || '해당 사업자 입점 신청이 반려되었습니다.', () => {
+                if (typeof loadBusinessManagement === 'function') {
+                    loadBusinessManagement();
+                }
+            });
+        } else {
+            showAlert(data.error || '반려 처리에 실패했습니다.');
+        }
+    } catch (err) {
+        console.error('submitAdminReject error:', err);
+        showAlert('요청 중 서버 통신 오류가 발생했습니다.');
+    } finally {
+        if (btnConfirm) {
+            btnConfirm.disabled = false;
+            btnConfirm.innerText = '✕ 신청 반려 확정';
+        }
+    }
+};
+
+// 기존 prompt 호환 함수
 window.rejectBusinessPrompt = function(businessId) {
+    window.openAdminRejectModal(businessId);
+};
+
+window.rejectBusinessPromptFallback = function(businessId) {
     const reason = prompt('반려 사유를 입력해주세요 (사업자에게 안내됩니다):', '등록 서류 또는 학원 정보 확인 필요');
     if (reason !== null) {
         window.setBusinessStatus(businessId, 'rejected', reason.trim());

@@ -3780,7 +3780,10 @@ function writeUsers(users) {
 }
 
 app.post('/api/auth/register', async (req, res) => {
-    const { email, password, name, role = 'parent', bizName = '', bizType = 'academy', phone = '' } = req.body;
+    const { email, password, name, role = 'parent', bizName = '', bizType = 'academy', phone = '', bizNumber = '' } = req.body;
+    if (role === 'partner' && !bizNumber) {
+        return res.status(400).json({ success: false, message: '파트너 회원가입 시 사업자등록번호는 필수 항목입니다.' });
+    }
     if (!email || !password || !name) {
         return res.status(400).json({ success: false, message: '모든 필수 항목을 입력해 주세요.' });
     }
@@ -3837,6 +3840,7 @@ app.post('/api/auth/register', async (req, res) => {
                 name: bizName || `${cleanName} 파트너스`,
                 type: bizType || 'academy',
                 representative: cleanName,
+                bizNumber: (bizNumber || '').trim(),
                 email: cleanEmail,
                 phone: phone || '',
                 address: '기본 주소 등록 대기',
@@ -3947,90 +3951,76 @@ app.post('/api/auth/login', async (req, res) => {
     return res.json({ success: true, user: sessionUser, message: `${target.name}님 환영합니다!` });
 });
 
-// POST /api/auth/kakao - 카카오 간편로그인 (users 테이블 및 로컬 백업 동기화)
+// POST /api/auth/kakao - 카카오 간편로그인 (실제 가입된 회원만 로그인 허용)
 app.post('/api/auth/kakao', async (req, res) => {
     try {
-        const { kakaoId, email, name, avatarUrl, accessToken } = req.body;
-        const id = kakaoId || String(Date.now());
-        const cleanEmail = (email || `kakao_${id}@kakao.com`).trim().toLowerCase();
-        const cleanName = (name || '카카오 회원').trim();
-        let userId = 'user_kakao_' + id;
-
-        // 1. Supabase users 테이블 조회/생성
-        try {
-            const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(cleanEmail)}`, {
-                headers: {
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`
-                }
-            });
-            if (checkRes.ok) {
-                const existing = await checkRes.json();
-                if (Array.isArray(existing) && existing.length > 0) {
-                    userId = existing[0].id || userId;
-                } else {
-                    const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
-                        method: 'POST',
-                        headers: {
-                            'apikey': SUPABASE_KEY,
-                            'Authorization': `Bearer ${SUPABASE_KEY}`,
-                            'Content-Type': 'application/json',
-                            'Prefer': 'return=representation'
-                        },
-                        body: JSON.stringify({
-                            email: cleanEmail,
-                            password_hash: 'kakao_oauth_' + id,
-                            name: cleanName,
-                            role: 'parent',
-                            is_active: true
-                        })
-                    });
-                    if (insertRes.ok) {
-                        const data = await insertRes.json();
-                        if (data && data[0]) {
-                            userId = data[0].id || userId;
-                        }
-                    }
-                }
-            }
-        } catch (e) {
-            console.warn('Supabase kakao auth sync error:', e.message);
+        const { kakaoId, email, name, avatarUrl } = req.body;
+        if (!email && !kakaoId) {
+            return res.status(400).json({ success: false, message: '카카오 계정 정보가 올바르지 않습니다.' });
         }
 
-        // 2. 로컬 users.json 백업
-        const users = readUsers();
-        let localUser = users.find(u => u.email.toLowerCase() === cleanEmail);
-        if (!localUser) {
-            localUser = {
-                id: userId,
-                email: cleanEmail,
-                name: cleanName,
-                role: 'parent',
-                provider: 'kakao',
-                avatarUrl: avatarUrl || '',
-                accessToken: accessToken || '',
-                createdAt: new Date().toISOString()
-            };
-            users.push(localUser);
-            writeUsers(users);
+        const cleanEmail = (email || '').trim().toLowerCase();
+        let existingUser = null;
+
+        // 1. Supabase users 테이블에서 실제 등록된 회원인지 확인
+        if (cleanEmail) {
+            try {
+                const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(cleanEmail)}`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+                if (checkRes.ok) {
+                    const existing = await checkRes.json();
+                    if (Array.isArray(existing) && existing.length > 0) {
+                        existingUser = existing[0];
+                    }
+                }
+            } catch (e) {
+                console.warn('Supabase kakao check error:', e.message);
+            }
+        }
+
+        // 2. 로컬 users.json 확인 (오프라인/로컬 백업 회원)
+        if (!existingUser) {
+            const users = readUsers();
+            const local = users.find(u => (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail) || (kakaoId && u.kakaoId === kakaoId));
+            if (local) {
+                existingUser = local;
+            }
+        }
+
+        // 3. 실제 가입된 회원이 아니면 로그인 거부 (자동 가입 및 임의 로그인 방지)
+        if (!existingUser) {
+            return res.status(404).json({
+                success: false,
+                notRegistered: true,
+                message: '가입되지 않은 카카오 계정입니다. 먼저 회원가입을 진행해 주세요.'
+            });
+        }
+
+        // 4. 활성화 여부 확인
+        if (existingUser.is_active === false) {
+            return res.status(403).json({ success: false, message: '비활성화된 계정입니다. 관리자에게 문의하세요.' });
         }
 
         const sessionUser = {
-            id: localUser.id || userId,
-            email: cleanEmail,
-            name: cleanName,
-            role: 'parent',
+            id: existingUser.id,
+            email: existingUser.email || cleanEmail,
+            name: existingUser.name || name || '카카오 회원',
+            role: existingUser.role || 'parent',
             provider: 'kakao',
-            avatarUrl: avatarUrl || ''
+            avatarUrl: avatarUrl || existingUser.avatarUrl || ''
         };
 
         return res.json({
             success: true,
             user: sessionUser,
-            message: `🟡 ${cleanName}님, 카카오 간편 로그인에 성공하였습니다!`
+            message: `🟡 ${sessionUser.name}님, 카카오 로그인에 성공하였습니다!`
         });
-    } catch (err) {
-        console.error('Kakao auth error:', err);
+    } catch (e) {
+        console.error('Kakao auth error:', e);
         return res.status(500).json({ success: false, message: '카카오 로그인 처리 중 오류가 발생했습니다.' });
     }
 });
@@ -6687,6 +6677,102 @@ app.post('/api/auth/upgrade-partner', async (req, res) => {
     }
 });
 
+// 2.9 국세청 사업자등록 상태조회 실시간 확인 헬퍼 함수
+async function checkNtsBusinessStatus(cleanBizNum, serviceKey) {
+    if (!serviceKey) return { verified: true, isContinue: true, message: '국세청 가중치 공식 유효성 검증 완료' };
+    try {
+        const ntsUrl = 'https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=' + encodeURIComponent(serviceKey);
+        const ntsRes = await fetch(ntsUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ b_no: [cleanBizNum] })
+        });
+        if (ntsRes.ok) {
+            const ntsData = await ntsRes.json();
+            if (ntsData && Array.isArray(ntsData.data) && ntsData.data.length > 0) {
+                const item = ntsData.data[0];
+                const taxType = item.tax_type || '';
+                const bStt = item.b_stt || '';
+                const bSttCd = item.b_stt_cd || '';
+
+                if (taxType.includes('등록되지 않은') || (!bStt && !bSttCd)) {
+                    return { verified: false, isContinue: false, message: '국세청에 등록되지 않은 사업자등록번호입니다.' };
+                }
+                if (bSttCd === '03' || bStt.includes('폐업')) {
+                    const endDt = item.end_dt ? ' (폐업일: ' + item.end_dt + ')' : '';
+                    return { verified: false, isContinue: false, message: '국세청에 폐업 상태로 확인된 사업자등록번호입니다.' + endDt };
+                }
+                if (bSttCd === '02' || bStt.includes('휴업')) {
+                    return { verified: false, isContinue: false, message: '국세청에 휴업 상태로 확인된 사업자등록번호입니다.' };
+                }
+                return {
+                    verified: true,
+                    isContinue: true,
+                    status: bStt || '계속사업자',
+                    taxType: taxType || '부가가치세 일반과세자',
+                    message: '국세청 확인 완료: ' + (bStt || '계속사업자') + ' (' + (taxType || '부가가치세 일반과세자') + ')'
+                };
+            }
+        }
+    } catch (err) {
+        console.warn('[NTS API Warning]:', err.message);
+    }
+    return { verified: true, isContinue: true, message: '국세청 형식 유효성 검증 완료' };
+}
+
+// 2.95 GET /api/business/verify-biznumber - 사업자등록번호 실사용 가능 여부 실시간 검증 API
+app.get('/api/business/verify-biznumber', async (req, res) => {
+    try {
+        const rawNum = req.query.bizNumber || '';
+        const clean = String(rawNum).replace(/[^0-9]/g, '');
+        if (!clean || clean.length !== 10) {
+            return res.status(400).json({ success: false, error: '사업자등록번호는 10자리 숫자여야 합니다.' });
+        }
+
+        // 1. 국세청 체크섬 알고리즘 검증
+        const weight = [1, 3, 7, 1, 3, 7, 1, 3, 5];
+        let sum = 0;
+        for (let i = 0; i < 8; i++) sum += parseInt(clean[i], 10) * weight[i];
+        const temp = parseInt(clean[8], 10) * 5;
+        sum += Math.floor(temp / 10) + (temp % 10);
+        const remainder = (10 - (sum % 10)) % 10;
+        if (remainder !== parseInt(clean[9], 10)) {
+            return res.status(400).json({ success: false, error: '국세청 유효성 검증 규칙에 맞지 않는 잘못된 사업자번호입니다.' });
+        }
+
+        // 2. 중복 등록 여부 검사
+        const editingBizId = req.query.businessId ? String(req.query.businessId).trim() : '';
+        const businesses = await syncBusinessesFromDB();
+        const exists = businesses.find(b => b.id !== editingBizId && b.bizNumber && b.bizNumber.replace(/[^0-9]/g, '') === clean);
+        if (exists) {
+            return res.status(400).json({ success: false, error: '이미 등록 신청된 사업자등록번호입니다. (상호: ' + exists.name + ')' });
+        }
+
+        // 3. 국세청 실시간 계속사업자 상태 조회
+        const config = await readConfig();
+        const ntsResult = await checkNtsBusinessStatus(clean, config.data_go_kr_key);
+        if (!ntsResult.isContinue) {
+            return res.status(400).json({
+                success: false,
+                error: ntsResult.message,
+                detail: ntsResult
+            });
+        }
+
+        return res.json({
+            success: true,
+            valid: true,
+            bizNumber: clean.replace(/(\d{3})(\d{2})(\d{5})/, '$1-$2-$3'),
+            status: ntsResult.status || '계속사업자',
+            taxType: ntsResult.taxType || '부가가치세 일반과세자',
+            message: ntsResult.message
+        });
+    } catch (err) {
+        console.error('Verify BizNumber Error:', err);
+        return res.status(500).json({ success: false, error: '사업자번호 확인 중 서버 오류가 발생했습니다.' });
+    }
+});
+
 // 3. 신규 사업자 등록 신청 (P-03)
 app.post('/api/business/register', async (req, res) => {
     try {
@@ -6706,8 +6792,8 @@ app.post('/api/business/register', async (req, res) => {
             feeInfo = ''
         } = req.body;
 
-        if (!name || !representative || !phone || !email || !address) {
-            return res.status(400).json({ error: '필수 입력 항목(사업자명, 대표자명, 연락처, 이메일, 주소)을 모두 입력해주세요.' });
+        if (!name || !representative || !phone || !email || !address || !bizNumber) {
+            return res.status(400).json({ error: '필수 입력 항목(사업자명, 대표자명, 사업자등록번호, 연락처, 이메일, 주소)을 모두 입력해주세요.' });
         }
 
         const cleanPhone = phone.replace(/[^0-9]/g, '');
@@ -6724,27 +6810,32 @@ app.post('/api/business/register', async (req, res) => {
         const editingBizId = req.body.businessId ? String(req.body.businessId).trim() : '';
         const existingIdx = editingBizId ? businesses.findIndex(b => b.id === editingBizId) : -1;
 
-        // 사업자등록번호 유효성 및 중복 검사 (입력된 경우)
-        if (bizNumber) {
-            const clean = bizNumber.replace(/[^0-9]/g, '');
-            if (clean.length !== 10) {
-                return res.status(400).json({ error: '사업자등록번호는 10자리 숫자여야 합니다.' });
-            }
-            // 국세청 가중치 공식 검증
-            const weight = [1, 3, 7, 1, 3, 7, 1, 3, 5];
-            let sum = 0;
-            for (let i = 0; i < 8; i++) sum += parseInt(clean[i], 10) * weight[i];
-            const temp = parseInt(clean[8], 10) * 5;
-            sum += Math.floor(temp / 10) + (temp % 10);
-            const remainder = (10 - (sum % 10)) % 10;
-            if (remainder !== parseInt(clean[9], 10)) {
-                return res.status(400).json({ error: '국세청 유효성 검증 규칙에 맞지 않는 사업자등록번호입니다.' });
-            }
+        // 사업자등록번호 10자리 및 국세청 유효성 검사 (필수)
+        const cleanBizNum = (bizNumber || '').replace(/[^0-9]/g, '');
+        if (!cleanBizNum || cleanBizNum.length !== 10) {
+            return res.status(400).json({ error: '사업자등록번호는 10자리 숫자여야 합니다.' });
+        }
+        // 국세청 가중치 공식 검증
+        const weight = [1, 3, 7, 1, 3, 7, 1, 3, 5];
+        let sum = 0;
+        for (let i = 0; i < 8; i++) sum += parseInt(cleanBizNum[i], 10) * weight[i];
+        const temp = parseInt(cleanBizNum[8], 10) * 5;
+        sum += Math.floor(temp / 10) + (temp % 10);
+        const remainder = (10 - (sum % 10)) % 10;
+        if (remainder !== parseInt(cleanBizNum[9], 10)) {
+            return res.status(400).json({ error: '국세청 유효성 검증 규칙에 맞지 않는 사업자등록번호입니다.' });
+        }
 
-            const exists = businesses.find(b => b.id !== editingBizId && b.bizNumber && b.bizNumber.replace(/[^0-9]/g, '') === clean);
-            if (exists) {
-                return res.status(400).json({ error: '이미 등록 신청된 사업자등록번호입니다.' });
-            }
+        const exists = businesses.find(b => b.id !== editingBizId && b.bizNumber && b.bizNumber.replace(/[^0-9]/g, '') === cleanBizNum);
+        if (exists) {
+            return res.status(400).json({ error: '이미 등록 신청된 사업자등록번호입니다.' });
+        }
+
+        // 국세청 실시간 실사용 가능 여부 검증 (폐업/휴업/미등록 차단)
+        const config = await readConfig();
+        const ntsCheck = await checkNtsBusinessStatus(cleanBizNum, config.data_go_kr_key);
+        if (!ntsCheck.isContinue) {
+            return res.status(400).json({ error: ntsCheck.message });
         }
 
         const addressDetail = (req.body.addressDetail || '').trim();
@@ -8795,8 +8886,9 @@ app.get('/api/real-estates/partners', (req, res) => {
 // 12. 관리자용: 사업자 전체 목록 및 심사 관리 (P-10, DB 실시간 동기화)
 app.get('/api/admin/businesses', async (req, res) => {
     try {
-        const businesses = await syncBusinessesFromDB();
-        const subData = await syncSubscriptionsFromDB();
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        const businesses = await syncBusinessesFromDB(true); // 관리자 페이지는 항상 최신 DB 실시간 반영 (force=true)
+        const subData = await syncSubscriptionsFromDB(true);
 
         const enriched = businesses.map(b => {
             const sub = subData.subscriptions.find(s => s.businessId === b.id && s.status === 'active');
@@ -8829,7 +8921,8 @@ app.post('/api/admin/business/status', async (req, res) => {
             return res.status(400).json({ error: '유효한 businessId와 status(approved/rejected/suspended)가 필요합니다.' });
         }
 
-        const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+        // 🌟 최신 DB 동기화 및 사업자 탐색
+        const businesses = await syncBusinessesFromDB(true);
         const target = businesses.find(b => b.id === businessId);
         if (!target) {
             return res.status(404).json({ error: '해당 사업자를 찾을 수 없습니다.' });
@@ -8843,6 +8936,10 @@ app.post('/api/admin/business/status', async (req, res) => {
         }
         target.updatedAt = new Date().toISOString();
         writeJsonFileSafe(BUSINESSES_PATH, businesses);
+
+        // 🌟 인메모리 캐시 즉시 최신화 (관리자 화면 즉각 반영)
+        cachedBizList = businesses;
+        lastBizFetchTime = Date.now();
 
         // Supabase DB에 실시간 상태 업데이트
         await saveBusinessToDB(target);

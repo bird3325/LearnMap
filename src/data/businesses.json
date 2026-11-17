@@ -12,8 +12,8 @@
     "addressDetail": "",
     "registeredAddress": "기본 주소 등록 대기",
     "registeredAddressDetail": "",
-    "status": "submitted",
-    "rejectionReason": "",
+    "status": "rejected",
+    "rejectionReason": "사업자등록번호 누락 또는 국세청 검증 불일치",
     "lat": null,
     "lng": null,
     "grades": [],
@@ -22,11 +22,11 @@
     "classMethod": "",
     "description": "",
     "createdAt": "2026-11-06T04:25:38.222583+00:00",
-    "updatedAt": "2026-11-06T04:25:38.172+00:00"
+    "updatedAt": "2026-11-17T03:59:17.356+00:00"
   },
   {
     "id": "biz_1793938703299",
-    "userId": "usr_1793938703429",
+    "userId": "9fa5df5c-5871-41f5-b14d-d8715327351e",
     "type": "academy",
     "name": "대치탑수학학원",
     "representative": "테스트원장",
@@ -37,8 +37,8 @@
     "addressDetail": "",
     "registeredAddress": "기본 주소 등록 대기",
     "registeredAddressDetail": "",
-    "status": "submitted",
-    "rejectionReason": "",
+    "status": "rejected",
+    "rejectionReason": "사업자등록번호 누락 또는 국세청 검증 불일치",
     "lat": null,
     "lng": null,
     "grades": [],
@@ -47,7 +47,7 @@
     "classMethod": "",
     "description": "",
     "createdAt": "2026-11-06T04:18:23.472839+00:00",
-    "updatedAt": "2026-11-06T04:18:23.429+00:00"
+    "updatedAt": "2026-11-17T03:59:44.207+00:00"
   },
   {
     "id": "biz_1793878533975",
@@ -64,8 +64,8 @@
     "registeredAddressDetail": "101",
     "status": "approved",
     "rejectionReason": "",
-    "lat": null,
-    "lng": null,
+    "lat": 37.6632766143279,
+    "lng": 126.889085614464,
     "grades": [],
     "feeInfo": "",
     "subjects": [],
@@ -92,7 +92,7 @@
       "membershipPlan": "pro"
     },
     "createdAt": "2026-11-05T11:35:32.887731+00:00",
-    "updatedAt": "2026-11-05T11:48:09.719+00:00"
+    "updatedAt": "2026-11-17T04:16:23.348+00:00"
   },
   {
     "id": "biz_1793495258331",

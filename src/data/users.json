@@ -91,5 +91,15 @@
     "businessId": "biz_1793939138007",
     "bizName": "목동 대치탑학원",
     "createdAt": "2026-11-06T04:25:38.326Z"
+  },
+  {
+    "id": "cef2bb33-d516-4d25-b9d2-e80937b08505",
+    "email": "parent_9466@learnmap.kr",
+    "name": "학부모 회원",
+    "role": "parent",
+    "provider": "kakao",
+    "avatarUrl": "",
+    "accessToken": "kakao_mobile_token_1794888269466",
+    "createdAt": "2026-11-17T04:04:29.937Z"
   }
 ]

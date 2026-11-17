@@ -4417,11 +4417,19 @@
                                     required>
                             </div>
                             <div class="form-group">
-                                <label>사업자 등록번호</label>
-                                <input type="text" id="regBizNumber" class="form-control"
-                                    placeholder="예: 123-45-67890 (10자리)" maxlength="12"
-                                    oninput="handleBizNumberInput(this, 'regBizNumberError')"
-                                    onblur="checkBizNumberValidation(this, 'regBizNumberError')">
+                                <label>사업자 등록번호 <span class="req">*</span></label>
+                                <div style="display: flex; gap: 8px; align-items: stretch;">
+                                    <input type="text" id="regBizNumber" class="form-control"
+                                        placeholder="예: 123-45-67890 (10자리)" maxlength="12"
+                                        oninput="handleBizNumberInput(this, 'regBizNumberError'); resetBizNumberVerification();"
+                                        onblur="checkBizNumberValidation(this, 'regBizNumberError')"
+                                        style="flex: 1;">
+                                    <button type="button" id="btnVerifyBizNumber" onclick="verifyBizNumberStatus('regBizNumber', 'regBizNumberStatus', 'regBizNumberError')"
+                                        class="btn-secondary" style="white-space: nowrap; padding: 0 14px; font-size: 12.5px; height: 40px; border-radius: 8px; font-weight: 700; color: #2563eb; border-color: #bfdbfe; background: #eff6ff; cursor: pointer;">
+                                        🔍 국세청 확인
+                                    </button>
+                                </div>
+                                <div id="regBizNumberStatus" style="font-size: 12px; margin-top: 5px; display: none; line-height: 1.4;"></div>
                                 <div id="regBizNumberError"
                                     style="font-size: 11.5px; color: #dc2626; margin-top: 4px; display: none;"></div>
                             </div>
@@ -8453,17 +8461,114 @@
             }
         }
 
+                let isBizNumberVerified = false;
+        let verifiedBizNumberValue = '';
+
+        function resetBizNumberVerification() {
+            isBizNumberVerified = false;
+            const statusEl = document.getElementById('regBizNumberStatus');
+            if (statusEl) {
+                statusEl.style.display = 'none';
+                statusEl.innerHTML = '';
+            }
+        }
+
+        async function verifyBizNumberStatus(inputId, statusId, errorId) {
+            const input = document.getElementById(inputId);
+            const statusEl = document.getElementById(statusId);
+            const errEl = document.getElementById(errorId);
+            const btn = document.getElementById('btnVerifyBizNumber');
+
+            const val = input ? input.value.trim() : '';
+            if (!val) {
+                alert('사업자등록번호 10자리를 먼저 입력해주세요.');
+                if (input) input.focus();
+                return;
+            }
+
+            const clean = val.replace(/[^0-9]/g, '');
+            if (clean.length !== 10) {
+                alert('사업자등록번호는 10자리 숫자여야 합니다.');
+                if (input) input.focus();
+                return;
+            }
+
+            try {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerText = '확인 중...';
+                }
+                if (errEl) errEl.style.display = 'none';
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.style.color = '#2563eb';
+                    statusEl.innerHTML = '⏳ 국세청 사업자등록 실시간 상태 조회 중...';
+                }
+
+                const editingId = currentBiz ? currentBiz.id : '';
+                const res = await fetch('/api/business/verify-biznumber?bizNumber=' + encodeURIComponent(clean) + '&businessId=' + encodeURIComponent(editingId));
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    isBizNumberVerified = true;
+                    verifiedBizNumberValue = clean;
+                    if (input) input.value = data.bizNumber || val;
+                    if (statusEl) {
+                        statusEl.style.display = 'block';
+                        statusEl.style.color = '#059669';
+                        statusEl.style.fontWeight = '700';
+                        statusEl.innerHTML = '✅ 국세청 실사용 인증 완료 (' + (data.status || '계속사업자') + ' / ' + (data.taxType || '일반과세자') + ')';
+                    }
+                    if (errEl) errEl.style.display = 'none';
+                    showToast('국세청에 등록된 정상 계속사업자임이 확인되었습니다!', '✅');
+                } else {
+                    isBizNumberVerified = false;
+                    if (statusEl) {
+                        statusEl.style.display = 'block';
+                        statusEl.style.color = '#dc2626';
+                        statusEl.style.fontWeight = '700';
+                        statusEl.innerHTML = '❌ ' + (data.error || '사용할 수 없는 사업자등록번호입니다.');
+                    }
+                    if (errEl) {
+                        errEl.style.display = 'block';
+                        errEl.innerText = data.error || '국세청에 등록되지 않았거나 폐업된 사업자번호입니다.';
+                    }
+                    alert(data.error || '국세청에 등록되지 않았거나 폐업된 사업자번호입니다.');
+                }
+            } catch (e) {
+                console.error('verifyBizNumberStatus error:', e);
+                alert('국세청 상태 확인 중 통신 오류가 발생했습니다.');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = '🔍 국세청 확인';
+                }
+            }
+        }
+
         async function submitNewBusiness() {
             const bizNumInput = document.getElementById('regBizNumber');
             const bizNumVal = bizNumInput ? bizNumInput.value.trim() : '';
 
-            if (bizNumVal) {
-                if (!validateBizNumber(bizNumVal)) {
-                    alert('유효하지 않은 사업자 등록번호입니다.\n10자리 번호 및 국세청 유효성 검증 규칙을 확인해주세요.');
-                    if (bizNumInput) bizNumInput.focus();
-                    checkBizNumberValidation(bizNumInput, 'regBizNumberError');
-                    return;
+            if (!bizNumVal) {
+                alert('사업자등록번호는 필수 입력 항목입니다.');
+                if (bizNumInput) bizNumInput.focus();
+                checkBizNumberValidation(bizNumInput, 'regBizNumberError');
+                return;
+            }
+            if (!validateBizNumber(bizNumVal)) {
+                alert('유효하지 않은 사업자 등록번호입니다.\n10자리 번호 및 국세청 유효성 검증 규칙을 확인해주세요.');
+                if (bizNumInput) bizNumInput.focus();
+                checkBizNumberValidation(bizNumInput, 'regBizNumberError');
+                return;
+            }
+            const cleanDigits = bizNumVal.replace(/[^0-9]/g, '');
+            if (!isBizNumberVerified || verifiedBizNumberValue !== cleanDigits) {
+                alert('사업자등록번호 우측의 [🔍 국세청 확인] 버튼을 눌러 실제 계속사업자 상태인지 확인해주세요.');
+                if (document.getElementById('btnVerifyBizNumber')) {
+                    document.getElementById('btnVerifyBizNumber').focus();
                 }
+                return;
             }
 
             const phoneInput = document.getElementById('regPhone');

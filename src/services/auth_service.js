@@ -468,154 +468,97 @@ export class AuthService {
     }
 
     /**
-     * 카카오 1초 간편 로그인 메인 실행
+     * 카카오 간편 로그인 실행 (가짜 계정 생성 완전 차단, 실제 가입 회원만 로그인 허용)
      */
     async kakaoLogin() {
         let kakaoProfile = null;
-        let isRealLogin = false;
 
         try {
             const initialized = await this.initKakao();
-            if (initialized) {
-                kakaoProfile = await this.requestKakaoPopupLogin();
-                isRealLogin = true;
+            if (!initialized) {
+                return { success: false, message: '카카오 로그인 SDK를 초기화할 수 없습니다. 잠시 후 다시 시도해주세요.' };
             }
+            kakaoProfile = await this.requestKakaoPopupLogin();
         } catch (err) {
-            console.warn('[Kakao Login] SDK 팝업 제한 또는 모바일 환경 감지 - 카카오 1초 간편 로그인으로 즉시 진행합니다:', err);
+            console.warn('[Kakao Login] 팝업 취소 또는 SDK 에러:', err);
+            const errMsg = (err && (err.error_description || err.message))
+                ? (err.error_description || err.message)
+                : '카카오 로그인이 취소되었거나 인증에 실패했습니다.';
+            return { success: false, message: errMsg };
         }
 
-        // 모바일 팝업 차단, 도메인 미등록 또는 SDK 알림 발생 시 카카오 학부모 회원 계정으로 즉시 간편 로그인 진행
-        if (!kakaoProfile) {
-            const testId = String(Date.now());
-            kakaoProfile = {
-                id: testId,
-                email: `parent_${testId.slice(-4)}@learnmap.kr`,
-                nickname: '학부모 회원',
-                avatarUrl: '',
-                accessToken: 'kakao_mobile_token_' + testId
-            };
-        }
-
-        if (!kakaoProfile) {
-            return { success: false, message: '카카오 사용자 정보를 가져오지 못했습니다.' };
+        // 카카오 프로필 획득 실패 시 가짜 계정 생성 절대 금지 (즉시 실패 반환)
+        if (!kakaoProfile || !kakaoProfile.email) {
+            return { success: false, message: '카카오 사용자 정보를 가져오지 못했습니다. 카카오 계정의 이메일 제공에 동의해주세요.' };
         }
 
         const { id, email, nickname, avatarUrl, accessToken } = kakaoProfile;
         const cleanEmail = email.toLowerCase().trim();
-        const cleanName = nickname.trim() || '카카오 회원';
-        let createdUserId = 'user_kakao_' + id;
+        const cleanName = (nickname || '카카오 회원').trim();
 
-        // 1. Supabase DB users 테이블과 동기화
+        // 🌟 [핵심] 실제 DB에 회원가입되어 존재하는 아이디인지 검증 (미가입 시 자동 계정 생성 차단)
         try {
-            const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(cleanEmail)}`, {
+            const checkRes = await fetch(SUPABASE_URL + '/rest/v1/users?email=eq.' + encodeURIComponent(cleanEmail), {
                 headers: {
                     'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                    'Authorization': 'Bearer ' + SUPABASE_KEY
                 }
             });
+
             if (checkRes.ok) {
                 const existing = await checkRes.json();
-                const nowIso = new Date().toISOString();
                 if (Array.isArray(existing) && existing.length > 0) {
-                    createdUserId = existing[0].id || createdUserId;
-                    // 기존 카카오 회원 로그인 시 last_login_at DB 갱신
+                    const dbUser = existing[0];
+                    const nowIso = new Date().toISOString();
+
+                    // 마지막 로그인 시간 갱신
                     try {
-                        await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${createdUserId}`, {
+                        await fetch(SUPABASE_URL + '/rest/v1/users?id=eq.' + dbUser.id, {
                             method: 'PATCH',
                             headers: {
                                 'apikey': SUPABASE_KEY,
-                                'Authorization': `Bearer ${SUPABASE_KEY}`,
-                                'Content-Type': 'application/json',
-                                'Prefer': 'return=representation'
+                                'Authorization': 'Bearer ' + SUPABASE_KEY,
+                                'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({ last_login_at: nowIso, updated_at: nowIso })
                         });
-                    } catch (kPatchErr) {
-                        console.warn('[Kakao Login] last_login_at 갱신 경고:', kPatchErr);
-                    }
-                } else {
-                    // 최초 카카오 회원 가입 시 last_login_at 함께 등록
-                    const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
-                        method: 'POST',
-                        headers: {
-                            'apikey': SUPABASE_KEY,
-                            'Authorization': `Bearer ${SUPABASE_KEY}`,
-                            'Content-Type': 'application/json',
-                            'Prefer': 'return=representation'
-                        },
-                        body: JSON.stringify({
-                            email: cleanEmail,
-                            password_hash: 'kakao_oauth_' + id,
-                            name: cleanName,
-                            role: 'parent',
-                            is_active: true,
-                            last_login_at: nowIso
-                        })
-                    });
-                    if (insertRes.ok) {
-                        const insData = await insertRes.json();
-                        if (insData && insData[0]) {
-                            createdUserId = insData[0].id || createdUserId;
-                        }
-                    }
+                    } catch (_) {}
+
+                    const sessionUser = {
+                        id: dbUser.id,
+                        email: dbUser.email,
+                        name: dbUser.name || cleanName,
+                        role: dbUser.role || 'parent',
+                        nickname: dbUser.nickname || cleanName,
+                        phone: dbUser.phone || '',
+                        provider: 'kakao',
+                        avatarUrl: avatarUrl || '',
+                        tier: dbUser.tier || '정회원'
+                    };
+
+                    localStorage.setItem(this.userStorageKey, JSON.stringify(sessionUser));
+                    localStorage.setItem('user', JSON.stringify(sessionUser));
+                    sessionStorage.setItem(this.userStorageKey, JSON.stringify(sessionUser));
+                    localStorage.removeItem('learnmap_logged_out');
+
+                    return {
+                        success: true,
+                        user: sessionUser,
+                        message: (sessionUser.name || '회원') + '님, 카카오 간편 로그인에 성공하였습니다!'
+                    };
                 }
             }
         } catch (dbErr) {
-            console.warn('[Kakao Login] Supabase 동기화 경고:', dbErr);
+            console.error('[Kakao Login DB Check Error]:', dbErr);
+            return { success: false, message: '회원 정보 확인 중 데이터베이스 오류가 발생했습니다.' };
         }
 
-        // 2. 로컬스토리지 등록 사용자 목록 백업 저장
-        try {
-            let localUsers = JSON.parse(localStorage.getItem(this.usersDbKey) || '[]');
-            const idx = localUsers.findIndex(u => u.email.toLowerCase() === cleanEmail);
-            if (idx === -1) {
-                localUsers.push({
-                    id: createdUserId,
-                    email: cleanEmail,
-                    name: cleanName,
-                    role: 'parent',
-                    provider: 'kakao',
-                    createdAt: new Date().toISOString()
-                });
-                localStorage.setItem(this.usersDbKey, JSON.stringify(localUsers));
-            }
-        } catch (e) {}
-
-        // 2-2. 백엔드 서버(server.js) 동기화 시도
-        try {
-            fetch('/api/auth/kakao', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    kakaoId: id,
-                    email: cleanEmail,
-                    name: cleanName,
-                    avatarUrl: avatarUrl,
-                    accessToken: accessToken
-                })
-            }).catch(() => {});
-        } catch (_) {}
-
-        // 3. 세션 로그인 저장
-        const sessionUser = {
-            id: createdUserId,
-            email: cleanEmail,
-            name: cleanName,
-            role: 'parent',
-            provider: 'kakao',
-            avatarUrl: avatarUrl,
-            accessToken: accessToken,
-            createdAt: new Date().toISOString()
-        };
-        try {
-            localStorage.setItem(this.userStorageKey, JSON.stringify(sessionUser));
-            localStorage.removeItem('learnmap_logged_out');
-        } catch (e) {}
-
+        // 🌟 실제 가입된 회원이 아닌 경우 -> 가짜 계정 생성 절대 금지! 로그인 차단 및 회원가입 안내
         return {
-            success: true,
-            user: sessionUser,
-            message: `🟡 ${cleanName}님, 카카오 간편 로그인에 성공하였습니다!`
+            success: false,
+            notRegistered: true,
+            email: cleanEmail,
+            message: '가입되지 않은 카카오 계정(' + cleanEmail + ')입니다.\n먼저 회원가입을 진행해 주세요.'
         };
     }
 

@@ -2123,7 +2123,84 @@
     </div>
 
     <!-- Admin Logic Script -->
-    <script type="module" src="admin.js" charset="UTF-8"></script>
+        <!-- 사업자 신청 반려 모달 -->
+    <div id="adminRejectModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.65); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(6px); overflow-y: auto; padding: 24px 16px;">
+        <div
+            style="background: white; border-radius: 18px; padding: 26px; max-width: 480px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid var(--adm-border); margin: auto;">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--adm-border);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 22px;">🚫</span>
+                    <h3 style="font-size: 18px; color: #dc2626; font-weight: 800; margin: 0;">사업자 입점 신청 반려</h3>
+                </div>
+                <button type="button" onclick="closeAdminRejectModal()"
+                    style="background: #f1f5f9; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 16px; color: #64748b; line-height: 1;">✕</button>
+            </div>
+
+            <form id="adminRejectForm" onsubmit="event.preventDefault(); submitAdminReject();"
+                style="display: flex; flex-direction: column; gap: 14px;">
+                <input type="hidden" id="adminRejectModalBizId" value="">
+
+                <!-- 대상 사업자 정보 카드 -->
+                <div style="background: #fef2f2; border: 1px solid #fee2e2; border-radius: 10px; padding: 12px 14px;">
+                    <div style="font-size: 11.5px; color: #991b1b; font-weight: 700;">반려 대상 사업자</div>
+                    <div style="font-size: 15px; font-weight: 800; color: #0f172a; margin-top: 3px;"
+                        id="adminRejectModalBizName">-</div>
+                </div>
+
+                <!-- 반려 사유 입력 영역 -->
+                <div>
+                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #1e293b; margin-bottom: 6px;">
+                        반려 사유 입력 <span style="color: #dc2626;">*</span>
+                    </label>
+                    <textarea id="adminRejectModalReason" rows="3" required
+                        placeholder="반려 사유를 구체적으로 입력해주세요 (사업자에게 전달됩니다)"
+                        style="width: 100%; padding: 10px 12px; font-size: 13px; line-height: 1.5; border: 1px solid #cbd5e1; border-radius: 8px; resize: vertical; box-sizing: border-box; font-family: inherit;"></textarea>
+                </div>
+
+                <!-- 빠른 사유 선택 칩 -->
+                <div>
+                    <div style="font-size: 11.5px; font-weight: 700; color: #64748b; margin-bottom: 6px;">💡 빠른 사유 선택</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        <button type="button" onclick="setQuickRejectReason('사업자등록번호 누락 또는 국세청 검증 불일치')"
+                            style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px 9px; font-size: 11.5px; color: #475569; cursor: pointer; transition: all 0.2s;">
+                            📌 사업자번호 누락/오류
+                        </button>
+                        <button type="button" onclick="setQuickRejectReason('학원/교습소 설립·운영등록증 서류 보완 필요')"
+                            style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px 9px; font-size: 11.5px; color: #475569; cursor: pointer; transition: all 0.2s;">
+                            📌 등록 서류 보완 필요
+                        </button>
+                        <button type="button" onclick="setQuickRejectReason('사업장 소재지 또는 대표자 정보 불일치')"
+                            style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px 9px; font-size: 11.5px; color: #475569; cursor: pointer; transition: all 0.2s;">
+                            📌 소재지/대표자 불일치
+                        </button>
+                        <button type="button" onclick="setQuickRejectReason('중복 입점 신청 또는 대표 연락처 확인 불가')"
+                            style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px 9px; font-size: 11.5px; color: #475569; cursor: pointer; transition: all 0.2s;">
+                            📌 중복 신청/연락처 불가
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 안내 박스 -->
+                <div style="font-size: 11.5px; color: #64748b; background: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid #f1f5f9; line-height: 1.4;">
+                    ℹ️ 반려 처리 시 해당 사업자의 파트너 권한이 보류되며, 입력하신 사유가 파트너 센터에 표시됩니다.
+                </div>
+
+                <!-- 모달 버튼 -->
+                <div style="display: flex; gap: 8px; margin-top: 6px; justify-content: flex-end;">
+                    <button type="button" onclick="closeAdminRejectModal()" class="btn-secondary"
+                        style="padding: 8px 16px; font-size: 12.5px; cursor: pointer;">취소</button>
+                    <button type="submit" id="btnConfirmAdminReject"
+                        style="padding: 8px 20px; font-size: 12.5px; background: #dc2626; color: #ffffff; font-weight: 700; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 6px rgba(220,38,38,0.25);">
+                        ✕ 신청 반려 확정
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+<script type="module" src="admin.js" charset="UTF-8"></script>
 </body>
 
 </html>

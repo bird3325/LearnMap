@@ -24851,10 +24851,19 @@ window.addEventListener('DOMContentLoaded', () => {
             window.handleKakaoLogin = async function () {
                 localStorage.removeItem('learnmap_logged_out');
                 const res = await authService.kakaoLogin();
-                if (res && !res.success && res.message) {
-                    await alert(res.message);
+                if (!res || !res.success) {
+                    if (res && res.notRegistered) {
+                        alert(res.message);
+                        // 회원가입 탭으로 자동 전환 유도
+                        if (typeof window.switchSettingsAuthTab === 'function') {
+                            window.switchSettingsAuthTab('register');
+                        }
+                    } else if (res && res.message) {
+                        alert(res.message);
+                    }
+                    return;
                 }
-                if (res && res.success) {
+                if (res.success) {
                     if (typeof window.loadChildProfilesFromSupabase === 'function') {
                         await window.loadChildProfilesFromSupabase();
                     }
