@@ -97,6 +97,18 @@
       "destination": "/blog.html"
     },
     {
+      "source": "/rank",
+      "destination": "/rank/index.html"
+    },
+    {
+      "source": "/rank/",
+      "destination": "/rank/index.html"
+    },
+    {
+      "source": "/rank/(.*)",
+      "destination": "/rank/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

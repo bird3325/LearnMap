@@ -39,6 +39,7 @@ if (!process.env.VERCEL) {
 const ROBOTS_TXT_CONTENT = `# robots.txt for 학업여지도 (LearnMap)
 User-agent: *
 Allow: /
+Allow: /rank/
 Allow: /blog.html
 Allow: /business.html
 Allow: /uploads/

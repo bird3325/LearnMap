@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-3GMJRV3CVX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-3GMJRV3CVX');
+  </script>
+  <title>2026 서울 학교 순위 랭킹 센터 | 초·중·고 학업성취도 전수 분석 - 학업여지도</title>
+  <meta name="description" content="2026학년도 서울 초등학교·중학교·고등학교 순위 랭킹 전수 분석. 2025년 4월 학교알리미 공시 기준 1,320개교 종합점수, 학업평균, 후기 일반고 원서접수(12/3~12/7) 가이드.">
+  <link rel="canonical" href="https://leamap.vercel.app/rank/index.html">
+  <meta name="naver-site-verification" content="e9069c6ebc833440c7859323acf51457">
+  
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="2026 서울 학교 순위 랭킹 센터 | 초·중·고 학업성취도 전수 분석 - 학업여지도">
+  <meta property="og:description" content="서울 25개 자치구 초·중·고 학교 순위, 종합 평가 스코어, 국영수 학업평균 팩트 비교.">
+  <meta property="og:url" content="https://leamap.vercel.app/rank/index.html">
+  <meta property="og:image" content="https://leamap.vercel.app/og-image.png">
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+
+  <style>
+    :root {
+      --primary: #4A90E2;
+      --primary-dark: #2E5C8A;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --bg: #f8fafc;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Pretendard", system-ui, sans-serif; }
+    body { background-color: var(--bg); color: var(--text-main); line-height: 1.6; }
+    .site-header { background: #ffffff; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50; }
+    .header-container { max-width: 1200px; margin: 0 auto; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .brand-logo { font-size: 19px; font-weight: 800; color: var(--primary-dark); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .nav-links { display: flex; gap: 12px; align-items: center; }
+    .nav-link { font-size: 14px; font-weight: 600; color: var(--text-muted); text-decoration: none; padding: 6px 12px; border-radius: 6px; }
+    .nav-cta { background: var(--primary); color: #ffffff !important; border-radius: 8px; font-weight: 700; }
+    .page-container { max-width: 1200px; margin: 0 auto; padding: 32px 20px 80px 20px; }
+    
+    .hero-banner { text-align: center; margin-bottom: 36px; padding: 40px 20px; background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%); border-radius: 16px; border: 1px solid #dbeafe; }
+    .hero-badge { display: inline-block; background: #e0f2fe; color: #0284c7; font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 20px; margin-bottom: 12px; }
+    .hero-title { font-size: 32px; font-weight: 800; color: var(--primary-dark); margin-bottom: 12px; letter-spacing: -0.02em; }
+    .hero-desc { font-size: 16px; color: #475569; max-width: 700px; margin: 0 auto; }
+
+    .grid-3col { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 40px; }
+    .hub-card { background: #ffffff; border-radius: 14px; border: 1px solid var(--border); padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .card-title { font-size: 20px; font-weight: 800; color: var(--primary-dark); }
+    .card-badge { font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #e0f2fe; color: #0369a1; }
+    
+    .top-list { list-style: none; margin-bottom: 20px; }
+    .top-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 13.5px; }
+    .top-rank { font-weight: 700; width: 45px; }
+    .top-name { font-weight: 700; flex: 1; margin: 0 8px; color: var(--text-main); }
+    .top-score { font-weight: 800; color: var(--primary); }
+
+    .btn-view-all { display: block; text-align: center; background: #f8fafc; color: var(--primary-dark); border: 1px solid var(--border); padding: 10px; border-radius: 8px; font-weight: 700; text-decoration: none; font-size: 13.5px; transition: all 0.2s; }
+    .btn-view-all:hover { background: var(--primary); color: #ffffff; border-color: var(--primary); }
+
+    .gu-section { background: #ffffff; border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin-bottom: 40px; }
+    .gu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 16px; }
+    .gu-card { border: 1px solid #f1f5f9; border-radius: 10px; padding: 14px; background: #f8fafc; text-decoration: none; color: var(--text-main); transition: all 0.2s; }
+    .gu-card:hover { border-color: var(--primary); background: #ffffff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .gu-card-name { font-weight: 800; font-size: 16px; color: var(--primary-dark); margin-bottom: 6px; }
+    .gu-card-links { display: flex; gap: 8px; font-size: 12px; }
+    .gu-card-link { color: var(--primary); font-weight: 700; text-decoration: none; }
+    .gu-card-link:hover { text-decoration: underline; }
+
+    .site-footer { border-top: 1px solid var(--border); background: #ffffff; padding: 30px 20px; font-size: 12.5px; color: var(--text-muted); text-align: center; }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-container">
+      <a href="/" class="brand-logo">
+        <span>🗺️</span>
+        <span>학업여지도 랭킹센터</span>
+      </a>
+      <nav class="nav-links">
+        <a href="/" class="nav-link nav-cta">🗺️ 지도 바로가기</a>
+        <a href="/rank/index.html" class="nav-link">🏆 순위 허브</a>
+        <a href="/blog.html" class="nav-link">📝 칼럼&리포트</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <div class="hero-banner">
+      <span class="hero-badge">2026 대한민국 교육 팩트 분석</span>
+      <h1 class="hero-title">서울 학교 순위 랭킹 센터</h1>
+      <p class="hero-desc">
+        점수 줄세우기가 아닌 <strong>종합 교육환경(40%) + 학업성취도 + 안전환경 + 교육예산</strong>을 합산한 공공데이터 기반 학교 평가 랭킹입니다. 
+        원하는 학교급과 자치구를 선택하여 상세 순위를 확인하세요.
+      </p>
+    </div>
+
+    <!-- 3대 학교급 메인 카드 -->
+    <div class="grid-3col">
+      <!-- 고등학교 -->
+      <div class="hub-card">
+        <div>
+          <div class="card-header">
+            <h2 class="card-title">고등학교 순위</h2>
+            <span class="card-badge">서울 319개교</span>
+          </div>
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+            12/3~12/7 후기 일반고 원서접수 대비<br>후기 일반고·자사고·특목고 종합 스코어
+          </p>
+          <ul class="top-list">
+            
+              <li class="top-item">
+                <span class="top-rank">🥇 1위</span>
+                <span class="top-name">서울디자인고등학교 (마포구)</span>
+                <span class="top-score">89.6점</span>
+              </li>
+            
+              <li class="top-item">
+                <span class="top-rank">🥈 2위</span>
+                <span class="top-name">서울아이티고등학교 (노원구)</span>
+                <span class="top-score">87.9점</span>
+              </li>
+            
+              <li class="top-item">
+                <span class="top-rank">🥉 3위</span>
+                <span class="top-name">현대고등학교 (강남구)</span>
+                <span class="top-score">87.5점</span>
+              </li>
+            
+              <li class="top-item">
+                <span class="top-rank">4위</span>
+                <span class="top-name">수도여자고등학교 (동작구)</span>
+                <span class="top-score">87.3점</span>
+              </li>
+            
+              <li class="top-item">
+                <span class="top-rank">5위</span>
+                <span class="top-name">동덕여자고등학교 (서초구)</span>
+                <span class="top-score">87.2점</span>
+              </li>
+            
+          </ul>
+        </div>
+        <a href="/rank/seoul-high.html" class="btn-view-all">서울 고등학교 전체 순위 (319개교) &gt;</a>
+      </div>
+
+      <!-- 중학교 -->
+      <div class="hub-card">
+        <div>
+          <div class="card-header">
+            <h2 class="card-title">중학교 순위</h2>
+            <span class="card-badge">서울 390개교</span>
+          </div>
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+            특목·자사고 진학 및 고교학점제 대비<br>국영수 성취도 및 A등급 비율 비교
+          </p>
+          <ul class="top-list">
+            
+              <li class="top-item">
+                <span class="top-rank">🥇 1위</span>
+                <span class="top-name">동성중학교 (종로구)</span>
+                <span class="top-score">89.8점</span>
+              </li>
+            
+              <li class="top-item">
+                <span class="top-rank">🥈 2위</span>
+                <span class="top-name">남대문중학교 (성북구)</span>
+                <span class="top-score">89.5점</span>
+              </li>
+            
+              <li class="top-item">
+                <span class="top-rank">🥉 3위</span>
+                <span class="top-name">도봉중학교 (도봉구)</span>
+                <span class="top-score">89.3점</span>
+              </li>
+            
+              <li class="top-item">
+                <span class="top-rank">4위</span>
+                <span class="top-name">선유중학교 (영등포구)</span>
+                <span class="top-score">88.7점</span>
+              </li>
+            
+              <li class="top-item">
+                <span class="top-rank">5위</span>
+                <span class="top-name">양천중학교 (양천구)</span>
+                <span class="top-score">88점</span>
+              </li>
+            
+          </ul>
+        </div>
+        <a href="/rank/seoul-middle.html" class="btn-view-all">서울 중학교 전체 순위 (390개교) &gt;</a>
+      </div>
+
+      <!-- 초등학교 -->
+      <div class="hub-card">
+        <div>
+          <div class="card-header">
+            <h2 class="card-title">초등학교 순위</h2>
+            <span class="card-badge">서울 611개교</span>
+          </div>
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+            학군 이사 및 통학 안전도 비교<br>학급당 인원·학폭 0건 안전 환경 평가
+          </p>
+          <ul class="top-list">
+            
+              <li class="top-item">
+                <span class="top-rank">🥇 1위</span>
+                <span class="top-name">서울대치초등학교 (강남구)</span>
+                <span class="top-score">90.6점</span>
+              </li>
+            
+              <li class="top-item">
+                <span class="top-rank">🥈 2위</span>
+                <span class="top-name">서울장안초등학교 (광진구)</span>
+                <span class="top-score">90.3점</span>
+              </li>
+            
+              <li class="top-item">
+                <span class="top-rank">🥉 3위</span>
+                <span class="top-name">서울개명초등학교 (구로구)</span>
+                <span class="top-score">89.1점</span>
+              </li>
+            
+              <li class="top-item">
+                <span class="top-rank">4위</span>
+                <span class="top-name">서울명일초등학교 (강동구)</span>
+                <span class="top-score">88.8점</span>
+              </li>
+            
+              <li class="top-item">
+                <span class="top-rank">5위</span>
+                <span class="top-name">서울명덕초등학교 (강동구)</span>
+                <span class="top-score">88.7점</span>
+              </li>
+            
+          </ul>
+        </div>
+        <a href="/rank/seoul-elementary.html" class="btn-view-all">서울 초등학교 전체 순위 (611개교) &gt;</a>
+      </div>
+    </div>
+
+    <!-- 서울 25개 자치구별 바로가기 -->
+    <section class="gu-section">
+      <h2 style="font-size: 20px; font-weight: 800; color: var(--primary-dark); margin-bottom: 8px;">
+        🏛️ 서울 25개 자치구별 맞춤 순위 바로가기
+      </h2>
+      <p style="font-size: 13.5px; color: var(--text-muted);">
+        거주 중이거나 이사를 고려 중인 자치구를 선택하시면 해당 구의 고등학교·중학교·초등학교 순위표를 즉시 확인하실 수 있습니다.
+      </p>
+
+      <div class="gu-grid">
+        
+          <div class="gu-card">
+            <div class="gu-card-name">강남구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-gangnam.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-gangnam.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-gangnam.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">강동구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-gangdong.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-gangdong.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-gangdong.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">강북구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-gangbuk.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-gangbuk.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-gangbuk.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">강서구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-gangseo.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-gangseo.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-gangseo.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">관악구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-gwanak.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-gwanak.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-gwanak.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">광진구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-gwangjin.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-gwangjin.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-gwangjin.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">구로구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-guro.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-guro.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-guro.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">금천구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-geumcheon.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-geumcheon.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-geumcheon.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">노원구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-nowon.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-nowon.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-nowon.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">도봉구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-dobong.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-dobong.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-dobong.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">동대문구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-dongdaemun.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-dongdaemun.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-dongdaemun.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">동작구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-dongjak.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-dongjak.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-dongjak.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">마포구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-mapo.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-mapo.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-mapo.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">서대문구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-seodaemun.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-seodaemun.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-seodaemun.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">서초구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-seocho.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-seocho.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-seocho.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">성동구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-seongdong.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-seongdong.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-seongdong.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">성북구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-seongbuk.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-seongbuk.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-seongbuk.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">송파구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-songpa.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-songpa.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-songpa.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">양천구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-yangcheon.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-yangcheon.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-yangcheon.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">영등포구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-yeongdeungpo.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-yeongdeungpo.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-yeongdeungpo.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">용산구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-yongsan.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-yongsan.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-yongsan.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">은평구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-eunpyeong.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-eunpyeong.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-eunpyeong.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">종로구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-jongno.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-jongno.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-jongno.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">중구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-jung.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-jung.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-jung.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+          <div class="gu-card">
+            <div class="gu-card-name">중랑구</div>
+            <div class="gu-card-links">
+              <a href="/rank/seoul-high-jungnang.html" class="gu-card-link">고등학교</a> ·
+              <a href="/rank/seoul-middle-jungnang.html" class="gu-card-link">중학교</a> ·
+              <a href="/rank/seoul-elementary-jungnang.html" class="gu-card-link">초등학교</a>
+            </div>
+          </div>
+        
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>© 2026 학업여지도 (LearnMap). All rights reserved.</p>
+  </footer>
+</body>
+</html>
