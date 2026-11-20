@@ -464,3 +464,18 @@
   - 정렬 버튼 텍스트에 현재 방향을 명확하게 표시: 내림차순은 `▼ 높은순` (학교폭력은 `▼ 적은순`), 오름차순은 `▲ 낮은순` (학교폭력은 `▲ 많은순`).
   - 정렬 토글로 오름차순(`asc`)을 보더라도 점수 기준 실제 순위(`rank = isAsc ? (list.length - idx) : (idx + 1)`)를 유지하여, 최저점 학교가 1위 메달을 받거나 1위가 최저점이 되는 논리적 모순을 원천 방지.
   - 종합점수 정렬 시 1위는 항상 최고점(서울 고등학교 기준 서울디자인고등학교 89.6점)으로 일관되게 유지.
+
+## 31. 검색엔진 최적화(SEO) 및 robots.txt · sitemap.xml 라우팅 정책 (2026-11-20)
+- **robots.txt 정적 서빙 및 크롤러 허용 보장**:
+  - `vercel.json`의 SPA fallback rewrite(`/(.*) -> /index.html`)에 의해 `/robots.txt` 요청 시 HTML이 반환되던 문제를 원천 해결.
+  - `server.js`에 명시적 `app.get('/robots.txt')` 라우트를 두고 Content-Type `text/plain; charset=utf-8` 및 RFC 9309 표준 준수 포맷 반환.
+  - 모든 정상 검색엔진 크롤러 허용(`User-agent: *`, `Allow: /`), 관리자 및 내부 API 수집 제외(`Disallow: /admin`, `Disallow: /api/`), 절대 URL 사이트맵 명시(`Sitemap: https://leamap.vercel.app/sitemap.xml`).
+- **sitemap.xml 도메인 정정 및 최신화**:
+  - 구버전 도메인(`learnmap.co.kr`)을 실제 운영 도메인인 `https://leamap.vercel.app`으로 전면 정정.
+  - 최신 갱신일자(`lastmod: 2026-11-20`) 반영.
+  - 메인(`index.html`), 파트너 비즈니스(`business.html`), 블로그 리서치 메인(`blog.html`), 파트너 인증(`partner-auth.html`) 및 주요 학군 분석 리서치 칼럼 URL 포함.
+  - `server.js`의 `app.get('/sitemap.xml')` 라우트(`application/xml; charset=utf-8`) 및 `dist/sitemap.xml` 정적 빌드 2중 서빙 구조 구축.
+- **네이버 서치어드바이저 및 구글 서치콘솔 소유확인**:
+  - 네이버 소유확인 HTML 파일(`public/navere9069c6ebc833440c7859323acf51457.html`) 및 `index.html` 내 `<meta name="naver-site-verification">` 메타 태그 2중 인증 지원.
+  - canonical URL(`https://leamap.vercel.app/`) 명시로 검색엔진 중복 색인 방지.
+

@@ -35,6 +35,44 @@ if (!process.env.VERCEL) {
     app.use(express.static(path.join(__dirname)));
 }
 
+// robots.txt & sitemap.xml SEO 라우트 (Vercel SPA fallback에 의한 HTML 반환 문제 원천 차단)
+const ROBOTS_TXT_CONTENT = `# robots.txt for 학업여지도 (LearnMap)
+User-agent: *
+Allow: /
+Allow: /blog.html
+Allow: /business.html
+Allow: /uploads/
+Disallow: /admin.html
+Disallow: /admin
+Disallow: /api/
+Disallow: /scratch/
+
+Sitemap: https://leamap.vercel.app/sitemap.xml
+`;
+
+app.get('/robots.txt', (req, res) => {
+    res.type('text/plain; charset=utf-8');
+    res.send(ROBOTS_TXT_CONTENT);
+});
+
+app.get('/sitemap.xml', (req, res) => {
+    const sitemapPath = path.join(__dirname, 'public', 'sitemap.xml');
+    if (fs.existsSync(sitemapPath)) {
+        res.type('application/xml; charset=utf-8');
+        return res.sendFile(sitemapPath);
+    }
+    res.type('application/xml; charset=utf-8');
+    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://leamap.vercel.app/</loc><lastmod>2026-11-20</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://leamap.vercel.app/index.html</loc><lastmod>2026-11-20</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://leamap.vercel.app/blog.html</loc><lastmod>2026-11-20</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://leamap.vercel.app/business.html</loc><lastmod>2026-11-20</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://leamap.vercel.app/partner-auth.html</loc><lastmod>2026-11-20</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+</urlset>`);
+});
+
+
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 const DATA_DIR = path.join(__dirname, 'src', 'data');
 const SCHOOLS_PATH = path.join(DATA_DIR, 'schools_seoul.json');

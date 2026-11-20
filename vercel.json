@@ -18,10 +18,10 @@
           "src/data/analytics_events.json",
           "src/data/inquiries.json",
           "src/data/blog_posts.json",
-          "config.json"
+          "config.json",
+          "public/sitemap.xml"
         ],
         "excludeFiles": [
-          "public/**",
           "dist/**",
           "scratch/**",
           "docs/**",
@@ -48,6 +48,14 @@
     "VERCEL_SUPPORT_LARGE_FUNCTIONS": "1"
   },
   "rewrites": [
+    {
+      "source": "/robots.txt",
+      "destination": "/server.js"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/server.js"
+    },
     {
       "source": "/api/(.*)",
       "destination": "/server.js"
