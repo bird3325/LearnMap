@@ -5919,7 +5919,9 @@
 
         async function loadDashboard(bizId) {
             try {
-                const res = await fetch(`/api/business/dashboard?businessId=${bizId}`);
+                const targetBizId = bizId || (currentBiz && currentBiz.id) || (currentUser && (currentUser.businessId || currentUser.id)) || '';
+                const queryStr = targetBizId ? `?businessId=${encodeURIComponent(targetBizId)}` : '';
+                const res = await fetch(`/api/business/dashboard${queryStr}`);
                 if (!res.ok) throw new Error('대시보드 통계 조회 실패');
                 const data = await res.json();
 
