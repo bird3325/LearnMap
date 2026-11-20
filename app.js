@@ -2822,6 +2822,72 @@ document.addEventListener('DOMContentLoaded', () => {
     searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') performSearch();
     });
+
+    // 실시간 검색어 자동완성 및 동명이교 지역 구분 드롭다운
+    let searchDebounceTimer = null;
+    searchInput.addEventListener('input', (e) => {
+        const query = (e.target.value || '').trim();
+        if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+
+        if (query.length < 2) {
+            if (typeof window.hideSearchResultsDropdown === 'function') {
+                window.hideSearchResultsDropdown();
+            }
+            return;
+        }
+
+        searchDebounceTimer = setTimeout(() => {
+            const allDb = (schoolsDatabase && schoolsDatabase.length > 0)
+                ? schoolsDatabase
+                : (window.schoolsDatabase || window.allSchoolsCache || []);
+            const term = query.toLowerCase().replace(/\s+/g, '');
+            const curRegion = (regionFilter && regionFilter.value && regionFilter.value !== 'all')
+                ? regionFilter.value
+                : (lastDetectedRegion || '서울특별시');
+
+            let matched = allDb.filter(s => {
+                const cleanName = (s.school_name || '').toLowerCase().replace(/\s+/g, '');
+                return cleanName.includes(term);
+            });
+
+            matched.sort((a, b) => {
+                const aName = (a.school_name || '').toLowerCase().replace(/\s+/g, '');
+                const bName = (b.school_name || '').toLowerCase().replace(/\s+/g, '');
+
+                const aIsCur = (a.region === curRegion || (a.address && a.address.includes(curRegion))) ? 0 : 1;
+                const bIsCur = (b.region === curRegion || (b.address && b.address.includes(curRegion))) ? 0 : 1;
+                if (aIsCur !== bIsCur) return aIsCur - bIsCur;
+
+                const aScore = aName === term ? 0 : (aName.startsWith(term) ? 1 : 2);
+                const bScore = bName === term ? 0 : (bName.startsWith(term) ? 1 : 2);
+                if (aScore !== bScore) return aScore - bScore;
+
+                return (a.school_name || '').localeCompare(b.school_name || '');
+            });
+
+            if (matched.length > 0 && typeof window.showSearchResultsDropdown === 'function') {
+                window.showSearchResultsDropdown(matched, query);
+            } else if (typeof window.hideSearchResultsDropdown === 'function') {
+                window.hideSearchResultsDropdown();
+            }
+        }, 120);
+    });
+
+    // 바깥 클릭 또는 ESC 키 시 검색 드롭다운 닫기
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.search-bar-wrapper') && !e.target.closest('#searchResultsDropdown')) {
+            if (typeof window.hideSearchResultsDropdown === 'function') {
+                window.hideSearchResultsDropdown();
+            }
+        }
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (typeof window.hideSearchResultsDropdown === 'function') {
+                window.hideSearchResultsDropdown();
+            }
+        }
+    });
     regionFilter.addEventListener('change', () => {
         if (typeof resetSafeCommute === 'function') resetSafeCommute();
         onRegionFilterChange();
@@ -4239,6 +4305,132 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // 학교 객체에서 시/도 및 시/군/구 지역 구분 텍스트 추출 헬퍼 (동명이교 구분용)
+    function getSchoolRegionBadgeText(school) {
+        if (!school) return '';
+        const addr = (school.address || '').trim();
+        if (addr) {
+            const parts = addr.split(/\s+/);
+            if (parts.length >= 2) {
+                if (parts.length >= 3 && (parts[2].endsWith('구') || parts[2].endsWith('군') || parts[2].endsWith('시'))) {
+                    return `${parts[0]} ${parts[1]} ${parts[2]}`;
+                }
+                return `${parts[0]} ${parts[1]}`;
+            }
+        }
+        return school.region || '기타 지역';
+    }
+    window.getSchoolRegionBadgeText = getSchoolRegionBadgeText;
+
+    // 동명이교 및 다중 검색 결과 선택 드롭다운 표출
+    function showSearchResultsDropdown(schoolList, queryTerm = '') {
+        const dropdown = document.getElementById('searchResultsDropdown');
+        if (!dropdown) return;
+
+        if (!schoolList || schoolList.length === 0) {
+            hideSearchResultsDropdown();
+            return;
+        }
+
+        const cleanTerm = (queryTerm || '').toLowerCase().replace(/\s+/g, '');
+        const sameNameSchools = schoolList.filter(s => {
+            const cleanName = (s.school_name || '').toLowerCase().replace(/\s+/g, '');
+            return cleanName === cleanTerm;
+        });
+        const isDongMyeong = sameNameSchools.length > 1;
+
+        const curRegion = (regionFilter && regionFilter.value && regionFilter.value !== 'all')
+            ? regionFilter.value
+            : (lastDetectedRegion || '서울특별시');
+
+        let html = '';
+        if (isDongMyeong) {
+            html += `
+                <div style="padding: 10px 14px 8px 14px; background: #fef2f2; border-bottom: 1px solid #fee2e2; border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="font-size: 12px; font-weight: 700; color: #dc2626; display: flex; align-items: center; gap: 5px;">
+                        <span>🏫</span>
+                        <span>동명이교 안내: 지역별 ${sameNameSchools.length}개 학교 중 선택하세요</span>
+                    </div>
+                    <span style="font-size: 11px; color: #991b1b; cursor: pointer; font-weight: 600;" onclick="window.hideSearchResultsDropdown()">✕ 닫기</span>
+                </div>
+            `;
+        } else {
+            html += `
+                <div style="padding: 10px 14px 8px 14px; background: #eff6ff; border-bottom: 1px solid #dbeafe; border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="font-size: 12px; font-weight: 700; color: #2563eb; display: flex; align-items: center; gap: 5px;">
+                        <span>🔍</span>
+                        <span>검색 결과 (${schoolList.length}개 학교) - 지역을 선택하세요</span>
+                    </div>
+                    <span style="font-size: 11px; color: #1e40af; cursor: pointer; font-weight: 600;" onclick="window.hideSearchResultsDropdown()">✕ 닫기</span>
+                </div>
+            `;
+        }
+
+        html += '<div style="max-height: 320px; overflow-y: auto;">';
+        schoolList.slice(0, 15).forEach(s => {
+            const regBadge = getSchoolRegionBadgeText(s);
+            const isMatchCurrent = (s.region === curRegion || (s.address && s.address.includes(curRegion)));
+            const badgeBg = isMatchCurrent ? '#eff6ff' : '#f8fafc';
+            const badgeColor = isMatchCurrent ? '#2563eb' : '#475569';
+            const badgeBorder = isMatchCurrent ? '#bfdbfe' : '#cbd5e1';
+
+            html += `
+                <div onclick="window.selectSchoolFromSearch('${s.school_id || s.id}')"
+                    style="padding: 10px 14px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.15s ease;"
+                    onmouseover="this.style.background='#f8fafc';"
+                    onmouseout="this.style.background='white';">
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <strong style="font-size: 13.5px; color: #0f172a;">${s.school_name}</strong>
+                        <span style="background: ${badgeBg}; color: ${badgeColor}; font-weight: 700; font-size: 11px; padding: 2px 7px; border-radius: 6px; border: 1px solid ${badgeBorder}; display: inline-flex; align-items: center; gap: 2px;">
+                            📍 ${regBadge}
+                        </span>
+                        <span style="font-size: 11px; color: #64748b;">${s.school_type || ''} · ${s.establishment_type || '공립'}</span>
+                    </div>
+                    <div style="font-size: 11.5px; color: #64748b; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${s.address || '주소 정보 없음'}
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        dropdown.innerHTML = html;
+        dropdown.style.display = 'block';
+    }
+    window.showSearchResultsDropdown = showSearchResultsDropdown;
+
+    function hideSearchResultsDropdown() {
+        const dropdown = document.getElementById('searchResultsDropdown');
+        if (dropdown) dropdown.style.display = 'none';
+    }
+    window.hideSearchResultsDropdown = hideSearchResultsDropdown;
+
+    function selectSchoolFromSearch(schoolId) {
+        const allDb = (schoolsDatabase && schoolsDatabase.length > 0)
+            ? schoolsDatabase
+            : (window.schoolsDatabase || window.allSchoolsCache || []);
+        const target = allDb.find(s => (s.school_id || s.id) === schoolId);
+        if (!target) return;
+
+        if (searchInput) {
+            searchInput.value = target.school_name;
+        }
+
+        if (kakaoMap && target.lat && target.lng) {
+            const coords = new kakao.maps.LatLng(target.lat, target.lng);
+            kakaoMap.setCenter(coords);
+            kakaoMap.setLevel(5);
+        }
+
+        if (typeof window.selectSchoolById === 'function') {
+            window.__isSchoolPinSelectedByUser = true;
+            window.selectSchoolById(target.school_id || target.id);
+        }
+
+        hideSearchResultsDropdown();
+    }
+    window.selectSchoolFromSearch = selectSchoolFromSearch;
+
     // 4. Memory-based School Search
     async function performSearch(overrideQuery) {
         if (typeof resetSafeCommute === 'function') resetSafeCommute();
@@ -4335,13 +4527,30 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 일치도 정렬 (완전 일치 / 접두어 일치 우선)
+        // 현재 선택된 필터 지역 또는 최근 감지된 지도 지역 (기본: 서울특별시)
+        const currentActiveRegion = (regionFilter && regionFilter.value && regionFilter.value !== 'all')
+            ? regionFilter.value
+            : (lastDetectedRegion || '서울특별시');
+
+        // 일치도 정렬 (1순위: 현재 지도 지역 일치, 2순위: 완전 일치, 3순위: 접두어 일치, 4순위: 이름순)
         filtered.sort((a, b) => {
             const aName = (a.school_name || '').toLowerCase().replace(/\s+/g, '');
             const bName = (b.school_name || '').toLowerCase().replace(/\s+/g, '');
+
+            const aIsCurrentRegion = (a.region === currentActiveRegion || (a.address && a.address.includes(currentActiveRegion))) ? 0 : 1;
+            const bIsCurrentRegion = (b.region === currentActiveRegion || (b.address && b.address.includes(currentActiveRegion))) ? 0 : 1;
+
+            if (aIsCurrentRegion !== bIsCurrentRegion) {
+                return aIsCurrentRegion - bIsCurrentRegion;
+            }
+
             const aScore = aName === term ? 0 : (aName.startsWith(term) ? 1 : 2);
             const bScore = bName === term ? 0 : (bName.startsWith(term) ? 1 : 2);
-            return aScore - bScore;
+            if (aScore !== bScore) {
+                return aScore - bScore;
+            }
+
+            return (a.school_name || '').localeCompare(b.school_name || '');
         });
 
         // 최대 25개 결과 제한
@@ -4363,6 +4572,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (topSchool && typeof window.selectSchoolById === 'function') {
             window.__isSchoolPinSelectedByUser = true;
             window.selectSchoolById(topSchool.school_id || topSchool.id);
+        }
+
+        // 6) 동명이교 또는 다중 검색 결과 드롭다운 표시 (사용자가 지역별 학교를 직접 확인 및 선택 가능)
+        if (filtered.length > 1 && typeof window.showSearchResultsDropdown === 'function') {
+            window.showSearchResultsDropdown(filtered, queryStr);
+        } else if (typeof window.hideSearchResultsDropdown === 'function') {
+            window.hideSearchResultsDropdown();
         }
     }
 
@@ -7005,6 +7221,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sidebar) sidebar.scrollTop = 0;
 
         if (schoolCardName) schoolCardName.innerText = fullSchool.school_name;
+        const schoolCardRegionBadge = document.getElementById('schoolCardRegionBadge');
+        if (schoolCardRegionBadge) {
+            const regText = typeof window.getSchoolRegionBadgeText === 'function' ? window.getSchoolRegionBadgeText(fullSchool) : (fullSchool.region || '');
+            if (regText) {
+                schoolCardRegionBadge.innerText = `📍 ${regText}`;
+                schoolCardRegionBadge.style.display = 'inline-block';
+            } else {
+                schoolCardRegionBadge.style.display = 'none';
+            }
+        }
         if (schoolCardType) schoolCardType.innerText = fullSchool.school_type;
 
         const foundingType = fullSchool.establishment_type || fullSchool.fond_sc_nm || '공립';
