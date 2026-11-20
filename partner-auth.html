@@ -343,7 +343,7 @@
 
                 <button type="submit" id="btnSubmitLogin" class="btn-submit">
                     <span>파트너센터 로그인</span>
-                    <span style="font-size: 14px;">➔</span>
+                    <span style="font-size: 14px;">→</span>
                 </button>
             </form>
 
@@ -441,7 +441,7 @@
 
                 <button type="submit" id="btnSubmitRegister" class="btn-submit">
                     <span>파트너 가입 완료 & 센터 시작</span>
-                    <span style="font-size: 14px;">➔</span>
+                    <span style="font-size: 14px;">→</span>
                 </button>
             </form>
         </div>
@@ -563,7 +563,7 @@
                 if (!res.ok || !data.success) {
                     showToast(data.message || '로그인에 실패했습니다. 계정 정보를 확인해주세요.', '❌');
                     btn.disabled = false;
-                    btn.innerHTML = '<span>파트너센터 로그인</span><span style="font-size: 14px;">➔</span>';
+                    btn.innerHTML = '<span>파트너센터 로그인</span><span style="font-size: 14px;">→</span>';
                     return;
                 }
 
@@ -582,7 +582,7 @@
                 console.error('로그인 에러:', err);
                 showToast('네트워크 오류가 발생했습니다. 다시 시도해주세요.', '❌');
                 btn.disabled = false;
-                btn.innerHTML = '<span>파트너센터 로그인</span><span style="font-size: 14px;">➔</span>';
+                btn.innerHTML = '<span>파트너센터 로그인</span><span style="font-size: 14px;">→</span>';
             }
         }
 
@@ -735,7 +735,7 @@
                 if (!res.ok || !data.success) {
                     showToast(data.message || '회원가입에 실패했습니다.', '❌');
                     btn.disabled = false;
-                    btn.innerHTML = '<span>파트너 가입 완료 & 센터 시작</span><span style="font-size: 14px;">➔</span>';
+                    btn.innerHTML = '<span>파트너 가입 완료 & 센터 시작</span><span style="font-size: 14px;">→</span>';
                     return;
                 }
 
@@ -754,7 +754,7 @@
                 console.error('회원가입 에러:', err);
                 showToast('가입 처리 중 오류가 발생했습니다.', '❌');
                 btn.disabled = false;
-                btn.innerHTML = '<span>파트너 가입 완료 & 센터 시작</span><span style="font-size: 14px;">➔</span>';
+                btn.innerHTML = '<span>파트너 가입 완료 & 센터 시작</span><span style="font-size: 14px;">→</span>';
             }
         }
 

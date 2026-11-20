@@ -7338,7 +7338,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div style="display: flex; justify-content: flex-end;">
                             <button onclick="openChildSettingsModal()" style="background: var(--primary-blue, #2563eb); color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 11px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: background 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                                <span>⚙️ 자녀 성적 설정으로 이동 ➔</span>
+                                <span>⚙️ 자녀 성적 설정으로 이동 →</span>
                             </button>
                         </div>
                     </div>
@@ -16241,7 +16241,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     btn.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                             <span style="font-weight: 700;">🏫 ${school.name} <span style="font-size:10px; color:#ef6c00; background:#fff3e0; padding:2px 6px; border-radius:4px; margin-left:4px; font-weight:bold;">${priLabel}</span></span>
-                            <span style="font-size:10px; color:var(--text-muted); font-weight:bold;">이동 ➔</span>
+                            <span style="font-size:10px; color:var(--text-muted); font-weight:bold;">이동 →</span>
                         </div>
                         ${school.memo ? `<div style="font-size: 11px; font-weight: normal; color: var(--text-muted); border-top: 1px dashed var(--border-color); padding-top: 4px; margin-top: 2px; white-space: pre-wrap;">📝 ${school.memo}</div>` : ''}
                     `;
@@ -16276,7 +16276,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     btn.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                             <span style="font-weight: 700;">🏫 ${school.name} <span style="font-size:10px; color:#ef6c00; background:#fff3e0; padding:2px 6px; border-radius:4px; margin-left:4px; font-weight:bold;">${priLabel}</span></span>
-                            <span style="font-size:10px; color:var(--text-muted); font-weight:bold;">이동 ➔</span>
+                            <span style="font-size:10px; color:var(--text-muted); font-weight:bold;">이동 →</span>
                         </div>
                         ${school.memo ? `<div style="font-size: 11px; font-weight: normal; color: var(--text-muted); border-top: 1px dashed var(--border-color); padding-top: 4px; margin-top: 2px; white-space: pre-wrap;">📝 ${school.memo}</div>` : ''}
                     `;
@@ -26661,7 +26661,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div style="font-size: 12px; color: #1e3a8a;">
                     학교 평균 <strong>${report.schoolMatch.schoolAvg}점</strong> vs 내 자녀 평균 <strong style="color: #2563eb;">${report.schoolMatch.childAvg}점</strong> 
-                    (${report.schoolMatch.diffScore >= 0 ? `+${report.schoolMatch.diffScore}점 우위` : `${report.schoolMatch.diffScore}점 보완 필요`}) ➔ <span class="neis-badge neis-badge-success">${report.schoolMatch.matchStatus}</span>
+                    (${report.schoolMatch.diffScore >= 0 ? `+${report.schoolMatch.diffScore}점 우위` : `${report.schoolMatch.diffScore}점 보완 필요`}) → <span class="neis-badge neis-badge-success">${report.schoolMatch.matchStatus}</span>
                 </div>
             </div>
         ` : '';
