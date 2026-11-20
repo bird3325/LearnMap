@@ -20360,8 +20360,12 @@ window.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            const currentDir = sortState[currentTopic]?.dir || 'desc';
+            const isAsc = currentDir === 'asc';
+
             listContainer.innerHTML = list.map((item, idx) => {
-                const rank = idx + 1;
+                // 내림차순(높은순)일 때는 idx + 1이 순위, 오름차순(낮은순)일 때는 절대 순위(점수 높은 순)를 보존하여 (list.length - idx)위로 표시
+                const rank = isAsc ? (list.length - idx) : (idx + 1);
                 let medalBadge = `<span style="background:#e2e8f0; color:#475569; font-weight:bold; padding:2px 6px; border-radius:10px; font-size:11px;">${rank}위</span>`;
                 if (rank === 1) medalBadge = `<span style="background:#fef08a; color:#854d0e; font-weight:bold; padding:2px 7px; border-radius:10px; font-size:11px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">🥇 1위</span>`;
                 else if (rank === 2) medalBadge = `<span style="background:#e2e8f0; color:#334155; font-weight:bold; padding:2px 7px; border-radius:10px; font-size:11px;">🥈 2위</span>`;
@@ -20586,6 +20590,44 @@ window.addEventListener('DOMContentLoaded', () => {
         // 6. 이벤트 바인딩
         window.openTopicStatsModal = function () {
             if (modal) {
+                // 🌟 [핵심] 메인 화면 필터(학교급 & 지역)와 순위 모달 100% 동기화
+                const mainSchoolTypeEl = document.getElementById('schoolTypeFilter');
+                const mainVal = (mainSchoolTypeEl ? mainSchoolTypeEl.value : '') ||
+                                (typeof orchestrator !== 'undefined' && orchestrator?.state?.filters?.schoolType) || 'middle';
+
+                if (schoolTypeSelect) {
+                    if (mainVal === 'high' || mainVal === '고등학교') {
+                        schoolTypeSelect.value = '고등학교';
+                    } else if (mainVal === 'middle' || mainVal === '중학교') {
+                        schoolTypeSelect.value = '중학교';
+                    } else if (mainVal === 'elementary' || mainVal === '초등학교') {
+                        schoolTypeSelect.value = '초등학교';
+                    } else if (mainVal === 'all') {
+                        schoolTypeSelect.value = 'all';
+                    }
+                }
+
+                // 메인 지역 필터 동기화
+                const mainRegionEl = document.getElementById('regionFilter');
+                if (mainRegionEl && sidoSelect && mainRegionEl.value && mainRegionEl.value !== 'all') {
+                    const exists = Array.from(sidoSelect.options).some(opt => opt.value === mainRegionEl.value);
+                    if (exists) {
+                        sidoSelect.value = mainRegionEl.value;
+                        updateGugunOptions(mainRegionEl.value);
+                    }
+                }
+
+                // 정렬 기본값을 항상 '내림차순 (높은 점수 1위)'으로 초기화
+                if (sortState) {
+                    if (sortState.composite) {
+                        sortState.composite.key = 'score';
+                        sortState.composite.dir = 'desc';
+                    }
+                    if (currentTopic && sortState[currentTopic]) {
+                        sortState[currentTopic].dir = 'desc';
+                    }
+                }
+
                 modal.style.display = 'flex';
                 refreshTopicStats();
             }
@@ -20885,7 +20927,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
         // 정렬 버튼 렌더링 함수
         // - noDir:true 버튼(safe/high): 방향 화살표 없이 모드 선택만
-        // - 나머지: 활성 시 ▼▲ 토글, 다른 버튼 클릭 시 기본 내림차순
+        // - 나머지: 활성 시 ▼ 높은순 / ▲ 낮은순 토글, 다른 버튼 클릭 시 기본 내림차순(높은순)
         function renderSortBar(container, topic) {
             if (!container) return;
             container.innerHTML = '';
@@ -20895,7 +20937,16 @@ window.addEventListener('DOMContentLoaded', () => {
             SORT_CONFIGS[topic].forEach(cfg => {
                 const isActive = state.key === cfg.key;
                 const isNoDir = !!cfg.noDir; // safe/high 처럼 방향 개념 없는 버튼
-                const arrowIcon = (isActive && !isNoDir && state.dir) ? (state.dir === 'desc' ? ' ▼' : ' ▲') : '';
+
+                let arrowIcon = '';
+                if (isActive && !isNoDir && state.dir) {
+                    if (topic === 'violence') {
+                        arrowIcon = state.dir === 'asc' ? ' ▼ 적은순' : ' ▲ 많은순';
+                    } else {
+                        arrowIcon = state.dir === 'desc' ? ' ▼ 높은순' : ' ▲ 낮은순';
+                    }
+                }
+
                 const btn = document.createElement('button');
                 btn.textContent = cfg.label + arrowIcon;
                 btn.dataset.sortKey = cfg.key;
@@ -20925,7 +20976,8 @@ window.addEventListener('DOMContentLoaded', () => {
                     } else if (sortState[topic].key === cfg.key) {
                         sortState[topic].dir = sortState[topic].dir === 'desc' ? 'asc' : 'desc';
                     } else {
-                        sortState[topic] = { key: cfg.key, dir: 'desc' };
+                        const defaultDir = (topic === 'violence') ? 'asc' : 'desc';
+                        sortState[topic] = { key: cfg.key, dir: defaultDir };
                     }
                     refreshTopicStats();
                 });
