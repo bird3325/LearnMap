@@ -2877,10 +2877,7 @@ if (btnResetRegionFilter) {
 
 async function loadStoredRealEstate() {
     try {
-        let res = await fetch('/api/realestate/stored');
-        if (!res.ok) {
-            res = await fetch('./src/data/realestate_seoul.json');
-        }
+        const res = await fetch('/api/realestate/stored');
         if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data)) {
@@ -2892,17 +2889,8 @@ async function loadStoredRealEstate() {
             allStoredRealEstates = [];
         }
     } catch (e) {
-        try {
-            const fbRes = await fetch('./src/data/realestate_seoul.json');
-            if (fbRes.ok) {
-                allStoredRealEstates = await fbRes.json();
-            } else {
-                allStoredRealEstates = [];
-            }
-        } catch (err) {
-            console.error('Failed to load /api/realestate/stored', err);
-            allStoredRealEstates = [];
-        }
+        console.warn('Failed to load /api/realestate/stored:', e.message);
+        allStoredRealEstates = [];
     }
     updateRealEstateSigunguDropdown();
     updateRealEstateGuDropdown();

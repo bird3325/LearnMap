@@ -13,6 +13,7 @@
           "src/data/realestate_regions.json",
           "src/data/lawd_code_map.json",
           "src/data/businesses.json",
+          "src/data/users.json",
           "src/data/subscriptions.json",
           "src/data/analytics_events.json",
           "src/data/inquiries.json",

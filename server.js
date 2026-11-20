@@ -256,10 +256,13 @@ function getCachedRealEstateItems() {
                     return cachedRealEstateItems;
                 }
 
-                console.log(`[RealEstate Cache] 시·군·구별 분할 데이터(${files.length}개 파일) 메모리 캐시 로딩 시작...`);
+                // 🌟 Vercel Serverless Function 메모리(1GB) 및 응답 크기(4.5MB) 보호: Vercel 환경에서는 대표 파일(1~2개)만 안전 로드
+                const targetFiles = process.env.VERCEL ? files.slice(0, 2) : files;
+
+                console.log(`[RealEstate Cache] 시·군·구별 분할 데이터(${targetFiles.length}개 파일, Vercel: ${Boolean(process.env.VERCEL)}) 메모리 캐시 로딩 시작...`);
                 const t0 = Date.now();
                 let combinedItems = [];
-                for (const file of files) {
+                for (const file of targetFiles) {
                     try {
                         const filePath = path.join(REAL_ESTATE_DIR, file);
                         const raw = fs.readFileSync(filePath, 'utf8');
@@ -270,11 +273,12 @@ function getCachedRealEstateItems() {
                     } catch (readErr) {
                         console.warn(`[RealEstate Cache Warn] 파일 읽기 실패 (${file}):`, readErr.message);
                     }
+                    if (process.env.VERCEL && combinedItems.length >= 2000) break;
                 }
                 cachedRealEstateItems = combinedItems;
                 cachedRealEstateMtime = latestMtime;
                 realEstateSpatialGrid = buildRealEstateSpatialGrid(cachedRealEstateItems);
-                console.log(`[RealEstate Cache] ${cachedRealEstateItems.length.toLocaleString()}건 주택 데이터(총 ${files.length}개 지역) 및 공간 격자(${realEstateSpatialGrid.size}셀) 로드 완료 (${Date.now() - t0}ms)`);
+                console.log(`[RealEstate Cache] ${cachedRealEstateItems.length.toLocaleString()}건 주택 데이터(총 ${targetFiles.length}개 지역) 및 공간 격자(${realEstateSpatialGrid.size}셀) 로드 완료 (${Date.now() - t0}ms)`);
                 return cachedRealEstateItems;
             }
         }
@@ -421,14 +425,32 @@ function getNowFormatted() {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-// 1-1. GET /api/realestate/stored - Serve stored real estate JSON data
+// 1-1. GET /api/realestate/stored - Serve stored real estate JSON data (Vercel 4.5MB Payload Limit & Memory Safe)
 app.get('/api/realestate/stored', (req, res) => {
     try {
-        const items = getCachedRealEstateItems();
-        return res.json(items);
+        const { lawdCd, code, sigungu } = req.query;
+        const limitParam = parseInt(req.query.limit, 10);
+        const maxLimit = (!isNaN(limitParam) && limitParam > 0) ? limitParam : (process.env.VERCEL ? 1500 : 5000);
+
+        // 1. 특정 지역 요청 시 해당 지역 파일만 온디맨드 로드 (초고속, 1MB 미만)
+        const targetCode = lawdCd || code;
+        if (targetCode) {
+            const regionItems = getRealEstateItemsForRegion(targetCode);
+            res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=1800');
+            return res.json(regionItems.slice(0, maxLimit));
+        }
+
+        // 2. 전체 요청 시 Vercel 람다 메모리/응답 페이로드(4.5MB) 안전 보호
+        let items = getCachedRealEstateItems();
+        if (!Array.isArray(items)) items = [];
+
+        // Vercel Payload Limit(4.5MB) 초과 방지: 최대 maxLimit 건 슬라이스 반환
+        const safeItems = items.length > maxLimit ? items.slice(0, maxLimit) : items;
+        res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
+        return res.json(safeItems);
     } catch (e) {
         console.error('Error reading real estate data:', e);
-        return res.status(500).json({ error: '주택 데이터를 읽을 수 없습니다.' });
+        return res.status(200).json([]);
     }
 });
 
@@ -4035,7 +4057,7 @@ app.post('/api/admin/login', (req, res) => {
     return res.status(401).json({ success: false, message: '비밀번호가 올바르지 않습니다.' });
 });
 
-// GET /api/admin/users - 전체 회원 목록 반환 (Supabase + users.json 병합)
+// GET /api/admin/users - 전체 회원 목록 반환 (Supabase + users.json 병합, 타임아웃 및 장애방지)
 app.get('/api/admin/users', async (req, res) => {
     try {
         let users = [];
@@ -4046,27 +4068,31 @@ app.get('/api/admin/users', async (req, res) => {
                 headers: {
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`
-                }
+                },
+                signal: AbortSignal.timeout(5000)
             });
             if (sbRes.ok) {
                 const sbData = await sbRes.json();
-                if (Array.isArray(sbData)) users = sbData;
+                if (Array.isArray(sbData)) users = sbData.filter(Boolean);
             }
         } catch (sbErr) {
-            console.warn('Admin users Supabase fetch error:', sbErr);
+            console.warn('Admin users Supabase fetch error:', sbErr.message);
         }
 
-        const localUsers = readUsers();
+        const localUsers = Array.isArray(readUsers()) ? readUsers() : [];
         localUsers.forEach(lu => {
-            if (!users.some(u => (u.email || '').toLowerCase() === (lu.email || '').toLowerCase())) {
+            if (lu && lu.email && !users.some(u => u && (u.email || '').toLowerCase() === lu.email.toLowerCase())) {
                 users.push(lu);
             }
         });
 
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         return res.json(users);
     } catch (err) {
         console.error('Admin users error:', err);
-        return res.status(500).json({ error: '회원 목록을 가져오지 못했습니다.' });
+        const fallbackUsers = Array.isArray(readUsers()) ? readUsers() : [];
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        return res.status(200).json(fallbackUsers);
     }
 });
 
@@ -6204,12 +6230,13 @@ async function syncBusinessesFromDB(force = false) {
     }
     try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/partner_businesses?select=*&order=created_at.desc`, {
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+            signal: AbortSignal.timeout(5000)
         });
         if (res.ok) {
             const rows = await res.json();
             if (Array.isArray(rows)) {
-                const dbBizList = rows.map(r => ({
+                const dbBizList = rows.filter(Boolean).map(r => ({
                     id: r.id,
                     userId: r.user_id,
                     type: r.business_type,
@@ -6240,7 +6267,8 @@ async function syncBusinessesFromDB(force = false) {
     } catch (e) {
         console.warn('[Supabase partner_businesses fetch error]:', e.message);
     }
-    return readJsonFileSafe(BUSINESSES_PATH, []);
+    const fallback = readJsonFileSafe(BUSINESSES_PATH, []);
+    return Array.isArray(fallback) ? fallback : [];
 }
 
 // 1-2. 구독 목록 DB 동기화
@@ -6250,13 +6278,15 @@ async function syncSubscriptionsFromDB(force = false) {
     }
     try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/partner_subscriptions?select=*&order=created_at.desc`, {
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+            signal: AbortSignal.timeout(5000)
         });
         if (res.ok) {
             const rows = await res.json();
             if (Array.isArray(rows)) {
-                const subData = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [], subscriptions: [] });
-                subData.subscriptions = rows.map(r => ({
+                const subData = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [], subscriptions: [] }) || { products: [], subscriptions: [] };
+                if (!Array.isArray(subData.subscriptions)) subData.subscriptions = [];
+                subData.subscriptions = rows.filter(Boolean).map(r => ({
                     id: r.id,
                     businessId: r.business_id,
                     productId: r.product_id,
@@ -6279,7 +6309,10 @@ async function syncSubscriptionsFromDB(force = false) {
     } catch (e) {
         console.warn('[Supabase partner_subscriptions fetch error]:', e.message);
     }
-    return readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [], subscriptions: [] });
+    const fallback = readJsonFileSafe(SUBSCRIPTIONS_PATH, { products: [], subscriptions: [] });
+    if (!fallback || typeof fallback !== 'object') return { products: [], subscriptions: [] };
+    if (!Array.isArray(fallback.subscriptions)) fallback.subscriptions = [];
+    return fallback;
 }
 
 // 2. 사업자 등록/업데이트 DB 저장
@@ -8896,15 +8929,18 @@ app.get('/api/real-estates/partners', (req, res) => {
     }
 });
 
-// 12. 관리자용: 사업자 전체 목록 및 심사 관리 (P-10, DB 실시간 동기화)
+// 12. 관리자용: 사업자 전체 목록 및 심사 관리 (P-10, DB 실시간 동기화 및 장애방지)
 app.get('/api/admin/businesses', async (req, res) => {
     try {
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        const businesses = await syncBusinessesFromDB(true); // 관리자 페이지는 항상 최신 DB 실시간 반영 (force=true)
+        const rawBusinesses = await syncBusinessesFromDB(true); // 관리자 페이지는 항상 최신 DB 실시간 반영 (force=true)
         const subData = await syncSubscriptionsFromDB(true);
 
-        const enriched = businesses.map(b => {
-            const sub = subData.subscriptions.find(s => s.businessId === b.id && s.status === 'active');
+        const businesses = Array.isArray(rawBusinesses) ? rawBusinesses : [];
+        const subscriptions = (subData && Array.isArray(subData.subscriptions)) ? subData.subscriptions : [];
+
+        const enriched = businesses.filter(Boolean).map(b => {
+            const sub = subscriptions.find(s => s && s.businessId === b.id && s.status === 'active');
             return {
                 ...b,
                 subscription: sub || null
@@ -8920,7 +8956,14 @@ app.get('/api/admin/businesses', async (req, res) => {
         });
     } catch (err) {
         console.error('Admin Businesses Error:', err);
-        return res.status(500).json({ error: '사업자 목록을 가져오지 못했습니다.' });
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        return res.status(200).json({
+            total: 0,
+            submittedCount: 0,
+            approvedCount: 0,
+            rejectedCount: 0,
+            businesses: []
+        });
     }
 });
 

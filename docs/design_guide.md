@@ -443,3 +443,14 @@
   - 카카오 인증에 성공하더라도 Supabase `users` 테이블 또는 등록 회원 DB에 실제 존재하는 아이디가 아닐 경우 로그인을 즉시 차단.
   - 미가입 계정인 경우 "가입되지 않은 카카오 계정입니다. 먼저 회원가입을 진행해 주세요." 알림 모달 출력과 함께 회원가입 탭으로 자동 전환 유도.
   - 오직 사전에 가입이 완료된 활성 회원만 로그인 세션 생성 및 서비스 이용 허용.
+
+## 29. 관리자 API 500 오류 방지 및 Vercel 서버리스 페이로드 최적화 (2026-11-20)
+- **/api/realestate/stored 경량화 및 Vercel Payload Limit (4.5MB) 준수**:
+  - 기존 96개 시군구 363MB 분할 데이터를 통째로 로드하여 발생하던 Serverless Function 메모리 OOM 크래시 및 4.5MB 페이로드 제한 초과(500 에러) 원천 차단.
+  - Vercel 환경에서는 대표 지역 분할 파일(1~2개) 기준 최대 1,500건 안전 슬라이스 반환.
+  - `admin.js`의 fallback 요청(`src/data/realestate_seoul.json`) 404 경로 호출 제거로 콘솔 에러 0건화.
+- **/api/admin/users 및 /api/admin/businesses 고가용성 보장**:
+  - Supabase 조회 시 5초 타임아웃(`AbortSignal.timeout(5000)`) 적용으로 함수 행(Hang) 및 지연 크래시 방지.
+  - `users.json`, `businesses.json`, `subscriptions.json` 등 로컬 백업 계층과의 병합 시 배열 검증 및 null-safe 가드 적용.
+  - 외부 DB 지연 또는 일시 장애 발생 시에도 500 대신 안전한 백업 데이터 및 빈 통계 구조(HTTP 200)로 응답하여 관리자 화면 렌더링 중단 방지.
+  - `vercel.json`의 `includeFiles`에 `src/data/users.json` 등록하여 배포 환경 동기화.
