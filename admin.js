@@ -5860,7 +5860,8 @@ window.openAdminSubChangeModal = function(bizId, bizName, bizType, curProductId)
             selectPlan.innerHTML = `
                 <option value="free" ${isFree ? 'selected' : ''}>학원 FREE (평생 무료 / 월 0원 - 기본 정보 등록 및 무료 체험)</option>
                 <option value="prod_academy_basic" ${curProductId === 'prod_academy_basic' ? 'selected' : ''}>학원 BASIC (월 29,000원 - 상세페이지 & 소개글 활성, 시설 사진 3장, 1:1 상담)</option>
-                <option value="prod_academy_pro" ${curProductId === 'prod_academy_pro' || isFree ? 'selected' : ''}>학원 PRO (월 99,000원 - BEST 주력 추천 / 상단 프리미엄 노출, 시설 사진 최대 10장, 상권분석)</option>
+                <option value="prod_academy_pro" ${curProductId === 'prod_academy_pro' || isFree ? 'selected' : ''}>학원 PRO (월 59,000원 - BEST 주력 추천 / 상단 프리미엄 노출, 시설 사진 최대 10장, 상권분석)</option>
+                <option value="prod_academy_premium" ${curProductId === 'prod_academy_premium' ? 'selected' : ''}>학원 PREMIUM (월 99,000원 - 골드 인증 배지 & 최상단 고정 노출, 타깃 학교 2개교 확장)</option>
                 <option value="prod_academy_team" ${curProductId === 'prod_academy_team' ? 'selected' : ''}>학원 TEAM (월 199,000원 - 다수 지점 통합 프로필 & 관리, 시설 사진 최대 10장)</option>
             `;
         }
@@ -5884,7 +5885,8 @@ window.onAdminPlanSelectChange = function() {
     const priceMap = {
         'free': '0원 (무료 플랜 전환)',
         'prod_academy_basic': '29,000원 / 월',
-        'prod_academy_pro': '99,000원 / 월',
+        'prod_academy_pro': '59,000원 / 월',
+        'prod_academy_premium': '99,000원 / 월',
         'prod_academy_team': '199,000원 / 월',
         'prod_re_basic': '29,000원 / 월',
         'prod_re_pro': '59,000원 / 월',

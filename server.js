@@ -7310,7 +7310,7 @@ app.put('/api/business/profile', async (req, res) => {
         // 사업자의 현재 활성 멤버십 구독 정보 조회
         const subData = await syncSubscriptionsFromDB();
         const activeSub = subData.subscriptions.find(s => s.businessId === businessId && s.status === 'active');
-        const planKey = activeSub ? (activeSub.productId === 'prod_academy_team' ? 'team' : (activeSub.productId === 'prod_academy_pro' || activeSub.productId === 'prod_academy_plus' ? 'pro' : 'basic')) : 'free';
+        const planKey = activeSub ? (activeSub.productId === 'prod_academy_team' ? 'team' : (activeSub.productId === 'prod_academy_premium' ? 'premium' : (activeSub.productId === 'prod_academy_pro' || activeSub.productId === 'prod_academy_plus' ? 'pro' : 'basic'))) : 'free';
         const planName = activeSub ? activeSub.productName : '학원 FREE';
         const isPremium = Boolean(activeSub && activeSub.status === 'active');
 
@@ -7421,9 +7421,9 @@ app.get('/api/business/dashboard', (req, res) => {
 const DEFAULT_BUSINESS_PRODUCTS = [
     // 4-2. 학원 사업자 요금제
     { id: 'prod_academy_basic', type: 'academy', name: '학원 BASIC', price: 29000, billingPeriod: 'monthly', features: ['학원 상세 페이지 관리', '사진 및 소개 등록', '기본 조회 통계', '문의 연결 기능'] },
-    { id: 'prod_academy_pro', type: 'academy', name: '학원 PRO (주력)', price: 99000, billingPeriod: 'monthly', isPopular: true, features: ['BASIC 전체 기능', '프리미엄 노출 혜택', '주변 학원 경쟁 분석', '학교·학생 수 기반 지역 분석', '지역별 비교 기능', 'PDF 보고서'] },
+    { id: 'prod_academy_pro', type: 'academy', name: '학원 PRO (주력)', price: 59000, billingPeriod: 'monthly', isPopular: true, features: ['BASIC 전체 기능', '상단 프리미엄 노출', '시설 사진 최대 10장', '주변 학원 경쟁 분석', '학교·학생 수 기반 교육 상권 분석', 'PDF 보고서'] },
     { id: 'prod_academy_team', type: 'academy', name: '학원 TEAM', price: 199000, billingPeriod: 'monthly', features: ['PRO 전체 기능', '다수 지점 관리', '복수 지역 비교', '직원 계정 관리', '통합 분석 보고서'] },
-    { id: 'prod_academy_premium', type: 'academy', name: '학원 프리미엄 멤버십', price: 29000, billingPeriod: 'monthly' },
+    { id: 'prod_academy_premium', type: 'academy', name: '학원 PREMIUM', price: 99000, billingPeriod: 'monthly', features: ['PRO 전체 기능', '학원 골드 인증 뱃지', '최상단 단독 고정 노출', '타깃 학교 2개교 확장', '심층 상권분석 PDF 무제한'] },
     { id: 'prod_academy_plus', type: 'academy', name: '학원 마케팅 플러스', price: 59000, billingPeriod: 'monthly' },
 
     // 5-2. 부동산 사업자 요금제
@@ -8304,7 +8304,7 @@ app.post('/api/subscription/checkout', async (req, res) => {
             biz.academyProfile = {
                 ...(biz.academyProfile || {}),
                 isPremium: true,
-                membershipPlan: productId === 'prod_academy_team' ? 'team' : (productId === 'prod_academy_pro' || productId === 'prod_academy_plus' ? 'pro' : 'basic'),
+                membershipPlan: productId === 'prod_academy_team' ? 'team' : (productId === 'prod_academy_premium' ? 'premium' : (productId === 'prod_academy_pro' || productId === 'prod_academy_plus' ? 'pro' : 'basic')),
                 membershipPlanName: newSub.productName,
                 targetSchools: selectedSchools,
                 primaryTargetSchool: selectedSchools[0] || '',
