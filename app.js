@@ -2976,34 +2976,134 @@ document.addEventListener('DOMContentLoaded', () => {
         onMapAction();
     });
 
-    btnCompareChild.addEventListener('click', () => {
-        // 자녀 선택 UI 목록 갱신
-        refreshChildSelectUI();
+    // --- 맞춤 학교 진단 모달 팝업 제어 함수 ---
+    window.showDiagnosisModalPopup = function () {
+        let overlay = document.getElementById('diagnosisModalOverlay');
+        const resultCard = document.getElementById('diagnosisResultCard');
+        if (!resultCard) return;
 
-        // 이미 저장된 성적 데이터가 있는지 확인
-        const scores = orchestrator.state.childProfile.scores;
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'diagnosisModalOverlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(15, 23, 42, 0.65);
+                backdrop-filter: blur(6px);
+                -webkit-backdrop-filter: blur(6px);
+                z-index: 10080;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                padding: 16px;
+                box-sizing: border-box;
+            `;
+            document.body.appendChild(overlay);
 
-        // 성적이 아예 입력된 적이 없거나 모두 0인 경우 방어 처리
-        const hasSavedScores = scores && (scores.korean > 0 || scores.english > 0 || scores.math > 0);
-
-        if (!hasSavedScores) {
-            alert('⚙️ 자녀의 최근 시험 성적 정보를 먼저 저장해 주세요.');
-            if (typeof window.openChildSettingsModal === 'function') {
-                window.openChildSettingsModal();
-            } else {
-                const settingsModal = document.getElementById('settingsModal');
-                if (settingsModal) {
-                    settingsModal.style.display = 'block';
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    window.closeDiagnosisModalPopup();
                 }
-            }
+            });
+        }
+
+        if (!resultCard.__originalParent) {
+            resultCard.__originalParent = resultCard.parentNode;
+            resultCard.__originalNextSibling = resultCard.nextSibling;
+        }
+        overlay.appendChild(resultCard);
+
+        resultCard.style.display = 'block';
+        resultCard.style.width = '100%';
+        resultCard.style.maxWidth = '540px';
+        resultCard.style.maxHeight = '88vh';
+        resultCard.style.overflowY = 'auto';
+        resultCard.style.margin = '0';
+        resultCard.style.borderRadius = '20px';
+        resultCard.style.boxShadow = '0 20px 50px rgba(0, 0, 0, 0.3)';
+        resultCard.style.border = '1px solid #e2e8f0';
+        resultCard.style.background = '#ffffff';
+        resultCard.style.position = 'relative';
+
+        overlay.style.display = 'flex';
+    };
+
+    window.closeDiagnosisModalPopup = function () {
+        const overlay = document.getElementById('diagnosisModalOverlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+        const resultCard = document.getElementById('diagnosisResultCard');
+        if (resultCard) {
+            resultCard.style.display = 'none';
+        }
+        // 학교 상세 패널(schoolCard)은 닫히지 않고 계속 유지
+        const sc = document.getElementById('schoolCard');
+        if (sc) {
+            sc.style.display = 'block';
+        }
+    };
+
+    window.triggerSchoolDiagnosis = async function (targetSchool) {
+        const school = targetSchool || (orchestrator && orchestrator.state && orchestrator.state.selectedSchool) || window.currentSelectedSchool || window.selectedTargetSchool;
+        if (!school) {
+            alert('진단할 학교가 선택되지 않았습니다. 먼저 학교를 선택해 주세요.');
             return;
         }
 
-        // 저장된 성적으로 즉시 분석 수행
+        // 오케스트레이터의 현재 학교 동기화
+        if (orchestrator && orchestrator.state) {
+            orchestrator.state.selectedSchool = school;
+        }
+        window.currentSelectedSchool = school;
+        window.selectedTargetSchool = school;
+
+        // 자녀 선택 UI 목록 갱신
+        if (typeof refreshChildSelectUI === 'function') {
+            refreshChildSelectUI();
+        }
+
+        // DB에서 최신 자녀 프로필 로드 시도
+        if (typeof window.loadChildProfilesFromSupabase === 'function') {
+            try {
+                await window.loadChildProfilesFromSupabase();
+            } catch (err) {
+                console.warn('자녀 프로필 동기화 중 에러 무시:', err);
+            }
+        }
+
+        // 자녀 성적 데이터 확인
+        let scores = (orchestrator && orchestrator.state && orchestrator.state.childProfile && orchestrator.state.childProfile.scores) ? orchestrator.state.childProfile.scores : null;
+        const hasScores = scores && (scores.korean > 0 || scores.english > 0 || scores.math > 0);
+
+        if (!hasScores) {
+            // 저장된 성적이 아직 없으면 표준 기준 시뮬레이션 성적(85점)으로 즉시 진단 산출
+            scores = {
+                korean: 85,
+                english: 85,
+                math: 85,
+                science: 85,
+                history: 85
+            };
+            if (!orchestrator.state.childProfile) {
+                orchestrator.state.childProfile = {
+                    name: '우리 아이',
+                    grade: '중2',
+                    scores: scores
+                };
+            } else {
+                orchestrator.state.childProfile.scores = scores;
+            }
+        }
+
+        // 저장된 성적으로 진단 분석 수행
         const result = orchestrator.childPerformanceDiagnosis(scores);
 
-        // Reset compare region dropdown to selected school's region
-        const defaultRegion = orchestrator.state.selectedSchool ? orchestrator.state.selectedSchool.region : '서울특별시';
+        // 지역 드롭다운 동기화
+        const defaultRegion = school.region || '서울특별시';
         const elCompareRegion = document.getElementById('selCompareRegion');
         if (elCompareRegion) {
             elCompareRegion.value = defaultRegion;
@@ -3013,10 +3113,82 @@ document.addEventListener('DOMContentLoaded', () => {
             renderDiagnosisResults(result);
         }
 
-        // 사이드바의 입력 폼을 생략하고 바로 결과 카드를 노출
-        schoolCard.style.display = 'none';
-        childFormCard.style.display = 'none';
-        diagnosisResultCard.style.display = 'block';
+        // 🎯 핵심: 학교 상세 패널(schoolCard)은 절대 닫지 않고 100% 유지!
+        const sc = document.getElementById('schoolCard');
+        if (sc) {
+            sc.style.display = 'block';
+        }
+        if (typeof childFormCard !== 'undefined' && childFormCard) {
+            childFormCard.style.display = 'none';
+        }
+
+        // 화면 중앙에 모달 팝업으로 진단 결과 표시!
+        window.showDiagnosisModalPopup();
+    };
+
+    window.checkAndResumePendingDiagnosis = function () {
+        let pendingSchool = window.__pendingDiagnosisSchool;
+        if (!pendingSchool) {
+            try {
+                const raw = sessionStorage.getItem('learnmap_pending_diagnosis_school');
+                if (raw) pendingSchool = JSON.parse(raw);
+            } catch (e) {}
+        }
+
+        if (pendingSchool) {
+            window.__pendingDiagnosisSchool = null;
+            try {
+                sessionStorage.removeItem('learnmap_pending_diagnosis_school');
+            } catch (e) {}
+
+            const sc = document.getElementById('schoolCard');
+            if (sc) {
+                sc.style.display = 'block';
+            }
+
+            setTimeout(() => {
+                if (typeof window.triggerSchoolDiagnosis === 'function') {
+                    window.triggerSchoolDiagnosis(pendingSchool);
+                }
+            }, 250);
+            return true;
+        }
+        return false;
+    };
+
+    btnCompareChild.addEventListener('click', async (e) => {
+        // 이벤트 전파 및 폼/패널 충돌 원천 방어
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        const currentSchool = (orchestrator && orchestrator.state && orchestrator.state.selectedSchool) || window.currentSelectedSchool || window.selectedTargetSchool;
+
+        // 🔒 1. 로그인 여부 확인
+        const isLoggedIn = (typeof authService !== 'undefined' && typeof authService.isLoggedIn === 'function')
+            ? authService.isLoggedIn()
+            : Boolean(localStorage.getItem('learnmap_current_user') && !localStorage.getItem('learnmap_logged_out'));
+
+        if (!isLoggedIn) {
+            // 🎯 비로그인: 학교 패널을 닫지 않고, 원래 보던 학교 정보를 보존한 뒤 로그인 안내 팝업 노출
+            window.__pendingDiagnosisSchool = currentSchool;
+            try {
+                sessionStorage.setItem('learnmap_pending_diagnosis_school', JSON.stringify(currentSchool));
+            } catch (err) {}
+
+            await alert('🔒 자녀 맞춤 학교 진단은 로그인 후 이용하실 수 있는 회원 전용 서비스입니다.\n로그인을 진행해 주세요.', () => {
+                if (typeof window.openAuthModal === 'function') {
+                    window.openAuthModal();
+                } else if (typeof window.openSidebarLogin === 'function') {
+                    window.openSidebarLogin();
+                }
+            });
+            return;
+        }
+
+        // 🎯 2. 로그인 상태: 학교 패널을 유지하며 해당 학교 기준 진단 화면/모달 즉시 표시
+        await window.triggerSchoolDiagnosis(currentSchool);
     });
 
     btnBackToSchool.addEventListener('click', () => {
@@ -3037,9 +3209,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (btnCloseAnalysis) {
-        btnCloseAnalysis.addEventListener('click', () => {
-            diagnosisResultCard.style.display = 'none';
-            schoolCard.style.display = 'block';
+        btnCloseAnalysis.addEventListener('click', (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            window.closeDiagnosisModalPopup();
         });
     }
 
@@ -25341,6 +25516,9 @@ window.addEventListener('DOMContentLoaded', () => {
                     if (typeof window.closeAuthModal === 'function') {
                         window.closeAuthModal();
                     }
+                    if (typeof window.checkAndResumePendingDiagnosis === 'function' && window.checkAndResumePendingDiagnosis()) {
+                        return;
+                    }
                     if (typeof window.renderNEISTabContent === 'function') {
                         window.renderNEISTabContent('sync');
                     }
@@ -25441,6 +25619,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 // 로그인 성공 시 환영 alert 모달 없이 즉시 로그인 완료 처리
                 await loadChildProfilesFromSupabase();
                 window.updateAuthUI();
+                if (typeof window.checkAndResumePendingDiagnosis === 'function' && window.checkAndResumePendingDiagnosis()) {
+                    return;
+                }
                 if (typeof window.renderNEISTabContent === 'function') {
                     window.renderNEISTabContent('sync');
                 }
@@ -25569,6 +25750,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 window.closeAuthModal();
                 await loadChildProfilesFromSupabase();
                 window.updateAuthUI();
+                if (typeof window.checkAndResumePendingDiagnosis === 'function' && window.checkAndResumePendingDiagnosis()) {
+                    return;
+                }
                 if (typeof window.openNEISModal === 'function') {
                     window.openNEISModal();
                 }
@@ -25639,6 +25823,9 @@ window.addEventListener('DOMContentLoaded', () => {
                     window.closeAuthModal();
                     await loadChildProfilesFromSupabase();
                     window.updateAuthUI();
+                    if (typeof window.checkAndResumePendingDiagnosis === 'function' && window.checkAndResumePendingDiagnosis()) {
+                        return;
+                    }
                     if (typeof window.openNEISModal === 'function') {
                         window.openNEISModal();
                     }
@@ -25655,6 +25842,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 window.closeAuthModal();
                 await loadChildProfilesFromSupabase();
                 window.updateAuthUI();
+                if (typeof window.checkAndResumePendingDiagnosis === 'function' && window.checkAndResumePendingDiagnosis()) {
+                    return;
+                }
                 if (typeof window.openNEISModal === 'function') {
                     window.openNEISModal();
                 }
