@@ -1134,6 +1134,47 @@
                 justify-content: center;
             }
         }
+
+        /* Skeleton Loading UI for Blog List */
+        .skeleton-card {
+            background: #ffffff;
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: var(--radius-lg, 16px);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.05));
+            display: flex;
+            flex-direction: column;
+            min-height: 380px;
+        }
+
+        .skeleton-thumb {
+            width: 100%;
+            height: 190px;
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.5s infinite;
+        }
+
+        .skeleton-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .skeleton-line {
+            height: 14px;
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        @keyframes skeleton-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
     </style>
 </head>
 
@@ -1221,7 +1262,62 @@
 
             <!-- Post Grid -->
             <div class="post-grid" id="postGrid">
-                <!-- Dynamic Post Cards will be rendered here -->
+                <!-- Skeleton Loading Cards -->
+                
+                <div class="skeleton-card">
+                    <div class="skeleton-thumb"></div>
+                    <div class="skeleton-body">
+                        <div class="skeleton-line" style="width: 32%;"></div>
+                        <div class="skeleton-line" style="width: 88%; height: 22px;"></div>
+                        <div class="skeleton-line" style="width: 72%;"></div>
+                        <div class="skeleton-line" style="width: 45%; margin-top: auto;"></div>
+                    </div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-thumb"></div>
+                    <div class="skeleton-body">
+                        <div class="skeleton-line" style="width: 32%;"></div>
+                        <div class="skeleton-line" style="width: 88%; height: 22px;"></div>
+                        <div class="skeleton-line" style="width: 72%;"></div>
+                        <div class="skeleton-line" style="width: 45%; margin-top: auto;"></div>
+                    </div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-thumb"></div>
+                    <div class="skeleton-body">
+                        <div class="skeleton-line" style="width: 32%;"></div>
+                        <div class="skeleton-line" style="width: 88%; height: 22px;"></div>
+                        <div class="skeleton-line" style="width: 72%;"></div>
+                        <div class="skeleton-line" style="width: 45%; margin-top: auto;"></div>
+                    </div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-thumb"></div>
+                    <div class="skeleton-body">
+                        <div class="skeleton-line" style="width: 32%;"></div>
+                        <div class="skeleton-line" style="width: 88%; height: 22px;"></div>
+                        <div class="skeleton-line" style="width: 72%;"></div>
+                        <div class="skeleton-line" style="width: 45%; margin-top: auto;"></div>
+                    </div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-thumb"></div>
+                    <div class="skeleton-body">
+                        <div class="skeleton-line" style="width: 32%;"></div>
+                        <div class="skeleton-line" style="width: 88%; height: 22px;"></div>
+                        <div class="skeleton-line" style="width: 72%;"></div>
+                        <div class="skeleton-line" style="width: 45%; margin-top: auto;"></div>
+                    </div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-thumb"></div>
+                    <div class="skeleton-body">
+                        <div class="skeleton-line" style="width: 32%;"></div>
+                        <div class="skeleton-line" style="width: 88%; height: 22px;"></div>
+                        <div class="skeleton-line" style="width: 72%;"></div>
+                        <div class="skeleton-line" style="width: 45%; margin-top: auto;"></div>
+                    </div>
+                </div>
             </div>
 
             <!-- Bottom CTA Banner -->
@@ -1263,6 +1359,24 @@
                 <strong id="breadcrumbCategory">학군 분석</strong>
             </div>
         </div>
+
+        <!-- Article Card -->
+        <!-- Post Not Found Guide Card (404) -->
+        <article class="reader-article-page" id="postNotFoundCard" style="display: none; text-align: center; padding: 64px 24px; border: 1px solid #e2e8f0; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);">
+            <div style="font-size: 54px; margin-bottom: 16px;">🔍</div>
+            <h2 style="font-size: 24px; font-weight: 800; color: #1e293b; margin-bottom: 12px; letter-spacing: -0.5px;">요청하신 칼럼을 찾을 수 없습니다</h2>
+            <p style="font-size: 15px; color: #64748b; line-height: 1.6; max-width: 520px; margin: 0 auto 28px auto; word-break: keep-all;">
+                입력하신 주소(<code id="notFoundRequestedId" style="background: #f1f5f9; padding: 2px 7px; border-radius: 6px; font-weight: 700; color: #2563eb;"></code>)에 해당하는 칼럼이 존재하지 않거나, 삭제 또는 주소가 변경되었습니다.
+            </p>
+            <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+                <button type="button" onclick="window.closePostPage()" class="btn-cta" style="padding: 12px 24px; font-size: 14px; font-weight: 700; border-radius: 10px; cursor: pointer; text-decoration: none; border: none;">
+                    ← 블로그 전체 목록 보기
+                </button>
+                <a href="index.html" class="btn-nav" style="padding: 12px 24px; font-size: 14px; font-weight: 700; border-radius: 10px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #cbd5e1; color: #334155; background: #ffffff;">
+                    🗺️ 학업여지도 홈으로 이동
+                </a>
+            </div>
+        </article>
 
         <!-- Article Card -->
         <article class="reader-article-page" id="postArticle">

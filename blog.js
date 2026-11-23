@@ -163,36 +163,49 @@ function normalizePost(item) {
     };
 }
 
-// 게시글 데이터 로드 (백엔드 DB API 시도 후 로컬 파일 폴백)
+// 게시글 데이터 로드 (정적 파일 초고속 우선 렌더링 + 백엔드 DB 백그라운드 갱신 SWR)
 async function loadPosts() {
-    try {
-        const res = await fetch('/api/blog/posts');
-        if (res.ok) {
-            const rawPosts = await res.json();
-            allPosts = Array.isArray(rawPosts)
-                ? rawPosts.filter(p => p && p.category !== '__asset__' && !String(p.id || '').startsWith('asset_')).map(normalizePost)
-                : [];
-            renderPosts();
-            checkUrlRoute();
-            return;
-        }
-    } catch (e) {
-        console.warn('[Blog] /api/blog/posts API 호출 실패, 로컬 폴백 시도:', e);
+    let hasLoadedInitial = false;
+
+    // 1단계: CDN 정적 데이터(/data/blog_posts.json 및 /src/data/blog_posts.json) 우선 초고속 로드 (0.05초 이내)
+    const staticEndpoints = ['/data/blog_posts.json', '/src/data/blog_posts.json'];
+    for (const endpoint of staticEndpoints) {
+        try {
+            const resStatic = await fetch(endpoint);
+            if (resStatic.ok) {
+                const rawPosts = await resStatic.json();
+                if (Array.isArray(rawPosts) && rawPosts.length > 0) {
+                    allPosts = rawPosts.filter(p => p && p.category !== '__asset__' && !String(p.id || '').startsWith('asset_')).map(normalizePost);
+                    renderPosts();
+                    checkUrlRoute();
+                    hasLoadedInitial = true;
+                    break;
+                }
+            }
+        } catch (_) {}
     }
 
+    // 2단계: 백엔드 DB 최신 데이터 갱신 (최대 2.5초 타임아웃 AbortController 적용)
     try {
-        const resStatic = await fetch('/src/data/blog_posts.json');
-        if (resStatic.ok) {
-            const rawPosts = await resStatic.json();
-            allPosts = Array.isArray(rawPosts)
-                ? rawPosts.filter(p => p && p.category !== '__asset__' && !String(p.id || '').startsWith('asset_')).map(normalizePost)
-                : [];
-            renderPosts();
-            checkUrlRoute();
-            return;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+        const res = await fetch('/api/blog/posts', { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+            const rawPosts = await res.json();
+            if (Array.isArray(rawPosts) && rawPosts.length > 0) {
+                allPosts = rawPosts.filter(p => p && p.category !== '__asset__' && !String(p.id || '').startsWith('asset_')).map(normalizePost);
+                renderPosts();
+                checkUrlRoute();
+                return;
+            }
         }
-    } catch (err) {
-        console.error('[Blog] 게시글 데이터 로드 실패:', err);
+    } catch (e) {
+        if (!hasLoadedInitial) {
+            console.warn('[Blog] 백엔드 및 1차 정적 로드 실패:', e);
+        }
     }
 }
 
@@ -355,18 +368,54 @@ function renderPosts() {
     }).join('');
 }
 
+
+// 404 안내 뷰 노출 함수 (존재하지 않거나 잘못된 ID 접근 시 목록으로 튕기지 않고 안내)
+window.showPostNotFoundView = function (targetId) {
+    activePostId = targetId;
+
+    const listView = document.getElementById('blogListView');
+    const detailView = document.getElementById('blogDetailPageView');
+    const postArticle = document.getElementById('postArticle');
+    const notFoundCard = document.getElementById('postNotFoundCard');
+    const breadcrumbCategory = document.getElementById('breadcrumbCategory');
+    const notFoundIdSpan = document.getElementById('notFoundRequestedId');
+
+    if (listView) listView.style.display = 'none';
+    if (detailView) detailView.style.display = 'block';
+    if (postArticle) postArticle.style.display = 'none';
+    if (notFoundCard) notFoundCard.style.display = 'block';
+
+    if (notFoundIdSpan) {
+        notFoundIdSpan.textContent = targetId || '알 수 없는 ID';
+    }
+    if (breadcrumbCategory) {
+        breadcrumbCategory.textContent = '게시글 찾을 수 없음';
+    }
+
+    document.title = '게시글을 찾을 수 없습니다 | 학업여지도 칼럼';
+    window.scrollTo({ top: 0, behavior: 'instant' });
+};
+
 // 게시글 상세 페이지 열기 (모달창이 아닌 정규 독립 웹페이지로 전환)
 window.openPostPage = function (postId, pushHistory = true) {
     const post = allPosts.find(p => p.id === postId || p.slug === postId);
-    if (!post) return;
+    if (!post) {
+        window.showPostNotFoundView(postId);
+        return;
+    }
 
     activePostId = postId;
 
     // 1) 뷰 전환 (목록 숨김 -> 상세 페이지 노출)
     const listView = document.getElementById('blogListView');
     const detailView = document.getElementById('blogDetailPageView');
+    const postArticle = document.getElementById('postArticle');
+    const notFoundCard = document.getElementById('postNotFoundCard');
+
     if (listView) listView.style.display = 'none';
     if (detailView) detailView.style.display = 'block';
+    if (postArticle) postArticle.style.display = 'block';
+    if (notFoundCard) notFoundCard.style.display = 'none';
 
     // 2) 브라우저 스크롤 맨 위로 이동
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -456,7 +505,12 @@ window.closePostPage = function (pushHistory = true) {
 
     const listView = document.getElementById('blogListView');
     const detailView = document.getElementById('blogDetailPageView');
+    const postArticle = document.getElementById('postArticle');
+    const notFoundCard = document.getElementById('postNotFoundCard');
+
     if (detailView) detailView.style.display = 'none';
+    if (postArticle) postArticle.style.display = 'block';
+    if (notFoundCard) notFoundCard.style.display = 'none';
     if (listView) listView.style.display = 'block';
 
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -544,9 +598,14 @@ function checkUrlRoute() {
     const hashId = window.location.hash.replace('#', '');
     const targetId = queryId || hashId;
 
-    if (targetId && allPosts.some(p => p.id === targetId || p.slug === targetId)) {
-        window.openPostPage(targetId, false);
-    } else if (!targetId && activePostId) {
+    if (targetId) {
+        const post = allPosts.find(p => p.id === targetId || p.slug === targetId);
+        if (post) {
+            window.openPostPage(targetId, false);
+        } else {
+            window.showPostNotFoundView(targetId);
+        }
+    } else if (activePostId) {
         window.closePostPage(false);
     }
 }

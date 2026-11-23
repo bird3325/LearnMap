@@ -38,26 +38,50 @@
     <priority>0.6</priority>
   </url>
 
-  <!-- 주요 분석 칼럼 1: 강남·서초 학군 분석 리포트 -->
+  <!-- 실제 발행 분석 칼럼 1: 서울 사립초 원서접수 마감 D-2: 3곳 지망 추첨 꿀팁 -->
   <url>
-    <loc>https://leamap.vercel.app/blog.html?id=post-gangnam-seocho-2026</loc>
-    <lastmod>2026-11-20</lastmod>
+    <loc>https://leamap.vercel.app/blog.html?id=post-1794181571364</loc>
+    <lastmod>2026-11-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
-  <!-- 주요 분석 칼럼 2: 고교학점제 전면도입 입시 전략 가이드 -->
+  <!-- 실제 발행 분석 칼럼 2: 고교 선택 1단계 2단계 배정 꿀팁과 공시 분석법 -->
   <url>
-    <loc>https://leamap.vercel.app/blog.html?id=post-highschool-credit-strategy</loc>
-    <lastmod>2026-11-20</lastmod>
+    <loc>https://leamap.vercel.app/blog.html?id=post-1793664008827</loc>
+    <lastmod>2026-11-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
-  <!-- 주요 분석 칼럼 3: 2026 특목·자사고 vs 일반고 선택 가이드 -->
+  <!-- 실제 발행 분석 칼럼 3: 초등 통학구역 11/30 확정 전: 우리 집 배정학교 확인법 -->
   <url>
-    <loc>https://leamap.vercel.app/blog.html?id=post-special-purpose-highschool</loc>
-    <lastmod>2026-11-20</lastmod>
+    <loc>https://leamap.vercel.app/blog.html?id=post-1793489313930</loc>
+    <lastmod>2026-11-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- 실제 발행 분석 칼럼 4: 학교알리미 11월 공시: 학폭·안전 지표 분석법 -->
+  <url>
+    <loc>https://leamap.vercel.app/blog.html?id=post-1793403329355</loc>
+    <lastmod>2026-11-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- 실제 발행 분석 칼럼 5: 초등 겨울방학 틈새돌봄 8~20시 확대: 식사 지원 및 신청 꿀팁 -->
+  <url>
+    <loc>https://leamap.vercel.app/blog.html?id=post-1793335598733</loc>
+    <lastmod>2026-11-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- 실제 발행 분석 칼럼 6: 2027 초등학교 취학통지서 발급 가이드: 12월 놓치면 안 되는 3가지 -->
+  <url>
+    <loc>https://leamap.vercel.app/blog.html?id=post-1793250239542</loc>
+    <lastmod>2026-11-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>

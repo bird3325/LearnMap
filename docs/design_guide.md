@@ -670,6 +670,20 @@
      - 표기 형식: 소수점 1자리 통일 (예: `64.4`, `86.0`)
      - 단위 표기: 바로 뒤에 `점`(`<span style="font-size: 16px; font-weight: 800;">점</span>`) 연계 표출.
 
+## 44. 블로그 스켈레톤 로딩 카드 및 404 안내 뷰 디자인 사양 (2026-11-23)
+- **개요 및 규격**:
+  - 블로그 초기 목록 진입 시 빈 화면 대신 표시되는 스켈레톤 UI 및 잘못된 ID 접근 시 표시되는 404 안내 뷰 사양.
+- **컴포넌트 및 스타일 사양**:
+  1. `.skeleton-card`:
+     - 스타일: `background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; min-height: 380px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); overflow: hidden;`
+     - 애니메이션: `skeleton-shimmer` (1.5s infinite linear-gradient shimmering)
+     - 구조: 상단 썸네일 영역(190px) + 본문 카테고리/제목/요약 스켈레톤 라인 4단 구조
+  2. `#postNotFoundCard`:
+     - 위치: `#blogDetailPageView` 내부 최상단 (오류 시 `#postArticle` 숨김 후 표출)
+     - 스타일: `text-align: center; padding: 64px 24px; border: 1px solid #e2e8f0; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);`
+     - 아이콘 및 텍스트: `🔍`, 24px 볼드 타이틀 (`요청하신 칼럼을 찾을 수 없습니다`), 서브 텍스트에 요청 ID 태그(`<code id="notFoundRequestedId">`) 강조
+     - 액션 버튼: 블루 Primary 버튼(`← 블로그 전체 목록 보기`, `window.closePostPage()`) 및 Secondary 버튼(`🗺️ 학업여지도 홈으로 이동`).
+
 
 
 
