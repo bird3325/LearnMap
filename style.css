@@ -3488,4 +3488,55 @@ body.is-resizing-sidebar .housing-sidebar-section {
     }
 }
 
+/* ============================================================
+   Top Header Text Auth Button (로그인/회원가입 or 내 정보/로그아웃)
+   ============================================================ */
+.header-auth-text-btn {
+    position: absolute;
+    right: 226px;
+    top: 24px;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    background: #2563eb;
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);
+    z-index: 10085;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    user-select: none;
+    outline: none;
+}
+
+.header-auth-text-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.38);
+}
+
+.header-auth-text-btn.logged-in {
+    background: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.header-auth-text-btn.logged-in:hover {
+    color: #2563eb;
+    border-color: #93c5fd;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+@media (max-width: 1024px) {
+    .header-auth-text-btn {
+        display: none !important;
+    }
+}
+
+
 

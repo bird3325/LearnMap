@@ -25250,7 +25250,23 @@ window.addEventListener('DOMContentLoaded', () => {
                 const opacityMobile = document.getElementById('settingsOpacitySectionMobile');
                 const notiPC = document.getElementById('settingsNotificationSection-pc');
 
+                // 🌟 상단 헤더 '로그인 / 회원가입' 텍스트 버튼 UI 동적 연동
+                const btnHeaderAuth = document.getElementById('btnHeaderAuthAction');
+                const headerAuthText = document.getElementById('headerAuthText');
+                const headerAuthIcon = document.getElementById('headerAuthIcon');
+
                 if (currentUser) {
+                    if (btnHeaderAuth) {
+                        btnHeaderAuth.classList.add('logged-in');
+                        btnHeaderAuth.title = `${currentUser.name || '회원'} 님 (내 정보 / 로그아웃)`;
+                    }
+                    if (headerAuthText) {
+                        headerAuthText.innerText = '내 정보 / 로그아웃';
+                    }
+                    if (headerAuthIcon) {
+                        headerAuthIcon.innerText = '👤';
+                    }
+
                     if (userCard) userCard.style.display = 'block';
                     if (formArea) formArea.style.display = 'none';
                     if (btnKakao) btnKakao.style.display = 'none';
@@ -25469,6 +25485,17 @@ window.addEventListener('DOMContentLoaded', () => {
                         checkUserNotifications(currentUser.email);
                     }
                 } else {
+                    if (btnHeaderAuth) {
+                        btnHeaderAuth.classList.remove('logged-in');
+                        btnHeaderAuth.title = '로그인 및 회원가입';
+                    }
+                    if (headerAuthText) {
+                        headerAuthText.innerText = '로그인 / 회원가입';
+                    }
+                    if (headerAuthIcon) {
+                        headerAuthIcon.innerText = '🔑';
+                    }
+
                     if (userCard) userCard.style.display = 'none';
                     if (formArea) formArea.style.display = 'block';
                     if (btnKakao) btnKakao.style.display = 'flex';
@@ -25505,6 +25532,59 @@ window.addEventListener('DOMContentLoaded', () => {
                     if (notiPC) notiPC.style.display = 'none';
                     if (typeof checkUserNotifications === 'function') {
                         checkUserNotifications(null);
+                    }
+                }
+            };
+
+            // 🌟 상단 헤더 '로그인 / 회원가입' (또는 '내 정보 / 로그아웃') 버튼 클릭 핸들러
+            window.handleHeaderAuthClick = function () {
+                let currentUser = (typeof authService !== 'undefined' && authService) ? authService.getCurrentUser() : null;
+                if (currentUser && (currentUser.email === 'guest@learnmap.kr' || currentUser.isGuest)) {
+                    currentUser = null;
+                }
+
+                if (currentUser) {
+                    // 로그인 상태: 내 정보 및 마이페이지/설정이 있는 사이드바 열기
+                    if (typeof window.openSidebarLogin === 'function') {
+                        window.openSidebarLogin();
+                    } else {
+                        const btnSettings = document.getElementById('btnOpenSettings');
+                        if (btnSettings) btnSettings.click();
+                    }
+                } else {
+                    // 비로그인 상태: 회원가입/로그인 모달 열기 (기존 4개 항목 유지)
+                    if (typeof window.openAuthModal === 'function') {
+                        window.openAuthModal();
+                    } else if (typeof window.openSidebarLogin === 'function') {
+                        window.openSidebarLogin();
+                    }
+                }
+            };
+
+            // 🌟 첫 화면 '우리 아이 학교 점수 확인하기' 대형 CTA 버튼 클릭 핸들러
+            window.handleCheckSchoolScoreCTA = function () {
+                // 1. 현재 선택된 학교가 있는 경우 해당 학교 패널 바로 열기
+                const curSchool = window.currentSchoolData || window.selectedSchool;
+                if (curSchool && (curSchool.id || curSchool.school_id || curSchool.code)) {
+                    const sid = curSchool.id || curSchool.school_id || curSchool.code;
+                    if (typeof window.selectSchoolById === 'function') {
+                        window.selectSchoolById(sid);
+                        return;
+                    }
+                }
+
+                // 2. 선택된 학교가 없는 첫 진입 시 검색창으로 부드럽게 연결 및 대표 학교(대치중) 검색 연동
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    searchInput.focus();
+                    if (!searchInput.value || !searchInput.value.trim()) {
+                        searchInput.value = '대치중';
+                    }
+                    if (typeof window.performSearch === 'function') {
+                        window.performSearch(searchInput.value.trim());
+                    } else {
+                        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
                     }
                 }
             };

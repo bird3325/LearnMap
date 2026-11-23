@@ -631,6 +631,30 @@
   3. 후기 작성 트리거:
      - `✍️ 후기 남기기` 클릭 시 `window.openSchoolReviewForm()`을 통해 해당 학교 리뷰 모달 호출.
 
+## 42. 상단 헤더 로그인 액션 버튼 및 첫 화면 학교 점수 확인 CTA 버튼 디자인 사양 (2026-11-23)
+- **컴포넌트 ID & 클래스**:
+  1. `#btnHeaderAuthAction` (`.header-auth-text-btn`):
+     - **위치**: 상단 헤더 우측 유틸리티 영역 (`position: fixed; top: 24px; right: 226px; z-index: 10085;`)
+     - **기본 스타일(비로그인)**:
+       - `height: 40px; padding: 0 16px; border-radius: 9999px;`
+       - `background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff;`
+       - `box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); border: 1px solid rgba(255, 255, 255, 0.2);`
+       - `font-size: 13.5px; font-weight: 700; cursor: pointer;`
+     - **로그인 상태 (`.logged-in`)**:
+       - `background: #ffffff; color: #334155; border: 1.5px solid #cbd5e1;`
+       - `box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); font-weight: 600;`
+       - 호버 시 `border-color: #2563eb; color: #2563eb; background: #f8fafc;`
+     - **모바일 규격(1024px 이하)**:
+       - `top: 14px; right: 60px; height: 32px; padding: 0 10px; font-size: 11.5px; z-index: 10085;`
+  2. `#btnCtaCheckSchoolScore`:
+     - **위치**: 첫 진입 안내 카드(`#welcomeCard`) 하단 (`margin-top: 14px;`)
+     - **스타일**:
+       - `width: 100%; height: 44px; border-radius: 10px; border: none;`
+       - `background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);`
+       - `color: #ffffff; font-size: 14px; font-weight: 800; cursor: pointer;`
+       - `box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);`
+       - 호버/활성 시 `transform: translateY(-1px);`로 터치 및 마우스 클릭감 강화.
+
 
 
 
