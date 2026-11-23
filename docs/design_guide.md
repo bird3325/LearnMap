@@ -565,3 +565,17 @@
   - `POST /api/business/register`: 사업자 등록 신청서 제출 시 해당 신청 회원의 Supabase DB `users` 테이블 `role`을 `parent` -> `partner`로 실시간 업데이트.
 
 
+
+
+## 38. 3단계 의사결정 온보딩 팝업(`onboardingModal`) 결정적 제어 사양 (2026-11-23)
+- **개요 및 규격**:
+  - 첫 방문자에게 제공되는 '3단계 맞춤 학교 의사결정 온보딩 팝업'이 라이브 환경 및 모바일에서 경합(Race Condition) 없이 결정적으로 작동하도록 제어 사양 일원화.
+- **표시 조건 단일 규칙**:
+  1. **플래그 검사**: `localStorage.getItem('visitedOnboarding') === 'true'` 또는 `localStorage.getItem('learnmap_hide_onboarding') === 'true'` 시 무조건 미표시.
+  2. **로그인 상태 검사**: 등록된 정규 회원(`currentUser.email` 존재 및 게스트 아님) 로그인 시 무조건 미표시.
+  3. **접속 파라미터 검사**: 딥링크(`?school=...`, `?action=...` 등)를 통한 특정 목적 접근 시 사용자 플로우 방해 방지를 위해 미표시.
+  4. **결정적 표시 대상**: **비로그인(Guest) + 첫 방문(플래그 없음) + 일반 메인 진입** 조건 만족 시에만 정확히 1회 표시.
+- **렌더링 및 닫기 사양**:
+  - `document.readyState` 검사를 통해 모듈 평가 시점과 무관하게 즉각적·결정적으로 렌더링.
+  - 모바일 하단 탭(`window.onMobileNavClick`) 초기화 시 사용자에게 팝업이 표시 중인 경우 임의 강제 닫힘 방지.
+  - 닫기(&times;) 버튼, 완료 버튼, 모달 배경 터치 시 즉시 닫히며 영구 미노출 플래그 기록.
