@@ -4112,7 +4112,12 @@ app.get('/api/admin/users', async (req, res) => {
             });
             if (sbRes.ok) {
                 const sbData = await sbRes.json();
-                if (Array.isArray(sbData)) users = sbData.filter(Boolean);
+                if (Array.isArray(sbData)) {
+                    users = sbData.filter(Boolean).map(u => ({
+                        ...u,
+                        provider: u.provider || ((u.password_hash && String(u.password_hash).startsWith('kakao_oauth')) ? 'kakao' : 'email')
+                    }));
+                }
             }
         } catch (sbErr) {
             console.warn('Admin users Supabase fetch error:', sbErr.message);

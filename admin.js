@@ -1970,7 +1970,8 @@ function renderUsersList() {
         const role = u.role || 'parent';
         const roleLabel = roleLabels[role] || role;
         const roleStyle = roleBadges[role] || 'background: #f1f5f9; color: #475569;';
-        const provider = u.provider === 'kakao' ? '🟡 카카오' : '✉️ 일반';
+        const isKakao = u.provider === 'kakao' || (u.password_hash && typeof u.password_hash === 'string' && u.password_hash.startsWith('kakao_oauth'));
+        const provider = isKakao ? '🟡 카카오' : '✉️ 일반';
         const dateStr = u.created_at || u.createdAt || '-';
         const formattedDate = dateStr.length >= 10 ? dateStr.substring(0, 10) : dateStr;
 
