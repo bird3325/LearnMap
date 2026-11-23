@@ -6506,7 +6506,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const promptEl = document.getElementById('schoolDetailParentPrompt');
             if (promptEl) {
                 const curSchool = window.currentSelectedSchool || (typeof orchestrator !== 'undefined' && orchestrator.state && orchestrator.state.selectedSchool);
-                const sName = curSchool ? curSchool.school_name : '';
+                const sName = curSchool ? (curSchool.school_name || curSchool.name || '') : '';
                 if (sName) {
                     promptEl.innerText = `${sName} 학부모이신가요?`;
                 }
@@ -8021,6 +8021,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (btnShowReviews) {
             btnShowReviews.innerText = '💬 찐 학부모 리뷰 보기';
+            const countSubEl = document.getElementById('schoolDetailReviewCountSub');
+            if (countSubEl) countSubEl.innerText = '학부모 생생 후기 전체보기';
             if (supabase) {
                 supabase
                     .from('school_reviews')
@@ -8029,6 +8031,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     .then(({ count, error }) => {
                         if (!error && count > 0) {
                             btnShowReviews.innerText = `💬 찐 학부모 리뷰 보기 (${count})`;
+                            if (countSubEl) countSubEl.innerText = `학부모 ${count}건 전체보기`;
                         }
                     });
             }

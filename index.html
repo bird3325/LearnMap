@@ -5324,8 +5324,7 @@
                                             <div
                                                 style="font-size: 15px; font-weight: 800; color: #1e293b; margin-bottom: 4px;">
                                                 찐 학부모 리뷰 보기</div>
-                                            <div style="font-size: 12px; color: #64748b; font-weight: 500;">학부모 128건
-                                                전체보기</div>
+                                            <div id="schoolDetailReviewCountSub" style="font-size: 12px; color: #64748b; font-weight: 500;">학부모 생생 후기 전체보기</div>
                                         </div>
                                     </div>
                                     <button id="btnShowReviews"
@@ -5337,8 +5336,8 @@
                                 <!-- 후기 남기기 하단 바 -->
                                 <div
                                     style="border-top: 1px solid #f1f5f9; margin: 0 -16px -16px -16px; padding: 12px 16px; background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="font-size: 12px; color: #64748b; font-weight: 500;">서운중 학부모이신가요?</span>
-                                    <span
+                                    <span id="schoolDetailParentPrompt" style="font-size: 12px; color: #64748b; font-weight: 500;">학부모이신가요?</span>
+                                    <span onclick="if(window.openSchoolReviewForm) window.openSchoolReviewForm();"
                                         style="font-size: 12.5px; color: #ea580c; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px;">
                                         ✍️ 후기 남기기
                                     </span>
