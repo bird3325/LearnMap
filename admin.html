@@ -1667,6 +1667,13 @@
                                     <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">연결 링크 (바로가기 URL)</label>
                                     <input type="text" id="adminNoticeLinkInput" class="form-control" placeholder="예: /rank/index.html 또는 /blog (기본값: /)" style="width: 100%; padding: 8px 12px; font-size: 12.5px;">
                                 </div>
+                                <div style="display: flex; flex-direction: column; justify-content: center; min-height: 38px;">
+                                    <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: #1e293b; cursor: pointer; user-select: none;">
+                                        <input type="checkbox" id="adminNoticeSendAlertCheck" checked style="width: 16px; height: 16px; accent-color: #2563eb; cursor: pointer;">
+                                        <span>🔔 회원 알림 발송 (알림함 & 미확인 뱃지)</span>
+                                    </label>
+                                    <span style="font-size: 11px; color: var(--adm-text-muted); margin-top: 2px;">체크 해제 시 알림 없이 공지만 게시됩니다.</span>
+                                </div>
                                 <button type="button" class="btn-primary" id="btnSubmitAdminNotice" style="width: auto; padding: 8px 24px; font-size: 12.5px; background: var(--adm-primary-gradient); font-weight: 700;">
                                     📢 공지사항 등록 및 DB 저장
                                 </button>

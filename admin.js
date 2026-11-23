@@ -6011,11 +6011,12 @@ function renderAdminNoticeList() {
             <thead>
                 <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569;">
                     <th style="padding: 10px 12px; width: 40px;">#</th>
-                    <th style="padding: 10px 12px; width: 220px;">제목</th>
+                    <th style="padding: 10px 12px; width: 200px;">제목</th>
                     <th style="padding: 10px 12px;">공지 내용</th>
-                    <th style="padding: 10px 12px; width: 140px;">연결 링크</th>
-                    <th style="padding: 10px 12px; width: 110px;">등록 일시</th>
-                    <th style="padding: 10px 12px; width: 70px; text-align: center;">관리</th>
+                    <th style="padding: 10px 12px; width: 130px;">연결 링크</th>
+                    <th style="padding: 10px 12px; width: 90px; text-align: center;">알림 발송</th>
+                    <th style="padding: 10px 12px; width: 100px;">등록 일시</th>
+                    <th style="padding: 10px 12px; width: 65px; text-align: center;">관리</th>
                 </tr>
             </thead>
             <tbody>
@@ -6023,6 +6024,10 @@ function renderAdminNoticeList() {
 
     allAdminNotices.forEach((n, idx) => {
         const dateStr = n.created_at ? n.created_at.slice(0, 10) : '-';
+        const sendAlertBadge = n.send_notification !== false 
+            ? '<span style="color: #2563eb; font-size: 11px; font-weight: 700; background: #eff6ff; padding: 2px 7px; border-radius: 4px; border: 1px solid #bfdbfe;">🔔 발송됨</span>' 
+            : '<span style="color: #64748b; font-size: 11px; font-weight: 600; background: #f8fafc; padding: 2px 7px; border-radius: 4px; border: 1px solid #e2e8f0;">🔕 미발송</span>';
+
         html += `
             <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
                 <td style="padding: 11px 12px; color: var(--adm-text-muted);">${idx + 1}</td>
@@ -6033,6 +6038,7 @@ function renderAdminNoticeList() {
                         ${escapeHtml(n.link || '/')} ↗
                     </a>
                 </td>
+                <td style="padding: 11px 12px; text-align: center;">${sendAlertBadge}</td>
                 <td style="padding: 11px 12px; color: var(--adm-text-muted); font-size: 11.5px;">${dateStr}</td>
                 <td style="padding: 11px 12px; text-align: center;">
                     <button class="btn-delete-notice" data-id="${n.id}" style="background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer;">
@@ -6141,12 +6147,20 @@ function renderAllSentNotifications() {
     `;
 
     filtered.forEach((n, idx) => {
-        const badge = typeBadges[n.type] || `<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #f1f5f9; color: #475569; font-weight: 700;">${escapeHtml(n.type)}</span>`;
-        const dateStr = n.created_at ? n.created_at.slice(0, 10) : '-';
-        const receiver = n.email ? `<span style="color: #0f172a; font-weight: 600;">${escapeHtml(n.email)}</span>` : '<span style="color: #64748b; font-weight: 600;">🌐 전체 회원 (공지)</span>';
-        const readStatus = n.is_read 
+        let badge = typeBadges[n.type] || `<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #f1f5f9; color: #475569; font-weight: 700;">${escapeHtml(n.type)}</span>`;
+        let receiver = n.email ? `<span style="color: #0f172a; font-weight: 600;">${escapeHtml(n.email)}</span>` : '<span style="color: #64748b; font-weight: 600;">🌐 전체 회원 (공지)</span>';
+        let readStatus = n.is_read 
             ? '<span style="color: #16a34a; font-size: 11px; font-weight: 700;">🟢 읽음</span>' 
             : '<span style="color: #94a3b8; font-size: 11px; font-weight: 600;">⚪ 미확인</span>';
+
+        // 공지사항 중 알림 미발송 건 처리
+        if (n.type === 'notice' && n.send_notification === false) {
+            badge = '<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #f8fafc; color: #64748b; border: 1px solid #cbd5e1; font-weight: 700;">📄 공지 (알림 미발송)</span>';
+            receiver = '<span style="color: #94a3b8; font-size: 11.5px;">🔕 알림 미발송</span>';
+            readStatus = '<span style="color: #94a3b8; font-size: 11px;">-</span>';
+        }
+
+        const dateStr = n.created_at ? n.created_at.slice(0, 10) : '-';
 
         html += `
             <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
@@ -6191,11 +6205,13 @@ async function submitAdminNotice() {
     const titleInput = document.getElementById('adminNoticeTitleInput');
     const msgInput = document.getElementById('adminNoticeMessageInput');
     const linkInput = document.getElementById('adminNoticeLinkInput');
+    const sendAlertCheck = document.getElementById('adminNoticeSendAlertCheck');
     const btnSubmit = document.getElementById('btnSubmitAdminNotice');
 
     const title = titleInput ? titleInput.value.trim() : '';
     const message = msgInput ? msgInput.value.trim() : '';
     const link = linkInput ? linkInput.value.trim() : '/';
+    const sendNotification = sendAlertCheck ? Boolean(sendAlertCheck.checked) : true;
 
     if (!title) {
         showAlert('공지사항 제목을 입력해주세요.');
@@ -6217,15 +6233,25 @@ async function submitAdminNotice() {
         const res = await fetch('/api/admin/notifications', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, message, link: link || '/' })
+            body: JSON.stringify({ 
+                title, 
+                message, 
+                link: link || '/',
+                sendNotification 
+            })
         });
 
         const data = await res.json();
         if (data.success) {
-            showAlert('📢 공지사항이 Supabase DB에 안전하게 등록되었습니다!', () => {
+            const successMsg = sendNotification
+                ? '📢 공지사항 등록 및 전체 회원 알림 발송이 완료되었습니다!'
+                : '📄 공지사항이 등록되었습니다 (회원 알림 미발송).';
+
+            showAlert(successMsg, () => {
                 if (titleInput) titleInput.value = '';
                 if (msgInput) msgInput.value = '';
                 if (linkInput) linkInput.value = '';
+                if (sendAlertCheck) sendAlertCheck.checked = true; // 기본값 유지
                 loadNoticeManagement();
             });
         } else {

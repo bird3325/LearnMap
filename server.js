@@ -9326,6 +9326,10 @@ app.get('/api/notifications', async (req, res) => {
                 const dbRows = await dbRes.json();
                 if (Array.isArray(dbRows)) {
                     dbRows.forEach(row => {
+                        // 🔔 알림 미발송으로 등록된 공지사항은 일반 회원 알림 목록/미확인 뱃지에서 제외
+                        if (row && row.type === 'notice' && row.send_notification === false) {
+                            return;
+                        }
                         if (row && row.id && !seenIds.has(row.id)) {
                             seenIds.add(row.id);
                             mergedNotis.push({
@@ -9520,10 +9524,14 @@ app.get('/api/admin/notifications/all', async (req, res) => {
 // 🌟 13-4. 관리자용 공지사항 등록 및 DB 저장 (POST /api/admin/notifications)
 app.post('/api/admin/notifications', async (req, res) => {
     try {
-        const { title, message, link = '/' } = req.body;
+        const { title, message, link = '/', sendNotification, send_notification } = req.body;
         if (!title || !message) {
             return res.status(400).json({ success: false, error: '공지사항 제목과 내용을 입력해주세요.' });
         }
+
+        const isSendAlert = (sendNotification !== undefined) 
+            ? Boolean(sendNotification) 
+            : (send_notification !== undefined ? Boolean(send_notification) : true);
 
         const payload = {
             user_id: null,
@@ -9532,6 +9540,7 @@ app.post('/api/admin/notifications', async (req, res) => {
             title: title.trim(),
             message: message.trim(),
             link: (link || '/').trim(),
+            send_notification: isSendAlert,
             is_read: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()

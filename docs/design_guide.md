@@ -542,8 +542,8 @@
 - **UI 및 화면 설계**:
   - 관리자 사이드바에 `📢 공지사항 & 알림 관리` 메뉴 버튼 배치 (`data-target="noticeManagementCard"`).
   - 우측 메인 영역에 `#noticeManagementCard` 배치:
-    1. **신규 공지사항 작성 폼**: 제목(`adminNoticeTitleInput`), 본문(`adminNoticeMessageInput`), 연결 링크(`adminNoticeLinkInput`), 등록 버튼(`btnSubmitAdminNotice`).
-    2. **등록된 공지 목록 테이블**: `#noticeListContainer`를 통해 Supabase DB의 `notifications` (type: 'notice') 레코드를 최신순으로 렌더링하며, 원클릭 삭제 기능 지원.
+    1. **신규 공지사항 작성 폼**: 제목(`adminNoticeTitleInput`), 본문(`adminNoticeMessageInput`), 연결 링크(`adminNoticeLinkInput`), 회원 알림 발송 여부 선택 체크박스(`adminNoticeSendAlertCheck` - 기본값 체크, 체크 해제 시 회원 알림 미발송 공지만 등록), 등록 버튼(`btnSubmitAdminNotice`).
+    2. **등록된 공지 목록 테이블**: `#noticeListContainer`를 통해 Supabase DB의 `notifications` (type: 'notice') 레코드를 최신순으로 렌더링하며, 알림 발송 여부 뱃지(🔔 발송됨 / 🔕 미발송) 표시 및 원클릭 삭제 기능 지원.
     3. **전체 알림 발송 이력 리스트 (`#adminAllNotiListContainer`)**: 사이트에서 발송된 모든 알림(파트너 승인, 신청 반려, 회원가입 환영, 시스템 공지)을 알림 유형 필터(`adminNotiTypeFilter`) 및 수신자/제목 검색(`adminNotiSearchInput`)을 통해 실시간 조회하며, 수신 상태(읽음/미확인) 확인 및 원클릭 삭제 기능 지원.
 - **데이터 흐름**:
   - 등록 시 `POST /api/admin/notifications` -> Supabase DB `notifications` 테이블에 직접 `INSERT` (로컬 파일 미저장).

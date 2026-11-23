@@ -339,6 +339,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     reason TEXT,
     link VARCHAR(255),
     is_read BOOLEAN DEFAULT false,
+    send_notification BOOLEAN DEFAULT true, -- 공지 등록 시 회원 알림(알림함/뱃지) 발송 여부 (true: 발송, false: 미발송)
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
