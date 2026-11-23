@@ -321,3 +321,37 @@ GRANT ALL ON TABLE public.partner_payments TO service_role;
 --    - 중구 관할 법정동: 신포동, 신흥동1~3가, 선린동, 북성동1~3가, 항동1~7가, 중산동, 운서동, 운남동, 운북동, 을왕동, 남북동, 덕교동, 무의동, 유동, 율목동, 도원동, 내동, 경동, 용동, 인현동, 전동, 송월동1~3가 등
 -- 4) PNU 매칭: 19자리 필지번호 매칭 시 `28125`와 `28140`/`28110` 상호 호환 변환을 지원
 -- 5) 파일 분할 저장: 인천 동구는 `src/data/realestate/28140.json`에 저장되어 관리자/지도의 동구 필터와 일치 유지
+
+
+-- =========================================================================
+-- 20. 알림 테이블 (notifications) 정의 및 RLS 정책 (2026-11-23)
+-- =========================================================================
+-- 사이트 내 중요 이벤트(파트너 승인, 반려, 회원가입 완료, 공지사항) 알림을 저장하고
+-- 회원 서비스(마이페이지) 및 파트너 센터 상단 알림 센터에 실시간 노출합니다.
+
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID,
+    email VARCHAR(255),
+    type VARCHAR(50) NOT NULL, -- 'business_approved' | 'business_rejected' | 'signup_welcome' | 'notice'
+    title VARCHAR(200) NOT NULL,
+    message TEXT NOT NULL,
+    reason TEXT,
+    link VARCHAR(255),
+    is_read BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_email ON public.notifications(email);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_type ON public.notifications(type);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(created_at DESC);
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read access for notifications" ON public.notifications FOR SELECT USING (true);
+CREATE POLICY "Allow public insert access for notifications" ON public.notifications FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update access for notifications" ON public.notifications FOR UPDATE USING (true);
+GRANT ALL ON TABLE public.notifications TO anon;
+GRANT ALL ON TABLE public.notifications TO authenticated;
+GRANT ALL ON TABLE public.notifications TO service_role;

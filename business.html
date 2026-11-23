@@ -2712,7 +2712,7 @@
                         <span class="dot-green"></span>
                         <span>실시간 연동 정상</span>
                     </div>
-                    <button type="button" class="topbar-icon-btn" title="알림" onclick="alert('새로운 알림이 없습니다.')">
+                    <button type="button" class="topbar-icon-btn" title="알림" onclick="if(window.openPartnerNotificationModal) window.openPartnerNotificationModal(); else alert('새로운 알림이 없습니다.');">
                         🔔<span class="dot-red"></span>
                     </button>
                     <button type="button" class="topbar-icon-btn" title="도움말" onclick="alert('학업여지도 파트너 고객센터 (평일 09:00~18:00): 1588-0000')">
@@ -4888,6 +4888,23 @@
                 modal.style.display = 'none';
             }
         }
+
+        window.openPartnerNotificationModal = function() {
+            if (currentBiz && currentBiz.status === 'rejected') {
+                const reason = currentBiz.rejectionReason || '정보 확인 또는 서류 검수 기준 미충족';
+                if (typeof showCustomAlertModal === 'function') {
+                    showCustomAlertModal('사업자 신청 반려 안내', `[${currentBiz.name || '사업자'}] 등록 신청이 관리자 심사 결과 반려되었습니다.\n\n⚠️ 반려 사유: ${reason}\n\n등록 신청 탭에서 정보를 수정하신 후 다시 승인 신청을 진행해 주세요.`, 'error');
+                } else {
+                    alert(`[사업자 신청 반려 안내]\n\n'${currentBiz.name || '사업자'}' 등록 신청이 반려되었습니다.\n\n⚠️ 반려 사유: ${reason}\n\n정보를 수정하신 후 다시 승인 신청을 진행해 주세요.`);
+                }
+            } else if (currentBiz && currentBiz.status === 'submitted') {
+                alert(`[심사 대기 안내]\n\n'${currentBiz.name || '사업자'}' 등록 신청서가 접수되어 관리자 심사 대기 중입니다.`);
+            } else if (currentBiz && currentBiz.status === 'approved') {
+                alert(`[파트너 승인 완료]\n\n'${currentBiz.name || '사업자'}' 공식 파트너 승인이 완료되어 정상 이용 중입니다.`);
+            } else {
+                alert('새로운 알림이 없습니다.');
+            }
+        };
 
         function showAddressNoticeModal() {
             const modal = document.getElementById('addressNoticeModal');

@@ -18080,6 +18080,190 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.querySelector('#customAlertTitle').innerText = title;
         modal.querySelector('#customAlertMsg').innerText = message;
         modal.style.display = 'flex';
+    };
+
+    // ==========================================
+    // 🌟 [회원 서비스 알림 센터 로직]
+    // ==========================================
+    window.userNotificationsList = [];
+
+    // 사용자 알림 조회 및 뱃지 업데이트
+    window.checkUserNotifications = async function (email) {
+        if (!email) {
+            const user = (typeof authService !== 'undefined' && authService.getCurrentUser) ? authService.getCurrentUser() : null;
+            email = user ? user.email : '';
+        }
+        if (!email || email === 'guest@learnmap.kr') {
+            updateNotificationBadge(0);
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/notifications?email=${encodeURIComponent(email)}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success && Array.isArray(data.notifications)) {
+                    window.userNotificationsList = data.notifications;
+                    updateNotificationBadge(data.unreadCount || 0);
+                }
+            }
+        } catch (err) {
+            console.warn('Failed to fetch user notifications:', err);
+        }
+    };
+
+    function updateNotificationBadge(unreadCount) {
+        const badgePc = document.getElementById('settingsNotiBadgePc');
+        const badgeMobile = document.getElementById('settingsNotiBadgeMobile');
+        const show = unreadCount > 0;
+        if (badgePc) badgePc.style.display = show ? 'block' : 'none';
+        if (badgeMobile) badgeMobile.style.display = show ? 'block' : 'none';
+    }
+
+    // 알림 모달 열기
+    window.openUserNotificationModal = function () {
+        const user = (typeof authService !== 'undefined' && authService.getCurrentUser) ? authService.getCurrentUser() : null;
+        if (!user || !user.email || user.email === 'guest@learnmap.kr') {
+            alert('로그인 후 알림을 확인하실 수 있습니다.');
+            return;
+        }
+
+        const modalId = 'userNotificationCenterModal';
+        let modal = document.getElementById(modalId);
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = modalId;
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.45); z-index: 100005; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(4px);';
+            modal.innerHTML = `
+                <div style="background: white; border-radius: 14px; width: 380px; max-width: 90%; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 12px 30px rgba(0,0,0,0.18); font-family: var(--font-primary); overflow: hidden;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid #f1f5f9; background: #f8fafc;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 18px;">🔔</span>
+                            <h3 style="font-size: 15px; font-weight: 800; color: #1e293b; margin: 0;">알림 센터</h3>
+                        </div>
+                        <button id="btnCloseUserNotiModal" style="background: none; border: none; font-size: 20px; line-height: 1; cursor: pointer; color: #64748b; font-weight: bold;">&times;</button>
+                    </div>
+                    <div id="userNotiModalBody" style="padding: 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px;">
+                        <div style="text-align: center; color: #94a3b8; padding: 30px 0; font-size: 13px;">알림을 불러오는 중...</div>
+                    </div>
+                    <div style="padding: 12px 18px; border-top: 1px solid #f1f5f9; background: #fafafa; display: flex; justify-content: flex-end;">
+                        <button id="btnConfirmUserNotiModal" style="padding: 7px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 12.5px; font-weight: 700; cursor: pointer;">확인</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            modal.querySelector('#btnCloseUserNotiModal').addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
+            modal.querySelector('#btnConfirmUserNotiModal').addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.style.display = 'none';
+            });
+        }
+
+        const body = modal.querySelector('#userNotiModalBody');
+        const list = window.userNotificationsList || [];
+
+        if (list.length === 0) {
+            body.innerHTML = `
+                <div style="text-align: center; padding: 35px 10px; color: #64748b;">
+                    <div style="font-size: 32px; margin-bottom: 8px;">📭</div>
+                    <div style="font-size: 13.5px; font-weight: 600; color: #334155;">새로운 알림이 없습니다.</div>
+                    <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">새로운 공지나 승인/반려 소식이 오면 알려드릴게요.</div>
+                </div>
+            `;
+        } else {
+            let html = '';
+            list.forEach(noti => {
+                const dateStr = noti.createdAt ? noti.createdAt.slice(0, 10) : '';
+                let badgeText = '📢 안내';
+                let badgeStyle = 'background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;';
+                let cardBorder = '#e2e8f0';
+                let cardBg = '#ffffff';
+                let actionBtnText = '자세히 보기 ↗';
+
+                if (noti.type === 'business_rejected') {
+                    badgeText = '⚠️ 신청 반려';
+                    badgeStyle = 'background: #fee2e2; color: #dc2626; border: 1px solid #fecaca;';
+                    cardBorder = '#fecaca';
+                    cardBg = '#fff5f5';
+                    actionBtnText = '파트너센터에서 재신청하기 ↗';
+                } else if (noti.type === 'business_approved') {
+                    badgeText = '🎉 승인 완료';
+                    badgeStyle = 'background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0;';
+                    cardBorder = '#bbf7d0';
+                    cardBg = '#f0fdf4';
+                    actionBtnText = '파트너센터 바로가기 ↗';
+                } else if (noti.type === 'signup_welcome') {
+                    badgeText = '🎉 가입 환영';
+                    badgeStyle = 'background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;';
+                    cardBorder = '#bfdbfe';
+                    cardBg = '#f8faff';
+                    actionBtnText = '학교 진단 시작하기 ↗';
+                } else if (noti.type === 'notice') {
+                    badgeText = '📢 공지사항';
+                    badgeStyle = 'background: #f8fafc; color: #475569; border: 1px solid #cbd5e1;';
+                    cardBorder = '#e2e8f0';
+                    cardBg = '#ffffff';
+                    actionBtnText = '공지 확인하기 ↗';
+                }
+
+                html += `
+                    <div style="border: 1px solid ${cardBorder}; background: ${cardBg}; border-radius: 10px; padding: 12px 14px; position: relative;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 4px; ${badgeStyle}">
+                                    ${badgeText}
+                                </span>
+                                <h4 style="font-size: 13px; font-weight: 800; color: #1e293b; margin: 0;">${escapeHtmlApp(noti.title || '알림')}</h4>
+                            </div>
+                            <span style="font-size: 11px; color: #94a3b8;">${dateStr}</span>
+                        </div>
+                        <p style="font-size: 12.5px; color: #334155; margin: 0 0 6px 0; line-height: 1.45;">${escapeHtmlApp(noti.message || '')}</p>
+                        ${noti.reason ? `
+                            <div style="background: rgba(220, 38, 38, 0.06); border-left: 3px solid #dc2626; padding: 6px 10px; border-radius: 4px; margin-bottom: 8px;">
+                                <div style="font-size: 11px; font-weight: 700; color: #b91c1c;">반려 사유:</div>
+                                <div style="font-size: 12px; color: #991b1b; margin-top: 2px; word-break: break-all;">${escapeHtmlApp(noti.reason)}</div>
+                            </div>
+                        ` : ''}
+                        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                            ${noti.link ? `
+                                <a href="${noti.link}" target="_blank" style="display: inline-block; font-size: 11.5px; font-weight: 700; color: #2563eb; text-decoration: none; padding: 4px 8px; background: #ffffff; border: 1px solid #bfdbfe; border-radius: 5px;">
+                                    ${actionBtnText}
+                                </a>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            body.innerHTML = html;
+
+            // 모든 알림 읽음 처리
+            if (user && user.email) {
+                fetch('/api/notifications/read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: 'all', email: user.email })
+                }).then(() => {
+                    updateNotificationBadge(0);
+                }).catch(() => {});
+            }
+        }
+
+        modal.style.display = 'flex';
+    };
+
+    function escapeHtmlApp(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     window.drawEstateTrendGraph = function (school, realBasePrice = null) {
@@ -25088,6 +25272,11 @@ window.addEventListener('DOMContentLoaded', () => {
                     if (activeChild && typeof updateScoreAnalysisUI === 'function') {
                         updateScoreAnalysisUI(activeChild.korean, activeChild.english, activeChild.math, activeChild.society, activeChild.history, activeChild.science);
                     }
+
+                    // 🌟 회원 알림 조회 및 알림 뱃지 업데이트
+                    if (typeof checkUserNotifications === 'function' && currentUser && currentUser.email) {
+                        checkUserNotifications(currentUser.email);
+                    }
                 } else {
                     if (userCard) userCard.style.display = 'none';
                     if (formArea) formArea.style.display = 'block';
@@ -25123,6 +25312,9 @@ window.addEventListener('DOMContentLoaded', () => {
                     if (opacityPC) opacityPC.style.display = 'none';
                     if (opacityMobile) opacityMobile.style.display = 'none';
                     if (notiPC) notiPC.style.display = 'none';
+                    if (typeof checkUserNotifications === 'function') {
+                        checkUserNotifications(null);
+                    }
                 }
             };
 

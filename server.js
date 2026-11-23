@@ -3930,6 +3930,20 @@ app.post('/api/auth/register', async (req, res) => {
     users.push(newUser);
     writeUsers(users);
 
+    // 🌟 [회원 서비스 알림 센터]: 회원가입 완료 환영 알림 생성
+    try {
+        await createSiteNotification({
+            userId: userId || '',
+            email: cleanEmail,
+            type: 'signup_welcome',
+            title: '🎉 학업여지도 회원가입을 환영합니다!',
+            message: `${cleanName}님, 학업여지도 회원가입이 완료되었습니다. 내 아이를 위한 맞춤 학교 진단과 학군 분석을 시작해보세요!`,
+            link: '/'
+        });
+    } catch (notiErr) {
+        console.warn('Signup welcome noti error:', notiErr.message);
+    }
+
     const sessionUser = {
         id: newUser.id,
         email: newUser.email,
@@ -4128,6 +4142,13 @@ app.get('/api/admin/users', async (req, res) => {
             if (lu && lu.email && !users.some(u => u && (u.email || '').toLowerCase() === lu.email.toLowerCase())) {
                 users.push(lu);
             }
+        });
+
+        // 가입 일자 기준 최신순 정렬
+        users.sort((a, b) => {
+            const timeA = new Date(a.created_at || a.createdAt || 0).getTime() || 0;
+            const timeB = new Date(b.created_at || b.createdAt || 0).getTime() || 0;
+            return timeB - timeA;
         });
 
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -6466,6 +6487,79 @@ async function cancelSubscriptionInDB(subId) {
     } catch (e) {
         console.error('[Supabase partner_subscriptions cancel error]:', e);
     }
+}
+
+// 5. 알림 DB 저장 및 생성 헬퍼 (로컬 파일 미사용, Supabase DB 전용)
+async function saveNotificationToDB(noti) {
+    try {
+        const payload = {
+            user_id: (noti.userId && noti.userId.includes('-') && noti.userId.length === 36) ? noti.userId : null,
+            email: (noti.email || '').toLowerCase().trim(),
+            type: noti.type,
+            title: noti.title,
+            message: noti.message,
+            reason: noti.reason || null,
+            link: noti.link || null,
+            is_read: Boolean(noti.isRead),
+            created_at: noti.createdAt || new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/notifications`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+            const errText = await res.text();
+            console.warn('[Supabase Notification Save Error]:', errText);
+            return null;
+        } else {
+            const rows = await res.json();
+            const savedRow = (Array.isArray(rows) && rows[0]) ? rows[0] : null;
+            console.log(`[Supabase Notification Saved to DB]: ${noti.type} for ${noti.email}`);
+            return savedRow ? {
+                id: savedRow.id,
+                userId: savedRow.user_id || '',
+                email: savedRow.email || '',
+                type: savedRow.type,
+                title: savedRow.title,
+                message: savedRow.message,
+                reason: savedRow.reason || '',
+                link: savedRow.link || '/',
+                isRead: Boolean(savedRow.is_read),
+                createdAt: savedRow.created_at
+            } : noti;
+        }
+    } catch (e) {
+        console.warn('saveNotificationToDB error:', e.message);
+        return null;
+    }
+}
+
+async function createSiteNotification({ userId = '', email = '', type, title, message, reason = '', link = '/' }) {
+    const cleanEmail = (email || '').toLowerCase().trim();
+
+    const newNoti = {
+        userId: userId || '',
+        email: cleanEmail,
+        type: type, // 'business_approved' | 'business_rejected' | 'signup_welcome' | 'notice'
+        title: title,
+        message: message,
+        reason: reason || '',
+        link: link || '/',
+        isRead: false,
+        createdAt: new Date().toISOString()
+    };
+
+    // 🌟 로컬 파일에는 저장하지 않고 오직 Supabase DB에만 저장
+    const saved = await saveNotificationToDB(newNoti);
+    return saved || newNoti;
 }
 
 // 5. 분석 보고서 주문 DB 저장
@@ -9102,6 +9196,37 @@ app.post('/api/admin/business/status', async (req, res) => {
         target.status = status;
         if (status === 'rejected') {
             target.rejectionReason = rejectionReason || '정보 불일치 또는 검수 기준 미충족';
+
+            // 🌟 [회원 서비스 알림 센터]: 사업자 신청 반려 알림 생성 및 DB 저장
+            try {
+                await createSiteNotification({
+                    userId: target.userId || '',
+                    email: target.email || '',
+                    type: 'business_rejected',
+                    title: '⚠️ 사업자 등록 신청 반려 안내',
+                    message: `[${target.bizName || target.name || '사업자'}] 등록 신청이 관리자 심사 결과 반려되었습니다.`,
+                    reason: target.rejectionReason,
+                    link: '/business.html'
+                });
+            } catch (notiErr) {
+                console.warn('Failed to create rejection notification:', notiErr.message);
+            }
+        } else if (status === 'approved') {
+            target.rejectionReason = '';
+
+            // 🌟 [회원 서비스 알림 센터]: 사업자 신청 승인 완료 알림 생성 및 DB 저장
+            try {
+                await createSiteNotification({
+                    userId: target.userId || '',
+                    email: target.email || '',
+                    type: 'business_approved',
+                    title: '🎉 파트너 입점 신청 승인 완료',
+                    message: `[${target.bizName || target.name || '사업자'}] 공식 파트너 입점 신청이 최종 승인되었습니다! 지금 파트너센터에서 학원 및 부동산 프로필을 등록해 보세요.`,
+                    link: '/business.html'
+                });
+            } catch (notiErr) {
+                console.warn('Failed to create approval notification:', notiErr.message);
+            }
         } else {
             target.rejectionReason = '';
         }
@@ -9169,6 +9294,297 @@ app.post('/api/admin/business/status', async (req, res) => {
     } catch (err) {
         console.error('Admin Business Status Update Error:', err);
         return res.status(500).json({ error: '상태 변경 중 오류가 발생했습니다.' });
+    }
+});
+
+// 🌟 13-1. 사용자 알림 목록 조회 (GET /api/notifications)
+app.get('/api/notifications', async (req, res) => {
+    try {
+        const email = (req.query.email || '').trim().toLowerCase();
+        const userId = (req.query.userId || '').trim();
+
+        let mergedNotis = [];
+        const seenIds = new Set();
+
+        // 1. Supabase DB에서 알림 조회 시도
+        try {
+            let orQueries = [];
+            if (userId && userId.includes('-')) orQueries.push(`user_id.eq.${userId}`);
+            if (email) orQueries.push(`email.eq.${encodeURIComponent(email)}`);
+            orQueries.push(`type.eq.notice`); // 전체 공지사항
+
+            const filterStr = orQueries.length > 0 ? `?or=(${orQueries.join(',')})&order=created_at.desc&limit=50` : '?type=eq.notice&order=created_at.desc&limit=10';
+            const dbRes = await fetch(`${SUPABASE_URL}/rest/v1/notifications${filterStr}`, {
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                },
+                signal: AbortSignal.timeout(4000)
+            });
+
+            if (dbRes.ok) {
+                const dbRows = await dbRes.json();
+                if (Array.isArray(dbRows)) {
+                    dbRows.forEach(row => {
+                        if (row && row.id && !seenIds.has(row.id)) {
+                            seenIds.add(row.id);
+                            mergedNotis.push({
+                                id: row.id,
+                                userId: row.user_id || '',
+                                email: row.email || '',
+                                type: row.type,
+                                title: row.title,
+                                message: row.message,
+                                reason: row.reason || '',
+                                link: row.link || '/',
+                                isRead: Boolean(row.is_read),
+                                createdAt: row.created_at
+                            });
+                        }
+                    });
+                }
+            }
+        } catch (dbErr) {
+            console.warn('Notifications Supabase fetch error:', dbErr.message);
+        }
+
+        // 2. 최신 사업자 상태 자동 동기화 (기존 승인/반려 건 누락 방지 - DB 저장)
+        try {
+            const businesses = readJsonFileSafe(BUSINESSES_PATH, []);
+            const userBiz = businesses.find(b => 
+                (userId && b.userId === userId) ||
+                (email && b.email && b.email.toLowerCase() === email)
+            );
+            if (userBiz) {
+                if (userBiz.status === 'rejected' && !mergedNotis.some(n => n.type === 'business_rejected')) {
+                    const autoNoti = await createSiteNotification({
+                        userId: userBiz.userId || userId || '',
+                        email: userBiz.email || email,
+                        type: 'business_rejected',
+                        title: '⚠️ 사업자 등록 신청 반려 안내',
+                        message: `[${userBiz.bizName || userBiz.name || '사업자'}] 등록 신청이 관리자 심사 결과 반려되었습니다.`,
+                        reason: userBiz.rejectionReason || '정보 확인 또는 검수 기준 미충족',
+                        link: '/business.html'
+                    });
+                    if (autoNoti && !seenIds.has(autoNoti.id)) {
+                        seenIds.add(autoNoti.id);
+                        mergedNotis.unshift(autoNoti);
+                    }
+                } else if (userBiz.status === 'approved' && !mergedNotis.some(n => n.type === 'business_approved')) {
+                    const autoNoti = await createSiteNotification({
+                        userId: userBiz.userId || userId || '',
+                        email: userBiz.email || email,
+                        type: 'business_approved',
+                        title: '🎉 파트너 입점 신청 승인 완료',
+                        message: `[${userBiz.bizName || userBiz.name || '사업자'}] 공식 파트너 입점 신청이 승인되었습니다. 파트너센터를 이용해보세요!`,
+                        link: '/business.html'
+                    });
+                    if (autoNoti && !seenIds.has(autoNoti.id)) {
+                        seenIds.add(autoNoti.id);
+                        mergedNotis.unshift(autoNoti);
+                    }
+                }
+            }
+        } catch (bizCheckErr) {
+            console.warn('Notification biz check error:', bizCheckErr.message);
+        }
+
+        // 4. 시스템 기본 공지사항 보장 (공지사항 이벤트 1건 이상 상시 노출)
+        if (!mergedNotis.some(n => n.type === 'notice')) {
+            const defaultNotice = {
+                id: 'noti_system_notice_2026',
+                userId: '',
+                email: '',
+                type: 'notice',
+                title: '📢 2026학년도 학교 진단 및 학업성취도 공시 데이터 개편 안내',
+                message: '학교알리미 최신 공시 기반 학업성취도, 특목/자사고 진학률 및 학군 분석 데이터가 업데이트되었습니다.',
+                link: '/rank/index.html',
+                isRead: false,
+                createdAt: new Date().toISOString()
+            };
+            mergedNotis.push(defaultNotice);
+        }
+
+        // 최신순 정렬
+        mergedNotis.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+        const unreadCount = mergedNotis.filter(n => !n.isRead).length;
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        return res.json({
+            success: true,
+            notifications: mergedNotis,
+            unreadCount
+        });
+    } catch (err) {
+        console.error('Get notifications error:', err);
+        return res.status(500).json({ success: false, error: '알림 조회 오류' });
+    }
+});
+
+// 🌟 13-2. 사용자 알림 읽음 처리 (POST /api/notifications/read - Supabase DB 전용)
+app.post('/api/notifications/read', async (req, res) => {
+    try {
+        const { id, email, userId } = req.body;
+        const cleanEmail = (email || '').trim().toLowerCase();
+
+        // 🌟 로컬 파일 없이 오직 Supabase DB의 notifications 테이블 상태만 업데이트
+        try {
+            if (id === 'all') {
+                let orQueries = [];
+                if (userId && userId.includes('-')) orQueries.push(`user_id=eq.${userId}`);
+                if (cleanEmail) orQueries.push(`email=eq.${encodeURIComponent(cleanEmail)}`);
+
+                for (const q of orQueries) {
+                    await fetch(`${SUPABASE_URL}/rest/v1/notifications?${q}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ is_read: true, updated_at: new Date().toISOString() })
+                    });
+                }
+            } else if (id && id.includes('-') && id.length === 36) {
+                await fetch(`${SUPABASE_URL}/rest/v1/notifications?id=eq.${id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ is_read: true, updated_at: new Date().toISOString() })
+                });
+            }
+        } catch (dbPatchErr) {
+            console.warn('DB notification read sync error:', dbPatchErr.message);
+        }
+
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Read notification error:', err);
+        return res.status(500).json({ success: false, error: '알림 읽음 처리 오류' });
+    }
+});
+
+// 🌟 13-3. 관리자용 공지사항 목록 조회 (GET /api/admin/notifications)
+app.get('/api/admin/notifications', async (req, res) => {
+    try {
+        const dbRes = await fetch(`${SUPABASE_URL}/rest/v1/notifications?type=eq.notice&order=created_at.desc&limit=100`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            },
+            signal: AbortSignal.timeout(5000)
+        });
+
+        if (dbRes.ok) {
+            const rows = await dbRes.json();
+            return res.json({ success: true, notices: rows || [] });
+        }
+        return res.json({ success: true, notices: [] });
+    } catch (err) {
+        console.error('Admin get notifications error:', err);
+        return res.status(500).json({ success: false, error: '공지사항 조회 오류' });
+    }
+});
+
+// 🌟 13-3-1. 관리자용 전체 알림 발송 이력 목록 조회 (GET /api/admin/notifications/all)
+app.get('/api/admin/notifications/all', async (req, res) => {
+    try {
+        const typeFilter = (req.query.type || '').trim();
+        let queryStr = '?order=created_at.desc&limit=300';
+        if (typeFilter && typeFilter !== 'all') {
+            queryStr = `?type=eq.${encodeURIComponent(typeFilter)}&order=created_at.desc&limit=300`;
+        }
+
+        const dbRes = await fetch(`${SUPABASE_URL}/rest/v1/notifications${queryStr}`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            },
+            signal: AbortSignal.timeout(5000)
+        });
+
+        if (dbRes.ok) {
+            const rows = await dbRes.json();
+            return res.json({ success: true, notifications: rows || [] });
+        }
+        return res.json({ success: true, notifications: [] });
+    } catch (err) {
+        console.error('Admin get all notifications error:', err);
+        return res.status(500).json({ success: false, error: '전체 알림 발송 이력 조회 오류' });
+    }
+});
+
+// 🌟 13-4. 관리자용 공지사항 등록 및 DB 저장 (POST /api/admin/notifications)
+app.post('/api/admin/notifications', async (req, res) => {
+    try {
+        const { title, message, link = '/' } = req.body;
+        if (!title || !message) {
+            return res.status(400).json({ success: false, error: '공지사항 제목과 내용을 입력해주세요.' });
+        }
+
+        const payload = {
+            user_id: null,
+            email: null,
+            type: 'notice',
+            title: title.trim(),
+            message: message.trim(),
+            link: (link || '/').trim(),
+            is_read: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        const dbRes = await fetch(`${SUPABASE_URL}/rest/v1/notifications`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (dbRes.ok) {
+            const created = await dbRes.json();
+            return res.json({ success: true, notice: (created && created[0]) ? created[0] : payload, message: '공지사항이 성공적으로 등록되었습니다.' });
+        } else {
+            const errText = await dbRes.text();
+            return res.status(500).json({ success: false, error: 'DB 저장 실패: ' + errText });
+        }
+    } catch (err) {
+        console.error('Admin create notification error:', err);
+        return res.status(500).json({ success: false, error: '공지사항 등록 중 오류가 발생했습니다.' });
+    }
+});
+
+// 🌟 13-5. 관리자용 공지사항 삭제 (DELETE /api/admin/notifications)
+app.delete('/api/admin/notifications', async (req, res) => {
+    try {
+        const id = (req.query.id || req.body.id || '').trim();
+        if (!id) {
+            return res.status(400).json({ success: false, error: '삭제할 공지사항 ID가 필요합니다.' });
+        }
+
+        const dbRes = await fetch(`${SUPABASE_URL}/rest/v1/notifications?id=eq.${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+
+        if (dbRes.ok) {
+            return res.json({ success: true, message: '공지사항이 삭제되었습니다.' });
+        } else {
+            return res.status(500).json({ success: false, error: '공지사항 삭제 실패' });
+        }
+    } catch (err) {
+        console.error('Admin delete notification error:', err);
+        return res.status(500).json({ success: false, error: '공지사항 삭제 중 오류가 발생했습니다.' });
     }
 });
 

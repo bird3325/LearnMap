@@ -416,6 +416,10 @@
   - 기존 브라우저 기본 `prompt()` 팝업을 제거하고, 전용 반려 모달창(`adminRejectModal`) 적용.
   - 대상 사업자명 표시, 구체적인 반려 사유 입력 텍스트 영역(`textarea`), 빠른 사유 선택 칩 4종(사업자번호 누락, 서류 보완 필요, 소재지/대표자 불일치, 중복 신청) 지원.
   - 반려 확정 시 파트너 권한을 보류 상태로 동기화하고 파트너 센터에 사유를 실시간 노출.
+- **회원 서비스 알림 센터(`userNotificationCenterModal`) 연동**:
+  - 관리자가 신청 반려 시 회원 서비스(`index.html` 상단 종 버튼)에 빨간 점 알림 뱃지 활성화.
+  - 종 아이콘 클릭 시 알림 센터 팝업이 노출되며 구체적인 반려 사유 및 '파트너센터에서 재신청하기' 바로가기 버튼 제공.
+  - 확인 시 읽음 처리(`POST /api/notifications/read`)되어 뱃지가 자동으로 해제됨.
 - **반려 후 사업자 정보 수정 및 재신청 정책**:
   - 파트너가 반려된 이후 사업자 정보를 수정하여 제출하면 단순 "수정되었습니다"가 아닌 **"승인 신청하였습니다."** 알림 토스트를 표시.
   - 사업자 상태가 `rejected`에서 관리자 심사 대기 상태(`submitted`)로 자동 재전환되고 이전 반려 사유를 리셋하여 관리자가 신속하게 재심사할 수 있도록 동기화.
@@ -531,5 +535,18 @@
 - **조치 내용**:
   - `partner-auth.html` 내 `id="chkRememberMe"` 및 `id="chkTerms"` 요소의 `checked` 속성을 전면 제거.
   - 초기 진입 시 빈 체크박스로 렌더링되며, 로그인 상태 유지 및 약관 동의 의사가 있는 사용자만 직접 클릭하여 체크하도록 정비 완료.
+
+## 36. 관리자 공지사항 & 시스템 알림 관리 메뉴 (`#noticeManagementCard`) 연동 정책 (2026-11-23)
+- **배경 및 목적**:
+  - 관리자가 전체 사이트 이용자에게 노출되는 시스템 공지사항(학업성취도 공시 데이터 업데이트, 서비스 점검, 입시 일정 등)을 직접 작성하고 Supabase DB에 실시간 저장 및 삭제할 수 있는 전용 관리 메뉴 구축.
+- **UI 및 화면 설계**:
+  - 관리자 사이드바에 `📢 공지사항 & 알림 관리` 메뉴 버튼 배치 (`data-target="noticeManagementCard"`).
+  - 우측 메인 영역에 `#noticeManagementCard` 배치:
+    1. **신규 공지사항 작성 폼**: 제목(`adminNoticeTitleInput`), 본문(`adminNoticeMessageInput`), 연결 링크(`adminNoticeLinkInput`), 등록 버튼(`btnSubmitAdminNotice`).
+    2. **등록된 공지 목록 테이블**: `#noticeListContainer`를 통해 Supabase DB의 `notifications` (type: 'notice') 레코드를 최신순으로 렌더링하며, 원클릭 삭제 기능 지원.
+    3. **전체 알림 발송 이력 리스트 (`#adminAllNotiListContainer`)**: 사이트에서 발송된 모든 알림(파트너 승인, 신청 반려, 회원가입 환영, 시스템 공지)을 알림 유형 필터(`adminNotiTypeFilter`) 및 수신자/제목 검색(`adminNotiSearchInput`)을 통해 실시간 조회하며, 수신 상태(읽음/미확인) 확인 및 원클릭 삭제 기능 지원.
+- **데이터 흐름**:
+  - 등록 시 `POST /api/admin/notifications` -> Supabase DB `notifications` 테이블에 직접 `INSERT` (로컬 파일 미저장).
+  - 회원이 회원 서비스 또는 파트너센터 접속 시 실시간 조회되어 알림 센터 및 상단 종 아이콘 뱃지에 즉각 노출됨.
 
 

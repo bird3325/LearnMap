@@ -133,6 +133,9 @@ adminMenuButtons.forEach(btn => {
         if (targetAttr.includes('blogManagementCard') && typeof loadBlogManagement === 'function') {
             loadBlogManagement();
         }
+        if (targetAttr.includes('noticeManagementCard') && typeof loadNoticeManagement === 'function') {
+            loadNoticeManagement();
+        }
         if ((targetAttr.includes('realestateMasterCard') || targetAttr.includes('storedRealEstateCard')) && typeof loadStoredRealEstate === 'function') {
             if (Array.isArray(allStoredRealEstates) && allStoredRealEstates.length > 0) {
                 renderStoredRealEstateList();
@@ -1826,6 +1829,7 @@ window.loadInquiries = loadInquiries;
 
 // --- Users Admin Management Logic ---
 let allUsers = [];
+let userSortOrder = 'desc'; // 'desc': 최신 가입일순, 'asc': 과거 가입일순
 
 async function loadUsers() {
     const listContainer = document.getElementById('adminUsersListContainer');
@@ -1917,7 +1921,7 @@ function renderUsersList() {
     const selectedRole = roleFilter ? roleFilter.value : 'all';
     const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
-    let filtered = allUsers;
+    let filtered = [...allUsers];
 
     if (selectedRole !== 'all') {
         filtered = filtered.filter(u => (u.role || 'parent') === selectedRole);
@@ -1929,6 +1933,13 @@ function renderUsersList() {
             (u.email && u.email.toLowerCase().includes(query))
         );
     }
+
+    // 가입 일자 기준 소팅 (기본 최신순, 클릭 시 오름차순/내림차순 토글)
+    filtered.sort((a, b) => {
+        const timeA = new Date(a.created_at || a.createdAt || 0).getTime() || 0;
+        const timeB = new Date(b.created_at || b.createdAt || 0).getTime() || 0;
+        return userSortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+    });
 
     if (filtered.length === 0) {
         listContainer.innerHTML = '<div style="text-align: center; color: var(--adm-text-muted); padding: 30px 0;">조건에 해당하는 회원이 없습니다.</div>';
@@ -1949,6 +1960,8 @@ function renderUsersList() {
         'admin': 'background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;'
     };
 
+    const sortIndicator = userSortOrder === 'asc' ? '▲' : '▼';
+
     let html = `
         <div style="overflow-x: auto;">
             <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left;">
@@ -1959,7 +1972,7 @@ function renderUsersList() {
                         <th style="padding: 10px 12px;">이메일(아이디)</th>
                         <th style="padding: 10px 12px; width: 110px;">회원 유형</th>
                         <th style="padding: 10px 12px; width: 90px;">가입 경로</th>
-                        <th style="padding: 10px 12px; width: 120px;">가입 일자</th>
+                        <th id="thUserCreatedAt" style="padding: 10px 12px; width: 120px; cursor: pointer; user-select: none;" title="클릭 시 가입일자 정렬 전환">가입 일자 <span style="font-size: 10px; color: #2563eb;">${sortIndicator}</span></th>
                         <th style="padding: 10px 12px; width: 80px; text-align: center;">계정 관리</th>
                     </tr>
                 </thead>
@@ -2001,6 +2014,15 @@ function renderUsersList() {
     `;
 
     listContainer.innerHTML = html;
+
+    // Attach sort header event
+    const thCreatedAt = listContainer.querySelector('#thUserCreatedAt');
+    if (thCreatedAt) {
+        thCreatedAt.onclick = () => {
+            userSortOrder = userSortOrder === 'desc' ? 'asc' : 'desc';
+            renderUsersList();
+        };
+    }
 
     // Attach delete button events
     const deleteBtns = listContainer.querySelectorAll('.btn-delete-user');
@@ -5941,3 +5963,327 @@ window.executeAdminSubscriptionChange = async function() {
         }
     });
 };
+
+// ==========================================
+// 🌟 [관리자] 공지사항 & 시스템 알림 관리 센터
+// ==========================================
+let allAdminNotices = [];
+
+async function loadNoticeManagement() {
+    const container = document.getElementById('adminNoticeListContainer');
+    const badge = document.getElementById('noticeCountBadge');
+    if (container) {
+        container.innerHTML = '<div style="text-align: center; color: var(--adm-text-muted); padding: 30px 0;">공지사항 목록을 불러오는 중...</div>';
+    }
+
+    try {
+        const res = await fetch('/api/admin/notifications');
+        if (res.ok) {
+            const data = await res.json();
+            allAdminNotices = data.notices || [];
+        } else {
+            allAdminNotices = [];
+        }
+    } catch (e) {
+        console.warn('loadNoticeManagement fetch error:', e);
+        allAdminNotices = [];
+    }
+
+    if (badge) badge.innerText = `총 ${allAdminNotices.length}건`;
+    renderAdminNoticeList();
+    // 전체 발송 알림 이력도 함께 로드
+    loadAllSentNotifications();
+}
+window.loadNoticeManagement = loadNoticeManagement;
+
+// --- 1. 등록된 시스템 공지사항 목록 ---
+function renderAdminNoticeList() {
+    const container = document.getElementById('adminNoticeListContainer');
+    if (!container) return;
+
+    if (!Array.isArray(allAdminNotices) || allAdminNotices.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--adm-text-muted); padding: 35px 0;">등록된 시스템 공지사항이 없습니다.<br>상단 입력 폼에서 새 공지사항을 등록해 보세요.</div>';
+        return;
+    }
+
+    let html = `
+        <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left;">
+            <thead>
+                <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569;">
+                    <th style="padding: 10px 12px; width: 40px;">#</th>
+                    <th style="padding: 10px 12px; width: 220px;">제목</th>
+                    <th style="padding: 10px 12px;">공지 내용</th>
+                    <th style="padding: 10px 12px; width: 140px;">연결 링크</th>
+                    <th style="padding: 10px 12px; width: 110px;">등록 일시</th>
+                    <th style="padding: 10px 12px; width: 70px; text-align: center;">관리</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    allAdminNotices.forEach((n, idx) => {
+        const dateStr = n.created_at ? n.created_at.slice(0, 10) : '-';
+        html += `
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                <td style="padding: 11px 12px; color: var(--adm-text-muted);">${idx + 1}</td>
+                <td style="padding: 11px 12px; font-weight: 700; color: #0f172a;">${escapeHtml(n.title || '')}</td>
+                <td style="padding: 11px 12px; color: #334155; line-height: 1.45;">${escapeHtml(n.message || '')}</td>
+                <td style="padding: 11px 12px;">
+                    <a href="${n.link || '/'}" target="_blank" style="color: #2563eb; text-decoration: none; font-size: 11.5px; word-break: break-all;">
+                        ${escapeHtml(n.link || '/')} ↗
+                    </a>
+                </td>
+                <td style="padding: 11px 12px; color: var(--adm-text-muted); font-size: 11.5px;">${dateStr}</td>
+                <td style="padding: 11px 12px; text-align: center;">
+                    <button class="btn-delete-notice" data-id="${n.id}" style="background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer;">
+                        삭제
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+    `;
+    container.innerHTML = html;
+
+    // 삭제 이벤트 연결
+    container.querySelectorAll('.btn-delete-notice').forEach(btn => {
+        btn.onclick = () => {
+            const id = btn.getAttribute('data-id');
+            showConfirm('정말 이 공지사항을 삭제하시겠습니까?', async () => {
+                await deleteAdminNotice(id);
+            });
+        };
+    });
+}
+
+// --- 2. 전체 알림 발송 이력 목록 (승인, 반려, 가입완료, 공지사항) ---
+let allSentNotifications = [];
+
+async function loadAllSentNotifications() {
+    const container = document.getElementById('adminAllNotiListContainer');
+    const countBadge = document.getElementById('allNotiCountBadge');
+    if (container) {
+        container.innerHTML = '<div style="text-align: center; color: var(--adm-text-muted); padding: 30px 0;">전체 알림 발송 이력을 불러오는 중...</div>';
+    }
+
+    try {
+        const res = await fetch('/api/admin/notifications/all');
+        if (res.ok) {
+            const data = await res.json();
+            allSentNotifications = data.notifications || [];
+        } else {
+            allSentNotifications = [];
+        }
+    } catch (e) {
+        console.warn('loadAllSentNotifications fetch error:', e);
+        allSentNotifications = [];
+    }
+
+    if (countBadge) countBadge.innerText = `총 ${allSentNotifications.length}건`;
+    renderAllSentNotifications();
+}
+window.loadAllSentNotifications = loadAllSentNotifications;
+
+function renderAllSentNotifications() {
+    const container = document.getElementById('adminAllNotiListContainer');
+    const countBadge = document.getElementById('allNotiCountBadge');
+    if (!container) return;
+
+    const typeFilter = document.getElementById('adminNotiTypeFilter')?.value || 'all';
+    const query = document.getElementById('adminNotiSearchInput')?.value.trim().toLowerCase() || '';
+
+    let filtered = [...allSentNotifications];
+
+    if (typeFilter !== 'all') {
+        filtered = filtered.filter(n => n.type === typeFilter);
+    }
+
+    if (query) {
+        filtered = filtered.filter(n => 
+            (n.email && n.email.toLowerCase().includes(query)) ||
+            (n.title && n.title.toLowerCase().includes(query)) ||
+            (n.message && n.message.toLowerCase().includes(query))
+        );
+    }
+
+    if (countBadge) countBadge.innerText = `총 ${filtered.length}건`;
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--adm-text-muted); padding: 35px 0;">조건에 해당하는 알림 발송 이력이 없습니다.</div>';
+        return;
+    }
+
+    const typeBadges = {
+        'business_approved': '<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; font-weight: 700;">🎉 파트너 승인</span>',
+        'business_rejected': '<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; font-weight: 700;">⚠️ 신청 반려</span>',
+        'signup_welcome': '<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-weight: 700;">🎉 가입 환영</span>',
+        'notice': '<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; font-weight: 700;">📢 공지사항</span>'
+    };
+
+    let html = `
+        <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left;">
+            <thead>
+                <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569;">
+                    <th style="padding: 10px 12px; width: 40px;">#</th>
+                    <th style="padding: 10px 12px; width: 110px;">알림 유형</th>
+                    <th style="padding: 10px 12px; width: 180px;">수신 회원</th>
+                    <th style="padding: 10px 12px;">제목 및 상세 내용</th>
+                    <th style="padding: 10px 12px; width: 110px;">발송 일시</th>
+                    <th style="padding: 10px 12px; width: 80px; text-align: center;">수신 상태</th>
+                    <th style="padding: 10px 12px; width: 60px; text-align: center;">관리</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    filtered.forEach((n, idx) => {
+        const badge = typeBadges[n.type] || `<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #f1f5f9; color: #475569; font-weight: 700;">${escapeHtml(n.type)}</span>`;
+        const dateStr = n.created_at ? n.created_at.slice(0, 10) : '-';
+        const receiver = n.email ? `<span style="color: #0f172a; font-weight: 600;">${escapeHtml(n.email)}</span>` : '<span style="color: #64748b; font-weight: 600;">🌐 전체 회원 (공지)</span>';
+        const readStatus = n.is_read 
+            ? '<span style="color: #16a34a; font-size: 11px; font-weight: 700;">🟢 읽음</span>' 
+            : '<span style="color: #94a3b8; font-size: 11px; font-weight: 600;">⚪ 미확인</span>';
+
+        html += `
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                <td style="padding: 11px 12px; color: var(--adm-text-muted);">${idx + 1}</td>
+                <td style="padding: 11px 12px;">${badge}</td>
+                <td style="padding: 11px 12px; font-size: 12px;">${receiver}</td>
+                <td style="padding: 11px 12px;">
+                    <div style="font-weight: 700; color: #0f172a; margin-bottom: 3px;">${escapeHtml(n.title || '')}</div>
+                    <div style="color: #475569; font-size: 11.5px; line-height: 1.4;">${escapeHtml(n.message || '')}</div>
+                    ${n.reason ? `<div style="color: #dc2626; font-size: 11px; margin-top: 3px; font-weight: 600;">⚠️ 반려 사유: ${escapeHtml(n.reason)}</div>` : ''}
+                </td>
+                <td style="padding: 11px 12px; color: var(--adm-text-muted); font-size: 11.5px;">${dateStr}</td>
+                <td style="padding: 11px 12px; text-align: center;">${readStatus}</td>
+                <td style="padding: 11px 12px; text-align: center;">
+                    <button class="btn-delete-sent-noti" data-id="${n.id}" style="background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer;">
+                        삭제
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+    `;
+    container.innerHTML = html;
+
+    // 삭제 이벤트 연결
+    container.querySelectorAll('.btn-delete-sent-noti').forEach(btn => {
+        btn.onclick = () => {
+            const id = btn.getAttribute('data-id');
+            showConfirm('정말 이 발송 알림 이력을 삭제하시겠습니까?', async () => {
+                await deleteAdminNotice(id);
+                loadAllSentNotifications();
+            });
+        };
+    });
+}
+
+async function submitAdminNotice() {
+    const titleInput = document.getElementById('adminNoticeTitleInput');
+    const msgInput = document.getElementById('adminNoticeMessageInput');
+    const linkInput = document.getElementById('adminNoticeLinkInput');
+    const btnSubmit = document.getElementById('btnSubmitAdminNotice');
+
+    const title = titleInput ? titleInput.value.trim() : '';
+    const message = msgInput ? msgInput.value.trim() : '';
+    const link = linkInput ? linkInput.value.trim() : '/';
+
+    if (!title) {
+        showAlert('공지사항 제목을 입력해주세요.');
+        if (titleInput) titleInput.focus();
+        return;
+    }
+    if (!message) {
+        showAlert('공지사항 내용을 입력해주세요.');
+        if (msgInput) msgInput.focus();
+        return;
+    }
+
+    try {
+        if (btnSubmit) {
+            btnSubmit.disabled = true;
+            btnSubmit.innerText = '등록 중...';
+        }
+
+        const res = await fetch('/api/admin/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, message, link: link || '/' })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            showAlert('📢 공지사항이 Supabase DB에 안전하게 등록되었습니다!', () => {
+                if (titleInput) titleInput.value = '';
+                if (msgInput) msgInput.value = '';
+                if (linkInput) linkInput.value = '';
+                loadNoticeManagement();
+            });
+        } else {
+            showAlert(data.error || '공지사항 등록에 실패했습니다.');
+        }
+    } catch (e) {
+        console.error('submitAdminNotice error:', e);
+        showAlert('통신 오류가 발생했습니다: ' + e.message);
+    } finally {
+        if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerText = '📢 공지사항 등록 및 DB 저장';
+        }
+    }
+}
+
+async function deleteAdminNotice(id) {
+    try {
+        const res = await fetch(`/api/admin/notifications?id=${encodeURIComponent(id)}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.success) {
+            showAlert('공지사항이 삭제되었습니다.', () => {
+                loadNoticeManagement();
+            });
+        } else {
+            showAlert(data.error || '삭제 처리에 실패했습니다.');
+        }
+    } catch (e) {
+        showAlert('삭제 통신 오류: ' + e.message);
+    }
+}
+
+// 이벤트 초기화 바인딩
+setTimeout(() => {
+    const btnSubmitNotice = document.getElementById('btnSubmitAdminNotice');
+    if (btnSubmitNotice) {
+        btnSubmitNotice.onclick = submitAdminNotice;
+    }
+    const btnRefreshNotices = document.getElementById('btnRefreshNotices');
+    if (btnRefreshNotices) {
+        btnRefreshNotices.onclick = loadNoticeManagement;
+    }
+
+    // 전체 알림 발송 이력 필터 및 검색 리스너
+    const typeFilter = document.getElementById('adminNotiTypeFilter');
+    if (typeFilter) {
+        typeFilter.onchange = renderAllSentNotifications;
+    }
+    const btnFilterNotis = document.getElementById('btnFilterNotis');
+    if (btnFilterNotis) {
+        btnFilterNotis.onclick = renderAllSentNotifications;
+    }
+    const searchInput = document.getElementById('adminNotiSearchInput');
+    if (searchInput) {
+        searchInput.onkeyup = (e) => {
+            if (e.key === 'Enter') renderAllSentNotifications();
+        };
+    }
+}, 500);
