@@ -1948,15 +1948,23 @@ function renderUsersList() {
 
     const roleLabels = {
         'parent': '학부모 회원',
+        'partner': '파트너 회원',
         'student': '학생 회원',
         'academy': '학원 관계자',
+        'director': '원장/강사',
+        'teacher': '원장/강사',
+        'consultant': '컨설턴트',
         'admin': '관리자'
     };
 
     const roleBadges = {
         'parent': 'background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;',
+        'partner': 'background: #fdf4ff; color: #a21caf; border: 1px solid #f5d0fe;',
         'student': 'background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0;',
         'academy': 'background: #faf5ff; color: #9333ea; border: 1px solid #e9d5ff;',
+        'director': 'background: #fdf2f8; color: #db2777; border: 1px solid #fbcfe8;',
+        'teacher': 'background: #fdf2f8; color: #db2777; border: 1px solid #fbcfe8;',
+        'consultant': 'background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0;',
         'admin': 'background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;'
     };
 
@@ -5993,6 +6001,10 @@ async function loadNoticeManagement() {
     renderAdminNoticeList();
     // 전체 발송 알림 이력도 함께 로드
     loadAllSentNotifications();
+    // 회원 목록 데이터 사전 준비
+    if ((!allUsers || allUsers.length === 0) && typeof loadUsers === 'function') {
+        loadUsers();
+    }
 }
 window.loadNoticeManagement = loadNoticeManagement;
 
@@ -6011,11 +6023,12 @@ function renderAdminNoticeList() {
             <thead>
                 <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569;">
                     <th style="padding: 10px 12px; width: 40px;">#</th>
-                    <th style="padding: 10px 12px; width: 200px;">제목</th>
+                    <th style="padding: 10px 12px; width: 130px; white-space: nowrap;">수신 대상</th>
+                    <th style="padding: 10px 12px; width: 190px;">제목</th>
                     <th style="padding: 10px 12px;">공지 내용</th>
-                    <th style="padding: 10px 12px; width: 130px;">연결 링크</th>
-                    <th style="padding: 10px 12px; width: 90px; text-align: center;">알림 발송</th>
-                    <th style="padding: 10px 12px; width: 100px; white-space: nowrap;">등록 일시</th>
+                    <th style="padding: 10px 12px; width: 110px;">연결 링크</th>
+                    <th style="padding: 10px 12px; width: 85px; text-align: center; white-space: nowrap;">알림 발송</th>
+                    <th style="padding: 10px 12px; width: 95px; white-space: nowrap;">등록 일시</th>
                     <th style="padding: 10px 12px; width: 70px; min-width: 70px; text-align: center; white-space: nowrap;">관리</th>
                 </tr>
             </thead>
@@ -6024,6 +6037,10 @@ function renderAdminNoticeList() {
 
     allAdminNotices.forEach((n, idx) => {
         const dateStr = n.created_at ? n.created_at.slice(0, 10) : '-';
+        const targetBadge = n.email
+            ? `<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; font-weight: 700; white-space: nowrap;" title="${escapeHtml(n.email)}">👤 ${escapeHtml(n.email)}</span>`
+            : '<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; font-weight: 700; white-space: nowrap;">🌐 전체 회원</span>';
+
         const sendAlertBadge = n.send_notification !== false 
             ? '<span style="color: #2563eb; font-size: 11px; font-weight: 700; background: #eff6ff; padding: 2px 7px; border-radius: 4px; border: 1px solid #bfdbfe; white-space: nowrap;">🔔 발송됨</span>' 
             : '<span style="color: #64748b; font-size: 11px; font-weight: 600; background: #f8fafc; padding: 2px 7px; border-radius: 4px; border: 1px solid #e2e8f0; white-space: nowrap;">🔕 미발송</span>';
@@ -6031,6 +6048,7 @@ function renderAdminNoticeList() {
         html += `
             <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
                 <td style="padding: 11px 12px; color: var(--adm-text-muted);">${idx + 1}</td>
+                <td style="padding: 11px 12px;">${targetBadge}</td>
                 <td style="padding: 11px 12px; font-weight: 700; color: #0f172a;">${escapeHtml(n.title || '')}</td>
                 <td style="padding: 11px 12px; color: #334155; line-height: 1.45;">${escapeHtml(n.message || '')}</td>
                 <td style="padding: 11px 12px;">
@@ -6153,11 +6171,23 @@ function renderAllSentNotifications() {
             ? '<span style="color: #16a34a; font-size: 11px; font-weight: 700; white-space: nowrap;">🟢 읽음</span>' 
             : '<span style="color: #94a3b8; font-size: 11px; font-weight: 600; white-space: nowrap;">⚪ 미확인</span>';
 
-        // 공지사항 중 알림 미발송 건 처리
-        if (n.type === 'notice' && n.send_notification === false) {
-            badge = '<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #f8fafc; color: #64748b; border: 1px solid #cbd5e1; font-weight: 700;">📄 공지 (알림 미발송)</span>';
-            receiver = '<span style="color: #94a3b8; font-size: 11.5px;">🔕 알림 미발송</span>';
-            readStatus = '<span style="color: #94a3b8; font-size: 11px;">-</span>';
+        // 공지사항 중 전체 공지 vs 개별 공지 및 알림 미발송 건 처리
+        if (n.type === 'notice') {
+            const isSpecific = Boolean(n.email || n.user_id);
+            if (isSpecific) {
+                badge = '<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; font-weight: 700; white-space: nowrap;">📢 개별 공지</span>';
+                receiver = `<span style="color: #0f172a; font-weight: 600;">👤 ${escapeHtml(n.email || '특정 회원')}</span>`;
+            } else {
+                badge = '<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; font-weight: 700; white-space: nowrap;">📢 전체 공지</span>';
+                receiver = '<span style="color: #64748b; font-weight: 600;">🌐 전체 회원 (공지)</span>';
+            }
+
+            if (n.send_notification === false) {
+                badge = isSpecific
+                    ? '<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #f8fafc; color: #64748b; border: 1px solid #cbd5e1; font-weight: 700; white-space: nowrap;">📄 개별공지(미발송)</span>'
+                    : '<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #f8fafc; color: #64748b; border: 1px solid #cbd5e1; font-weight: 700; white-space: nowrap;">📄 전체공지(미발송)</span>';
+                readStatus = '<span style="color: #94a3b8; font-size: 11px;">-</span>';
+            }
         }
 
         const dateStr = n.created_at ? n.created_at.slice(0, 10) : '-';
@@ -6201,12 +6231,205 @@ function renderAllSentNotifications() {
     });
 }
 
+// --- 👥 공지 수신 대상 회원 선택 모달 로직 ---
+async function openNoticeUserSelectModal() {
+    const modal = document.getElementById('noticeUserSelectModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+
+    // allUsers 데이터가 아직 로드되지 않은 경우 loadUsers 실행
+    if (!allUsers || allUsers.length === 0) {
+        if (typeof loadUsers === 'function') {
+            await loadUsers();
+        }
+    }
+    renderModalNoticeUsers();
+}
+window.openNoticeUserSelectModal = openNoticeUserSelectModal;
+
+function closeNoticeUserSelectModal() {
+    const modal = document.getElementById('noticeUserSelectModal');
+    if (modal) modal.style.display = 'none';
+}
+window.closeNoticeUserSelectModal = closeNoticeUserSelectModal;
+
+function renderModalNoticeUsers() {
+    const container = document.getElementById('modalNoticeUserTableContainer');
+    const countBadge = document.getElementById('modalNoticeUserCountBadge');
+    if (!container) return;
+
+    const roleFilter = document.getElementById('modalNoticeUserRoleFilter')?.value || 'all';
+    const providerFilter = document.getElementById('modalNoticeUserProviderFilter')?.value || 'all';
+    const keyword = document.getElementById('modalNoticeUserSearchInput')?.value.trim().toLowerCase() || '';
+
+    let users = Array.isArray(allUsers) ? [...allUsers] : [];
+
+    // 1. 회원 유형 필터
+    if (roleFilter !== 'all') {
+        users = users.filter(u => {
+            const r = u.role || 'parent';
+            if (roleFilter === 'director') return r === 'director' || r === 'teacher';
+            return r === roleFilter;
+        });
+    }
+
+    // 2. 가입 경로 필터
+    if (providerFilter !== 'all') {
+        users = users.filter(u => {
+            const isKakao = u.password_hash && u.password_hash.startsWith('kakao_oauth');
+            return providerFilter === 'kakao' ? isKakao : !isKakao;
+        });
+    }
+
+    // 3. 키워드 검색
+    if (keyword) {
+        users = users.filter(u => 
+            (u.name && u.name.toLowerCase().includes(keyword)) ||
+            (u.email && u.email.toLowerCase().includes(keyword)) ||
+            (u.phone && u.phone.includes(keyword))
+        );
+    }
+
+    if (countBadge) countBadge.innerText = `총 ${users.length}명`;
+
+    if (users.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--adm-text-muted); padding: 40px 0;">조건에 일치하는 회원이 없습니다.</div>';
+        return;
+    }
+
+    const roleBadges = {
+        'parent': '<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-weight: 700;">학부모</span>',
+        'partner': '<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #fdf4ff; color: #a21caf; border: 1px solid #f5d0fe; font-weight: 700;">파트너</span>',
+        'director': '<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #fdf2f8; color: #db2777; border: 1px solid #fbcfe8; font-weight: 700;">원장/강사</span>',
+        'teacher': '<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #fdf2f8; color: #db2777; border: 1px solid #fbcfe8; font-weight: 700;">원장/강사</span>',
+        'consultant': '<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; font-weight: 700;">컨설턴트</span>',
+        'admin': '<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-weight: 700;">관리자</span>'
+    };
+
+    let html = `
+        <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left;">
+            <thead>
+                <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569; position: sticky; top: 0; z-index: 2;">
+                    <th style="padding: 10px 12px; width: 40px;">#</th>
+                    <th style="padding: 10px 12px; width: 95px; white-space: nowrap;">회원 유형</th>
+                    <th style="padding: 10px 12px; width: 110px;">이름</th>
+                    <th style="padding: 10px 12px;">이메일 (계정)</th>
+                    <th style="padding: 10px 12px; width: 95px; white-space: nowrap;">가입 경로</th>
+                    <th style="padding: 10px 12px; width: 95px; white-space: nowrap;">가입일</th>
+                    <th style="padding: 10px 12px; width: 65px; text-align: center; white-space: nowrap;">선택</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    users.forEach((u, idx) => {
+        const r = u.role || 'parent';
+        const rBadge = roleBadges[r] || roleBadges['parent'];
+        const isKakao = u.password_hash && u.password_hash.startsWith('kakao_oauth');
+        const pBadge = isKakao 
+            ? '<span style="color: #b45309; font-weight: 700; font-size: 11.5px;">🟡 카카오</span>' 
+            : '<span style="color: #475569; font-size: 11.5px;">일반 가입</span>';
+        const dateStr = u.created_at ? u.created_at.slice(0, 10) : '-';
+
+        html += `
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                <td style="padding: 10px 12px; color: var(--adm-text-muted);">${idx + 1}</td>
+                <td style="padding: 10px 12px;">${rBadge}</td>
+                <td style="padding: 10px 12px; font-weight: 700; color: #0f172a;">${escapeHtml(u.name || '회원')}</td>
+                <td style="padding: 10px 12px; font-size: 12px; color: #334155;">${escapeHtml(u.email || '-')}</td>
+                <td style="padding: 10px 12px; white-space: nowrap;">${pBadge}</td>
+                <td style="padding: 10px 12px; color: var(--adm-text-muted); font-size: 11.5px; white-space: nowrap;">${dateStr}</td>
+                <td style="padding: 10px 12px; text-align: center; white-space: nowrap;">
+                    <button type="button" class="btn-select-notice-user"
+                        data-id="${u.id || ''}"
+                        data-email="${u.email || ''}"
+                        data-name="${escapeHtml(u.name || '회원')}"
+                        data-role="${r}"
+                        data-kakao="${isKakao ? '1' : '0'}"
+                        style="background: #2563eb; color: #ffffff; border: none; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;">
+                        선택
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+    `;
+    container.innerHTML = html;
+
+    // 선택 버튼 이벤트 연결
+    container.querySelectorAll('.btn-select-notice-user').forEach(btn => {
+        btn.onclick = () => {
+            const id = btn.getAttribute('data-id');
+            const email = btn.getAttribute('data-email');
+            const name = btn.getAttribute('data-name');
+            const role = btn.getAttribute('data-role');
+            const isKakao = btn.getAttribute('data-kakao') === '1';
+            selectNoticeTargetUser(id, email, name, role, isKakao);
+        };
+    });
+}
+window.renderModalNoticeUsers = renderModalNoticeUsers;
+
+function selectNoticeTargetUser(id, email, name, role, isKakao) {
+    const hiddenId = document.getElementById('adminNoticeSelectedUserId');
+    const hiddenEmail = document.getElementById('adminNoticeSelectedUserEmail');
+    const card = document.getElementById('adminNoticeSelectedUserCard');
+    const btnOpen = document.getElementById('btnOpenNoticeUserModal');
+
+    if (hiddenId) hiddenId.value = id || '';
+    if (hiddenEmail) hiddenEmail.value = email || '';
+
+    let roleLabel = '학부모';
+    if (role === 'admin') roleLabel = '관리자';
+    else if (role === 'partner') roleLabel = '파트너';
+    else if (role === 'director' || role === 'teacher') roleLabel = '원장/강사';
+    else if (role === 'consultant') roleLabel = '컨설턴트';
+
+    const providerLabel = isKakao ? '🟡 카카오' : '일반 가입';
+
+    if (card) {
+        card.innerHTML = `
+            <span style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-weight: 700;">${roleLabel}</span>
+            <strong style="color: #0f172a; font-size: 13px;">${escapeHtml(name)}</strong>
+            <span style="color: #64748b; font-size: 12px;">(${escapeHtml(email)})</span>
+            <span style="font-size: 11px; color: #b45309; font-weight: 600;">${providerLabel}</span>
+            <span style="font-size: 11.5px; color: #16a34a; font-weight: 700; margin-left: 4px;">✓ 수신 대상 지정됨</span>
+        `;
+    }
+
+    if (btnOpen) {
+        btnOpen.innerText = '🔄 회원 변경';
+    }
+
+    closeNoticeUserSelectModal();
+}
+window.selectNoticeTargetUser = selectNoticeTargetUser;
+
 async function submitAdminNotice() {
     const titleInput = document.getElementById('adminNoticeTitleInput');
     const msgInput = document.getElementById('adminNoticeMessageInput');
     const linkInput = document.getElementById('adminNoticeLinkInput');
     const sendAlertCheck = document.getElementById('adminNoticeSendAlertCheck');
     const btnSubmit = document.getElementById('btnSubmitAdminNotice');
+
+    const targetType = document.querySelector('input[name="adminNoticeTargetType"]:checked')?.value || 'all';
+    let targetUserId = null;
+    let targetEmail = null;
+
+    if (targetType === 'specific') {
+        targetUserId = document.getElementById('adminNoticeSelectedUserId')?.value || null;
+        targetEmail = document.getElementById('adminNoticeSelectedUserEmail')?.value || null;
+
+        if (!targetUserId && !targetEmail) {
+            showAlert('공지를 수신할 회원을 선택해주세요.');
+            openNoticeUserSelectModal();
+            return;
+        }
+    }
 
     const title = titleInput ? titleInput.value.trim() : '';
     const message = msgInput ? msgInput.value.trim() : '';
@@ -6237,21 +6460,52 @@ async function submitAdminNotice() {
                 title, 
                 message, 
                 link: link || '/',
-                sendNotification 
+                sendNotification,
+                targetType,
+                userId: targetUserId,
+                email: targetEmail
             })
         });
 
         const data = await res.json();
         if (data.success) {
-            const successMsg = sendNotification
-                ? '📢 공지사항 등록 및 전체 회원 알림 발송이 완료되었습니다!'
-                : '📄 공지사항이 등록되었습니다 (회원 알림 미발송).';
+            let successMsg = '';
+            if (targetType === 'specific') {
+                successMsg = sendNotification
+                    ? `📢 [${targetEmail || '지정 회원'}] 님에게 개별 공지 및 알림이 발송되었습니다!`
+                    : `📄 [${targetEmail || '지정 회원'}] 님에게 개별 공지가 등록되었습니다 (알림 미발송).`;
+            } else {
+                successMsg = sendNotification
+                    ? '📢 전체 회원 대상 공지사항 등록 및 알림 발송이 완료되었습니다!'
+                    : '📄 전체 공지사항이 등록되었습니다 (알림 미발송).';
+            }
 
             showAlert(successMsg, () => {
                 if (titleInput) titleInput.value = '';
                 if (msgInput) msgInput.value = '';
                 if (linkInput) linkInput.value = '';
-                if (sendAlertCheck) sendAlertCheck.checked = true; // 기본값 유지
+                if (sendAlertCheck) sendAlertCheck.checked = true;
+
+                // 수신 대상 전체 회원으로 초기화
+                const radioAll = document.querySelector('input[name="adminNoticeTargetType"][value="all"]');
+                if (radioAll) radioAll.checked = true;
+                const specificWrap = document.getElementById('adminNoticeSpecificUserWrap');
+                if (specificWrap) specificWrap.style.display = 'none';
+
+                const hiddenId = document.getElementById('adminNoticeSelectedUserId');
+                const hiddenEmail = document.getElementById('adminNoticeSelectedUserEmail');
+                const card = document.getElementById('adminNoticeSelectedUserCard');
+                const btnOpen = document.getElementById('btnOpenNoticeUserModal');
+
+                if (hiddenId) hiddenId.value = '';
+                if (hiddenEmail) hiddenEmail.value = '';
+                if (card) {
+                    card.innerHTML = '<span style="font-size: 13px; color: var(--adm-text-muted);">선택된 회원이 없습니다. 오른쪽 버튼을 눌러 회원을 지정하세요.</span>';
+                }
+                if (btnOpen) {
+                    btnOpen.innerText = '🔍 회원 리스트에서 선택';
+                }
+
                 loadNoticeManagement();
             });
         } else {
@@ -6295,6 +6549,52 @@ setTimeout(() => {
     const btnRefreshNotices = document.getElementById('btnRefreshNotices');
     if (btnRefreshNotices) {
         btnRefreshNotices.onclick = loadNoticeManagement;
+    }
+
+    // 공지 수신 대상 라디오 변경 리스너
+    document.querySelectorAll('input[name="adminNoticeTargetType"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const specificWrap = document.getElementById('adminNoticeSpecificUserWrap');
+            if (!specificWrap) return;
+            if (e.target.value === 'specific') {
+                specificWrap.style.display = 'block';
+                // 지정된 회원이 없으면 바로 회원 선택 모달 오픈
+                const selectedEmail = document.getElementById('adminNoticeSelectedUserEmail')?.value;
+                if (!selectedEmail) {
+                    openNoticeUserSelectModal();
+                }
+            } else {
+                specificWrap.style.display = 'none';
+            }
+        });
+    });
+
+    // 회원 선택 모달 열기/닫기 리스너
+    const btnOpenUserModal = document.getElementById('btnOpenNoticeUserModal');
+    if (btnOpenUserModal) {
+        btnOpenUserModal.onclick = openNoticeUserSelectModal;
+    }
+    const btnCloseUserModal = document.getElementById('btnCloseNoticeUserModal');
+    if (btnCloseUserModal) {
+        btnCloseUserModal.onclick = closeNoticeUserSelectModal;
+    }
+    const btnCancelUserModal = document.getElementById('btnCancelNoticeUserModal');
+    if (btnCancelUserModal) {
+        btnCancelUserModal.onclick = closeNoticeUserSelectModal;
+    }
+
+    // 모달 내 필터 및 검색 리스너
+    const roleFilter = document.getElementById('modalNoticeUserRoleFilter');
+    if (roleFilter) {
+        roleFilter.onchange = renderModalNoticeUsers;
+    }
+    const providerFilter = document.getElementById('modalNoticeUserProviderFilter');
+    if (providerFilter) {
+        providerFilter.onchange = renderModalNoticeUsers;
+    }
+    const modalSearchInput = document.getElementById('modalNoticeUserSearchInput');
+    if (modalSearchInput) {
+        modalSearchInput.addEventListener('input', renderModalNoticeUsers);
     }
 
     // 전체 알림 발송 이력 필터 및 검색 리스너

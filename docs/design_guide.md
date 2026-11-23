@@ -542,11 +542,26 @@
 - **UI 및 화면 설계**:
   - 관리자 사이드바에 `📢 공지사항 & 알림 관리` 메뉴 버튼 배치 (`data-target="noticeManagementCard"`).
   - 우측 메인 영역에 `#noticeManagementCard` 배치:
-    1. **신규 공지사항 작성 폼**: 제목(`adminNoticeTitleInput`), 본문(`adminNoticeMessageInput`), 연결 링크(`adminNoticeLinkInput`), 회원 알림 발송 여부 선택 체크박스(`adminNoticeSendAlertCheck` - 기본값 체크, 체크 해제 시 회원 알림 미발송 공지만 등록), 등록 버튼(`btnSubmitAdminNotice`).
-    2. **등록된 공지 목록 테이블**: `#noticeListContainer`를 통해 Supabase DB의 `notifications` (type: 'notice') 레코드를 최신순으로 렌더링하며, 알림 발송 여부 뱃지(🔔 발송됨 / 🔕 미발송) 표시 및 원클릭 삭제 기능 지원.
-    3. **전체 알림 발송 이력 리스트 (`#adminAllNotiListContainer`)**: 사이트에서 발송된 모든 알림(파트너 승인, 신청 반려, 회원가입 환영, 시스템 공지)을 알림 유형 필터(`adminNotiTypeFilter`) 및 수신자/제목 검색(`adminNotiSearchInput`)을 통해 실시간 조회하며, 수신 상태(읽음/미확인) 확인 및 원클릭 삭제 기능 지원 (테이블 관리 열 및 삭제 버튼은 줄바꿈 없이 깔끔하게 한 줄로 고정되도록 `white-space: nowrap;` 적용).
+    1. **신규 공지사항 작성 폼**: 
+       - **수신 대상 선택**: 라디오 버튼(`name="adminNoticeTargetType"`, 전체 회원 대상 vs 특정 회원 선택). 특정 회원 선택 시 전용 모달창(`noticeUserSelectModal`)이 오픈되어 회원 유형 필터(학부모/원장·강사/컨설턴트/관리자), 가입 경로 필터(🟡 카카오/일반), 키워드 검색창을 통해 원하는 회원을 검색하고 테이블에서 직접 확인 후 [선택]하여 지정할 수 있음. 선택 완료 시 폼에 해당 회원의 정보 카드 및 [회원 변경] 버튼이 표시됨.
+       - **공지 내용 작성**: 제목(`adminNoticeTitleInput`), 본문(`adminNoticeMessageInput`), 연결 링크(`adminNoticeLinkInput`), 회원 알림 발송 여부 선택 체크박스(`adminNoticeSendAlertCheck` - 기본값 체크, 체크 해제 시 회원 알림 미발송 공지만 등록), 등록 버튼(`btnSubmitAdminNotice`).
+    2. **등록된 공지 목록 테이블**: `#noticeListContainer`를 통해 Supabase DB의 `notifications` (type: 'notice') 레코드를 최신순으로 렌더링하며, 수신 대상 뱃지(🌐 전체 회원 / 👤 특정 회원), 알림 발송 여부 뱃지(🔔 발송됨 / 🔕 미발송) 표시 및 원클릭 삭제 기능 지원.
+    3. **전체 알림 발송 이력 리스트 (`#adminAllNotiListContainer`)**: 사이트에서 발송된 모든 알림(파트너 승인, 신청 반려, 회원가입 환영, 전체/개별 공지)을 알림 유형 필터(`adminNotiTypeFilter`) 및 수신자/제목 검색(`adminNotiSearchInput`)을 통해 실시간 조회하며, 수신 상태(읽음/미확인) 확인 및 원클릭 삭제 기능 지원 (테이블 관리 열 및 삭제 버튼은 줄바꿈 없이 깔끔하게 한 줄로 고정되도록 `white-space: nowrap;` 적용).
 - **데이터 흐름**:
   - 등록 시 `POST /api/admin/notifications` -> Supabase DB `notifications` 테이블에 직접 `INSERT` (로컬 파일 미저장).
   - 회원이 회원 서비스 또는 파트너센터 접속 시 실시간 조회되어 알림 센터 및 상단 종 아이콘 뱃지에 즉각 노출됨.
+
+## 37. 학부모 회원의 파트너 가입 시 회원 유형 자동 전환 및 관리자 센터 연동 정책 (2026-11-23)
+- **배경 및 목적**:
+  - 일반 학부모(`parent`)로 가입된 회원이 파트너센터(`partner-auth.html`)에서 파트너 가입을 하거나 사업자 등록 신청(`POST /api/business/register`)을 접수했을 때 회원 유형이 학부모로 머물러있지 않고 파트너(`partner`) 회원으로 실시간 전환되도록 보장.
+- **UI 및 화면 설계**:
+  - 관리자 센터 [👥 등록 회원 및 계정 관리 센터]:
+    - 회원 유형 필터(`userRoleFilter`): `전체 회원 유형`, `학부모 회원`, `파트너 회원`, `학생 회원`, `학원 관계자` 지원.
+    - 회원 목록 테이블: `roleBadges`에 파트너 회원 전용 퍼플 뱃지(`background: #fdf4ff; color: #a21caf; border: 1px solid #f5d0fe;`) 표시.
+  - 공지 수신 회원 선택 모달(`noticeUserSelectModal`):
+    - 회원 유형 필터 및 목록에 `파트너 회원` 뱃지 및 필터 지원.
+- **데이터 흐름**:
+  - `POST /api/auth/register`: 기존 학부모 회원이 파트너 가입을 시도할 경우 중복 에러 대신 `role = 'partner'`로 승급 및 사업자 정보 연동.
+  - `POST /api/business/register`: 사업자 등록 신청서 제출 시 해당 신청 회원의 Supabase DB `users` 테이블 `role`을 `parent` -> `partner`로 실시간 업데이트.
 
 

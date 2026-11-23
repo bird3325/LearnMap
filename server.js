@@ -3853,8 +3853,111 @@ app.post('/api/auth/register', async (req, res) => {
     const cleanName = name.trim();
     const userRole = (role === 'partner' || Boolean(bizName)) ? 'partner' : 'parent';
 
-    // 1. Supabase users 테이블 저장 시도
-    let userId = 'user_' + Date.now();
+    // 1. 기존 가입 회원 확인 (Supabase & 로컬)
+    let existingUser = null;
+    try {
+        const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(cleanEmail)}`, {
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+        });
+        if (checkRes.ok) {
+            const checkRows = await checkRes.json();
+            if (Array.isArray(checkRows) && checkRows.length > 0) {
+                existingUser = checkRows[0];
+            }
+        }
+    } catch (chkErr) {
+        console.warn('Check existing user error:', chkErr.message);
+    }
+
+    const users = readUsers();
+    const localExisting = users.find(u => u.email && u.email.toLowerCase() === cleanEmail);
+    if (!existingUser && localExisting) {
+        existingUser = localExisting;
+    }
+
+    let userId = existingUser ? existingUser.id : ('user_' + Date.now());
+
+    // 🌟 학부모 회원이 파트너로 가입 시 회원유형(role)을 'partner'로 전환/업그레이드
+    if (existingUser) {
+        if (userRole === 'partner') {
+            console.log(`[파트너 전환]: 학부모 회원(${cleanEmail}) -> 파트너 회원(role: partner) 변경 시작`);
+
+            // 1-A. 파트너 사업자 정보 등록/연동
+            let bizId = 'biz_' + Date.now();
+            try {
+                const businesses = await syncBusinessesFromDB();
+                const newBiz = {
+                    id: bizId,
+                    userId: userId,
+                    name: bizName || `${cleanName} 파트너스`,
+                    type: bizType || 'academy',
+                    representative: cleanName,
+                    bizNumber: (bizNumber || '').trim(),
+                    email: cleanEmail,
+                    phone: phone || existingUser.phone || '',
+                    address: '기본 주소 등록 대기',
+                    status: 'submitted',
+                    isPartner: false,
+                    createdAt: new Date().toISOString()
+                };
+                businesses.push(newBiz);
+                await saveBusinessToDB(newBiz);
+            } catch (bizErr) {
+                console.warn('Partner business auto-create error:', bizErr.message);
+            }
+
+            // 1-B. Supabase DB users 테이블 회원유형 'partner'로 업데이트
+            try {
+                await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(cleanEmail)}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        role: 'partner',
+                        name: cleanName || existingUser.name,
+                        phone: phone || existingUser.phone,
+                        updated_at: new Date().toISOString()
+                    })
+                });
+            } catch (sbErr) {
+                console.warn('Supabase role update error:', sbErr.message);
+            }
+
+            // 1-C. 로컬 users 갱신
+            if (localExisting) {
+                localExisting.role = 'partner';
+                localExisting.name = cleanName || localExisting.name;
+                localExisting.bizName = bizName || localExisting.bizName;
+                localExisting.bizNumber = bizNumber || localExisting.bizNumber;
+                localExisting.businessId = bizId;
+            }
+            writeUsers(users);
+
+            const sessionUser = {
+                id: userId,
+                email: cleanEmail,
+                name: cleanName || existingUser.name,
+                role: 'partner',
+                bizName: bizName || '',
+                bizNumber: bizNumber || '',
+                businessId: bizId
+            };
+
+            return res.json({
+                success: true,
+                user: sessionUser,
+                isUpgraded: true,
+                message: '학부모 회원에서 파트너 회원으로 전환되었습니다! 파트너센터로 이동합니다.'
+            });
+        } else {
+            return res.status(400).json({ success: false, message: '이미 가입된 이메일 계정입니다.' });
+        }
+    }
+
+    // 2. 신규 회원인 경우 Supabase users 테이블 저장
     try {
         const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
             method: 'POST',
@@ -3881,13 +3984,6 @@ app.post('/api/auth/register', async (req, res) => {
         }
     } catch (e) {
         console.warn('Supabase register error:', e.message);
-    }
-
-    // 2. 로컬 백업 파일 저장
-    const users = readUsers();
-    const existing = users.find(u => u.email.toLowerCase() === cleanEmail);
-    if (existing) {
-        return res.status(400).json({ success: false, message: '이미 가입된 이메일 계정입니다.' });
     }
 
     let bizId = null;
@@ -7130,6 +7226,43 @@ app.post('/api/business/register', async (req, res) => {
         // Supabase DB에 실시간 저장
         await saveBusinessToDB(newBusiness);
 
+        // 🌟 학부모 회원이 파트너 등록 신청 시 회원 유형(role)을 'partner'로 실시간 전환
+        try {
+            let userUpdateQuery = '';
+            if (matchedUserId && matchedUserId.includes('-')) {
+                userUpdateQuery = `id=eq.${encodeURIComponent(matchedUserId)}`;
+            } else if (cleanEmail) {
+                userUpdateQuery = `email=eq.${encodeURIComponent(cleanEmail)}`;
+            }
+
+            if (userUpdateQuery) {
+                await fetch(`${SUPABASE_URL}/rest/v1/users?${userUpdateQuery}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        role: 'partner',
+                        updated_at: new Date().toISOString()
+                    })
+                });
+                console.log(`[Supabase Role Update on Business Register]: ${cleanEmail} -> partner`);
+            }
+
+            const localUsers = readUsers();
+            const localU = localUsers.find(u => (u.email && u.email.toLowerCase() === cleanEmail) || (u.id === matchedUserId));
+            if (localU) {
+                localU.role = 'partner';
+                localU.businessId = newBizId;
+                localU.bizName = name.trim();
+                writeUsers(localUsers);
+            }
+        } catch (roleErr) {
+            console.warn('Sync user role to partner error:', roleErr.message);
+        }
+
         // 이벤트 기록
         const events = readJsonFileSafe(ANALYTICS_PATH, []);
         events.push({
@@ -9330,6 +9463,14 @@ app.get('/api/notifications', async (req, res) => {
                         if (row && row.type === 'notice' && row.send_notification === false) {
                             return;
                         }
+                        // 🔔 특정 회원에게 지정된 공지사항인 경우, 본인 대상이 아니면 제외
+                        if (row && row.type === 'notice' && (row.user_id || row.email)) {
+                            const isMatchUser = userId && row.user_id && String(row.user_id) === String(userId);
+                            const isMatchEmail = email && row.email && String(row.email).toLowerCase() === String(email).toLowerCase();
+                            if (!isMatchUser && !isMatchEmail) {
+                                return;
+                            }
+                        }
                         if (row && row.id && !seenIds.has(row.id)) {
                             seenIds.add(row.id);
                             mergedNotis.push({
@@ -9524,9 +9665,20 @@ app.get('/api/admin/notifications/all', async (req, res) => {
 // 🌟 13-4. 관리자용 공지사항 등록 및 DB 저장 (POST /api/admin/notifications)
 app.post('/api/admin/notifications', async (req, res) => {
     try {
-        const { title, message, link = '/', sendNotification, send_notification } = req.body;
+        const { title, message, link = '/', sendNotification, send_notification, targetType = 'all', userId, email } = req.body;
         if (!title || !message) {
             return res.status(400).json({ success: false, error: '공지사항 제목과 내용을 입력해주세요.' });
+        }
+
+        // 특정 회원 공지인 경우 회원 지정 여부 검증
+        let targetUserId = null;
+        let targetEmail = null;
+        if (targetType === 'specific') {
+            if (!userId && !email) {
+                return res.status(400).json({ success: false, error: '공지를 발송할 회원을 선택해주세요.' });
+            }
+            targetUserId = (userId && userId.includes('-')) ? userId.trim() : null;
+            targetEmail = email ? email.trim().toLowerCase() : null;
         }
 
         const isSendAlert = (sendNotification !== undefined) 
@@ -9534,8 +9686,8 @@ app.post('/api/admin/notifications', async (req, res) => {
             : (send_notification !== undefined ? Boolean(send_notification) : true);
 
         const payload = {
-            user_id: null,
-            email: null,
+            user_id: targetUserId,
+            email: targetEmail,
             type: 'notice',
             title: title.trim(),
             message: message.trim(),
