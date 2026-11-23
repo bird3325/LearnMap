@@ -3177,13 +3177,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 sessionStorage.setItem('learnmap_pending_diagnosis_school', JSON.stringify(currentSchool));
             } catch (err) {}
 
-            await alert('🔒 자녀 맞춤 학교 진단은 로그인 후 이용하실 수 있는 회원 전용 서비스입니다.\n로그인을 진행해 주세요.', () => {
+            let authOpened = false;
+            const openAuth = () => {
+                if (authOpened) return;
+                authOpened = true;
                 if (typeof window.openAuthModal === 'function') {
                     window.openAuthModal();
                 } else if (typeof window.openSidebarLogin === 'function') {
                     window.openSidebarLogin();
                 }
-            });
+            };
+
+            await alert('🔒 자녀 맞춤 학교 진단은 로그인 후 이용하실 수 있는 회원 전용 서비스입니다.\n로그인을 진행해 주세요.', openAuth);
+            openAuth();
             return;
         }
 
@@ -25702,6 +25708,12 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (res.success) {
                     await loadChildProfilesFromSupabase();
                     window.updateAuthUI();
+                    if (typeof window.closeAuthModal === 'function') {
+                        window.closeAuthModal();
+                    }
+                    if (typeof window.checkAndResumePendingDiagnosis === 'function' && window.checkAndResumePendingDiagnosis()) {
+                        return;
+                    }
                     if (typeof window.renderNEISTabContent === 'function') {
                         window.renderNEISTabContent('sync');
                     }

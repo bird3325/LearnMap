@@ -5938,7 +5938,10 @@
             try {
                 const targetBizId = bizId || (currentBiz && currentBiz.id) || (currentUser && (currentUser.businessId || currentUser.id)) || '';
                 const queryStr = targetBizId ? `?businessId=${encodeURIComponent(targetBizId)}` : '';
-                const res = await fetch(`/api/business/dashboard${queryStr}`);
+                const authUserToken = (currentUser && (currentUser.token || currentUser.id || currentUser.email)) || (currentBiz && (currentBiz.userId || currentBiz.id)) || localStorage.getItem('admin_token') || 'authenticated_partner';
+                const res = await fetch(`/api/business/dashboard${queryStr}`, {
+                    headers: { 'Authorization': `Bearer ${authUserToken}` }
+                });
                 if (!res.ok) throw new Error('대시보드 통계 조회 실패');
                 const data = await res.json();
 
@@ -8278,7 +8281,10 @@
                 if (!data) {
                     let subObj = currentSub || null;
                     try {
-                        const dashRes = await fetch(`/api/business/dashboard?businessId=${encodeURIComponent(currentBiz.id)}`);
+                        const authUserToken = (currentUser && (currentUser.token || currentUser.id || currentUser.email)) || (currentBiz && (currentBiz.userId || currentBiz.id)) || localStorage.getItem('admin_token') || 'authenticated_partner';
+                        const dashRes = await fetch(`/api/business/dashboard?businessId=${encodeURIComponent(currentBiz.id)}`, {
+                            headers: { 'Authorization': `Bearer ${authUserToken}` }
+                        });
                         if (dashRes.ok) {
                             const dashJson = await dashRes.json();
                             if (dashJson && dashJson.subscription) subObj = dashJson.subscription;

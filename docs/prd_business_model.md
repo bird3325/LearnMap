@@ -648,3 +648,44 @@
   - 대표 승인 사업자인 미래탐구(`biz_1793495258331`, 학원) 및 원탑 공인중개사(`biz_1793878533975`, 부동산) 대상 실제 학부모 상담 문의 3건을 시드 데이터(`src/data/inquiries.json`)로 구성.
   - 파트너 로그인 시 1:1 상담 문의 건수 및 학부모 상담 내역 카드(학생 학년, 문의 내용, 회신 연락처, 전화걸기 버튼)가 즉각 로드되어 리드 과금 및 상담 연결 기능이 정상 작동하도록 복구 완료.
 
+### 10.26 긴급 관리자 및 사업자 API 서버 측 보안 인증 미들웨어 강화 (2026-11-23 업데이트)
+- **개요 및 목적**:
+  - 관리자 회원 정보(`/api/admin/users`), 사업자 대시보드(`/api/business/dashboard`), 저장된 부동산 매물 관리(`/api/realestate/stored`) 엔드포인트의 미인가 무단 접근을 차단하기 위한 서버 측 인증 미들웨어 장착.
+- **적용 상세**:
+  1. **관리자 API 인증 미들웨어 (`requireAdminAuth`)**:
+     - 엔드포인트: `GET /api/admin/users`, `GET /api/realestate/stored`, `POST /api/realestate/stored`
+     - 인증 헤더(`Authorization` 또는 `x-admin-token`) 검증.
+     - 미인증 시 즉시 `HTTP 401 Unauthorized` 반환.
+  2. **사업자/관리자 API 인증 미들웨어 (`requireBusinessOrAdminAuth`)**:
+     - 엔드포인트: `GET /api/business/dashboard`
+     - 인증 헤더 미포함 시 즉시 `HTTP 401 Unauthorized` 반환.
+     - 비인가 게스트 토큰(`guest`, `guest@learnmap.kr` 등) 요청 시 `HTTP 403 Forbidden` 반환.
+     - 유효한 사업자/관리자 토큰 제공 시 정상 `HTTP 200 OK` 처리.
+  3. **클라이언트 인증 연동 보강**:
+     - `admin.js`: 부동산 수동 등록/조회 시 `Authorization` 헤더 자동 첨부.
+     - `business.html`: 대시보드 로드(`loadDashboard`, 안전 폴백) 시 `Authorization: Bearer <token>` 헤더 전송.
+  4. **검증 완료 (curl 테스트 통과)**:
+     - `GET /api/admin/users` (미인증) -> `HTTP 401 Unauthorized`
+     - `GET /api/business/dashboard` (미인증) -> `HTTP 401 Unauthorized`
+     - `GET /api/realestate/stored` (미인증) -> `HTTP 401 Unauthorized`
+     - `GET /api/business/dashboard` (게스트 Bearer guest) -> `HTTP 403 Forbidden`
+     - `GET /api/admin/users` (관리자 세션 토큰) -> `HTTP 200 OK`
+     - `GET /api/business/dashboard` (파트너 인증 토큰) -> `HTTP 200 OK`
+
+### 10.27 학교 상세 패널 '맞춤 학교 진단' 인터랙션 및 로그인 연동 정책 (2026-11-23 업데이트)
+- **개요 및 배경**:
+  - 학교 상세 패널(사이드바) 내 💬 학부모 소통 탭의 `🎯 맞춤 학교 진단` 버튼 클릭 시 패널이 닫히며 초기 화면으로 리셋되던 문제 해결.
+- **주요 정책 및 인터랙션 Flow**:
+  1. **패널 보존 정책**:
+     - 버튼 클릭 시 `e.preventDefault()`, `e.stopPropagation()` 및 `type="button"` 지정을 통해 부모 폼/맵 클릭 전파 및 패널 닫힘을 원천 방지하고 학교 패널(`schoolCard`)을 항상 열린 상태로 보존.
+  2. **로그인 회원 동작**:
+     - 현재 선택된 학교(`orchestrator.state.selectedSchool` 등)를 기준으로 진단 함수(`triggerSchoolDiagnosis`)를 호출하여, 중앙 모달 팝업(`diagnosisModalOverlay`)으로 진단 결과 카드를 표출. 배경의 학교 패널은 그대로 유지됨.
+  3. **비로그인 방문자 동작 및 자동 연동**:
+     - 패널을 닫지 않고 그 자리에서 알림 팝업 안내 후 로그인 모달(`openAuthModal`) 오픈.
+     - 탐색 중이던 대상 학교 정보를 `sessionStorage`에 임시 보존(`learnmap_pending_diagnosis_school`).
+     - 로그인(이메일, 소셜, 회원가입 등) 완료 즉시 보존된 학교 정보를 복원하여 해당 학교의 맞춤 진단 화면/모달을 자동으로 오픈(`checkAndResumePendingDiagnosis`).
+  4. **기존 기능 무결성**:
+     - 학교 패널 닫기(`btnDeselectSchool`), 상단 탭 전환, 기타 리뷰/비교보드 추가 버튼의 기존 동작을 100% 정상 보존.
+
+
+

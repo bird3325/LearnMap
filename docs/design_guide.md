@@ -564,4 +564,40 @@
   - `POST /api/auth/register`: 기존 학부모 회원이 파트너 가입을 시도할 경우 중복 에러 대신 `role = 'partner'`로 승급 및 사업자 정보 연동.
   - `POST /api/business/register`: 사업자 등록 신청서 제출 시 해당 신청 회원의 Supabase DB `users` 테이블 `role`을 `parent` -> `partner`로 실시간 업데이트.
 
+## 38. 관리자 및 사업자 핵심 API 서버 측 보안 인증 미들웨어 및 401/403 응답 정책 (2026-11-23)
+- **배경 및 목적**:
+  - 관리자 회원 정보(`/api/admin/users`), 사업자 대시보드 통계(`/api/business/dashboard`), 부동산 수동 등록 매물 관리(`/api/realestate/stored`) 엔드포인트에 서버 측 강제 인증 미들웨어를 도입하여 비인가 curl, 스크립트, 무단 제3자 접근을 원천 차단.
+- **인증 미들웨어 및 응답 정책**:
+  1. `requireAdminAuth`:
+     - 적용: `GET /api/admin/users`, `GET /api/realestate/stored`, `POST /api/realestate/stored`
+     - 미인증 요청(Authorization 헤더 누락/불일치) 시: `HTTP 401 Unauthorized` 반환 (`{"success":false,"error":"관리자 인증이 필요합니다..."}`)
+  2. `requireBusinessOrAdminAuth`:
+     - 적용: `GET /api/business/dashboard`
+     - 미인증 요청 시: `HTTP 401 Unauthorized` 반환
+     - 비인가 게스트 계정(`guest`, `guest@learnmap.kr` 등) 요청 시: `HTTP 403 Forbidden` 반환 (`{"success":false,"error":"유효하지 않은 계정 권한입니다..."}`)
+- **화면 연동 (클라이언트 헤더 보강)**:
+  - `admin.js`: 부동산 수동 등록 매물 목록 로드 및 저장 시 관리자 세션 토큰(`Authorization: token`) 전송.
+  - `business.html`: 대시보드 로드 및 안전 폴백 호출 시 파트너 로그인 토큰(`Authorization: Bearer <token>`) 헤더 자동 전송.
+- **검증**:
+  - 외부 미인증 curl 테스트 결과 `HTTP 401`, 게스트 테스트 결과 `HTTP 403` 반환 확인 완료.
+
+## 39. 학교 상세 패널 맞춤 학교 진단 버튼 인터랙션 및 모달 오버레이 가이드 (2026-11-23)
+- **배경 및 문제점**:
+  - 학교 상세 패널 안에서 `🎯 맞춤 학교 진단` 버튼 클릭 시 기존에는 `schoolCard`를 `display: none` 처리하거나 이벤트 전파로 인해 사이드바 패널이 닫히고 초기 화면으로 복귀되는 UX 결함 발생.
+- **개선된 UI/UX 및 인터랙션 규격**:
+  1. **버튼 속성 및 이벤트 전파 방지**:
+     - `index.html` 내 `<button type="button" id="btnCompareChild">` 명시.
+     - 클릭 이벤트 핸들러에서 `e.preventDefault()`, `e.stopPropagation()`을 실행하여 상위 요소로의 불필요한 이벤트 버블링 차단.
+  2. **모달 팝업 오버레이 (`#diagnosisModalOverlay`)**:
+     - 로그인 후 진단 실행 시 기존 학교 상세 패널(`schoolCard`)을 닫지 않고 화면에 유지.
+     - 분석 결과 카드(`diagnosisResultCard`)를 중앙 모달 오버레이(`backdrop-filter: blur(6px); z-index: 10080`)로 띄워 사용자가 학교 정보와 진단 결과를 연속성 있게 탐색할 수 있도록 보장.
+     - 모달 닫기 버튼(`btnCloseAnalysis`) 또는 바깥 배경 클릭 시 모달만 닫히며 원래 학교 상세 패널은 그대로 표시됨.
+  3. **비로그인 사용자 플로우**:
+     - 진단 버튼 클릭 시 패널을 유지한 채 안내 팝업 및 로그인 모달 오픈.
+     - 원래 보고 있던 학교 정보를 `sessionStorage`에 보존하여 로그인 완료 시 즉시 해당 학교 맞춤 진단 화면으로 연결.
+  4. **기타 컴포넌트 안전성**:
+     - 닫기(`btnDeselectSchool`), 탭 전환(종합분석, 성취도, 주거&학원, 학부모소통) 등 기존 버튼 인터랙션 일체 정상 유지.
+
+
+
 

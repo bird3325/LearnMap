@@ -2908,7 +2908,9 @@ if (btnResetRegionFilter) {
 
 async function loadStoredRealEstate() {
     try {
-        const res = await fetch('/api/realestate/stored');
+        const res = await fetch('/api/realestate/stored', {
+            headers: { 'Authorization': token }
+        });
         if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data)) {
@@ -2936,7 +2938,10 @@ async function saveStoredRealEstate(list) {
     try {
         await fetch('/api/realestate/stored', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': token 
+            },
             body: JSON.stringify(list)
         });
     } catch (e) {
