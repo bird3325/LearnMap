@@ -4527,7 +4527,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let html = '';
         if (isDongMyeong) {
             html += `
-                <div style="padding: 10px 14px 8px 14px; background: #fef2f2; border-bottom: 1px solid #fee2e2; border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: space-between;">
+                <div style="flex-shrink: 0; padding: 10px 14px 8px 14px; background: #fef2f2; border-bottom: 1px solid #fee2e2; border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: space-between; user-select: none;">
                     <div style="font-size: 12px; font-weight: 700; color: #dc2626; display: flex; align-items: center; gap: 5px;">
                         <span>🏫</span>
                         <span>동명이교 안내: 지역별 ${sameNameSchools.length}개 학교 중 선택하세요</span>
@@ -4537,7 +4537,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         } else {
             html += `
-                <div style="padding: 10px 14px 8px 14px; background: #eff6ff; border-bottom: 1px solid #dbeafe; border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: space-between;">
+                <div style="flex-shrink: 0; padding: 10px 14px 8px 14px; background: #eff6ff; border-bottom: 1px solid #dbeafe; border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: space-between; user-select: none;">
                     <div style="font-size: 12px; font-weight: 700; color: #2563eb; display: flex; align-items: center; gap: 5px;">
                         <span>🔍</span>
                         <span>검색 결과 (${schoolList.length}개 학교) - 지역을 선택하세요</span>
@@ -4547,7 +4547,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }
 
-        html += '<div style="max-height: 320px; overflow-y: auto;">';
+        html += '<div style="flex: 1; max-height: min(340px, calc(100vh - 190px)); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;">';
         schoolList.slice(0, 15).forEach(s => {
             const regBadge = getSchoolRegionBadgeText(s);
             const isMatchCurrent = (s.region === curRegion || (s.address && s.address.includes(curRegion)));
@@ -4557,17 +4557,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             html += `
                 <div onclick="window.selectSchoolFromSearch('${s.school_id || s.id}')"
-                    style="padding: 10px 14px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.15s ease;"
+                    style="padding: 11px 14px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.15s ease; user-select: none; -webkit-tap-highlight-color: transparent;"
                     onmouseover="this.style.background='#f8fafc';"
                     onmouseout="this.style.background='white';">
-                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; pointer-events: none;">
                         <strong style="font-size: 13.5px; color: #0f172a;">${s.school_name}</strong>
                         <span style="background: ${badgeBg}; color: ${badgeColor}; font-weight: 700; font-size: 11px; padding: 2px 7px; border-radius: 6px; border: 1px solid ${badgeBorder}; display: inline-flex; align-items: center; gap: 2px;">
                             📍 ${regBadge}
                         </span>
                         <span style="font-size: 11px; color: #64748b;">${s.school_type || ''} · ${s.establishment_type || '공립'}</span>
                     </div>
-                    <div style="font-size: 11.5px; color: #64748b; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    <div style="font-size: 11.5px; color: #64748b; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;">
                         ${s.address || '주소 정보 없음'}
                     </div>
                 </div>
@@ -4576,7 +4576,8 @@ document.addEventListener('DOMContentLoaded', () => {
         html += '</div>';
 
         dropdown.innerHTML = html;
-        dropdown.style.display = 'block';
+        dropdown.style.display = 'flex';
+        dropdown.style.flexDirection = 'column';
     }
     window.showSearchResultsDropdown = showSearchResultsDropdown;
 
@@ -4605,7 +4606,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (typeof window.selectSchoolById === 'function') {
             window.__isSchoolPinSelectedByUser = true;
+            if (window.innerWidth <= 1024) {
+                window.__expandingMobileDetailExplicitly = true;
+            }
             window.selectSchoolById(target.school_id || target.id);
+            if (window.innerWidth <= 1024) {
+                window.__expandingMobileDetailExplicitly = false;
+            }
         }
 
         hideSearchResultsDropdown();

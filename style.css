@@ -3450,3 +3450,42 @@ body.is-resizing-sidebar .housing-sidebar-section {
     animation: academy-skeleton-shimmer 1.5s infinite ease-in-out;
 }
 
+/* ============================================================
+   Search Bar & Results Dropdown Layering & Positioning (PC/Mobile)
+   ============================================================ */
+.search-bar-wrapper {
+    position: relative !important;
+    z-index: 10250 !important;
+}
+
+.search-results-dropdown {
+    position: absolute !important;
+    top: calc(100% + 6px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: #ffffff !important;
+    border-radius: 14px !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22) !important;
+    border: 1.5px solid #cbd5e1 !important;
+    z-index: 10350 !important;
+    max-height: min(420px, calc(100vh - 130px)) !important;
+    overflow: hidden !important;
+    display: none;
+    flex-direction: column !important;
+}
+
+@media (max-width: 1024px) {
+    .map-search-container {
+        z-index: 10150 !important;
+    }
+    .map-search-container .search-bar-wrapper {
+        position: relative !important;
+        z-index: 10250 !important;
+    }
+    .search-results-dropdown {
+        max-height: min(380px, calc(100dvh - 120px)) !important;
+        z-index: 10350 !important;
+    }
+}
+
+

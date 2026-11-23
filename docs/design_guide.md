@@ -598,6 +598,27 @@
   4. **기타 컴포넌트 안전성**:
      - 닫기(`btnDeselectSchool`), 탭 전환(종합분석, 성취도, 주거&학원, 학부모소통) 등 기존 버튼 인터랙션 일체 정상 유지.
 
+## 40. 지도 검색 결과 드롭다운(searchResultsDropdown) z-index 계층 및 스크롤 디자인 사양 (2026-11-23)
+- **배경 및 문제점**:
+  - 검색 결과 드롭다운이 하위 돔 요소인 '학부모 맞춤 분석 & 필터 설정' 바(`.filter-header-bar`의 `position: relative`) 아래로 깔려 드롭다운 카드 하단을 클릭할 수 없던 스태킹 컨텍스트 충돌 발생.
+- **수정된 z-index 및 레이아웃 사양**:
+  1. `.search-bar-wrapper`: `position: relative !important; z-index: 10250 !important;` (필터 바 및 아코디언 상위 스태킹 부여)
+  2. `#searchResultsDropdown`:
+     - `position: absolute !important; top: calc(100% + 6px) !important;`
+     - `z-index: 10350 !important;` (하단 모든 레이어 최상단 렌더링)
+     - `max-height: min(420px, calc(100vh - 130px)) !important;`
+     - `box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22) !important;`
+     - `border-radius: 14px !important; overflow: hidden !important; display: flex; flex-direction: column;`
+  3. **내부 스크롤 규격**:
+     - 상단 안내 바: `flex-shrink: 0; padding: 10px 14px;`
+     - 학교 리스트 컨테이너: `flex: 1; max-height: min(340px, calc(100vh - 190px)); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;`
+  4. **모바일 뷰포트 사양**:
+     - `.map-search-container`: `z-index: 10150 !important;` (모바일 필터 아코디언 `10095`보다 상위)
+     - `#searchResultsDropdown`: `max-height: min(380px, calc(100dvh - 120px)) !important;`
+  5. **카드 클릭성**:
+     - 카드 내부 텍스트 및 뱃지에 `pointer-events: none`을 부여하여 패딩, 여백, 텍스트 어느 곳을 터치/클릭해도 카드 전체가 반응하도록 최적화.
+
+
 
 
 
