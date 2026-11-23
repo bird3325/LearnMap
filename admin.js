@@ -6015,8 +6015,8 @@ function renderAdminNoticeList() {
                     <th style="padding: 10px 12px;">공지 내용</th>
                     <th style="padding: 10px 12px; width: 130px;">연결 링크</th>
                     <th style="padding: 10px 12px; width: 90px; text-align: center;">알림 발송</th>
-                    <th style="padding: 10px 12px; width: 100px;">등록 일시</th>
-                    <th style="padding: 10px 12px; width: 65px; text-align: center;">관리</th>
+                    <th style="padding: 10px 12px; width: 100px; white-space: nowrap;">등록 일시</th>
+                    <th style="padding: 10px 12px; width: 70px; min-width: 70px; text-align: center; white-space: nowrap;">관리</th>
                 </tr>
             </thead>
             <tbody>
@@ -6025,8 +6025,8 @@ function renderAdminNoticeList() {
     allAdminNotices.forEach((n, idx) => {
         const dateStr = n.created_at ? n.created_at.slice(0, 10) : '-';
         const sendAlertBadge = n.send_notification !== false 
-            ? '<span style="color: #2563eb; font-size: 11px; font-weight: 700; background: #eff6ff; padding: 2px 7px; border-radius: 4px; border: 1px solid #bfdbfe;">🔔 발송됨</span>' 
-            : '<span style="color: #64748b; font-size: 11px; font-weight: 600; background: #f8fafc; padding: 2px 7px; border-radius: 4px; border: 1px solid #e2e8f0;">🔕 미발송</span>';
+            ? '<span style="color: #2563eb; font-size: 11px; font-weight: 700; background: #eff6ff; padding: 2px 7px; border-radius: 4px; border: 1px solid #bfdbfe; white-space: nowrap;">🔔 발송됨</span>' 
+            : '<span style="color: #64748b; font-size: 11px; font-weight: 600; background: #f8fafc; padding: 2px 7px; border-radius: 4px; border: 1px solid #e2e8f0; white-space: nowrap;">🔕 미발송</span>';
 
         html += `
             <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
@@ -6038,10 +6038,10 @@ function renderAdminNoticeList() {
                         ${escapeHtml(n.link || '/')} ↗
                     </a>
                 </td>
-                <td style="padding: 11px 12px; text-align: center;">${sendAlertBadge}</td>
-                <td style="padding: 11px 12px; color: var(--adm-text-muted); font-size: 11.5px;">${dateStr}</td>
-                <td style="padding: 11px 12px; text-align: center;">
-                    <button class="btn-delete-notice" data-id="${n.id}" style="background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer;">
+                <td style="padding: 11px 12px; text-align: center; white-space: nowrap;">${sendAlertBadge}</td>
+                <td style="padding: 11px 12px; color: var(--adm-text-muted); font-size: 11.5px; white-space: nowrap;">${dateStr}</td>
+                <td style="padding: 11px 12px; text-align: center; white-space: nowrap;">
+                    <button class="btn-delete-notice" data-id="${n.id}" style="background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; display: inline-block;">
                         삭제
                     </button>
                 </td>
@@ -6140,7 +6140,7 @@ function renderAllSentNotifications() {
                     <th style="padding: 10px 12px;">제목 및 상세 내용</th>
                     <th style="padding: 10px 12px; width: 110px;">발송 일시</th>
                     <th style="padding: 10px 12px; width: 80px; text-align: center;">수신 상태</th>
-                    <th style="padding: 10px 12px; width: 60px; text-align: center;">관리</th>
+                    <th style="padding: 10px 12px; width: 70px; min-width: 70px; text-align: center; white-space: nowrap;">관리</th>
                 </tr>
             </thead>
             <tbody>
@@ -6150,8 +6150,8 @@ function renderAllSentNotifications() {
         let badge = typeBadges[n.type] || `<span style="font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #f1f5f9; color: #475569; font-weight: 700;">${escapeHtml(n.type)}</span>`;
         let receiver = n.email ? `<span style="color: #0f172a; font-weight: 600;">${escapeHtml(n.email)}</span>` : '<span style="color: #64748b; font-weight: 600;">🌐 전체 회원 (공지)</span>';
         let readStatus = n.is_read 
-            ? '<span style="color: #16a34a; font-size: 11px; font-weight: 700;">🟢 읽음</span>' 
-            : '<span style="color: #94a3b8; font-size: 11px; font-weight: 600;">⚪ 미확인</span>';
+            ? '<span style="color: #16a34a; font-size: 11px; font-weight: 700; white-space: nowrap;">🟢 읽음</span>' 
+            : '<span style="color: #94a3b8; font-size: 11px; font-weight: 600; white-space: nowrap;">⚪ 미확인</span>';
 
         // 공지사항 중 알림 미발송 건 처리
         if (n.type === 'notice' && n.send_notification === false) {
@@ -6172,10 +6172,10 @@ function renderAllSentNotifications() {
                     <div style="color: #475569; font-size: 11.5px; line-height: 1.4;">${escapeHtml(n.message || '')}</div>
                     ${n.reason ? `<div style="color: #dc2626; font-size: 11px; margin-top: 3px; font-weight: 600;">⚠️ 반려 사유: ${escapeHtml(n.reason)}</div>` : ''}
                 </td>
-                <td style="padding: 11px 12px; color: var(--adm-text-muted); font-size: 11.5px;">${dateStr}</td>
-                <td style="padding: 11px 12px; text-align: center;">${readStatus}</td>
-                <td style="padding: 11px 12px; text-align: center;">
-                    <button class="btn-delete-sent-noti" data-id="${n.id}" style="background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer;">
+                <td style="padding: 11px 12px; color: var(--adm-text-muted); font-size: 11.5px; white-space: nowrap;">${dateStr}</td>
+                <td style="padding: 11px 12px; text-align: center; white-space: nowrap;">${readStatus}</td>
+                <td style="padding: 11px 12px; text-align: center; white-space: nowrap;">
+                    <button class="btn-delete-sent-noti" data-id="${n.id}" style="background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; display: inline-block;">
                         삭제
                     </button>
                 </td>
