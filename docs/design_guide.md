@@ -689,3 +689,19 @@
 
 
 
+
+
+## 45. 파트너 센터 대표 연락처 및 문의 전화번호 단일 바인딩 사양 (2026-11-23)
+- **개요 및 규격**:
+  - 파트너 센터(`business.html`) 내 미리보기 카드 및 문의/상담 연결 전화번호를 단일 출처(`config.json`의 `partner_contact_phone` 및 `GET /api/config/partner-phone`)로 일원화.
+- **컴포넌트 및 바인딩 사양**:
+  1. `#adPreviewPhone`:
+     - **위치**: 타깃 학부모 피드 미리보기 카드 내 통화 버튼 텍스트
+     - **표기**: `010-6393-0923` (동적 데이터 바인딩 시 `data.partnerContactPhone` 또는 `data.business.phone` 반영)
+  2. `#adPreviewPhoneLink`:
+     - **속성**: `href="tel:01063930923"` (전화걸기 링크 통일)
+  3. `#profPhone`:
+     - **위치**: 사업자 상세 프로필 [대표 연락처] 입력 폼
+     - **플레이스홀더**: `placeholder="010-6393-0923"`
+  4. 클라이언트 전역 상수:
+     - `window.DEFAULT_PARTNER_PHONE = '010-6393-0923'` 및 `/api/config/partner-phone` 자동 동기화.

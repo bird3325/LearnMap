@@ -764,3 +764,20 @@
 
 
 
+
+
+### 10.33 파트너 문의 및 대표 연락처 단일 출처(SSOT) 통일 정책 (2026-11-23 업데이트)
+- **개요 및 배경**:
+  - 파트너 센터(`business.html`) 미리보기 카드에 노출되던 전화번호(`010-6393-0923`)와 대시보드 API(`/api/business/dashboard`) 응답의 사업자 전화번호(`010-6393-0924`)가 불일치하여 발생하던 혼선을 근본적으로 방지.
+- **단일 출처 관리 체계 (Single Source of Truth)**:
+  1. **설정 파일 (`config.json`)**:
+     - `"partner_contact_phone": "010-6393-0923"` 키를 신설하여 시스템 전역의 파트너 대표 문의 번호를 한 곳에서 관리.
+  2. **서버 백엔드 (`server.js`)**:
+     - `getPartnerContactPhone()` 헬퍼를 추가하여 `config.json`의 `partner_contact_phone`을 우선 조회하고 없을 시 안전 기본값(`010-6393-0923`) 제공.
+     - `GET /api/config/partner-phone` 단일 전화번호 조회 API 신설.
+     - `GET /api/business/dashboard` 응답 객체에 `partnerContactPhone: getPartnerContactPhone()` 필드 추가.
+  3. **데이터베이스 동기화 (`partner_businesses` 테이블 & `businesses.json`)**:
+     - 시드 사업자(원탑 공인중개사, `biz_1793878533975`)의 `phone` 및 `contactPhone`을 `010-6393-0923`으로 영구 동기화.
+  4. **프론트엔드 연동 (`business.html`)**:
+     - `window.DEFAULT_PARTNER_PHONE = '010-6393-0923'` 선언 및 `/api/config/partner-phone` 비동기 동기화 연결.
+     - 대시보드 및 상권분석 렌더링 시 `data.partnerContactPhone` 및 `data.business.phone`을 순차 조회하여 전화걸기 링크(`tel:01063930923`)와 번호 텍스트를 단일 번호로 일치화.

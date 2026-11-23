@@ -4831,6 +4831,16 @@
 
 
     <script>
+        window.DEFAULT_PARTNER_PHONE = '010-6393-0923';
+        try {
+            fetch('/api/config/partner-phone')
+                .then(r => r.json())
+                .then(d => {
+                    if (d && d.phone) window.DEFAULT_PARTNER_PHONE = d.phone;
+                })
+                .catch(() => {});
+        } catch (e) {}
+
         const urlParamsInit = new URLSearchParams(window.location.search);
         let currentBizId = urlParamsInit.get('bizId') || null;
         let isDemoMode = urlParamsInit.get('demo') === 'true';
@@ -5032,7 +5042,7 @@
             // 학원명 & 주소 & 연락처
             const bizName = (data.business && data.business.name) ? data.business.name : (currentBiz ? currentBiz.name : '학원');
             const bizAddr = (data.business && data.business.address) ? data.business.address : (currentBiz ? currentBiz.address : '등록된 주소 없음');
-            const bizPhone = (data.business && data.business.phone) ? data.business.phone : (currentBiz ? currentBiz.phone : '010-0000-0000');
+            const bizPhone = (data && data.partnerContactPhone) || (data.business && data.business.phone) || (currentBiz ? currentBiz.phone : '') || window.DEFAULT_PARTNER_PHONE || '010-6393-0923';
 
             const nameEl = document.getElementById('marketBizName');
             if (nameEl) nameEl.innerText = bizName;

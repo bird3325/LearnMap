@@ -115,6 +115,21 @@ function writeJsonFileSafe(filePath, data) {
 }
 
 // =========================================================================
+// 🌟 파트너 문의 및 대표 연락처 단일 출처 (Single Source of Truth)
+// =========================================================================
+const DEFAULT_PARTNER_CONTACT_PHONE = '010-6393-0923';
+
+function getPartnerContactPhone() {
+    try {
+        const conf = readJsonFileSafe(CONFIG_PATH, {});
+        if (conf && conf.partner_contact_phone) {
+            return String(conf.partner_contact_phone).trim();
+        }
+    } catch (_) {}
+    return DEFAULT_PARTNER_CONTACT_PHONE;
+}
+
+// =========================================================================
 // [초고속 성능 최적화] 주택 데이터 인메모리 캐시 및 공간 격자 인덱스 (Spatial Grid Index)
 // =========================================================================
 let cachedRealEstateItems = null;
@@ -7646,7 +7661,7 @@ app.get('/api/business/dashboard', requireBusinessOrAdminAuth, async (req, res) 
         const { businessId, bizId, userId, email } = req.query;
         const targetId = (businessId || bizId || '').trim();
 
-        const businesses = await syncBusinessesFromDB();
+        const businesses = await syncBusinessesFromDB(true);
         let biz = null;
 
         if (targetId) {
@@ -7706,7 +7721,8 @@ app.get('/api/business/dashboard', requireBusinessOrAdminAuth, async (req, res) 
             subscription: activeSub,
             stats,
             dailyViews,
-            inquiries
+            inquiries,
+            partnerContactPhone: getPartnerContactPhone()
         });
     } catch (err) {
         console.error('Business Dashboard Error:', err);
@@ -7716,9 +7732,15 @@ app.get('/api/business/dashboard', requireBusinessOrAdminAuth, async (req, res) 
             subscription: null,
             stats: { profile_views: 0, premium_impressions: 0, phone_clicks: 0, contact_clicks: 0, website_clicks: 0 },
             dailyViews: [],
-            inquiries: []
+            inquiries: [],
+            partnerContactPhone: getPartnerContactPhone()
         });
     }
+});
+
+// 파트너 대표 전화번호 단일 조회 API
+app.get('/api/config/partner-phone', (req, res) => {
+    return res.json({ success: true, phone: getPartnerContactPhone() });
 });
 
 // 비즈니스 모델 기획서 기반 상품 목록 (기획서 4-2, 5-2, 6-2)
