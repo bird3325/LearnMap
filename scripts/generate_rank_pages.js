@@ -52,7 +52,7 @@ const seoulSchools = rawData.filter(s => {
   return addr.includes('서울특별시') || addr.startsWith('서울');
 });
 
-// app.js와 100% 동일한 공식 점수 계산 함수
+// app.js의 calculateSchoolCompositeScore와 100% 동일한 공식 단일 점수 계산 함수
 function calculateSchoolMetrics(school) {
   const studentCount = school.student_count || 500;
   const codeHash = Math.abs(String(school.school_id || school.school_name).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
@@ -78,7 +78,7 @@ function calculateSchoolMetrics(school) {
   const totalCases = isPlannedSchool ? 0 : ((rawV.total_cases !== null && rawV.total_cases !== undefined) ? rawV.total_cases : 0);
   const per100 = isPlannedSchool ? 0 : ((rawV.per_100 !== null && rawV.per_100 !== undefined) ? rawV.per_100 : (studentCount > 0 ? Math.round((totalCases / studentCount) * 100 * 10) / 10 : 0));
 
-  // 3) 종합 교육환경 스코어 및 창제활동비 (100점 만점 기준)
+  // 3) 종합 교육환경 스코어 및 창제활동비 (100점 만점 기준: 학업 40 + 학급규모 30 + 학폭 20 + 예산 10)
   const extraBudget = (school.extracurricular_budget !== null && school.extracurricular_budget !== undefined) ? school.extracurricular_budget : Math.round(80 + (codeHash % 100));
   const scoreAcademic = (subjectAvg / 100) * 40;
   const scoreClassSize = Math.max(0, 30 - Math.abs((school.class_avg_size || 25) - 22) * 2);

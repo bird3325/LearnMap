@@ -655,6 +655,21 @@
        - `box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);`
        - 호버/활성 시 `transform: translateY(-1px);`로 터치 및 마우스 클릭감 강화.
 
+## 43. 학교 교육환경 종합 지표 배너 및 점수(totalEnvScoreLabel) 단일 표기 사양 (2026-11-23)
+- **개요 및 규격**:
+  - 학교 상세 패널 상단의 히어로 카드와 랭킹 페이지의 점수 표기를 100점 만점 공식 점수로 일원화.
+- **주요 컴포넌트 사양**:
+  1. `#heroBannerTitle`:
+     - 텍스트: `교육환경 종합 지표`
+     - 스타일: `font-size: 23px; font-weight: 800; color: white;`
+  2. `#heroBannerDesc`:
+     - 텍스트: `학업성취(40%) · 학급규모(30%) · 학폭안전(20%) · 창체예산(10%) 종합`
+     - 스타일: `font-size: 13px; color: rgba(255, 255, 255, 0.9); font-weight: 500;`
+  3. `#totalEnvScoreLabel`:
+     - 스타일: `font-size: 34px; letter-spacing: -1px; font-weight: 900; color: #3b82f6;`
+     - 표기 형식: 소수점 1자리 통일 (예: `64.4`, `86.0`)
+     - 단위 표기: 바로 뒤에 `점`(`<span style="font-size: 16px; font-weight: 800;">점</span>`) 연계 표출.
+
 
 
 

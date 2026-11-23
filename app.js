@@ -78,6 +78,81 @@ function checkGugunMatch(address, selectedGugun, selectedSubGu = 'all') {
     return true;
 }
 
+/**
+ * 🌟 학교 교육환경 종합 지표 (Composite Score) 단일 공식 산출 함수
+ * - 지도 상세 패널, 순위 페이지(/rank/...), 사이드바 리스트 정렬에서 100% 동일하게 사용되는 단일 출처 기준
+ * - 배점 기준 (100점 만점):
+ *   1) 학업 성적 지표 (기본 가중치 40%): 국영수 3과목 성취도 평균 (100점 만점 환산)
+ *   2) 교원/학급 규모 지표 (기본 가중치 30%): 서울 적정 학급 인원 22명 기준 편차 반영 (100점 만점 환산)
+ *   3) 학교폭력 안전 지표 (기본 가중치 20%): 전교생 대비 100명당 발생건수 반영 (100점 만점 환산)
+ *   4) 창체활동 지원 예산 (기본 가중치 10%): 학생 1인당 200만원 기준 창체예산 반영 (100점 만점 환산)
+ */
+function calculateSchoolCompositeScore(school, customWeights) {
+    if (!school) return { compositeScore: 0, details: {} };
+
+    const studentCount = school.student_count || 500;
+    const codeHash = Math.abs(String(school.school_id || school.school_name || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
+
+    // 1) 학업 성적 (100점 만점 기준)
+    const korAvg = school.subjects?.korean?.avg || Math.round(75 + (codeHash % 15));
+    const engAvg = school.subjects?.english?.avg || Math.round(73 + ((codeHash * 3) % 17));
+    const mathAvg = school.subjects?.math?.avg || Math.round(70 + ((codeHash * 7) % 20));
+    const subjectAvg = Math.round(((korAvg + engAvg + mathAvg) / 3) * 10) / 10;
+    const academic100 = subjectAvg;
+
+    // 2) 교원/학급 규모 (100점 만점 기준)
+    // 적정 인원 22명 기준 편차 감점 (30점 만점 공식: 30 - 편차 * 2 => 100점 환산: 100 - 편차 * (20/3))
+    const classSize = school.class_avg_size || 25;
+    const classSize100 = Math.max(0, 100 - Math.abs(classSize - 22) * (20 / 3));
+
+    // 3) 학교폭력 안전 (100점 만점 기준)
+    const isPlannedSchool = (
+        school.status === '개교예정' ||
+        (school.school_name && (school.school_name.includes('개교예정') || school.school_name.includes('예정'))) ||
+        (school.establishment_status && String(school.establishment_status).includes('예정'))
+    );
+    const rawV = school.violence_stats || {};
+    const totalCases = isPlannedSchool ? 0 : ((rawV.total_cases !== null && rawV.total_cases !== undefined) ? rawV.total_cases : 0);
+    const per100 = isPlannedSchool ? 0 : ((rawV.per_100 !== null && rawV.per_100 !== undefined) ? rawV.per_100 : (studentCount > 0 ? Math.round((totalCases / studentCount) * 100 * 10) / 10 : 0));
+    // 20점 만점 공식: 20 - per100 * 8 => 100점 환산: 100 - per100 * 40
+    const violence100 = Math.max(0, 100 - per100 * 40);
+
+    // 4) 창체활동 예산 (100점 만점 기준)
+    const extraBudget = (school.extracurricular_budget !== null && school.extracurricular_budget !== undefined) ? school.extracurricular_budget : Math.round(80 + (codeHash % 100));
+    // 10점 만점 공식: (extraBudget / 200) * 10 => 100점 환산: (extraBudget / 200) * 100
+    const budget100 = Math.min(100, (extraBudget / 200) * 100);
+
+    // 가중치 적용 (기본값: 학업 40%, 교사/학급 30%, 학폭안전 20%, 창체예산 10%)
+    let wScore = 0.4;
+    let wTeacher = 0.3;
+    let wViolence = 0.2;
+    let wBudget = 0.1;
+
+    if (customWeights) {
+        const sumW = (customWeights.pScore || 0) + (customWeights.pTeacher || 0) + (customWeights.pViolence || 0) + (customWeights.pBudget || 0);
+        if (sumW > 0) {
+            wScore = customWeights.pScore / sumW;
+            wTeacher = customWeights.pTeacher / sumW;
+            wViolence = customWeights.pViolence / sumW;
+            wBudget = customWeights.pBudget / sumW;
+        }
+    }
+
+    const compositeScore = Math.round((academic100 * wScore + classSize100 * wTeacher + violence100 * wViolence + budget100 * wBudget) * 10) / 10;
+
+    return {
+        compositeScore,
+        subjectAvg,
+        academic100: Math.round(academic100 * 10) / 10,
+        classSize100: Math.round(classSize100 * 10) / 10,
+        violence100: Math.round(violence100 * 10) / 10,
+        budget100: Math.round(budget100 * 10) / 10,
+        extraBudget,
+        per100
+    };
+}
+window.calculateSchoolCompositeScore = calculateSchoolCompositeScore;
+
 document.addEventListener('DOMContentLoaded', () => {
     orchestrator = new Orchestrator();
 
@@ -4941,14 +5016,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (violenceCount > maxViolence) return false;
             }
 
-            // --- 교육환경 스코어 계산 ---
-            const scoreScore = school.weightedAvg;
-            const teacherScore = Math.max(0, 100 - (school.class_avg_size * 2.8));
-            const safetyScore = Math.max(0, 100 - (school.violence_stats ? school.violence_stats.total_cases * 12 : 0));
-            const budgetScore = Math.min(100, (school.extracurricular_budget || 0) * 0.5);
+            // --- 교육환경 스코어 계산 (공식 단일 산출 함수 연동) ---
+            const metrics = calculateSchoolCompositeScore(school, { pScore, pTeacher, pViolence, pBudget });
+            const scoreScore = metrics.academic100;
+            const teacherScore = metrics.classSize100;
+            const safetyScore = metrics.violence100;
+            const budgetScore = metrics.budget100;
+            const envScore = metrics.compositeScore;
 
-            const envScore = Math.round(scoreScore * pScore + teacherScore * pTeacher + safetyScore * pViolence + budgetScore * pBudget);
             school.envScore = envScore;
+            school.compositeScore = envScore;
             school.envScoresDetails = { scoreScore, teacherScore, safetyScore, budgetScore };
 
             if (!isClusterMode && !isSelectedSchool) {
@@ -7541,20 +7618,29 @@ document.addEventListener('DOMContentLoaded', () => {
                                        ${suitabilityHTML}`;
         }
 
-        // --- 종합 교육환경 점수 계산 및 표시 ---
-        if (!fullSchool.envScore) {
-            const scoreScore = (fullSchool.subjects.korean.avg + fullSchool.subjects.english.avg + fullSchool.subjects.math.avg) / 3;
-            const teacherScore = Math.max(0, 100 - (fullSchool.class_avg_size * 2.8));
-            const safetyScore = Math.max(0, 100 - (fullSchool.violence_stats ? fullSchool.violence_stats.total_cases * 12 : 0));
-            const budgetScore = Math.min(100, (fullSchool.extracurricular_budget || 0) * 0.5);
+        // --- 종합 교육환경 점수 계산 및 표시 (공식 단일 산출 함수 연동) ---
+        const pScoreEl = document.getElementById('envScoreRange');
+        const pTeacherEl = document.getElementById('envTeacherRange');
+        const pViolenceEl = document.getElementById('envViolenceRange');
+        const pBudgetEl = document.getElementById('envBudgetRange');
 
-            const pScore = parseFloat(document.getElementById('envScoreRange').value) / 100;
-            const pTeacher = parseFloat(document.getElementById('envTeacherRange').value) / 100;
-            const pViolence = parseFloat(document.getElementById('envViolenceRange').value) / 100;
-            const pBudget = parseFloat(document.getElementById('envBudgetRange').value) / 100;
+        const curWeights = (pScoreEl && pTeacherEl && pViolenceEl && pBudgetEl) ? {
+            pScore: parseFloat(pScoreEl.value) / 100,
+            pTeacher: parseFloat(pTeacherEl.value) / 100,
+            pViolence: parseFloat(pViolenceEl.value) / 100,
+            pBudget: parseFloat(pBudgetEl.value) / 100
+        } : null;
 
-            fullSchool.envScore = Math.round(scoreScore * pScore + teacherScore * pTeacher + safetyScore * pViolence + budgetScore * pBudget);
-        }
+        const panelMetrics = calculateSchoolCompositeScore(fullSchool, curWeights);
+        fullSchool.envScore = panelMetrics.compositeScore;
+        fullSchool.compositeScore = panelMetrics.compositeScore;
+        fullSchool.envScoresDetails = {
+            scoreScore: panelMetrics.academic100,
+            teacherScore: panelMetrics.classSize100,
+            safetyScore: panelMetrics.violence100,
+            budgetScore: panelMetrics.budget100
+        };
+
         const totalEnvLabel = document.getElementById('totalEnvScoreLabel');
         if (totalEnvLabel) totalEnvLabel.innerText = fullSchool.envScore;
 
@@ -20783,13 +20869,10 @@ window.addEventListener('DOMContentLoaded', () => {
                 const cEtc = (rawC.etc !== null && rawC.etc !== undefined) ? rawC.etc : Math.round(5 + (codeHash % 10));
                 const cStats = { walk: cWalk, bus: cBus, car: cCar, etc: cEtc };
 
-                // 4) 종합 교육환경 스코어 및 창제활동비 계산 (100점 만점 기준)
-                const extraBudget = (school.extracurricular_budget !== null && school.extracurricular_budget !== undefined) ? school.extracurricular_budget : Math.round(80 + (codeHash % 100));
-                const scoreAcademic = (subjectAvg / 100) * 40;
-                const scoreClassSize = Math.max(0, 30 - Math.abs((school.class_avg_size || 25) - 22) * 2);
-                const scoreViolence = Math.max(0, 20 - per100 * 8);
-                const scoreBudget = Math.min(10, (extraBudget / 200) * 10);
-                const compositeScore = Math.round((scoreAcademic + scoreClassSize + scoreViolence + scoreBudget) * 10) / 10;
+                // 4) 종합 교육환경 스코어 및 창제활동비 계산 (공식 단일 산출 함수 연동)
+                const compMetrics = calculateSchoolCompositeScore(school);
+                const extraBudget = compMetrics.extraBudget;
+                const compositeScore = compMetrics.compositeScore;
 
                 return {
                     raw: school,
