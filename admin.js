@@ -878,19 +878,12 @@ function loadKakaoSdkForAdmin(appkey) {
     document.head.appendChild(script);
 }
 
-// 1. LOGIN Event
+// 1. LOGIN Event - 서버 POST /api/admin/login을 통한 엄격한 서버 측 인증만 수행
 if (btnLogin) {
     btnLogin.addEventListener('click', async () => {
         const password = (adminPassword ? adminPassword.value : '').trim();
         if (!password) {
             showAlert('비밀번호를 입력해 주세요.');
-            return;
-        }
-
-        if (password === 'admin1234') {
-            token = 'session_token_example_12345';
-            localStorage.setItem('admin_token', token);
-            showPanel();
             return;
         }
 
@@ -901,15 +894,15 @@ if (btnLogin) {
                 body: JSON.stringify({ password })
             });
             const data = await res.json().catch(() => null);
-            if (res.ok && data && (data.token || data.success)) {
-                token = data.token || 'session_token_example_12345';
+            if (res.ok && data && data.success && data.token) {
+                token = data.token;
                 localStorage.setItem('admin_token', token);
                 showPanel();
             } else {
                 showAlert((data && data.message) || '인증 실패. 올바른 비밀번호를 입력하세요.');
             }
         } catch (err) {
-            showAlert('인증 실패. 올바른 비밀번호를 입력하세요.');
+            showAlert('인증 서버 통신 실패. 관리자 로그인 요청 중 오류가 발생했습니다.');
         }
     });
 }
@@ -5198,6 +5191,15 @@ async function uploadBlogImageFile(file, isThumbnail = false) {
         return;
     }
 
+    const currentToken = token || localStorage.getItem('admin_token');
+    if (!currentToken) {
+        showAlert('관리자 로그인이 필요합니다.', () => {
+            if (typeof window.closeBlogEditorModal === 'function') window.closeBlogEditorModal();
+            logout();
+        });
+        return;
+    }
+
     const statusEl = document.getElementById('blogEditorStatusMessage');
     if (statusEl) {
         statusEl.innerHTML = `<span style="color: #2563eb; font-weight: 600;">⏳ "${file.name}" 이미지 최적화 및 업로드 중...</span>`;
@@ -5207,13 +5209,25 @@ async function uploadBlogImageFile(file, isThumbnail = false) {
         const { dataUrl: base64Data, contentType: finalContentType } = await compressBlogImageIfNeeded(file);
         const res = await fetch('/api/admin/blog/upload-image', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': currentToken
+            },
             body: JSON.stringify({
                 filename: file.name,
                 data: base64Data,
                 contentType: finalContentType
             })
         });
+
+        if (res.status === 401 || res.status === 403) {
+            if (statusEl) statusEl.innerHTML = `<span style="color: #dc2626; font-weight: 600;">❌ 관리자 세션 만료</span>`;
+            showAlert('관리자 인증이 만료되었습니다. 다시 로그인해주세요.', () => {
+                if (typeof window.closeBlogEditorModal === 'function') window.closeBlogEditorModal();
+                logout();
+            });
+            return;
+        }
 
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
@@ -5425,6 +5439,15 @@ window.closeBlogFullPreviewModal = function() {
 };
 
 window.saveBlogPostAdmin = async function() {
+    const currentToken = token || localStorage.getItem('admin_token');
+    if (!currentToken) {
+        showAlert('관리자 로그인이 필요합니다.', () => {
+            if (typeof window.closeBlogEditorModal === 'function') window.closeBlogEditorModal();
+            logout();
+        });
+        return;
+    }
+
     const id = document.getElementById('editBlogPostId').value;
     const title = document.getElementById('blogPostTitle').value.trim();
     const category = document.getElementById('blogPostCategory').value;
@@ -5470,9 +5493,20 @@ window.saveBlogPostAdmin = async function() {
     try {
         const res = await fetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': currentToken
+            },
             body: JSON.stringify(payload)
         });
+
+        if (res.status === 401 || res.status === 403) {
+            showAlert('관리자 인증이 만료되었습니다. 다시 로그인해주세요.', () => {
+                if (typeof window.closeBlogEditorModal === 'function') window.closeBlogEditorModal();
+                logout();
+            });
+            return;
+        }
 
         if (res.ok) {
             showAlert(isEdit ? '칼럼이 수정되었습니다.' : '새 칼럼이 등록되었습니다.', () => {
@@ -5490,12 +5524,31 @@ window.saveBlogPostAdmin = async function() {
 };
 
 window.deleteBlogPostAdmin = function(postId, encodedTitle) {
+    const currentToken = token || localStorage.getItem('admin_token');
+    if (!currentToken) {
+        showAlert('관리자 로그인이 필요합니다.', () => {
+            logout();
+        });
+        return;
+    }
+
     const title = decodeURIComponent(encodedTitle);
     showConfirm(`정말로 "${title}" 칼럼을 삭제하시겠습니까?`, async () => {
         try {
             const res = await fetch(`/api/admin/blog/posts/${postId}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: {
+                    'Authorization': currentToken
+                }
             });
+
+            if (res.status === 401 || res.status === 403) {
+                showAlert('관리자 인증이 만료되었습니다. 다시 로그인해주세요.', () => {
+                    logout();
+                });
+                return;
+            }
+
             if (res.ok) {
                 showAlert('칼럼이 삭제되었습니다.', () => {
                     loadBlogManagement();

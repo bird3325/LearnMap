@@ -648,8 +648,6 @@
   - 대표 승인 사업자인 미래탐구(`biz_1793495258331`, 학원) 및 원탑 공인중개사(`biz_1793878533975`, 부동산) 대상 실제 학부모 상담 문의 3건을 시드 데이터(`src/data/inquiries.json`)로 구성.
   - 파트너 로그인 시 1:1 상담 문의 건수 및 학부모 상담 내역 카드(학생 학년, 문의 내용, 회신 연락처, 전화걸기 버튼)가 즉각 로드되어 리드 과금 및 상담 연결 기능이 정상 작동하도록 복구 완료.
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 ### 10.26 긴급 관리자 및 사업자 API 서버 측 보안 인증 미들웨어 강화 (2026-11-23 업데이트)
 - **개요 및 목적**:
   - 관리자 회원 정보(`/api/admin/users`), 사업자 대시보드(`/api/business/dashboard`), 저장된 부동산 매물 관리(`/api/realestate/stored`) 엔드포인트의 미인가 무단 접근을 차단하기 위한 서버 측 인증 미들웨어 장착.
@@ -833,3 +831,22 @@
      - `GET /api/business/check-approval` 공개 승인 조회 시 사업자등록번호(`bizNumber`) 마스킹(`123-**-*****`) 처리.
   4. **부동산 수집 및 데이터 API 통제**:
      - `/api/realestate/stored` 및 대량 수집/교정 API(`collect-master`, `sync-trades`, `repair-coords` 등)에 관리자 인증 강제 적용.
+
+
+### 10.38 관리자 토큰·비밀번호 하드코딩 제거 및 환경변수(Vercel) 기반 인증 체계 전환 (2026-11-24)
+- **개요 및 목적**:
+  - 공개 저장소에 노출 위험이 있던 관리자 토큰 및 비밀번호 하드코딩 문자열을 완전히 제거하고, Vercel 환경변수 기반(`ADMIN_API_TOKEN`, `ADMIN_PASSWORD`)으로 인증 체계를 전환.
+  - 클라이언트(`admin.js`) 내 우회 인증 로직을 제거하고 서버 전용 인증 엔드포인트(`POST /api/admin/login`)를 통한 정규 세션 발급 구조 확립.
+- **주요 변경 사항**:
+  1. **환경변수 기반 토큰/비밀번호 검증**:
+     - `server.js`의 `requireAdminAuth` 및 `POST /api/admin/login`에서 `process.env.ADMIN_API_TOKEN`과 `process.env.ADMIN_PASSWORD`만 직접 비교. 미설정 시 안전하게 500 에러 및 접근 차단.
+  2. **소스코드 내 하드코딩 완전 삭제**:
+     - `server.js`, `admin.js`를 포함한 전체 코드베이스에서 관리자 토큰 및 비밀번호 하드코딩 문자열 전수 제거.
+     - 개별 관리자 API 내 잔존하던 레거시 토큰 비교 로직 전수 제거 및 전역 미들웨어 일원화.
+  3. **클라이언트 측 우회 인증 경로 제거**:
+     - `admin.js`에서 클라이언트 측 비밀번호 일치 확인 및 토큰 강제 주입 로직을 전면 삭제하고, 항상 서버 `POST /api/admin/login` 호출 응답을 통해서만 토큰을 발급받도록 단일화.
+  4. **운영 배포 환경변수 가이드**:
+     - Vercel 대시보드(Project Settings -> Environment Variables)에 `ADMIN_API_TOKEN` 및 `ADMIN_PASSWORD` 등록 필수.
+  5. **관리자 블로그 기능(업로드·저장·삭제) 인증 헤더 및 세션 만료 제어 연동**:
+     - `admin.js` 내 블로그 이미지 업로드(`/api/admin/blog/upload-image`), 글 저장(`/api/admin/blog/posts`), 글 삭제(`/api/admin/blog/posts/:id`) fetch 요청에 `Authorization: <admin_token>` 헤더를 추가.
+     - 토큰 부재 시 또는 서버 응답 `401/403` 세션 만료 시 안내 모달(`showAlert`) 노출 후 관리자 로그인 화면(`logout()`)으로 즉시 전환되도록 방어 로직 완비.

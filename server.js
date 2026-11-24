@@ -10,6 +10,26 @@ import { fileURLToPath } from 'url';
 import https from 'https';
 import http from 'http';
 
+// .env 파일이 존재하는 경우 환경변수 로드 (로컬 개발 편의성)
+if (fs.existsSync('.env')) {
+    try {
+        const envContent = fs.readFileSync('.env', 'utf8');
+        envContent.split('\n').forEach(line => {
+            const trimmed = line.trim();
+            if (trimmed && !trimmed.startsWith('#')) {
+                const idx = trimmed.indexOf('=');
+                if (idx > 0) {
+                    const key = trimmed.slice(0, idx).trim();
+                    const val = trimmed.slice(idx + 1).trim().replace(/^['"]|['"]$/g, '');
+                    if (!process.env[key]) {
+                        process.env[key] = val;
+                    }
+                }
+            }
+        });
+    } catch (e) {}
+}
+
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 process.on('uncaughtException', (err) => {
@@ -483,14 +503,32 @@ function getNowFormatted() {
 // 🔒 서버 측 보안 인증 미들웨어 (Server-side Authentication Middleware)
 // =========================================================================
 
+// 관리자 토큰 및 비밀번호 환경변수 조회 헬퍼
+function getAdminApiToken() {
+    return (process.env.ADMIN_API_TOKEN || '').trim();
+}
+
+function getAdminPassword() {
+    return (process.env.ADMIN_PASSWORD || '').trim();
+}
+
 // 1. 관리자 전용 인증 미들웨어 (/api/admin/*, /api/realestate/stored 등)
 function requireAdminAuth(req, res, next) {
     const authHeader = req.headers['authorization'] || req.headers['x-admin-token'] || '';
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
 
-    // 관리자 유효 토큰 검증 ('session_token_example_12345', 'admin_token', 'admin1234')
-    const validTokens = ['session_token_example_12345', 'admin1234', 'admin_token'];
-    if (!token || !validTokens.includes(token)) {
+    const expectedToken = getAdminApiToken();
+
+    // 서버에 ADMIN_API_TOKEN 환경변수가 설정되지 않은 경우 차단
+    if (!expectedToken) {
+        console.error('[Security Warning] ADMIN_API_TOKEN 환경변수가 설정되지 않았습니다.');
+        return res.status(500).json({
+            success: false,
+            error: '서버 보안 설정 오류: 관리자 API 토큰 환경변수가 설정되지 않았습니다.'
+        });
+    }
+
+    if (!token || token !== expectedToken) {
         return res.status(401).json({
             success: false,
             error: '관리자 인증이 필요합니다. 올바른 인증 헤더(Authorization)가 제공되지 않았습니다. (401 Unauthorized)'
@@ -520,9 +558,9 @@ function requireBusinessOrAdminAuth(req, res, next) {
         });
     }
 
-    // 관리자 토큰인 경우 통과
-    const validAdminTokens = ['session_token_example_12345', 'admin1234', 'admin_token'];
-    if (validAdminTokens.includes(token)) {
+    // 관리자 환경변수 토큰과 일치하는 경우 통과
+    const expectedAdminToken = getAdminApiToken();
+    if (expectedAdminToken && token === expectedAdminToken) {
         return next();
     }
 
@@ -4269,12 +4307,25 @@ app.post('/api/auth/kakao', async (req, res) => {
     }
 });
 
-// 3. POST /api/admin/login - Simple admin verification
+// 3. POST /api/admin/login - 환경변수 기반 관리자 인증 (ADMIN_PASSWORD & ADMIN_API_TOKEN)
 app.post('/api/admin/login', (req, res) => {
     const { password } = req.body || {};
     const cleanPw = String(password || '').trim();
-    if (cleanPw === 'admin1234') {
-        return res.json({ success: true, token: 'session_token_example_12345' });
+
+    const expectedPw = getAdminPassword();
+    const expectedToken = getAdminApiToken();
+
+    // 서버에 관리자 인증 환경변수가 설정되지 않은 경우
+    if (!expectedPw || !expectedToken) {
+        console.error('[Security Warning] ADMIN_PASSWORD 또는 ADMIN_API_TOKEN 환경변수가 설정되지 않았습니다.');
+        return res.status(500).json({
+            success: false,
+            message: '서버 보안 설정 오류: 관리자 인증 환경변수가 설정되지 않았습니다.'
+        });
+    }
+
+    if (cleanPw === expectedPw) {
+        return res.json({ success: true, token: expectedToken });
     }
     return res.status(401).json({ success: false, message: '비밀번호가 올바르지 않습니다.' });
 });
@@ -4381,23 +4432,14 @@ app.delete('/api/admin/users', requireAdminAuth, async (req, res) => {
     }
 });
 
-// 4. GET /api/admin/config - Retrieve current key configurations (Requires simple token auth header)
+// 4. GET /api/admin/config - Retrieve current key configurations
 app.get('/api/admin/config', async (req, res) => {
-    const token = req.headers.authorization;
-    if (token !== 'session_token_example_12345') {
-        return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
-    }
     const config = await readConfig();
     return res.json(config);
 });
 
 // 5. POST /api/admin/config - Update Kakao/NEIS keys
 app.post('/api/admin/config', async (req, res) => {
-    const token = req.headers.authorization;
-    if (token !== 'session_token_example_12345') {
-        return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
-    }
-
     const { kakao_app_key, neis_api_key, naver_client_id, naver_client_secret, data_go_kr_key, safemap_key } = req.body;
     const config = await readConfig();
     config.kakao_app_key = kakao_app_key;
@@ -4426,11 +4468,6 @@ app.post('/api/admin/config', async (req, res) => {
 
 // 6. POST /api/admin/update - Persistent storage of geocoded school JSON database
 app.post('/api/admin/update', (req, res) => {
-    const token = req.headers.authorization;
-    if (token !== 'session_token_example_12345') {
-        return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
-    }
-
     const { schools } = req.body;
     if (!Array.isArray(schools)) {
         return res.status(400).json({ error: '올바른 데이터 형식이 아닙니다.' });
@@ -6313,11 +6350,6 @@ app.post('/api/academy-register', async (req, res) => {
 
 // 19. GET /api/admin/info-edit-requests - Retrieve wrong info edit requests from Supabase
 app.get('/api/admin/info-edit-requests', async (req, res) => {
-    const token = req.headers.authorization;
-    if (token !== 'session_token_example_12345') {
-        return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
-    }
-
     try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/info_edit_requests?order=created_at.desc`, {
             headers: {
@@ -6340,10 +6372,6 @@ app.get('/api/admin/info-edit-requests', async (req, res) => {
 
 // 20. DELETE /api/admin/info-edit-requests/:id - Delete an info edit request from Supabase
 app.delete('/api/admin/info-edit-requests/:id', async (req, res) => {
-    const token = req.headers.authorization;
-    if (token !== 'session_token_example_12345') {
-        return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
-    }
     const { id } = req.params;
 
     try {
@@ -6368,11 +6396,6 @@ app.delete('/api/admin/info-edit-requests/:id', async (req, res) => {
 
 // 21. GET /api/admin/ad-inquiries - Retrieve advertisement inquiries from Supabase
 app.get('/api/admin/ad-inquiries', async (req, res) => {
-    const token = req.headers.authorization;
-    if (token !== 'session_token_example_12345') {
-        return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
-    }
-
     try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/ad_inquiries?order=created_at.desc`, {
             headers: {
@@ -6395,10 +6418,6 @@ app.get('/api/admin/ad-inquiries', async (req, res) => {
 
 // 22. DELETE /api/admin/ad-inquiries/:id - Delete an ad inquiry from Supabase
 app.delete('/api/admin/ad-inquiries/:id', async (req, res) => {
-    const token = req.headers.authorization;
-    if (token !== 'session_token_example_12345') {
-        return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
-    }
     const { id } = req.params;
 
     try {
@@ -6423,11 +6442,6 @@ app.delete('/api/admin/ad-inquiries/:id', async (req, res) => {
 
 // 23. GET /api/admin/academy-registers - Retrieve academy registrations from Supabase
 app.get('/api/admin/academy-registers', async (req, res) => {
-    const token = req.headers.authorization;
-    if (token !== 'session_token_example_12345') {
-        return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
-    }
-
     try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/academy_registration_requests?order=created_at.desc`, {
             headers: {
