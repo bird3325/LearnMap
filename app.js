@@ -16243,14 +16243,49 @@ window.submitReview = async () => {
 // ----------------------------------------------------
 // 첫 방문 온보딩 튜토리얼 & 대표 유즈케이스 프리셋 CTA & 관심 학교 저장 로직
 // ----------------------------------------------------
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. 의사결정 3단계 온보딩 튜토리얼 및 모듈 제어
-    const onboardingModal = document.getElementById('onboardingModal');
-    if (onboardingModal) {
+// 1. 의사결정 3단계 온보딩 튜토리얼 결정적 제어 함수
+function checkShouldShowOnboarding() {
+    // [규칙 1]: 플래그 검사 - 이미 방문했거나 '다시 보지 않기'를 누른 경우 표시하지 않음
+    try {
         const visited = localStorage.getItem('visitedOnboarding');
-        if (!visited) {
-            onboardingModal.style.display = 'flex';
+        const hideOnboarding = localStorage.getItem('learnmap_hide_onboarding');
+        if (visited === 'true' || hideOnboarding === 'true') {
+            return false;
         }
+    } catch (e) {
+        return false;
+    }
+
+    // [규칙 2]: 로그인 상태 검사 - 이미 가입/로그인한 회원은 온보딩 불필요 (비로그인 첫 방문자 전용)
+    try {
+        let currentUser = (typeof authService !== 'undefined' && authService.getCurrentUser) ? authService.getCurrentUser() : null;
+        if (!currentUser) {
+            currentUser = JSON.parse(localStorage.getItem('learnmap_current_user') || 'null');
+        }
+        const isLoggedOut = localStorage.getItem('learnmap_logged_out') === 'true';
+        if (currentUser && currentUser.email && currentUser.email !== 'guest@learnmap.kr' && !isLoggedOut) {
+            return false;
+        }
+    } catch (e) { }
+
+    // [규칙 3]: 특정 딥링크(학교, 특정 액션 파라미터)로 직접 유입된 경우 사용자 흐름 방해 방지
+    try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('school') || params.has('action') || params.has('tab') || params.has('bizId') || params.has('redirect') || params.has('token')) {
+            return false;
+        }
+    } catch (e) { }
+
+    // 비로그인 + 첫 방문 + 플래그 없음일 때만 결정적으로 1회 표시
+    return true;
+}
+
+function initOnboardingDeterministically() {
+    const onboardingModal = document.getElementById('onboardingModal');
+    if (!onboardingModal) return;
+
+    if (!window.__onboardingInitialized) {
+        window.__onboardingInitialized = true;
 
         // 학년 선택 버튼 토글
         const gradeBtns = document.querySelectorAll('.onboard-grade-btn');
@@ -16274,29 +16309,37 @@ document.addEventListener('DOMContentLoaded', () => {
         const elStep1 = document.getElementById('btnNextStep1');
         if (elStep1) {
             elStep1.addEventListener('click', () => {
-                document.getElementById('onboardingStep1').style.display = 'none';
-                document.getElementById('onboardingStep2').style.display = 'block';
+                const s1 = document.getElementById('onboardingStep1');
+                const s2 = document.getElementById('onboardingStep2');
+                if (s1) s1.style.display = 'none';
+                if (s2) s2.style.display = 'block';
             });
         }
         const elPrev2 = document.getElementById('btnPrevStep2');
         if (elPrev2) {
             elPrev2.addEventListener('click', () => {
-                document.getElementById('onboardingStep2').style.display = 'none';
-                document.getElementById('onboardingStep1').style.display = 'block';
+                const s1 = document.getElementById('onboardingStep1');
+                const s2 = document.getElementById('onboardingStep2');
+                if (s2) s2.style.display = 'none';
+                if (s1) s1.style.display = 'block';
             });
         }
         const elNext2 = document.getElementById('btnNextStep2');
         if (elNext2) {
             elNext2.addEventListener('click', () => {
-                document.getElementById('onboardingStep2').style.display = 'none';
-                document.getElementById('onboardingStep3').style.display = 'block';
+                const s2 = document.getElementById('onboardingStep2');
+                const s3 = document.getElementById('onboardingStep3');
+                if (s2) s2.style.display = 'none';
+                if (s3) s3.style.display = 'block';
             });
         }
         const elPrev3 = document.getElementById('btnPrevStep3');
         if (elPrev3) {
             elPrev3.addEventListener('click', () => {
-                document.getElementById('onboardingStep3').style.display = 'none';
-                document.getElementById('onboardingStep2').style.display = 'block';
+                const s2 = document.getElementById('onboardingStep2');
+                const s3 = document.getElementById('onboardingStep3');
+                if (s3) s3.style.display = 'none';
+                if (s2) s2.style.display = 'block';
             });
         }
 
@@ -16306,13 +16349,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.searchSchools(distInput.value.trim());
             }
             onboardingModal.style.display = 'none';
-            localStorage.setItem('visitedOnboarding', 'true');
+            try {
+                localStorage.setItem('visitedOnboarding', 'true');
+                localStorage.setItem('learnmap_hide_onboarding', 'true');
+            } catch (e) { }
+            window.__isOnboardingVisible = false;
         };
+
         const elFinish = document.getElementById('btnFinishOnboarding');
         if (elFinish) elFinish.addEventListener('click', closeOnboarding);
         const elClose = document.getElementById('btnCloseOnboarding');
-        if (elClose) elClose.addEventListener('click', closeOnboarding);
+        if (elClose) {
+            elClose.setAttribute('title', '닫기 (다시 보지 않기)');
+            elClose.setAttribute('aria-label', '닫기 (다시 보지 않기)');
+            elClose.addEventListener('click', closeOnboarding);
+        }
+
+        // 모달 배경 클릭 시에도 안전하게 닫고 '다시 보지 않기' 플래그 기록
+        onboardingModal.addEventListener('click', (e) => {
+            if (e.target === onboardingModal) {
+                closeOnboarding();
+            }
+        });
     }
+
+    // 결정적 표시 조건 검증
+    if (checkShouldShowOnboarding()) {
+        onboardingModal.style.display = 'flex';
+        window.__isOnboardingVisible = true;
+    } else {
+        onboardingModal.style.display = 'none';
+        window.__isOnboardingVisible = false;
+    }
+}
+
+// 경합(Race Condition) 방지: DOM이 로딩 중이면 DOMContentLoaded 대기, 이미 완료되었으면 즉시 결정적 실행
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initOnboardingDeterministically);
+} else {
+    initOnboardingDeterministically();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
 
     // 4단계 BM 유료 리포트 사전 예약 (Fake-door 테스트) 핸들러
     window.openPaidReportModal = function (tierType = 'Tier1', schoolName = '') {
@@ -19309,6 +19387,10 @@ window.onMobileNavClick = function (menu, btnEl) {
         'topicStatsModal'
     ];
     modals.forEach(id => {
+        // 온보딩 모달이 현재 사용자에게 표시 중인 경우, 모바일 네비게이션 초기화로 인한 임의 닫힘 방지
+        if (id === 'onboardingModal' && window.__isOnboardingVisible) {
+            return;
+        }
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
