@@ -621,3 +621,21 @@
   - `document.readyState` 검사를 통해 모듈 평가 시점과 무관하게 즉각적·결정적으로 렌더링.
   - 모바일 하단 탭(`window.onMobileNavClick`) 초기화 시 사용자에게 팝업이 표시 중인 경우 임의 강제 닫힘 방지.
   - 닫기(&times;) 버튼, 완료 버튼, 모달 배경 터치 시 즉시 닫히며 영구 미노출 플래그 기록.
+
+## 48. 회원 서비스 알림 아이콘 노출 정책 및 스타일 사양 (2026-11-24)
+- **개요 및 목적**:
+  - 회원 서비스 영역 상단의 알림 아이콘(`btnSettingsNotification`, `btnSettingsNotificationMobile`)을 로그인한 정회원에게만 노출하고, 기본 버튼의 사각 테두리를 제거하여 정돈된 플랫 원형 UI를 제공.
+- **노출 제어**:
+  - **로그인 전 (Guest / 미인증)**: 알림 아이콘 완전 숨김 (`display: none;`).
+  - **로그인 후 (정식 회원)**: 알림 아이콘 활성화 (`display: inline-flex;`).
+- **스타일 사양**:
+  - `background: none; border: none; outline: none; box-shadow: none;` 적용을 통해 브라우저 기본 사각 테두리 제거.
+  - 원형 아이콘 버튼(`border-radius: 50%`) 형태로 심플하고 일관된 디자인 유지.
+
+## 49. 비교보드 열기 단축 버튼 플로팅 툴팁 사양 (2026-11-24)
+- **개요 및 목적**:
+  - 화면 우측 하단의 비교보드 단축 플로팅 버튼(`#btnOpenCompareFloating`)에 마우스 오버 시 브라우저 기본 사각 툴팁(`title`/`alt`) 대신 부드럽고 가독성 높은 커스텀 플로팅 툴팁 UI 제공.
+- **스타일 및 동작 규격**:
+  - 브라우저 기본 툴팁을 발생시키는 `title` 속성 제거 및 `data-title="비교보드 열기"` 적용.
+  - `.compare-floating-btn[data-title]` CSS 가상 요소(`::after`, `::before`)를 활용하여 버튼 상단(`bottom: calc(100% + 10px)`)에 다크 반투명 블러 백드롭(`rgba(15, 23, 42, 0.94)`, `backdrop-filter: blur(8px)`), 섀도우, 둥근 라운드(`8px`) 및 화살표 꼬리가 적용된 플로팅 말풍선 툴팁 렌더링.
+  - 마우스 오버 시 0.2초 큐빅 베지어 트랜지션으로 자연스럽게 페이드인/아웃 노출.

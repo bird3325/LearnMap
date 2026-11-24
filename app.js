@@ -5,6 +5,33 @@ import { isLocalEnvironment } from './src/services/neis_service.js';
 import { authService } from './src/services/auth_service.js';
 window.authService = authService;
 
+// 회원 로그인 상태에 따른 회원 서비스 알림 아이콘 즉시 초기화 (지연/누락 원천 방지)
+(function initNotificationButtonVisibility() {
+    function applyNotiDisplay() {
+        try {
+            const raw = localStorage.getItem('learnmap_current_user');
+            const isLoggedOut = localStorage.getItem('learnmap_logged_out') === 'true';
+            let isLoggedIn = Boolean(raw && !isLoggedOut);
+            if (raw) {
+                try {
+                    const u = JSON.parse(raw);
+                    if (u && (u.email === 'guest@learnmap.kr' || u.isGuest)) isLoggedIn = false;
+                } catch (e) {}
+            }
+            const btnPc = document.getElementById('btnSettingsNotification');
+            const btnM = document.getElementById('btnSettingsNotificationMobile');
+            if (btnPc) btnPc.style.setProperty('display', isLoggedIn ? 'flex' : 'none', 'important');
+            if (btnM) btnM.style.setProperty('display', isLoggedIn ? 'flex' : 'none', 'important');
+        } catch (e) {}
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyNotiDisplay);
+    } else {
+        applyNotiDisplay();
+    }
+    window.__syncSettingsNotificationIcon = applyNotiDisplay;
+})();
+
 // 후기 작성 및 추천 로그인 권한 검증 전용 헬퍼 함수
 window.isReviewUserLoggedIn = function () {
     const isLoggedOut = localStorage.getItem('learnmap_logged_out') === 'true';
@@ -50,6 +77,79 @@ let selectedChildId = null;
 let defaultChildId = localStorage.getItem('learnmap_default_child_id');
 window.childProfiles = childProfiles;
 window.selectedChildId = selectedChildId;
+
+// 사이드바 로그인 창 즉시 열기 전역 함수 (모달창 일체 없이 사이드창 로그인 직접 오픈)
+window.openSidebarLogin = function () {
+    // 1. 전체 화면 중앙 모달창(LearnMap 회원 서비스 authModal, 진단 결과 모달, 알림 모달 등) 즉시 완전 차단
+    ['authModal', 'diagnosisModalOverlay', 'customAlertModal', 'neisModal'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.style.setProperty('display', 'none', 'important');
+        }
+    });
+    if (typeof window.closeAuthModal === 'function') {
+        window.closeAuthModal();
+    }
+    [0, 50, 150, 300].forEach(delay => {
+        setTimeout(() => {
+            const am = document.getElementById('authModal');
+            if (am) am.style.setProperty('display', 'none', 'important');
+        }, delay);
+    });
+
+    // 2. 사이드바가 닫혀있거나 모바일인 경우 사이드바 즉시 노출
+    const container = document.querySelector('.app-container');
+    const sidebar = document.querySelector('.sidebar-section');
+    const btnToggle = document.getElementById('btnToggleSidebarTop');
+
+    if (sidebar) {
+        sidebar.style.display = 'flex';
+    }
+    if (container) {
+        container.classList.add('sidebar-open');
+    }
+    if (btnToggle) {
+        btnToggle.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+    }
+
+    // 모바일 하단 네비게이션 환경일 경우 마이페이지 탭 활성화
+    if (window.innerWidth <= 1024 && typeof window.onMobileNavClick === 'function') {
+        const mypageTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*="mypage"]');
+        window.onMobileNavClick('mypage', mypageTabBtn);
+    }
+
+    // 3. 겹칠 수 있는 안내 카드 닫기
+    const tutorial = document.getElementById('tutorialSidebarCard');
+    if (tutorial) tutorial.style.display = 'none';
+
+    // 4. 학교 상세 패널(schoolCard)을 일시적으로 숨겨 사이드창 전체를 로그인창으로 전환
+    const sc = document.getElementById('schoolCard');
+    if (sc) sc.style.display = 'none';
+
+    // 5. 사이드바 설정(로그인/회원가입) 모달 영역 표시 및 최신 Auth UI 갱신
+    const settingsModal = document.getElementById('settingsModal');
+    if (settingsModal) settingsModal.style.display = 'block';
+
+    if (typeof window.updateAuthUI === 'function') {
+        window.updateAuthUI();
+    }
+
+    // 6. 로그인 탭 활성화
+    if (typeof window.switchSettingsAuthTab === 'function') {
+        window.switchSettingsAuthTab('login');
+    }
+
+    // 7. 사이드바 스크롤 최상단으로 이동 (로그인 폼이 바로 보이도록 정렬)
+    if (sidebar) {
+        sidebar.scrollTop = 0;
+    }
+
+    // 8. 이메일 입력창 포커스
+    setTimeout(() => {
+        const emailInput = document.getElementById('settingsEmail') || document.getElementById('settingsEmailMobile');
+        if (emailInput) emailInput.focus();
+    }, 50);
+};
 
 const SUB_DISTRICT_MAP = {
     '고양시': ['덕양구', '일산동구', '일산서구'],
@@ -2268,6 +2368,13 @@ document.addEventListener('DOMContentLoaded', () => {
         btnCloseSettingsPc.addEventListener('click', () => {
             const settingsModal = document.getElementById('settingsModal');
             if (settingsModal) settingsModal.style.display = 'none';
+
+            // 보류 중이거나 선택된 학교 상세가 있으면 복원
+            const currentSchool = (orchestrator && orchestrator.state && orchestrator.state.selectedSchool) || window.currentSelectedSchool || window.selectedTargetSchool || window.__pendingDiagnosisSchool;
+            const schoolCard = document.getElementById('schoolCard');
+            if (schoolCard && currentSchool) {
+                schoolCard.style.display = 'block';
+            }
         });
     }
 
@@ -2303,7 +2410,11 @@ document.addEventListener('DOMContentLoaded', () => {
         s.style.display = 'block';
         if (sb) sb.scrollTop = 0;
 
-        if (typeof updateAuthUI === 'function') updateAuthUI();
+        if (typeof window.updateAuthUI === 'function') {
+            window.updateAuthUI();
+        } else if (typeof updateAuthUI === 'function') {
+            updateAuthUI();
+        }
         if (typeof loadChildProfilesFromSupabase === 'function') {
             await loadChildProfilesFromSupabase({ centerMap: false });
         }
@@ -3231,7 +3342,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return false;
     };
 
-    btnCompareChild.addEventListener('click', async (e) => {
+    btnCompareChild.addEventListener('click', (e) => {
         // 이벤트 전파 및 폼/패널 충돌 원천 방어
         if (e) {
             e.preventDefault();
@@ -3240,38 +3351,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const currentSchool = (orchestrator && orchestrator.state && orchestrator.state.selectedSchool) || window.currentSelectedSchool || window.selectedTargetSchool;
 
+        // 진단 대상 학교 정보 보존 (로그인 후 자동 진단 연결용)
+        if (currentSchool) {
+            window.__pendingDiagnosisSchool = currentSchool;
+            try {
+                sessionStorage.setItem('learnmap_pending_diagnosis_school', JSON.stringify(currentSchool));
+            } catch (err) {}
+        }
+
         // 🔒 1. 로그인 여부 확인
         const isLoggedIn = (typeof authService !== 'undefined' && typeof authService.isLoggedIn === 'function')
             ? authService.isLoggedIn()
             : Boolean(localStorage.getItem('learnmap_current_user') && !localStorage.getItem('learnmap_logged_out'));
 
+        // 🎯 모달창(중앙 alert 모달 등)을 일체 띄우지 않고 사이드창의 로그인 영역 즉시 오픈
         if (!isLoggedIn) {
-            // 🎯 비로그인: 학교 패널을 닫지 않고, 원래 보던 학교 정보를 보존한 뒤 사이드바 로그인 창 오픈
-            window.__pendingDiagnosisSchool = currentSchool;
-            try {
-                sessionStorage.setItem('learnmap_pending_diagnosis_school', JSON.stringify(currentSchool));
-            } catch (err) {}
-
-            let authOpened = false;
-            const openAuth = () => {
-                if (authOpened) return;
-                authOpened = true;
-                // 모달창이 아닌 사이드창의 로그인 열기
-                if (typeof window.openSidebarLogin === 'function') {
-                    window.openSidebarLogin();
-                } else {
-                    const btnSettings = document.getElementById('btnOpenSettings');
-                    if (btnSettings) btnSettings.click();
-                }
-            };
-
-            await alert('🔒 자녀 맞춤 학교 진단은 로그인 후 이용하실 수 있는 회원 전용 서비스입니다.\n로그인을 진행해 주세요.', openAuth);
-            openAuth();
+            if (typeof window.openSidebarLogin === 'function') {
+                window.openSidebarLogin();
+            } else {
+                const s = document.getElementById('settingsModal');
+                if (s) s.style.display = 'block';
+            }
             return;
         }
 
-        // 🎯 2. 로그인 상태: 학교 패널을 유지하며 해당 학교 기준 진단 화면/모달 즉시 표시
-        await window.triggerSchoolDiagnosis(currentSchool);
+        // 🎯 2. 로그인 상태: 사이드창 로그인/설정으로 안내하거나 진단 진행
+        if (typeof window.openSidebarLogin === 'function') {
+            window.openSidebarLogin();
+        } else if (typeof window.triggerSchoolDiagnosis === 'function') {
+            window.triggerSchoolDiagnosis(currentSchool);
+        }
     });
 
     btnBackToSchool.addEventListener('click', () => {
@@ -18490,21 +18599,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!modal) {
             modal = document.createElement('div');
             modal.id = modalId;
-            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.45); z-index: 100005; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(4px);';
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.45); z-index: 100005; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(4px); padding: 16px; box-sizing: border-box;';
             modal.innerHTML = `
-                <div style="background: white; border-radius: 14px; width: 380px; max-width: 90%; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 12px 30px rgba(0,0,0,0.18); font-family: var(--font-primary); overflow: hidden;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid #f1f5f9; background: #f8fafc;">
+                <div style="background: white; border-radius: 16px; width: 540px; max-width: 95%; min-height: 420px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 16px 40px rgba(0,0,0,0.2); font-family: var(--font-primary); overflow: hidden;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f1f5f9; background: #f8fafc;">
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 18px;">🔔</span>
-                            <h3 style="font-size: 15px; font-weight: 800; color: #1e293b; margin: 0;">알림 센터</h3>
+                            <span style="font-size: 20px;">🔔</span>
+                            <h3 style="font-size: 16px; font-weight: 800; color: #1e293b; margin: 0;">알림 센터</h3>
                         </div>
-                        <button id="btnCloseUserNotiModal" style="background: none; border: none; font-size: 20px; line-height: 1; cursor: pointer; color: #64748b; font-weight: bold;">&times;</button>
+                        <button id="btnCloseUserNotiModal" style="background: none; border: none; font-size: 22px; line-height: 1; cursor: pointer; color: #64748b; font-weight: bold; padding: 4px 8px;">&times;</button>
                     </div>
-                    <div id="userNotiModalBody" style="padding: 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px;">
-                        <div style="text-align: center; color: #94a3b8; padding: 30px 0; font-size: 13px;">알림을 불러오는 중...</div>
+                    <div id="userNotiModalBody" style="padding: 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 12px; min-height: 280px;">
+                        <div style="text-align: center; color: #94a3b8; padding: 40px 0; font-size: 14px;">알림을 불러오는 중...</div>
                     </div>
-                    <div style="padding: 12px 18px; border-top: 1px solid #f1f5f9; background: #fafafa; display: flex; justify-content: flex-end;">
-                        <button id="btnConfirmUserNotiModal" style="padding: 7px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 12.5px; font-weight: 700; cursor: pointer;">확인</button>
+                    <div style="padding: 14px 20px; border-top: 1px solid #f1f5f9; background: #fafafa; display: flex; justify-content: flex-end;">
+                        <button id="btnConfirmUserNotiModal" style="padding: 8px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer;">확인</button>
                     </div>
                 </div>
             `;
@@ -19745,9 +19854,17 @@ window.addEventListener('DOMContentLoaded', () => {
             const settingsModal = document.getElementById('settingsModal');
             if (settingsModal) settingsModal.style.display = 'none';
 
+            const currentSchool = (orchestrator && orchestrator.state && orchestrator.state.selectedSchool) || window.currentSelectedSchool || window.selectedTargetSchool || window.__pendingDiagnosisSchool;
+            const schoolCard = document.getElementById('schoolCard');
+            if (schoolCard && currentSchool) {
+                schoolCard.style.display = 'block';
+            }
+
             if (window.innerWidth <= 1024) {
                 const mapTabBtn = document.querySelector('.mobile-bottom-nav .nav-item[onclick*="map"]');
-                window.onMobileNavClick('map', mapTabBtn);
+                if (mapTabBtn && typeof window.onMobileNavClick === 'function') {
+                    window.onMobileNavClick('map', mapTabBtn);
+                }
             }
         });
     }
@@ -25206,7 +25323,11 @@ window.addEventListener('DOMContentLoaded', () => {
             const authModal = document.getElementById('authModal');
 
             window.openAuthModal = function () {
-                if (authModal) authModal.style.display = 'flex';
+                // 모달창(LearnMap 회원 서비스)은 절대 열리지 않도록 차단하고 사이드창 로그인으로 직결
+                if (authModal) authModal.style.setProperty('display', 'none', 'important');
+                if (typeof window.openSidebarLogin === 'function') {
+                    window.openSidebarLogin();
+                }
             };
 
 
@@ -25265,14 +25386,26 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (authModal) authModal.style.display = 'none';
             };
 
-            // 사이드바 로그인 창 열기 도우미 함수
+            // 사이드바 로그인 창 열기 도우미 함수 (모달창 일체 없이 사이드창 로그인 직접 오픈)
             window.openSidebarLogin = function () {
-                // 1. 전체 화면 중앙 모달이 켜져 있다면 닫기
+                // 1. 전체 화면 중앙 모달창(LearnMap 회원 서비스 authModal, 진단 결과 모달, 알림 모달 등) 즉시 완전 차단
+                ['authModal', 'diagnosisModalOverlay', 'customAlertModal', 'neisModal'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.style.setProperty('display', 'none', 'important');
+                    }
+                });
                 if (typeof window.closeAuthModal === 'function') {
                     window.closeAuthModal();
                 }
+                [0, 50, 150, 300].forEach(delay => {
+                    setTimeout(() => {
+                        const am = document.getElementById('authModal');
+                        if (am) am.style.setProperty('display', 'none', 'important');
+                    }, delay);
+                });
 
-                // 2. 사이드바가 닫혀있거나 모바일인 경우 사이드바 노출
+                // 2. 사이드바가 닫혀있거나 모바일인 경우 사이드바 즉시 노출
                 const container = document.querySelector('.app-container');
                 const sidebar = document.querySelector('.sidebar-section');
                 const btnToggle = document.getElementById('btnToggleSidebarTop');
@@ -25299,31 +25432,38 @@ window.addEventListener('DOMContentLoaded', () => {
                     tutorial.style.display = 'none';
                 }
 
-                // 4. 사이드바 설정(로그인/회원가입) 모달 영역 표시
+                // 4. 학교 상세 패널(schoolCard)을 일시적으로 숨겨 사이드창 전체를 로그인창으로 전환
+                const sc = document.getElementById('schoolCard');
+                if (sc) {
+                    sc.style.display = 'none';
+                }
+
+                // 5. 사이드바 설정(로그인/회원가입) 모달 영역 표시 및 최신 Auth UI 갱신
                 const settingsModal = document.getElementById('settingsModal');
                 if (settingsModal) {
                     settingsModal.style.display = 'block';
                 }
+                if (typeof window.updateAuthUI === 'function') {
+                    window.updateAuthUI();
+                }
 
-                // 5. 로그인 탭 활성화
+                // 6. 로그인 탭 활성화
                 if (typeof window.switchSettingsAuthTab === 'function') {
                     window.switchSettingsAuthTab('login');
                 }
 
-                // 6. 사이드바 로그인 입력 섹션으로 부드럽게 스크롤 및 이메일 입력창 포커스
-                const authSection = document.getElementById('settingsAuthSection');
-                if (authSection) {
-                    authSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                } else if (settingsModal) {
-                    settingsModal.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // 7. 사이드바 스크롤 최상단으로 이동 (로그인 폼이 바로 보이도록 정렬)
+                if (sidebar) {
+                    sidebar.scrollTop = 0;
                 }
 
+                // 8. 이메일 입력창 포커스
                 setTimeout(() => {
-                    const emailInput = document.getElementById('settingsEmail');
+                    const emailInput = document.getElementById('settingsEmail') || document.getElementById('settingsEmailMobile');
                     if (emailInput) {
                         emailInput.focus();
                     }
-                }, 300);
+                }, 100);
             };
 
             window.switchAuthTab = function (mode = 'login') {
@@ -25423,7 +25563,19 @@ window.addEventListener('DOMContentLoaded', () => {
 
             window.updateAuthUI = function () {
                 const btnSettings = document.getElementById('btnOpenSettings');
-                let currentUser = authService.getCurrentUser();
+                let currentUser = null;
+                if (typeof authService !== 'undefined' && typeof authService.getCurrentUser === 'function') {
+                    currentUser = authService.getCurrentUser();
+                }
+                if (!currentUser) {
+                    try {
+                        const raw = localStorage.getItem('learnmap_current_user');
+                        const isLoggedOut = localStorage.getItem('learnmap_logged_out') === 'true';
+                        if (raw && !isLoggedOut) {
+                            currentUser = JSON.parse(raw);
+                        }
+                    } catch (e) {}
+                }
 
                 // 게스트 계정 또는 비인가 임시 계정 자동 정리 (회원가입된 정식 회원만 로그인 유지)
                 if (currentUser && (currentUser.email === 'guest@learnmap.kr' || currentUser.isGuest)) {
@@ -25457,6 +25609,11 @@ window.addEventListener('DOMContentLoaded', () => {
                 const notiPC = document.getElementById('settingsNotificationSection-pc');
 
                 if (currentUser) {
+                    // 🌟 로그인 회원 전용: 알림 아이콘 노출 (PC 및 모바일)
+                    const btnNotiPc = document.getElementById('btnSettingsNotification');
+                    const btnNotiMobile = document.getElementById('btnSettingsNotificationMobile');
+                    if (btnNotiPc) btnNotiPc.style.setProperty('display', 'flex', 'important');
+                    if (btnNotiMobile) btnNotiMobile.style.setProperty('display', 'flex', 'important');
 
                     if (userCard) userCard.style.display = 'block';
                     if (formArea) formArea.style.display = 'none';
@@ -25676,6 +25833,12 @@ window.addEventListener('DOMContentLoaded', () => {
                         checkUserNotifications(currentUser.email);
                     }
                 } else {
+                    // 🌟 비로그인 상태: 알림 아이콘 숨김
+                    const btnNotiPc = document.getElementById('btnSettingsNotification');
+                    const btnNotiMobile = document.getElementById('btnSettingsNotificationMobile');
+                    if (btnNotiPc) btnNotiPc.style.setProperty('display', 'none', 'important');
+                    if (btnNotiMobile) btnNotiMobile.style.setProperty('display', 'none', 'important');
+
                     if (userCard) userCard.style.display = 'none';
                     if (formArea) formArea.style.display = 'block';
                     if (btnKakao) btnKakao.style.display = 'flex';
@@ -25867,7 +26030,8 @@ window.addEventListener('DOMContentLoaded', () => {
                     await alert(res.message);
                     return;
                 }
-                // 로그인 성공 시 환영 alert 모달 없이 즉시 로그인 완료 처리
+                // 로그인 성공 시 환영 alert 모달 없이 즉시 UI 갱신 (알림 아이콘 등 즉각 노출)
+                window.updateAuthUI();
                 await loadChildProfilesFromSupabase();
                 window.updateAuthUI();
                 if (typeof window.checkAndResumePendingDiagnosis === 'function' && window.checkAndResumePendingDiagnosis()) {
@@ -26003,8 +26167,9 @@ window.addEventListener('DOMContentLoaded', () => {
                     await alert(res.message);
                     return;
                 }
-                // 로그인 성공 시 환영 alert 모달 없이 즉시 모달 닫고 로그인 완료 처리
+                // 로그인 성공 시 환영 alert 모달 없이 즉시 모달 닫고 UI 즉각 갱신
                 window.closeAuthModal();
+                window.updateAuthUI();
                 await loadChildProfilesFromSupabase();
                 window.updateAuthUI();
                 if (typeof window.checkAndResumePendingDiagnosis === 'function' && window.checkAndResumePendingDiagnosis()) {
@@ -26095,8 +26260,9 @@ window.addEventListener('DOMContentLoaded', () => {
                     await alert(res.message);
                     return;
                 }
-                // 로그인 성공 시 환영 alert 모달 없이 즉시 모달 닫고 로그인 완료 처리
+                // 로그인 성공 시 환영 alert 모달 없이 즉시 모달 닫고 UI 즉각 갱신
                 window.closeAuthModal();
+                window.updateAuthUI();
                 await loadChildProfilesFromSupabase();
                 window.updateAuthUI();
                 if (typeof window.checkAndResumePendingDiagnosis === 'function' && window.checkAndResumePendingDiagnosis()) {

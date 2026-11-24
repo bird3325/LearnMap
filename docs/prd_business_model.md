@@ -810,3 +810,26 @@
 - **경합(Race Condition) 및 모바일 초기화 보호**:
   - `document.readyState` 검사를 통해 모듈 평가 시점과 관계없이 결정적으로 렌더링.
   - 모바일 하단 내비게이션 초기화로 인한 온보딩 모달 강제 닫힘 차단.
+
+### 10.36 학교 상세 패널 맞춤 학교 진단 클릭 시 사이드창 로그인 연동 정책 (2026-11-24)
+- **개요 및 목적**:
+  - 학교 상세 패널의 [🎯 맞춤 학교 진단] 클릭 시, 사용자 경험을 저해하는 중앙 팝업/alert 모달창을 일체 배제하고 좌측 사이드바(사이드창)의 로그인/회원 서비스 영역(`settingsModal`)으로 즉시 전환되도록 개편.
+- **주요 동작 원칙**:
+  1. **중앙 모달 전면 배제**: `alert` 커스텀 모달이나 `diagnosisModalOverlay` 대신 사이드창 내부 로그인 폼을 즉시 활성화.
+  2. **학교 선택 상태 보존**: 진단 요청 대상 학교 정보를 `__pendingDiagnosisSchool` 및 `sessionStorage`에 보존하여 로그인 완료 후 즉시 원래 학교 진단으로 자연스럽게 이어지도록 처리.
+  3. **사이드창 레이아웃 전환**: `schoolCard`를 임시 숨김 처리하고 상단에 `settingsModal` 및 로그인 탭(`settingsLoginForm`)을 직접 펼쳐 스크롤 최상단으로 정렬, 취소/닫기 시 원래 학교 상세 복원.
+
+### 10.37 관리자 및 비즈니스 API 접근 통제 및 개인정보 보안 패치 (2026-11-24)
+- **개요 및 목적**:
+  - 관리자 API(`/api/admin/*`), 사업자 API(`/api/business/*`), 부동산 내부 저장 데이터(`/api/realestate/stored`)의 미인증 노출 취약점을 전면 차단.
+- **주요 보안 조치 사항**:
+  1. **`/api/admin/*` 전역 인증 미들웨어 (`requireAdminAuth`)**:
+     - 로그인 엔드포인트(`POST /api/admin/login`)를 제외한 모든 `/api/admin/*` 경로에 전역 미들웨어를 적용하여 비인가 접근 시 `401 Unauthorized`로 차단.
+  2. **회원 자격증명(`password`, `password_hash`) 반환 완전 제거**:
+     - `GET /api/admin/users` 조회 시 응답 데이터 객체에서 `password`, `password_hash`, `salt`, `token` 필드를 원천 삭제하여 클라이언트 반환 데이터 0건 보장.
+  3. **사업자 API 권한 통제 (`requireBusinessOrAdminAuth`)**:
+     - `/api/business/session`, `/api/business/dashboard`, `/api/business/market-analysis`, `/api/business/profile`, `/api/business/payment-history`, `/api/business/target-schools`, `/api/business/report-order`, `/api/business/upload-image`, `/api/business/delete-image` 등 민감 사업자 API에 인증 미들웨어 적용.
+     - 미인증 시 `401 Unauthorized`, 게스트/비인가 접근 시 `403 Forbidden` 반환.
+     - `GET /api/business/check-approval` 공개 승인 조회 시 사업자등록번호(`bizNumber`) 마스킹(`123-**-*****`) 처리.
+  4. **부동산 수집 및 데이터 API 통제**:
+     - `/api/realestate/stored` 및 대량 수집/교정 API(`collect-master`, `sync-trades`, `repair-coords` 등)에 관리자 인증 강제 적용.

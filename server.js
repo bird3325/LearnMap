@@ -499,6 +499,15 @@ function requireAdminAuth(req, res, next) {
     next();
 }
 
+// 🔒 /api/admin/* 전역 인증 미들웨어: 관리자 로그인(POST /api/admin/login)을 제외한 모든 관리자 API는 401로 차단
+app.use('/api/admin', (req, res, next) => {
+    // 관리자 로그인 요청 엔드포인트는 인증 제외 허용
+    if ((req.path === '/login' || req.path === '/login/') && req.method === 'POST') {
+        return next();
+    }
+    return requireAdminAuth(req, res, next);
+});
+
 // 2. 사업자 또는 관리자 전용 인증 미들웨어 (/api/business/dashboard 등)
 function requireBusinessOrAdminAuth(req, res, next) {
     const authHeader = req.headers['authorization'] || req.headers['x-admin-token'] || req.headers['x-auth-token'] || '';
@@ -521,7 +530,7 @@ function requireBusinessOrAdminAuth(req, res, next) {
     if (token === 'guest' || token === 'guest@learnmap.kr' || token === 'null' || token === 'undefined') {
         return res.status(403).json({
             success: false,
-            error: '유효하지 않은 계정 권한입니다. 게스트 계정은 대시보드에 접근할 수 없습니다. (403 Forbidden)'
+            error: '유효하지 않은 계정 권한입니다. 게스트 계정은 접근할 수 없습니다. (403 Forbidden)'
         });
     }
 
@@ -886,7 +895,7 @@ async function fetchExposAreaForEstate(estate, serviceKey) {
 }
 
 // 1-3. POST /api/realestate/fetch-single-area - 단일 단지의 누락된 호실별 전용면적 재수집
-app.post('/api/realestate/fetch-single-area', async (req, res) => {
+app.post('/api/realestate/fetch-single-area', requireAdminAuth, async (req, res) => {
     try {
         const { id } = req.body;
         if (!id) {
@@ -937,7 +946,7 @@ app.post('/api/realestate/fetch-single-area', async (req, res) => {
 });
 
 // 1-4. POST /api/realestate/retry-missing-areas - API 지연 등으로 전용면적이 누락된 모든 단지 일괄 재수집
-app.post('/api/realestate/retry-missing-areas', async (req, res) => {
+app.post('/api/realestate/retry-missing-areas', requireAdminAuth, async (req, res) => {
     try {
         if (!fs.existsSync(REAL_ESTATE_PATH)) {
             return res.status(404).json({ success: false, message: '주택 데이터베이스가 존재하지 않습니다.' });
@@ -1315,15 +1324,15 @@ const DONG_CODES_MAP = {
 // 🌟 전역 주택 수집 중단 플래그 (1단계/2단계 실시간 수집 공통)
 let isRealEstateCollectStopped = false;
 
-// POST /api/realestate/stop-collect - 관리자 주택 수집 즉시 중단 API
-app.post('/api/realestate/stop-collect', (req, res) => {
+// POST /api/realestate/stop-collect - 관리자 주택 수집 즉시 중단 API (관리자 인증 필수)
+app.post('/api/realestate/stop-collect', requireAdminAuth, (req, res) => {
     isRealEstateCollectStopped = true;
     console.log('[RealEstate] ⏹️ 관리자에 의한 주택 수집 중단 신호 접수');
     return res.json({ success: true, message: '주택 수집 중단 신호가 접수되었습니다. 현재까지 수집된 데이터를 안전하게 보존하고 종료합니다.' });
 });
 
-// 1-3. POST /api/realestate/collect-master - 실제 공공 API 및 카카오 로컬 API를 통한 주택 마스터 대량 수집 (실시간 상세 로그 스트리밍 지원)
-app.post('/api/realestate/collect-master', async (req, res) => {
+// 1-3. POST /api/realestate/collect-master - 실제 공공 API 및 카카오 로컬 API를 통한 주택 마스터 대량 수집 (관리자 인증 필수)
+app.post('/api/realestate/collect-master', requireAdminAuth, async (req, res) => {
     const { sido = '서울특별시', sigungu = 'all', stream = true } = req.body;
     const isStreaming = Boolean(stream);
 
@@ -2540,8 +2549,8 @@ function isComplexTradeMatch(estate, tradeName, tradeDong, tradeJibun) {
     return false;
 }
 
-// 1-4. POST /api/realestate/sync-trades - 실제 공공 실거래가 API 수집 및 마스터 정보 매핑 업데이트 (실시간 상세 로그 스트리밍 지원)
-app.post('/api/realestate/sync-trades', async (req, res) => {
+// 1-4. POST /api/realestate/sync-trades - 실제 공공 실거래가 API 수집 및 마스터 정보 매핑 업데이트 (관리자 인증 필수)
+app.post('/api/realestate/sync-trades', requireAdminAuth, async (req, res) => {
     const { sido = '서울특별시', sigungu = 'all', housingType = 'all', monthsCount = 12, stream = false } = req.body;
     const isStreaming = Boolean(stream);
 
@@ -3181,8 +3190,8 @@ async function fetchTradeForSingleEstate(estate, serviceKey) {
     return latestTrade;
 }
 
-// 1-4-1. POST /api/realestate/fetch-single-trade - 단일 단지 실거래가 재수집
-app.post('/api/realestate/fetch-single-trade', async (req, res) => {
+// 1-4-1. POST /api/realestate/fetch-single-trade - 단일 단지 실거래가 재수집 (관리자 인증 필수)
+app.post('/api/realestate/fetch-single-trade', requireAdminAuth, async (req, res) => {
     try {
         const { id } = req.body;
         if (!id) {
@@ -3292,8 +3301,8 @@ app.post('/api/realestate/fetch-single-trade', async (req, res) => {
     }
 });
 
-// 1-4-2. POST /api/realestate/retry-missing-trades - 실거래가 누락/대기 주택 일괄 재수집
-app.post('/api/realestate/retry-missing-trades', async (req, res) => {
+// 1-4-2. POST /api/realestate/retry-missing-trades - 실거래가 누락/대기 주택 일괄 재수집 (관리자 인증 필수)
+app.post('/api/realestate/retry-missing-trades', requireAdminAuth, async (req, res) => {
     try {
         const { sido, sigungu } = req.body;
         if (!fs.existsSync(REAL_ESTATE_PATH)) {
@@ -3506,8 +3515,8 @@ app.post('/api/realestate/retry-missing-trades', async (req, res) => {
     }
 });
 
-// 1-4-3. POST /api/realestate/repair-coords - 주택 좌표 일괄 정밀 교정 (카카오 로컬 4단계 지오코딩)
-app.post('/api/realestate/repair-coords', async (req, res) => {
+// 1-4-3. POST /api/realestate/repair-coords - 주택 좌표 일괄 정밀 교정 (카카오 로컬 4단계 지오코딩, 관리자 인증 필수)
+app.post('/api/realestate/repair-coords', requireAdminAuth, async (req, res) => {
     try {
         const { sido, sigungu, mode = 'unverified' } = req.body;
         if (!fs.existsSync(REAL_ESTATE_PATH)) {
@@ -3591,8 +3600,8 @@ app.post('/api/realestate/repair-coords', async (req, res) => {
     }
 });
 
-// 1-4-4. POST /api/realestate/repair-coord-single - 단일 주택 즉시 정밀 좌표 교정
-app.post('/api/realestate/repair-coord-single', async (req, res) => {
+// 1-4-4. POST /api/realestate/repair-coord-single - 단일 주택 즉시 정밀 좌표 교정 (관리자 인증 필수)
+app.post('/api/realestate/repair-coord-single', requireAdminAuth, async (req, res) => {
     try {
         const { id } = req.body;
         if (!id) {
@@ -3646,8 +3655,8 @@ app.post('/api/realestate/repair-coord-single', async (req, res) => {
     }
 });
 
-// 1-5. POST /api/realestate/sync-kapt - K-APT(공동주택관리정보시스템) 단지코드 동기화
-app.post('/api/realestate/sync-kapt', async (req, res) => {
+// 1-5. POST /api/realestate/sync-kapt - K-APT(공동주택관리정보시스템) 단지코드 동기화 (관리자 인증 필수)
+app.post('/api/realestate/sync-kapt', requireAdminAuth, async (req, res) => {
     const { sido = '경기도', sigungu = 'all' } = req.body;
     const config = await readConfig();
     const serviceKey = config.data_go_kr_key;
@@ -4270,7 +4279,7 @@ app.post('/api/admin/login', (req, res) => {
     return res.status(401).json({ success: false, message: '비밀번호가 올바르지 않습니다.' });
 });
 
-// GET /api/admin/users - 전체 회원 목록 반환 (관리자 인증 필수)
+// GET /api/admin/users - 전체 회원 목록 반환 (관리자 인증 필수 + 비밀번호/해시 민감정보 영구 제거)
 app.get('/api/admin/users', requireAdminAuth, async (req, res) => {
     try {
         let users = [];
@@ -4311,18 +4320,37 @@ app.get('/api/admin/users', requireAdminAuth, async (req, res) => {
             return timeB - timeA;
         });
 
+        // 🔒 개인정보 보호: 비밀번호, 비밀번호 해시, 토큰 등 인증 자격증명 필드 완전 삭제
+        const safeUsers = users.map(u => {
+            const clone = { ...u };
+            delete clone.password;
+            delete clone.password_hash;
+            delete clone.salt;
+            delete clone.token;
+            delete clone.authToken;
+            return clone;
+        });
+
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        return res.json(users);
+        return res.json(safeUsers);
     } catch (err) {
         console.error('Admin users error:', err);
-        const fallbackUsers = Array.isArray(readUsers()) ? readUsers() : [];
+        const fallbackUsers = (Array.isArray(readUsers()) ? readUsers() : []).map(u => {
+            const clone = { ...u };
+            delete clone.password;
+            delete clone.password_hash;
+            delete clone.salt;
+            delete clone.token;
+            delete clone.authToken;
+            return clone;
+        });
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         return res.status(200).json(fallbackUsers);
     }
 });
 
-// DELETE /api/admin/users - 회원 삭제 (Supabase + users.json)
-app.delete('/api/admin/users', async (req, res) => {
+// DELETE /api/admin/users - 회원 삭제 (Supabase + users.json, 관리자 인증 필수)
+app.delete('/api/admin/users', requireAdminAuth, async (req, res) => {
     try {
         const { id, email } = req.query;
         if (!id && !email) {
@@ -6759,8 +6787,8 @@ async function saveReportOrderToDB(order) {
     }
 }
 
-// 2. 현재 로그인/선택된 사업자 정보 조회 (기본 데모 세션 제공 및 DB 동기화)
-app.get('/api/business/session', async (req, res) => {
+// 2. 현재 로그인/선택된 사업자 정보 조회 (인증 필수: 사업자/관리자 전용)
+app.get('/api/business/session', requireBusinessOrAdminAuth, async (req, res) => {
     try {
         const { bizId } = req.query;
         const email = (req.query.email || '').trim().toLowerCase();
@@ -6796,6 +6824,7 @@ app.get('/api/business/session', async (req, res) => {
                     biz = {
                         ...sampleTarget,
                         name: `${sampleTarget.name} (체험용 샘플)`,
+                        bizNumber: '000-00-00000',
                         isDemo: true
                     };
                 }
@@ -6828,7 +6857,7 @@ app.get('/api/business/session', async (req, res) => {
         });
     } catch (err) {
         console.error('Business Session Error:', err);
-        return res.status(500).json({ error: '사업자 정보를 가져오는 중 오류가 발생했습니다.' });
+        return res.status(500).json({ error: '사업자 세션 정보를 가져오는 중 오류가 발생했습니다.' });
     }
 });
 
@@ -6880,18 +6909,22 @@ app.get('/api/business/check-approval', async (req, res) => {
         }
 
         const isApproved = (found.status === 'approved');
+        const maskedBizNumber = found.bizNumber
+            ? String(found.bizNumber).replace(/^(\d{3})-?(\d{2})-?(\d{5})$/, '$1-**-*****')
+            : '';
+        const safeBusiness = { ...found, bizNumber: maskedBizNumber };
 
         return res.json({
             exists: true,
             status: found.status,
             isPartner: isApproved,
-            business: found,
+            business: safeBusiness,
             businessId: found.id,
             userId: found.userId,
             name: found.name,
             representative: found.representative,
             email: found.email,
-            bizNumber: found.bizNumber,
+            bizNumber: maskedBizNumber,
             type: found.type,
             rejectionReason: found.rejectionReason || '',
             message: isApproved
@@ -7586,8 +7619,8 @@ app.get('/api/business/verify-map-academy', async (req, res) => {
     }
 });
 
-// 4. 본인 사업자 프로필 수정 (P-04, P-02, P-12)
-app.put('/api/business/profile', async (req, res) => {
+// 4. 본인 사업자 프로필 수정 (P-04, P-02, P-12, 인증 필수)
+app.put('/api/business/profile', requireBusinessOrAdminAuth, async (req, res) => {
     try {
         const { businessId, academyProfile, realEstateProfile } = req.body;
         if (!businessId || (!academyProfile && !realEstateProfile)) {
@@ -7861,8 +7894,8 @@ app.get('/api/products', (req, res) => {
     }
 });
 
-// 6-2. 분석 보고서 주문/신청 API
-app.post('/api/business/report-order', async (req, res) => {
+// 6-2. 분석 보고서 주문/신청 API (인증 필수)
+app.post('/api/business/report-order', requireBusinessOrAdminAuth, async (req, res) => {
     try {
         const { businessId, reportId, applicantName, contactPhone, notes } = req.body;
         if (!businessId || !reportId) {
@@ -7928,8 +7961,8 @@ function calcDistanceMeters(lat1, lon1, lat2, lon2) {
     return Math.round(R * c);
 }
 
-// 4-1. 학원 사업자 교육 상권 분석 API (기획서 4-1: 3 주변 학교·학원 조회, 4 반경별 상권 분석, 5 지역별 경쟁 현황 비교)
-app.get('/api/business/market-analysis', async (req, res) => {
+// 4-1. 학원 사업자 교육 상권 분석 API (기획서 4-1: 3 주변 학교·학원 조회, 4 반경별 상권 분석, 5 지역별 경쟁 현황 비교, 인증 필수)
+app.get('/api/business/market-analysis', requireBusinessOrAdminAuth, async (req, res) => {
     try {
         const { businessId } = req.query;
         const radius = Math.min(Math.max(parseInt(req.query.radius, 10) || 1000, 300), 5000);
@@ -8416,8 +8449,8 @@ app.get('/api/academies/school-slots', async (req, res) => {
     }
 });
 
-// 6-4. 타깃 학교(기본 1곳 + 확장 옵션) 설정 및 구좌 변경 API
-app.put('/api/business/target-schools', async (req, res) => {
+// 6-4. 타깃 학교(기본 1곳 + 확장 옵션) 설정 및 구좌 변경 API (인증 필수)
+app.put('/api/business/target-schools', requireBusinessOrAdminAuth, async (req, res) => {
     try {
         const { businessId, targetSchools } = req.body;
         if (!businessId || !Array.isArray(targetSchools) || targetSchools.length === 0) {
@@ -8688,8 +8721,8 @@ app.post('/api/subscription/checkout', async (req, res) => {
     }
 });
 
-// 7-1. 파트너 결제 이력 조회 API
-app.get('/api/business/payment-history', async (req, res) => {
+// 7-1. 파트너 결제 이력 조회 API (인증 필수)
+app.get('/api/business/payment-history', requireBusinessOrAdminAuth, async (req, res) => {
     try {
         const { businessId, bizId, userId, email } = req.query;
         const targetId = (businessId || bizId || '').trim();
@@ -10294,8 +10327,8 @@ app.delete('/api/admin/blog/posts/:id', async (req, res) => {
     }
 });
 
-// 9. [사업자/파트너스] 학원 로고 및 전경/시설 사진 업로드 API
-app.post('/api/business/upload-image', async (req, res) => {
+// 9. [사업자/파트너스] 학원 로고 및 전경/시설 사진 업로드 API (인증 필수)
+app.post('/api/business/upload-image', requireBusinessOrAdminAuth, async (req, res) => {
     try {
         const filename = req.body.filename || req.body.fileName;
         const data = req.body.data || req.body.imageData;
@@ -10395,8 +10428,8 @@ app.post('/api/business/upload-image', async (req, res) => {
     }
 });
 
-// 9-1. [사업자/파트너스] 학원 로고 및 전경/시설 사진 삭제 API
-app.post('/api/business/delete-image', async (req, res) => {
+// 9-1. [사업자/파트너스] 학원 로고 및 전경/시설 사진 삭제 API (인증 필수)
+app.post('/api/business/delete-image', requireBusinessOrAdminAuth, async (req, res) => {
     try {
         const { url } = req.body;
         if (!url || typeof url !== 'string') {
