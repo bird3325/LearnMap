@@ -7813,6 +7813,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const isElemSchool = fullSchool.school_type && (fullSchool.school_type.includes('초등') || fullSchool.school_type.includes('초등학교'));
         const isHighSchool = fullSchool.school_type && (fullSchool.school_type.includes('고등') || fullSchool.school_type.includes('고등학교'));
 
+        // 공통 진학률 데이터 소스 사전 계산 (상단 카드와 하단 상세의 100% 일치 보장)
+        const careerData = summary.graduate_career || fullSchool.graduate_career || { special: 6, autonomous: 12, general: 70, specialized: 12 };
+        const specialRate = Number(careerData.special) || 0;       // 특목고
+        const autoRate = Number(careerData.autonomous) || 0;       // 자율형사립고
+        const totalAdvRate = Math.round((specialRate + autoRate) * 10) / 10;
+        const univRate = Number(careerData.general) || 65;         // 4년제 대학
+        const juniorRate = Number(careerData.specialized) || 15;   // 전문대학
+        const totalCollegeRate = Math.round((univRate + juniorRate) * 10) / 10;
+
         if (hGrid1Label) {
             if (isElemSchool) {
                 hGrid1Label.innerText = '선호중·관내';
@@ -7827,10 +7836,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const elemAdvRate = summary.graduate_career ? summary.graduate_career.general : mockAdvRate;
                 hGrid1.innerText = `진학률 ${elemAdvRate}%`;
             } else if (isHighSchool) {
-                const highAdvRate = summary.graduate_career ? summary.graduate_career.general : mockAdvRate;
-                hGrid1.innerText = `진학률 ${highAdvRate}%`;
+                hGrid1.innerText = `진학률 ${univRate}%`;
             } else {
-                hGrid1.innerText = `진학률 ${mockAdvRate}%`;
+                hGrid1.innerText = `진학률 ${totalAdvRate.toFixed(1)}%`;
             }
         }
 
@@ -7859,7 +7867,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- 진학 경쟁력 카드 데이터 동적 바인딩 (중학교: 특목·자사고, 고등학교: 대학교·전문대) ---
-        const careerData = summary.graduate_career || fullSchool.graduate_career || { special: 6, autonomous: 12, general: 70, specialized: 12 };
         const totalStudents = Number(fullSchool.student_count) || 600;
         const gradTotalCount = Math.max(30, Math.round(totalStudents / 3));
 
@@ -7889,10 +7896,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (eAdvItem3Label) eAdvItem3Label.innerText = '취업 및 기타';
             if (eAdvTotalRateTitle) eAdvTotalRateTitle.innerText = '대학교 총 진학률';
 
-            const univRate = Number(careerData.general) || 65;         // 4년제 대학
-            const juniorRate = Number(careerData.specialized) || 15;   // 전문대학
             const etcRate = Math.round(((Number(careerData.special) || 5) + (Number(careerData.autonomous) || 15)) * 10) / 10;
-            const totalCollegeRate = Math.round((univRate + juniorRate) * 10) / 10;
 
             const univCount = Math.max(0, Math.round((gradTotalCount * univRate) / 100));
             const juniorCount = Math.max(0, Math.round((gradTotalCount * juniorRate) / 100));
@@ -7945,10 +7949,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (eAdvItem2Label) eAdvItem2Label.innerText = '외고·국제고';
             if (eAdvItem3Label) eAdvItem3Label.innerText = '자율형사립고';
             if (eAdvTotalRateTitle) eAdvTotalRateTitle.innerText = '특목·자사고 총 진학률';
-
-            const specialRate = Number(careerData.special) || 0;       // 특목고
-            const autoRate = Number(careerData.autonomous) || 0;       // 자율형사립고
-            const totalAdvRate = Math.round((specialRate + autoRate) * 10) / 10;
 
             const sciRatio = 0.35;
             const sciRate = Math.round((specialRate * sciRatio) * 10) / 10;
@@ -8027,16 +8027,33 @@ document.addEventListener('DOMContentLoaded', () => {
         if (eduTeacherRegionNameEl) eduTeacherRegionNameEl.innerText = districtName;
         if (eduClassRegionNameEl) eduClassRegionNameEl.innerText = districtName;
 
+        let regionalAvgSpt = '13.0';
         if (eduTeacherAvgEl) {
             // 지역별/학교급별 공시 평균 기준치 반영
             const isGyeonggi = fullSchool.region === '경기도' || (fullSchool.address && fullSchool.address.includes('경기'));
             const isSeoul = fullSchool.region === '서울특별시' || (fullSchool.address && fullSchool.address.includes('서울'));
             if (isElemSchool) {
-                eduTeacherAvgEl.innerText = isGyeonggi ? '14.1' : (isSeoul ? '13.8' : '14.0');
+                regionalAvgSpt = isGyeonggi ? '14.1' : (isSeoul ? '13.8' : '14.0');
             } else if (isHighSchool) {
-                eduTeacherAvgEl.innerText = isGyeonggi ? '11.5' : (isSeoul ? '11.2' : '11.6');
+                regionalAvgSpt = isGyeonggi ? '11.5' : (isSeoul ? '11.2' : '11.6');
             } else {
-                eduTeacherAvgEl.innerText = isGyeonggi ? '13.2' : (isSeoul ? '12.8' : '13.0');
+                regionalAvgSpt = isGyeonggi ? '13.2' : (isSeoul ? '12.8' : '13.0');
+            }
+            eduTeacherAvgEl.innerText = regionalAvgSpt;
+        }
+
+        const eduTeacherCommentEl = document.getElementById('eduTeacherComment');
+        if (eduTeacherCommentEl) {
+            const sptNum = parseFloat(sptVal);
+            const avgNum = parseFloat(regionalAvgSpt);
+            if (sptNum <= avgNum - 0.5) {
+                eduTeacherCommentEl.innerText = '대비 여유로운 교육환경';
+            } else if (sptNum >= avgNum + 2.0) {
+                eduTeacherCommentEl.innerText = '대비 학생 수 다소 과밀';
+            } else if (sptNum > avgNum + 0.5) {
+                eduTeacherCommentEl.innerText = '대비 학생 수 약간 높음';
+            } else {
+                eduTeacherCommentEl.innerText = '대비 적정 수준 교육환경';
             }
         }
 
@@ -8164,19 +8181,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const eduSummaryDescEl = document.getElementById('eduSummaryDesc');
         if (eduSummaryTitleEl && eduSummaryDescEl) {
             const schoolName = fullSchool.school_name || '해당 학교';
-            const academyCount = fullSchool.academy_count || 30;
+            const academyCount = (window.allFetchedAcademies && window.allFetchedAcademies.length > 0) ? window.allFetchedAcademies.length : (fullSchool.academy_count || 30);
             const extraBudget = fullSchool.extracurricular_budget || 100;
             const classSize = fullSchool.class_avg_size || 24;
 
             if (isElemSchool) {
                 eduSummaryTitleEl.innerText = `${districtName} 내 교원 밀착 지도 및 안심 교육환경`;
-                eduSummaryDescEl.innerText = `${schoolName}는 교원 1인당 학생 수(${sptVal}명)와 학급당 학생 수(${classSize}명)를 바탕으로 균형 잡힌 초등 돌봄 및 기본 교과 학습 환경을 갖추고 있습니다. ${districtName} 관내 통학 인프라 및 인근 학원가(${academyCount}개)와 연계되어 초등 학부모의 정주 및 진학 선호도가 안정적으로 형성되어 있습니다.`;
+                eduSummaryDescEl.innerHTML = `${schoolName}는 교원 1인당 학생 수(${sptVal}명)와 학급당 학생 수(${classSize}명)를 바탕으로 균형 잡힌 초등 돌봄 및 기본 교과 학습 환경을 갖추고 있습니다. ${districtName} 관내 통학 인프라 및 인근 학원가(<span id="eduSummaryAcademyCount">${academyCount}</span>개)와 연계되어 초등 학부모의 정주 및 진학 선호도가 안정적으로 형성되어 있습니다.`;
             } else if (isHighSchool) {
                 eduSummaryTitleEl.innerText = `${districtName} 내 대입 진학 및 면학 집중형 명문 학군`;
-                eduSummaryDescEl.innerText = `${schoolName}는 4년제 대학교 진학률을 중심으로 높은 대입 경쟁력을 보유하고 있으며, 1인당 교육투자비(${extraBudget}만원)와 체계적인 입시 지도 교원 배치(${sptVal}명)를 통해 ${districtName} 핵심 학원가와 연계된 맞춤형 진학 실적을 유지하고 있습니다.`;
+                eduSummaryDescEl.innerHTML = `${schoolName}는 4년제 대학교 진학률을 중심으로 높은 대입 경쟁력을 보유하고 있으며, 1인당 교육투자비(${extraBudget}만원)와 체계적인 입시 지도 교원 배치(${sptVal}명)를 통해 ${districtName} 핵심 학원가(<span id="eduSummaryAcademyCount">${academyCount}</span>개)와 연계된 맞춤형 진학 실적을 유지하고 있습니다.`;
             } else {
                 eduSummaryTitleEl.innerText = `${districtName} 내 특목·자사고 진학 우수 및 자기주도 학습 학군`;
-                eduSummaryDescEl.innerText = `${schoolName}는 고입 진학 경쟁력 및 학업성취도 수준이 우수하며, 교원 1인당 학생 수(${sptVal}명)와 인근 학원가(${academyCount}개)를 바탕으로 중등 심화 내신 및 특목·자사고 목표 학생들의 면학 분위기가 탄탄하게 형성되어 있습니다.`;
+                eduSummaryDescEl.innerHTML = `${schoolName}는 고입 진학 경쟁력 및 학업성취도 수준이 우수하며, 교원 1인당 학생 수(${sptVal}명)와 인근 학원가(<span id="eduSummaryAcademyCount">${academyCount}</span>개)를 바탕으로 중등 심화 내신 및 특목·자사고 목표 학생들의 면학 분위기가 탄탄하게 형성되어 있습니다.`;
             }
         }
 
@@ -11356,6 +11373,8 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                 if (totalBadge) totalBadge.innerText = `총 ${totalCount}개소`;
                 if (env2Val) env2Val.innerText = `${totalCount}개`;
                 if (envHeroSub0) envHeroSub0.innerText = `${totalCount}개 집중`;
+                const eduSumAcad = document.getElementById('eduSummaryAcademyCount');
+                if (eduSumAcad) eduSumAcad.innerText = totalCount;
                 if (typeof window.updateEduCultureSchoolCardBadge === 'function') window.updateEduCultureForSelectedSchool(schoolObj);
 
                 window.allFetchedAcademies = allFetchedAcademies;
@@ -11387,6 +11406,8 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                     if (totalBadge) totalBadge.innerText = `총 ${totalCount}개소`;
                     if (env2Val) env2Val.innerText = `${totalCount}개`;
                     if (envHeroSub0) envHeroSub0.innerText = `${totalCount}개 집중`;
+                    const eduSumAcadFallback = document.getElementById('eduSummaryAcademyCount');
+                    if (eduSumAcadFallback) eduSumAcadFallback.innerText = totalCount;
 
                     // 폴백 시에도 학원 마커 즉시 표시
                     updateAcademyMapMarkers(allFetchedAcademies);
