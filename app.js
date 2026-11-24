@@ -20050,7 +20050,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 { key: 'math', label: '➕ 수학' }
             ],
             extracurricular: [
-                { key: 'budget', label: '💰 예산 높은순' },
+                { key: 'budget', label: '💰 예산' },
                 { key: 'student', label: '👥 학생수' }
             ],
             transfer: [
@@ -20059,6 +20059,21 @@ window.addEventListener('DOMContentLoaded', () => {
                 { key: 'transfer_in', label: '⬆️ 전입생수' }
             ]
         };
+
+        // 학교급 정규화 헬퍼 (초등학교/중학교/고등학교)
+        function getNormalizedSchoolType(school) {
+            if (!school) return '';
+            const raw = school.school_type || school.schoolType || school.type || '';
+            if (raw.includes('초등') || raw === '초' || raw === 'elementary') return '초등학교';
+            if (raw.includes('중학') || raw === '중' || raw === 'middle') return '중학교';
+            if (raw.includes('고등') || raw === '고' || raw === 'high') return '고등학교';
+
+            const name = school.school_name || school.name || '';
+            if (name.endsWith('초등학교') || name.endsWith('초등') || name.endsWith('초')) return '초등학교';
+            if (name.endsWith('중학교') || name.endsWith('중')) return '중학교';
+            if (name.endsWith('고등학교') || name.endsWith('고')) return '고등학교';
+            return raw;
+        }
 
         // 주요 구/군별 전국 대표 학교 데이터베이스 사전정의 (서버 JSON 미포함 타지역 조회 보완용)
         const REGIONAL_SCHOOL_PRESETS = {
@@ -20810,7 +20825,8 @@ window.addEventListener('DOMContentLoaded', () => {
                     if (!checkDongMatch(school, selectedDong)) return false;
                 }
                 if (selectedType !== 'all') {
-                    if (school.school_type !== selectedType) return false;
+                    const normType = getNormalizedSchoolType(school);
+                    if (normType !== selectedType) return false;
                 }
                 return true;
             });
@@ -20960,24 +20976,33 @@ window.addEventListener('DOMContentLoaded', () => {
                     return 0;
                 });
             } else {
-                const { key, dir } = sortState[currentTopic];
-                const m = dir === 'desc' ? -1 : 1;
+                const curState = sortState[currentTopic] || {};
+                const key = curState.key || 'score';
+                const effectiveDir = curState.dir || 'desc';
+                const m = effectiveDir === 'desc' ? -1 : 1;
+
                 if (currentTopic === 'composite') {
-                    if (key === 'score') processedList.sort((a, b) => m * (a.compositeScore - b.compositeScore));
-                    else if (key === 'extra_budget') processedList.sort((a, b) => m * (a.extraBudget - b.extraBudget));
-                    else if (key === 'student') processedList.sort((a, b) => m * ((a.raw.student_count || 0) - (b.raw.student_count || 0)));
+                    if (key === 'score') processedList.sort((a, b) => m * (a.compositeScore - b.compositeScore) || (b.subjectAvg - a.subjectAvg) || a.name.localeCompare(b.name, 'ko'));
+                    else if (key === 'extra_budget') processedList.sort((a, b) => m * (a.extraBudget - b.extraBudget) || (b.compositeScore - a.compositeScore) || a.name.localeCompare(b.name, 'ko'));
+                    else if (key === 'student') processedList.sort((a, b) => m * ((a.raw.student_count || 0) - (b.raw.student_count || 0)) || (b.compositeScore - a.compositeScore) || a.name.localeCompare(b.name, 'ko'));
+                    else processedList.sort((a, b) => m * (a.compositeScore - b.compositeScore) || a.name.localeCompare(b.name, 'ko'));
                 } else if (currentTopic === 'academic') {
-                    if (key === 'avg') processedList.sort((a, b) => m * (a.subjectAvg - b.subjectAvg));
-                    else if (key === 'grade_a') processedList.sort((a, b) => m * (a.distAAvg - b.distAAvg));
-                    else if (key === 'korean') processedList.sort((a, b) => m * ((a.raw.subjects?.korean?.avg || 0) - (b.raw.subjects?.korean?.avg || 0)));
-                    else if (key === 'math') processedList.sort((a, b) => m * ((a.raw.subjects?.math?.avg || 0) - (b.raw.subjects?.math?.avg || 0)));
+                    if (key === 'avg') processedList.sort((a, b) => m * (a.subjectAvg - b.subjectAvg) || (b.compositeScore - a.compositeScore) || a.name.localeCompare(b.name, 'ko'));
+                    else if (key === 'grade_a') processedList.sort((a, b) => m * (a.distAAvg - b.distAAvg) || (b.subjectAvg - a.subjectAvg) || a.name.localeCompare(b.name, 'ko'));
+                    else if (key === 'korean') processedList.sort((a, b) => m * ((a.raw.subjects?.korean?.avg || 0) - (b.raw.subjects?.korean?.avg || 0)) || (b.compositeScore - a.compositeScore) || a.name.localeCompare(b.name, 'ko'));
+                    else if (key === 'math') processedList.sort((a, b) => m * ((a.raw.subjects?.math?.avg || 0) - (b.raw.subjects?.math?.avg || 0)) || (b.compositeScore - a.compositeScore) || a.name.localeCompare(b.name, 'ko'));
+                    else processedList.sort((a, b) => m * (a.subjectAvg - b.subjectAvg) || a.name.localeCompare(b.name, 'ko'));
                 } else if (currentTopic === 'extracurricular') {
-                    if (key === 'budget') processedList.sort((a, b) => m * (a.extraBudget - b.extraBudget));
-                    else if (key === 'student') processedList.sort((a, b) => m * ((a.raw.student_count || 0) - (b.raw.student_count || 0)));
+                    if (key === 'budget') processedList.sort((a, b) => m * (a.extraBudget - b.extraBudget) || (b.compositeScore - a.compositeScore) || a.name.localeCompare(b.name, 'ko'));
+                    else if (key === 'student') processedList.sort((a, b) => m * ((a.raw.student_count || 0) - (b.raw.student_count || 0)) || (b.compositeScore - a.compositeScore) || a.name.localeCompare(b.name, 'ko'));
+                    else processedList.sort((a, b) => m * (a.extraBudget - b.extraBudget) || a.name.localeCompare(b.name, 'ko'));
                 } else if (currentTopic === 'transfer') {
-                    if (key === 'net') processedList.sort((a, b) => m * (a.tStats.net - b.tStats.net));
-                    else if (key === 'walk') processedList.sort((a, b) => m * (a.cStats.walk - b.cStats.walk));
-                    else if (key === 'transfer_in') processedList.sort((a, b) => m * (a.tStats.transfer_in - b.tStats.transfer_in));
+                    if (key === 'net') processedList.sort((a, b) => m * (a.tStats.net - b.tStats.net) || (b.compositeScore - a.compositeScore) || a.name.localeCompare(b.name, 'ko'));
+                    else if (key === 'walk') processedList.sort((a, b) => m * (a.cStats.walk - b.cStats.walk) || (b.compositeScore - a.compositeScore) || a.name.localeCompare(b.name, 'ko'));
+                    else if (key === 'transfer_in') processedList.sort((a, b) => m * (a.tStats.transfer_in - b.tStats.transfer_in) || (b.compositeScore - a.compositeScore) || a.name.localeCompare(b.name, 'ko'));
+                    else processedList.sort((a, b) => m * (a.tStats.net - b.tStats.net) || a.name.localeCompare(b.name, 'ko'));
+                } else {
+                    processedList.sort((a, b) => m * (a.compositeScore - b.compositeScore) || a.name.localeCompare(b.name, 'ko'));
                 }
             }
 
@@ -21048,8 +21073,8 @@ window.addEventListener('DOMContentLoaded', () => {
             const isAsc = currentDir === 'asc';
 
             listContainer.innerHTML = list.map((item, idx) => {
-                // 내림차순(높은순)일 때는 idx + 1이 순위, 오름차순(낮은순)일 때는 절대 순위(점수 높은 순)를 보존하여 (list.length - idx)위로 표시
-                const rank = isAsc ? (list.length - idx) : (idx + 1);
+                // 순위 모달 목록은 선택된 정렬 기준에 따라 1위부터 순서대로 번호 부여
+                const rank = idx + 1;
                 let medalBadge = `<span style="background:#e2e8f0; color:#475569; font-weight:bold; padding:2px 6px; border-radius:10px; font-size:11px;">${rank}위</span>`;
                 if (rank === 1) medalBadge = `<span style="background:#fef08a; color:#854d0e; font-weight:bold; padding:2px 7px; border-radius:10px; font-size:11px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">🥇 1위</span>`;
                 else if (rank === 2) medalBadge = `<span style="background:#e2e8f0; color:#334155; font-weight:bold; padding:2px 7px; border-radius:10px; font-size:11px;">🥈 2위</span>`;
@@ -21301,15 +21326,25 @@ window.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                // 정렬 기본값을 항상 '내림차순 (높은 점수 1위)'으로 초기화
+                // 기본 탭 '교육환경 점수(composite)'로 일원화 및 탭 바 UI 동기화
+                currentTopic = 'composite';
+                if (tabBar) {
+                    const tabBtns = tabBar.querySelectorAll('.topic-tab-btn');
+                    tabBtns.forEach(b => {
+                        const isComp = b.getAttribute('data-topic') === 'composite';
+                        b.classList.toggle('active', isComp);
+                        b.style.background = isComp ? 'var(--primary-blue)' : 'transparent';
+                        b.style.color = isComp ? 'white' : 'var(--text-muted)';
+                    });
+                }
+
+                // 순위 표시의 기본 정렬을 항상 '점수 내림차순 (1위부터)'으로 안전하게 초기화
                 if (sortState) {
-                    if (sortState.composite) {
-                        sortState.composite.key = 'score';
-                        sortState.composite.dir = 'desc';
-                    }
-                    if (currentTopic && sortState[currentTopic]) {
-                        sortState[currentTopic].dir = 'desc';
-                    }
+                    sortState.composite = { key: 'score', dir: 'desc' };
+                    sortState.extracurricular = { key: 'budget', dir: 'desc' };
+                    sortState.transfer = { key: 'net', dir: 'desc' };
+                    sortState.academic = { key: 'avg', dir: 'desc' };
+                    sortState.violence = { key: 'cases', dir: 'asc' };
                 }
 
                 modal.style.display = 'flex';
@@ -21346,6 +21381,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
         if (schoolTypeSelect) {
             schoolTypeSelect.addEventListener('change', () => {
+                // 학교급 변경 시 기본 정렬(점수 내림차순 1위부터) 적용
+                if (sortState && sortState[currentTopic]) {
+                    sortState[currentTopic].dir = 'desc';
+                }
                 refreshTopicStats();
             });
         }

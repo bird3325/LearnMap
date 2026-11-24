@@ -581,116 +581,6 @@
 - **검증**:
   - 외부 미인증 curl 테스트 결과 `HTTP 401`, 게스트 테스트 결과 `HTTP 403` 반환 확인 완료.
 
-## 39. 학교 상세 패널 맞춤 학교 진단 버튼 인터랙션 및 모달 오버레이 가이드 (2026-11-23)
-- **배경 및 문제점**:
-  - 학교 상세 패널 안에서 `🎯 맞춤 학교 진단` 버튼 클릭 시 기존에는 `schoolCard`를 `display: none` 처리하거나 이벤트 전파로 인해 사이드바 패널이 닫히고 초기 화면으로 복귀되는 UX 결함 발생.
-- **개선된 UI/UX 및 인터랙션 규격**:
-  1. **버튼 속성 및 이벤트 전파 방지**:
-     - `index.html` 내 `<button type="button" id="btnCompareChild">` 명시.
-     - 클릭 이벤트 핸들러에서 `e.preventDefault()`, `e.stopPropagation()`을 실행하여 상위 요소로의 불필요한 이벤트 버블링 차단.
-  2. **모달 팝업 오버레이 (`#diagnosisModalOverlay`)**:
-     - 로그인 후 진단 실행 시 기존 학교 상세 패널(`schoolCard`)을 닫지 않고 화면에 유지.
-     - 분석 결과 카드(`diagnosisResultCard`)를 중앙 모달 오버레이(`backdrop-filter: blur(6px); z-index: 10080`)로 띄워 사용자가 학교 정보와 진단 결과를 연속성 있게 탐색할 수 있도록 보장.
-     - 모달 닫기 버튼(`btnCloseAnalysis`) 또는 바깥 배경 클릭 시 모달만 닫히며 원래 학교 상세 패널은 그대로 표시됨.
-  3. **비로그인 사용자 플로우**:
-     - 진단 버튼 클릭 시 패널을 유지한 채 안내 팝업 및 로그인 모달 오픈.
-     - 원래 보고 있던 학교 정보를 `sessionStorage`에 보존하여 로그인 완료 시 즉시 해당 학교 맞춤 진단 화면으로 연결.
-  4. **기타 컴포넌트 안전성**:
-     - 닫기(`btnDeselectSchool`), 탭 전환(종합분석, 성취도, 주거&학원, 학부모소통) 등 기존 버튼 인터랙션 일체 정상 유지.
-
-## 40. 지도 검색 결과 드롭다운(searchResultsDropdown) z-index 계층 및 스크롤 디자인 사양 (2026-11-23)
-- **배경 및 문제점**:
-  - 검색 결과 드롭다운이 하위 돔 요소인 '학부모 맞춤 분석 & 필터 설정' 바(`.filter-header-bar`의 `position: relative`) 아래로 깔려 드롭다운 카드 하단을 클릭할 수 없던 스태킹 컨텍스트 충돌 발생.
-- **수정된 z-index 및 레이아웃 사양**:
-  1. `.search-bar-wrapper`: `position: relative !important; z-index: 10250 !important;` (필터 바 및 아코디언 상위 스태킹 부여)
-  2. `#searchResultsDropdown`:
-     - `position: absolute !important; top: calc(100% + 6px) !important;`
-     - `z-index: 10350 !important;` (하단 모든 레이어 최상단 렌더링)
-     - `max-height: min(420px, calc(100vh - 130px)) !important;`
-     - `box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22) !important;`
-     - `border-radius: 14px !important; overflow: hidden !important; display: flex; flex-direction: column;`
-  3. **내부 스크롤 규격**:
-     - 상단 안내 바: `flex-shrink: 0; padding: 10px 14px;`
-     - 학교 리스트 컨테이너: `flex: 1; max-height: min(340px, calc(100vh - 190px)); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;`
-  4. **모바일 뷰포트 사양**:
-     - `.map-search-container`: `z-index: 10150 !important;` (모바일 필터 아코디언 `10095`보다 상위)
-     - `#searchResultsDropdown`: `max-height: min(380px, calc(100dvh - 120px)) !important;`
-  5. **카드 클릭성**:
-     - 카드 내부 텍스트 및 뱃지에 `pointer-events: none`을 부여하여 패딩, 여백, 텍스트 어느 곳을 터치/클릭해도 카드 전체가 반응하도록 최적화.
-
-## 41. 학교 패널 학부모 소통 탭 리뷰 유도 UI 동적 텍스트 사양 (2026-11-23)
-- **개요 및 규격**:
-  - 학교 상세 패널 내 [💬 학부모 소통] 탭의 하단 후기 남기기 바 디자인 요소를 동적으로 연동.
-- **컴포넌트 및 ID 사양**:
-  1. `#schoolDetailParentPrompt`:
-     - 기본 스타일: `font-size: 12px; color: #64748b; font-weight: 500;`
-     - 텍스트 바인딩 규칙: 선택된 학교의 정규 명칭에 따라 `${fullSchool.school_name} 학부모이신가요?` 형태로 렌더링 (예: '대치중학교 학부모이신가요?', '서운중학교 학부모이신가요?').
-  2. `#schoolDetailReviewCountSub`:
-     - 기본 스타일: `font-size: 12px; color: #64748b; font-weight: 500;`
-     - DB 리뷰 조회 완료 시 `학부모 ${count}건 전체보기`, 미조회 또는 0건 시 `학부모 생생 후기 전체보기`로 갱신.
-  3. 후기 작성 트리거:
-     - `✍️ 후기 남기기` 클릭 시 `window.openSchoolReviewForm()`을 통해 해당 학교 리뷰 모달 호출.
-
-## 42. 상단 헤더 로그인 액션 버튼 및 첫 화면 학교 점수 확인 CTA 버튼 디자인 사양 (2026-11-23)
-- **컴포넌트 ID & 클래스**:
-  1. `#btnHeaderAuthAction` (`.header-auth-text-btn`):
-     - **위치**: 상단 헤더 우측 유틸리티 영역 (`position: fixed; top: 24px; right: 226px; z-index: 10085;`)
-     - **기본 스타일(비로그인)**:
-       - `height: 40px; padding: 0 16px; border-radius: 9999px;`
-       - `background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff;`
-       - `box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); border: 1px solid rgba(255, 255, 255, 0.2);`
-       - `font-size: 13.5px; font-weight: 700; cursor: pointer;`
-     - **로그인 상태 (`.logged-in`)**:
-       - `background: #ffffff; color: #334155; border: 1.5px solid #cbd5e1;`
-       - `box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); font-weight: 600;`
-       - 호버 시 `border-color: #2563eb; color: #2563eb; background: #f8fafc;`
-     - **모바일 규격(1024px 이하)**:
-       - `top: 14px; right: 60px; height: 32px; padding: 0 10px; font-size: 11.5px; z-index: 10085;`
-  2. `#btnCtaCheckSchoolScore`:
-     - **위치**: 첫 진입 안내 카드(`#welcomeCard`) 하단 (`margin-top: 14px;`)
-     - **스타일**:
-       - `width: 100%; height: 44px; border-radius: 10px; border: none;`
-       - `background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);`
-       - `color: #ffffff; font-size: 14px; font-weight: 800; cursor: pointer;`
-       - `box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);`
-       - 호버/활성 시 `transform: translateY(-1px);`로 터치 및 마우스 클릭감 강화.
-
-## 43. 학교 교육환경 종합 지표 배너 및 점수(totalEnvScoreLabel) 단일 표기 사양 (2026-11-23)
-- **개요 및 규격**:
-  - 학교 상세 패널 상단의 히어로 카드와 랭킹 페이지의 점수 표기를 100점 만점 공식 점수로 일원화.
-- **주요 컴포넌트 사양**:
-  1. `#heroBannerTitle`:
-     - 텍스트: `교육환경 종합 지표`
-     - 스타일: `font-size: 23px; font-weight: 800; color: white;`
-  2. `#heroBannerDesc`:
-     - 텍스트: `학업성취(40%) · 학급규모(30%) · 학폭안전(20%) · 창체예산(10%) 종합`
-     - 스타일: `font-size: 13px; color: rgba(255, 255, 255, 0.9); font-weight: 500;`
-  3. `#totalEnvScoreLabel`:
-     - 스타일: `font-size: 34px; letter-spacing: -1px; font-weight: 900; color: #3b82f6;`
-     - 표기 형식: 소수점 1자리 통일 (예: `64.4`, `86.0`)
-     - 단위 표기: 바로 뒤에 `점`(`<span style="font-size: 16px; font-weight: 800;">점</span>`) 연계 표출.
-
-## 44. 블로그 스켈레톤 로딩 카드 및 404 안내 뷰 디자인 사양 (2026-11-23)
-- **개요 및 규격**:
-  - 블로그 초기 목록 진입 시 빈 화면 대신 표시되는 스켈레톤 UI 및 잘못된 ID 접근 시 표시되는 404 안내 뷰 사양.
-- **컴포넌트 및 스타일 사양**:
-  1. `.skeleton-card`:
-     - 스타일: `background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; min-height: 380px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); overflow: hidden;`
-     - 애니메이션: `skeleton-shimmer` (1.5s infinite linear-gradient shimmering)
-     - 구조: 상단 썸네일 영역(190px) + 본문 카테고리/제목/요약 스켈레톤 라인 4단 구조
-  2. `#postNotFoundCard`:
-     - 위치: `#blogDetailPageView` 내부 최상단 (오류 시 `#postArticle` 숨김 후 표출)
-     - 스타일: `text-align: center; padding: 64px 24px; border: 1px solid #e2e8f0; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);`
-     - 아이콘 및 텍스트: `🔍`, 24px 볼드 타이틀 (`요청하신 칼럼을 찾을 수 없습니다`), 서브 텍스트에 요청 ID 태그(`<code id="notFoundRequestedId">`) 강조
-     - 액션 버튼: 블루 Primary 버튼(`← 블로그 전체 목록 보기`, `window.closePostPage()`) 및 Secondary 버튼(`🗺️ 학업여지도 홈으로 이동`).
-
-
-
-
-
-
-
-
 ## 45. 파트너 센터 대표 연락처 및 문의 전화번호 단일 바인딩 사양 (2026-11-23)
 - **개요 및 규격**:
   - 파트너 센터(`business.html`) 내 미리보기 카드 및 문의/상담 연결 전화번호를 단일 출처(`config.json`의 `partner_contact_phone` 및 `GET /api/config/partner-phone`)로 일원화.
@@ -705,3 +595,15 @@
      - **플레이스홀더**: `placeholder="010-6393-0923"`
   4. 클라이언트 전역 상수:
      - `window.DEFAULT_PARTNER_PHONE = '010-6393-0923'` 및 `/api/config/partner-phone` 자동 동기화.
+
+## 46. 학교 순위 통계 모달 정렬 및 학교급 연동 사양 (2026-11-23)
+- **개요 및 규격**:
+  - 학교 순위 통계 모달(`#topicStatsModal`)의 기본 정렬 방향을 점수 내림차순(1위부터)으로 보장하고, 학교급(초등/중등/고등) 선택에 따른 목록 필터링을 100% 동기화.
+- **주요 개선 사양**:
+  1. **정렬 기본값 및 방향 토글**:
+     - 모달 오픈 시 및 탭 전환 시 항상 점수 내림차순(`desc`, 1위부터)으로 정렬 기본값 설정.
+     - 사용자가 정렬 버튼 클릭 시 오름차순(낮은순)/내림차순(높은순) 토글 상태가 명확하게 반영되며, 목록 번호는 항상 상단 1위(`idx + 1`)부터 일관되게 렌더링.
+     - 동점자 발생 시 2차 기준(학업평균, 학교명 가나다순)을 적용하여 정렬 순서의 일관성 유지.
+  2. **학교급 정규화 필터링**:
+     - `getNormalizedSchoolType()` 헬퍼를 통해 `school_type`, `type`, 학교명 접미사('초등학교', '중학교', '고등학교')를 통합 정규화하여 타지역 프리셋 및 외부 API 데이터까지 누락 없이 100% 연동.
+     - 학교급 셀렉트 변경 시 즉시 해당 학교급 1위부터 재정렬 및 평균 요약 통계 갱신.
