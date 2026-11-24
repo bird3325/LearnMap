@@ -3246,7 +3246,7 @@ document.addEventListener('DOMContentLoaded', () => {
             : Boolean(localStorage.getItem('learnmap_current_user') && !localStorage.getItem('learnmap_logged_out'));
 
         if (!isLoggedIn) {
-            // 🎯 비로그인: 학교 패널을 닫지 않고, 원래 보던 학교 정보를 보존한 뒤 로그인 안내 팝업 노출
+            // 🎯 비로그인: 학교 패널을 닫지 않고, 원래 보던 학교 정보를 보존한 뒤 사이드바 로그인 창 오픈
             window.__pendingDiagnosisSchool = currentSchool;
             try {
                 sessionStorage.setItem('learnmap_pending_diagnosis_school', JSON.stringify(currentSchool));
@@ -3256,10 +3256,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const openAuth = () => {
                 if (authOpened) return;
                 authOpened = true;
-                if (typeof window.openAuthModal === 'function') {
-                    window.openAuthModal();
-                } else if (typeof window.openSidebarLogin === 'function') {
+                // 모달창이 아닌 사이드창의 로그인 열기
+                if (typeof window.openSidebarLogin === 'function') {
                     window.openSidebarLogin();
+                } else {
+                    const btnSettings = document.getElementById('btnOpenSettings');
+                    if (btnSettings) btnSettings.click();
                 }
             };
 

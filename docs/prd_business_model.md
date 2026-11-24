@@ -683,7 +683,7 @@
   2. **로그인 회원 동작**:
      - 현재 선택된 학교(`orchestrator.state.selectedSchool` 등)를 기준으로 진단 함수(`triggerSchoolDiagnosis`)를 호출하여, 중앙 모달 팝업(`diagnosisModalOverlay`)으로 진단 결과 카드를 표출. 배경의 학교 패널은 그대로 유지됨.
   3. **비로그인 방문자 동작 및 자동 연동**:
-     - 패널을 닫지 않고 그 자리에서 알림 팝업 안내 후 로그인 모달(`openAuthModal`) 오픈.
+     - 패널을 닫지 않고 그 자리에서 알림 팝업 안내 후 모달창이 아닌 사이드바 로그인 창(`openSidebarLogin`) 오픈.
      - 탐색 중이던 대상 학교 정보를 `sessionStorage`에 임시 보존(`learnmap_pending_diagnosis_school`).
      - 로그인(이메일, 소셜, 회원가입 등) 완료 즉시 보존된 학교 정보를 복원하여 해당 학교의 맞춤 진단 화면/모달을 자동으로 오픈(`checkAndResumePendingDiagnosis`).
   4. **기존 기능 무결성**:
