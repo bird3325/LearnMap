@@ -920,3 +920,19 @@
   - 기존 글, 외부 링크, 브라우저 캐시에서 오는 `/api/blog/image/:filename` 요청은 `301 Moved Permanently`로 `/uploads/blog/:filename`으로 리다이렉트 처리하여 이미지 깨짐(엑박)을 원천 차단.
 - **안전성 (스마트 폴백)**:
   - 서버리스 콜드스타트 등 정적 파일 부재 시에도 Express 정적 서빙 후단에서 Supabase DB 에셋(`category = '__asset__'`) 및 메모리 캐시 폴백이 동작하여 상시 100% 이미지 가용성 보장.
+
+---
+
+### [서버리스 성능 최적화] 대용량 JSON 데이터 지연 로딩(Lazy Loading) 및 냉시동(Cold Start) 단축
+- **배경**:
+  - `schools_seoul.json`(19.8MB), `src/data/realestate/*.json`(96개 지역 분할 총 360MB) 등 대용량 데이터가 포함된 환경에서, 서버 시작 시점에 전체를 읽거나 매 요청마다 20MB 디스크 I/O를 반복하여 냉시동 및 CPU 낭비 발생.
+- **최적화 내역**:
+  1. **시작 시점 360MB 사전 로딩 제거**:
+     - 서버 시작 시점(`app.listen`)에서 백그라운드로 96개 시군구 360MB 주택 데이터를 일괄 파싱하던 타이머를 전면 제거하여 **서버 모듈 냉시동 시간을 기존 4,000ms+에서 160ms로 약 96% 단축**.
+  2. **학교 데이터(`schools_seoul.json`, 19.8MB) 싱글톤 지연 로딩 & 원본 스트링 캐시**:
+     - 시작 시점이 아니라 학교 관련 API(`/api/schools`, 학교폭력 공시, 통학구역 배정교 조회 등)가 처음 요청될 때만 1회 온디맨드로 로드(`getSchoolsData()`).
+     - 파일 수정 시간(`stat.mtimeMs`) 기반 스마트 캐시를 구축하여 동일 프로세스 내 중복 디스크 I/O 완전 제거.
+     - `/api/schools`는 메모리 상의 원본 JSON 문자열을 직접 전송(`res.send(rawStr)`)하여 20MB 파싱 및 직렬화(JSON.stringify) CPU 오버헤드를 0%로 제거.
+  3. **데이터 크기별 처리 구분**:
+     - **대용량 데이터(Heavy, >1MB)**: `schools_seoul.json`(20MB), `realestate/*.json`(360MB) ➔ 시작 시 로드 금지, 필요한 시점에만 온디맨드 단일 로드 및 메모리 캐시 재사용.
+     - **자주 쓰는 경량 데이터(Light, <100KB)**: `config.json`(476B), `businesses.json`(5.5KB), `users.json`(2.7KB), `realestate_regions.json`(6.5KB) 등은 온디맨드 즉시 읽기.

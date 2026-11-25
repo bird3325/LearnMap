@@ -123,8 +123,45 @@ if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
+// =========================================================================
+// 🌟 [대용량 데이터 지연 로딩(Lazy Loading) 및 인메모리 싱글톤 캐시]
+// 서버 시작 시 20MB 전체를 로드하지 않고, 학교 관련 API 요청 시에만 온디맨드로 1회 로드
+// =========================================================================
+let cachedSchoolsData = null;
+let cachedSchoolsMtime = 0;
+let cachedSchoolsRawString = null;
+
+function getSchoolsData() {
+    try {
+        if (!fs.existsSync(SCHOOLS_PATH)) return [];
+        const stat = fs.statSync(SCHOOLS_PATH);
+        if (cachedSchoolsData && cachedSchoolsMtime === stat.mtimeMs) {
+            return cachedSchoolsData;
+        }
+        const raw = fs.readFileSync(SCHOOLS_PATH, 'utf8');
+        cachedSchoolsData = JSON.parse(raw || '[]');
+        cachedSchoolsRawString = raw;
+        cachedSchoolsMtime = stat.mtimeMs;
+        return cachedSchoolsData;
+    } catch (err) {
+        console.error('[Schools Lazy Load Error]:', err.message);
+        return cachedSchoolsData || [];
+    }
+}
+
+function getSchoolsRawString() {
+    if (!cachedSchoolsRawString) {
+        getSchoolsData();
+    }
+    return cachedSchoolsRawString;
+}
+
 function readJsonFileSafe(filePath, defaultVal = []) {
     try {
+        // 대용량 학교 파일 요청 시 지연 로딩 캐시 자동 반환 (20MB 반복 파싱 방지)
+        if (filePath === SCHOOLS_PATH || (typeof filePath === 'string' && filePath.endsWith('schools_seoul.json'))) {
+            return getSchoolsData();
+        }
         if (!fs.existsSync(filePath)) return defaultVal;
         const raw = fs.readFileSync(filePath, 'utf8');
         return JSON.parse(raw);
@@ -491,11 +528,11 @@ async function saveConfig(config) {
 app.get('/api/schools', (req, res) => {
     try {
         res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
-        if (fs.existsSync(SCHOOLS_PATH)) {
-            const data = fs.readFileSync(SCHOOLS_PATH, 'utf8');
-            return res.json(JSON.parse(data));
+        const rawStr = getSchoolsRawString();
+        if (rawStr) {
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            return res.send(rawStr);
         }
-        // If file doesn't exist, return empty array
         return res.json([]);
     } catch (e) {
         console.error('Error reading schools data:', e);
@@ -5565,11 +5602,9 @@ app.get('/api/neis/schedule', async (req, res) => {
 app.get('/api/schoolinfo/violence', async (req, res) => {
     const { school_id, school_name } = req.query;
     try {
-        const schoolsDataPath = path.join(__dirname, 'src', 'data', 'schools_seoul.json');
+        const schools = getSchoolsData();
         let matchedSchool = null;
-        if (fs.existsSync(schoolsDataPath)) {
-            const rawData = fs.readFileSync(schoolsDataPath, 'utf8');
-            const schools = JSON.parse(rawData);
+        if (Array.isArray(schools)) {
             if (school_id) {
                 matchedSchool = schools.find(s => String(s.school_id) === String(school_id));
             }
@@ -5615,10 +5650,9 @@ app.get('/api/admin/violence-school-search', async (req, res) => {
     if (!query || !query.trim()) return res.json({ schools: [] });
 
     try {
-        const schoolsDataPath = path.join(__dirname, 'src', 'data', 'schools_seoul.json');
-        if (!fs.existsSync(schoolsDataPath)) return res.json({ schools: [] });
+        const schools = getSchoolsData();
+        if (!Array.isArray(schools) || schools.length === 0) return res.json({ schools: [] });
 
-        const schools = JSON.parse(fs.readFileSync(schoolsDataPath, 'utf8'));
         const q = query.trim().toLowerCase();
         const results = schools
             .filter(s => s.school_name && s.school_name.toLowerCase().includes(q))
@@ -10767,24 +10801,8 @@ app.get(['/uploads/blog/:filename', '/uploads/academy/:filename'], async (req, r
 // =========================================================================
 // [1단계] 학구도안내서비스 기반 배정 학교(초등 통학구역 · 중학교군) 및 통학구역 폴리곤 API
 // =========================================================================
-let cachedSchoolsForZones = null;
-let cachedSchoolsMtime = 0;
-
 function getCachedSchoolsForZones() {
-    try {
-        if (!fs.existsSync(SCHOOLS_PATH)) return [];
-        const stat = fs.statSync(SCHOOLS_PATH);
-        if (cachedSchoolsForZones && cachedSchoolsMtime === stat.mtimeMs) {
-            return cachedSchoolsForZones;
-        }
-        const raw = fs.readFileSync(SCHOOLS_PATH, 'utf8');
-        cachedSchoolsForZones = JSON.parse(raw || '[]');
-        cachedSchoolsMtime = stat.mtimeMs;
-        return cachedSchoolsForZones;
-    } catch (e) {
-        console.error('[SchoolZone Cache Error]:', e.message);
-        return cachedSchoolsForZones || [];
-    }
+    return getSchoolsData();
 }
 
 function calcHaversineMeters(lat1, lng1, lat2, lng2) {
@@ -11129,10 +11147,6 @@ app.get('*', (req, res) => {
 if (process.env.NODE_ENV !== 'production') {
     const server = app.listen(PORT, () => {
         console.log(`[Express Backend] Server running on port ${PORT}`);
-        // 백그라운드에서 주택 데이터 인메모리 캐시 및 공간 인덱스 사전 워밍업
-        setTimeout(() => {
-            getCachedRealEstateItems();
-        }, 100);
     });
 
     server.on('error', (err) => {
