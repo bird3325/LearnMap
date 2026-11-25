@@ -25562,6 +25562,22 @@ const initMobileAndZoneModules = () => {
                         if (attempts > 30) clearInterval(acadInterval);
                     }, 200);
                 }
+
+                // 🌟 전국 지역 및 학교 검색 딥링크 처리 (?search=... 또는 ?q=...)
+                const searchParam = urlParams.get('search') || urlParams.get('q');
+                if (searchParam) {
+                    let attempts = 0;
+                    const searchInterval = setInterval(() => {
+                        attempts++;
+                        const sInput = document.getElementById('searchInput');
+                        if (sInput && typeof window.performSearch === 'function') {
+                            clearInterval(searchInterval);
+                            sInput.value = searchParam;
+                            window.performSearch(searchParam);
+                        }
+                        if (attempts > 40) clearInterval(searchInterval);
+                    }, 200);
+                }
             } catch (e) {
                 console.warn('[DeepLink] URL 파라미터 파싱 실패:', e);
             }
@@ -25982,6 +25998,32 @@ const initMobileAndZoneModules = () => {
                 const notiPC = document.getElementById('settingsNotificationSection-pc');
 
                 if (currentUser) {
+                    // 🌟 헤더 회원 아이콘 사람 모양 내부 색상 채우기 (로그인 상태: 파란색 솔리드 채움)
+                    if (btnSettings) {
+                        btnSettings.classList.add('logged-in');
+                        const userLabel = currentUser.nickname || currentUser.name || '회원';
+                        btnSettings.setAttribute('data-title', `마이페이지 (${userLabel}님)`);
+                        const svg = btnSettings.querySelector('svg');
+                        if (svg) {
+                            svg.style.color = '#2563eb';
+                            const path = svg.querySelector('path');
+                            const circle = svg.querySelector('circle');
+                            if (path) { path.style.fill = '#2563eb'; path.style.stroke = '#2563eb'; }
+                            if (circle) { circle.style.fill = '#2563eb'; circle.style.stroke = '#2563eb'; }
+                        }
+                    }
+                    const mobileMyNav = document.querySelector(".mobile-nav-bar button[onclick*='mypage']");
+                    if (mobileMyNav) {
+                        mobileMyNav.classList.add('logged-in');
+                        const mSvg = mobileMyNav.querySelector('svg');
+                        if (mSvg) {
+                            const mPath = mSvg.querySelector('path');
+                            const mCircle = mSvg.querySelector('circle');
+                            if (mPath) { mPath.style.fill = '#2563eb'; mPath.style.stroke = '#2563eb'; }
+                            if (mCircle) { mCircle.style.fill = '#2563eb'; mCircle.style.stroke = '#2563eb'; }
+                        }
+                    }
+
                     // 🌟 로그인 회원 전용: 알림 아이콘 노출 (PC 및 모바일)
                     const btnNotiPc = document.getElementById('btnSettingsNotification');
                     const btnNotiMobile = document.getElementById('btnSettingsNotificationMobile');
@@ -26230,7 +26272,27 @@ const initMobileAndZoneModules = () => {
                         badgeElMobile.className = 'neis-badge neis-badge-info';
                     }
                     if (btnSettings) {
+                        btnSettings.classList.remove('logged-in');
                         btnSettings.setAttribute('data-title', '회원가입 / 로그인 설정');
+                        const svg = btnSettings.querySelector('svg');
+                        if (svg) {
+                            svg.style.color = '';
+                            const path = svg.querySelector('path');
+                            const circle = svg.querySelector('circle');
+                            if (path) { path.style.fill = 'none'; path.style.stroke = 'currentColor'; }
+                            if (circle) { circle.style.fill = 'none'; circle.style.stroke = 'currentColor'; }
+                        }
+                    }
+                    const mobileMyNav = document.querySelector(".mobile-nav-bar button[onclick*='mypage']");
+                    if (mobileMyNav) {
+                        mobileMyNav.classList.remove('logged-in');
+                        const mSvg = mobileMyNav.querySelector('svg');
+                        if (mSvg) {
+                            const mPath = mSvg.querySelector('path');
+                            const mCircle = mSvg.querySelector('circle');
+                            if (mPath) { mPath.style.fill = 'none'; mPath.style.stroke = 'currentColor'; }
+                            if (mCircle) { mCircle.style.fill = 'none'; mCircle.style.stroke = 'currentColor'; }
+                        }
                     }
 
                     const mypageProfileName = document.getElementById('mypageProfileName');
@@ -26489,6 +26551,27 @@ const initMobileAndZoneModules = () => {
                     return;
                 }
 
+                // 5. 필수 약관 동의 검사 (이용약관, 개인정보처리방침)
+                const termsElMobile = document.getElementById('settingsRegAgreeTermsMobile');
+                const termsElPC = document.getElementById('settingsRegAgreeTerms');
+                const privacyElMobile = document.getElementById('settingsRegAgreePrivacyMobile');
+                const privacyElPC = document.getElementById('settingsRegAgreePrivacy');
+
+                const isMobileForm = (nameElMobile && nameElMobile.value.trim()) || (emailElMobile && emailElMobile.value.trim());
+                const termsInput = isMobileForm ? (termsElMobile || termsElPC) : termsElPC;
+                const privacyInput = isMobileForm ? (privacyElMobile || privacyElPC) : privacyElPC;
+
+                if (!termsInput || !termsInput.checked) {
+                    await alert('서비스 이용약관에 동의해 주세요.');
+                    termsInput?.focus();
+                    return;
+                }
+                if (!privacyInput || !privacyInput.checked) {
+                    await alert('개인정보 수집 및 이용에 동의해 주세요.');
+                    privacyInput?.focus();
+                    return;
+                }
+
                 localStorage.removeItem('learnmap_logged_out');
                 const res = await authService.register({ name, email, password, passwordConfirm, role: 'parent' });
                 await alert(res.message);
@@ -26614,6 +26697,21 @@ const initMobileAndZoneModules = () => {
                 if (password !== passwordConfirm) {
                     await alert('비밀번호가 일치하지 않습니다. 다시 확인해 주세요.');
                     passwordConfirmInput?.focus();
+                    return;
+                }
+
+                // 5. 필수 약관 동의 검사 (이용약관, 개인정보처리방침)
+                const termsInput = document.getElementById('regAgreeTerms');
+                const privacyInput = document.getElementById('regAgreePrivacy');
+
+                if (!termsInput || !termsInput.checked) {
+                    await alert('서비스 이용약관에 동의해 주세요.');
+                    termsInput?.focus();
+                    return;
+                }
+                if (!privacyInput || !privacyInput.checked) {
+                    await alert('개인정보 수집 및 이용에 동의해 주세요.');
+                    privacyInput?.focus();
                     return;
                 }
 

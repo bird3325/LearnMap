@@ -3641,6 +3641,27 @@ body.is-resizing-sidebar .housing-sidebar-section {
     transform: translateY(0);
 }
 
+/* 🌟 회원 로그인 상태 헤더 회원 아이콘 사람 모양 내부 채우기 */
+#btnOpenSettings.logged-in {
+    border-color: #bfdbfe !important;
+    background: #f8faff !important;
+}
+#btnOpenSettings.logged-in svg {
+    color: #2563eb !important;
+}
+#btnOpenSettings.logged-in svg path,
+#btnOpenSettings.logged-in svg circle {
+    fill: #2563eb !important;
+    stroke: #2563eb !important;
+}
+
+/* 모바일 하단 네비게이션 마이 아이콘 사람 모양 내부 채우기 */
+.mobile-nav-bar .nav-item.logged-in svg path,
+.mobile-nav-bar .nav-item.logged-in svg circle {
+    fill: #2563eb !important;
+    stroke: #2563eb !important;
+}
+
 
 
 

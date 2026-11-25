@@ -46,9 +46,11 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(express.json({ limit: '50mb' })); // Allow large payloads for bulk school data
-// 첨부 이미지 정적 서빙
+// 첨부 이미지 및 정적 데이터 서빙
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/data', express.static(path.join(__dirname, 'public', 'data')));
+app.use('/data', express.static(path.join(__dirname, 'src', 'data')));
 
 // 🔒 관리자 및 비즈니스 API(/api/admin/*, /api/business/*)는 엣지/브라우저 캐시 원천 차단
 app.use(['/api/admin', '/api/business'], (req, res, next) => {
