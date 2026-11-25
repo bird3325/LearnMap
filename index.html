@@ -4469,7 +4469,7 @@
                                 <button
                                     onclick="if(document.getElementById('btnDeselectSchool')) document.getElementById('btnDeselectSchool').click();"
                                     style="background: none; border: none; font-size: 20px; cursor: pointer; color: #475569; padding: 0; line-height: 1; display: flex; align-items: center; flex-shrink: 0;"
-                                    title="뒤로가기">
+                                    data-title="뒤로가기" aria-label="뒤로가기">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                         <polyline points="15 18 9 12 15 6"></polyline>
@@ -4478,15 +4478,15 @@
                                 <span id="schoolCardName"
                                     style="font-size: 19px; font-weight: 800; color: #0f172a; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">○○중학교</span>
                                 <span id="schoolCardRegionBadge" style="display: none; font-size: 11px; font-weight: 700; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 2px 7px; margin-left: 6px; vertical-align: middle; flex-shrink: 0;"></span>
-                                <button id="btnSaveFavorite"
-                                    onclick="if(typeof window.toggleFavoriteSchool === 'function') window.toggleFavoriteSchool();"
-                                    style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 0; display: inline-flex; align-items: center; color: #ffb800; line-height: 1; flex-shrink: 0;"
-                                    title="관심 학교 저장">⭐</button>
                             </div>
                             <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                                <button id="btnSaveFavorite"
+                                    onclick="if(typeof window.toggleFavoriteSchool === 'function') window.toggleFavoriteSchool();"
+                                    style="background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #64748b; font-size: 17px; line-height: 1; transition: all 0.2s; flex-shrink: 0;"
+                                    data-title="관심 학교 저장" aria-label="관심 학교 저장">☆</button>
                                 <button id="btnShareSchoolDetail" onclick="window.shareSchoolDetail()"
                                     style="background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #475569; cursor: pointer; transition: background 0.2s; flex-shrink: 0;"
-                                    title="공유하기">
+                                    data-title="공유하기" aria-label="공유하기">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <circle cx="18" cy="5" r="3"></circle>
@@ -4498,7 +4498,7 @@
                                 </button>
                                 <button id="btnDeselectSchool"
                                     style="background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; color: #475569; line-height: 1; transition: background 0.2s; flex-shrink: 0;"
-                                    title="선택 초기화">&times;</button>
+                                    data-title="선택 초기화" aria-label="선택 초기화">&times;</button>
                             </div>
                         </div>
 
@@ -4654,7 +4654,7 @@
 
                         <!-- 특목·자사고 진학 경쟁력 -->
                         <div id="advancementAnalysisCard"
-                            style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+                            style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); position: relative; overflow: hidden;">
                             <div
                                 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                                 <h4
@@ -4666,66 +4666,83 @@
                                     3개년 공시</span>
                             </div>
 
-                            <div
-                                style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;">
-                                <!-- 항목 1 (과학고 / 4년제 대학) -->
-                                <div
-                                    style="background: #f8fafc; border-radius: 12px; border: 1px solid #f1f5f9; padding: 12px; text-align: center;">
-                                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;"
-                                        id="advItem1Label">과학고·영재고</div>
-                                    <div style="font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 4px;">
-                                        <span id="advSciCount">6</span> <span
-                                            style="font-size: 12px; font-weight: normal; color: #64748b;">명</span>
+                            <!-- 잠금 래퍼 (오버레이가 블러의 영향을 받지 않도록 분리) -->
+                            <div style="position: relative;">
+                                <!-- 잠금 대상 본문 컨테이너 (블러/마스크 적용) -->
+                                <div id="advancementContentBody" class="school-card-lockable-content" style="position: relative; transition: all 0.3s ease;">
+                                    <div
+                                        style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;">
+                                        <!-- 항목 1 (과학고 / 4년제 대학) -->
+                                        <div
+                                            style="background: #f8fafc; border-radius: 12px; border: 1px solid #f1f5f9; padding: 12px; text-align: center;">
+                                            <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;"
+                                                id="advItem1Label">과학고·영재고</div>
+                                            <div style="font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 4px;">
+                                                <span id="advSciCount">6</span> <span
+                                                    style="font-size: 12px; font-weight: normal; color: #64748b;">명</span>
+                                            </div>
+                                            <div style="font-size: 10px; color: #059669; font-weight: 700;" id="advSciChange">전년
+                                                대비 +2</div>
+                                        </div>
+                                        <!-- 항목 2 (외고·국제고 / 전문대학) -->
+                                        <div
+                                            style="background: #f8fafc; border-radius: 12px; border: 1px solid #f1f5f9; padding: 12px; text-align: center;">
+                                            <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;"
+                                                id="advItem2Label">외고·국제고</div>
+                                            <div style="font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 4px;">
+                                                <span id="advForeignCount">14</span> <span
+                                                    style="font-size: 12px; font-weight: normal; color: #64748b;">명</span>
+                                            </div>
+                                            <div style="font-size: 10px; color: #64748b; font-weight: 700;"
+                                                id="advForeignChange">보합세 유지</div>
+                                        </div>
+                                        <!-- 항목 3 (자율형사립고 / 취업 및 기타) -->
+                                        <div
+                                            style="background: #f8fafc; border-radius: 12px; border: 1px solid #f1f5f9; padding: 12px; text-align: center;">
+                                            <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;"
+                                                id="advItem3Label">자율형사립고</div>
+                                            <div style="font-size: 18px; font-weight: 800; color: #2563eb; margin-bottom: 4px;">
+                                                <span id="advAutoCount">28</span> <span
+                                                    style="font-size: 12px; font-weight: normal; color: #64748b;">명</span>
+                                            </div>
+                                            <div style="font-size: 10px; color: #2563eb; font-weight: 700;" id="advAutoRank">서초구
+                                                상위 10%</div>
+                                        </div>
                                     </div>
-                                    <div style="font-size: 10px; color: #059669; font-weight: 700;" id="advSciChange">전년
-                                        대비 +2</div>
-                                </div>
-                                <!-- 항목 2 (외고·국제고 / 전문대학) -->
-                                <div
-                                    style="background: #f8fafc; border-radius: 12px; border: 1px solid #f1f5f9; padding: 12px; text-align: center;">
-                                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;"
-                                        id="advItem2Label">외고·국제고</div>
-                                    <div style="font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 4px;">
-                                        <span id="advForeignCount">14</span> <span
-                                            style="font-size: 12px; font-weight: normal; color: #64748b;">명</span>
-                                    </div>
-                                    <div style="font-size: 10px; color: #64748b; font-weight: 700;"
-                                        id="advForeignChange">보합세 유지</div>
-                                </div>
-                                <!-- 항목 3 (자율형사립고 / 취업 및 기타) -->
-                                <div
-                                    style="background: #f8fafc; border-radius: 12px; border: 1px solid #f1f5f9; padding: 12px; text-align: center;">
-                                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;"
-                                        id="advItem3Label">자율형사립고</div>
-                                    <div style="font-size: 18px; font-weight: 800; color: #2563eb; margin-bottom: 4px;">
-                                        <span id="advAutoCount">28</span> <span
-                                            style="font-size: 12px; font-weight: normal; color: #64748b;">명</span>
-                                    </div>
-                                    <div style="font-size: 10px; color: #2563eb; font-weight: 700;" id="advAutoRank">서초구
-                                        상위 10%</div>
-                                </div>
-                            </div>
 
-                            <div
-                                style="background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">2024년 졸업생 총 <span
-                                            id="advGradTotal">286</span>명 중</div>
-                                    <div style="font-size: 13px; font-weight: 700; color: #1e293b;"><span
-                                            id="advTotalRateTitle">특목·자사고 총 진학률</span> <strong
-                                            style="font-weight: 900;"><span id="advTotalRate">16.8</span>% (<span
-                                                id="advTotalCount">48</span>명)</strong></div>
+                                    <div
+                                        style="background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">2024년 졸업생 총 <span
+                                                    id="advGradTotal">286</span>명 중</div>
+                                            <div style="font-size: 13px; font-weight: 700; color: #1e293b;"><span
+                                                    id="advTotalRateTitle">특목·자사고 총 진학률</span> <strong
+                                                    style="font-weight: 900;"><span id="advTotalRate">16.8</span>% (<span
+                                                        id="advTotalCount">48</span>명)</strong></div>
+                                        </div>
+                                        <div style="border: 1px solid #cbd5e1; color: #3b82f6; border-radius: 12px; padding: 4px 8px; font-size: 11px; font-weight: 700; background: white;"
+                                            id="advTotalBadge">
+                                            강남·서초 상위권
+                                        </div>
+                                    </div>
                                 </div>
-                                <div style="border: 1px solid #cbd5e1; color: #3b82f6; border-radius: 12px; padding: 4px 8px; font-size: 11px; font-weight: 700; background: white;"
-                                    id="advTotalBadge">
-                                    강남·서초 상위권
+
+                                <!-- 로그인 유도 선명한 오버레이 (블러 외부 분리) -->
+                                <div id="advancementAnalysisLockOverlay" class="school-card-lock-overlay"
+                                    style="display: none; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.45) 30%, rgba(255,255,255,0.96) 75%, #ffffff 100%); flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 16px; z-index: 10; border-radius: 12px; pointer-events: auto;">
+                                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                        <div style="font-size: 20px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">🔒</div>
+                                        <div style="font-size: 13px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">자세히 보려면 로그인이 필요해요</div>
+                                        <button onclick="if(window.openSidebarLogin) window.openSidebarLogin(); else if(window.openAuthModal) window.openAuthModal();"
+                                            style="margin-top: 2px; background: #2563eb; color: #ffffff; border: none; padding: 7px 20px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.35); transition: all 0.2s ease;">로그인</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- 학교알리미 핵심 교육 여건 분석 -->
                         <div
-                            style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+                            style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); position: relative; overflow: hidden;">
                             <div
                                 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                                 <h4
@@ -4735,65 +4752,82 @@
                                 <span style="font-size: 11px; color: #94a3b8;">공식 공시 데이터</span>
                             </div>
 
-                            <div style="display: flex; flex-direction: column; gap: 12px;">
-                                <!-- Item 1 -->
-                                <div
-                                    style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9;">
-                                    <div>
+                            <!-- 잠금 래퍼 (오버레이가 블러의 영향을 받지 않도록 분리) -->
+                            <div style="position: relative;">
+                                <!-- 잠금 대상 본문 컨테이너 (블러/마스크 적용) -->
+                                <div id="eduConditionContentBody" class="school-card-lockable-content" style="position: relative; transition: all 0.3s ease;">
+                                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                                        <!-- Item 1 -->
                                         <div
-                                            style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 2px;">
-                                            교원 1인당 학생 수</div>
-                                        <div style="font-size: 11px; color: #64748b;"><span
-                                                id="eduTeacherRegionName">지역</span> 평균 <span
-                                                id="eduTeacherAvg">14.9</span>명 <span id="eduTeacherComment">대비 여유로운 교육환경</span></div>
-                                    </div>
-                                    <div style="text-align: right;">
-                                        <div
-                                            style="font-size: 15px; font-weight: 800; color: #2563eb; margin-bottom: 2px;">
-                                            <span id="eduTeacherVal">13.8</span><span
-                                                style="font-size: 12px; font-weight: 600;">명</span>
+                                            style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9;">
+                                            <div>
+                                                <div
+                                                    style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 2px;">
+                                                    교원 1인당 학생 수</div>
+                                                <div style="font-size: 11px; color: #64748b;"><span
+                                                        id="eduTeacherRegionName">지역</span> 평균 <span
+                                                        id="eduTeacherAvg">14.9</span>명 <span id="eduTeacherComment">대비 여유로운 교육환경</span></div>
+                                            </div>
+                                            <div style="text-align: right;">
+                                                <div
+                                                    style="font-size: 15px; font-weight: 800; color: #2563eb; margin-bottom: 2px;">
+                                                    <span id="eduTeacherVal">13.8</span><span
+                                                        style="font-size: 12px; font-weight: 600;">명</span>
+                                                </div>
+                                                <div style="font-size: 10px; color: #059669; font-weight: 700;"
+                                                    id="eduTeacherBadge">지역우수</div>
+                                            </div>
                                         </div>
-                                        <div style="font-size: 10px; color: #059669; font-weight: 700;"
-                                            id="eduTeacherBadge">지역우수</div>
+                                        <!-- Item 2 -->
+                                        <div
+                                            style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9;">
+                                            <div>
+                                                <div
+                                                    style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 2px;">
+                                                    학급당 학생 수</div>
+                                                <div style="font-size: 11px; color: #64748b;"><span
+                                                        id="eduClassRegionName">지역</span> 평균(<span
+                                                        id="eduClassAvg">23.5</span>명) 대비 면학 집중형 구성</div>
+                                            </div>
+                                            <div style="text-align: right;">
+                                                <div
+                                                    style="font-size: 15px; font-weight: 800; color: #2563eb; margin-bottom: 2px;">
+                                                    <span id="eduClassVal">24.3</span><span
+                                                        style="font-size: 12px; font-weight: 600;">명</span>
+                                                </div>
+                                                <div style="font-size: 10px; color: #64748b; font-weight: 700;"
+                                                    id="eduClassBadge">적정규모</div>
+                                            </div>
+                                        </div>
+                                        <!-- Item 3 -->
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <div>
+                                                <div
+                                                    style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 2px;">
+                                                    학생 1인당 교육투자비</div>
+                                                <div style="font-size: 11px; color: #64748b;">방과후학교 및 창체 연간 지원 예산</div>
+                                            </div>
+                                            <div style="text-align: right;">
+                                                <div
+                                                    style="font-size: 15px; font-weight: 800; color: #2563eb; margin-bottom: 2px;">
+                                                    <span id="eduInvestVal">112</span><span
+                                                        style="font-size: 12px; font-weight: 600;">만원</span>
+                                                </div>
+                                                <div style="font-size: 10px; color: #3b82f6; font-weight: 700;"
+                                                    id="eduInvestBadge">상위 20%</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <!-- Item 2 -->
-                                <div
-                                    style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9;">
-                                    <div>
-                                        <div
-                                            style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 2px;">
-                                            학급당 학생 수</div>
-                                        <div style="font-size: 11px; color: #64748b;"><span
-                                                id="eduClassRegionName">지역</span> 평균(<span
-                                                id="eduClassAvg">23.5</span>명) 대비 면학 집중형 구성</div>
-                                    </div>
-                                    <div style="text-align: right;">
-                                        <div
-                                            style="font-size: 15px; font-weight: 800; color: #1e293b; margin-bottom: 2px;">
-                                            <span id="eduClassVal">24.3</span><span
-                                                style="font-size: 12px; font-weight: 600;">명</span>
-                                        </div>
-                                        <div style="font-size: 10px; color: #64748b; font-weight: 700;"
-                                            id="eduClassBadge">적정규모</div>
-                                    </div>
-                                </div>
-                                <!-- Item 3 -->
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <div
-                                            style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 2px;">
-                                            학생 1인당 교육투자비</div>
-                                        <div style="font-size: 11px; color: #64748b;">방과후학교 및 창체 연간 지원 예산</div>
-                                    </div>
-                                    <div style="text-align: right;">
-                                        <div
-                                            style="font-size: 15px; font-weight: 800; color: #2563eb; margin-bottom: 2px;">
-                                            <span id="eduInvestVal">112</span><span
-                                                style="font-size: 12px; font-weight: 600;">만원</span>
-                                        </div>
-                                        <div style="font-size: 10px; color: #3b82f6; font-weight: 700;"
-                                            id="eduInvestBadge">상위 20%</div>
+
+                                <!-- 로그인 유도 선명한 오버레이 (블러 외부 분리) -->
+                                <div id="eduConditionLockOverlay" class="school-card-lock-overlay"
+                                    style="display: none; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.45) 30%, rgba(255,255,255,0.96) 75%, #ffffff 100%); flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 16px; z-index: 10; border-radius: 12px; pointer-events: auto;">
+                                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                        <div style="font-size: 20px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">🔒</div>
+                                        <div style="font-size: 13px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">자세히 보려면 로그인이 필요해요</div>
+                                        <button onclick="if(window.openSidebarLogin) window.openSidebarLogin(); else if(window.openAuthModal) window.openAuthModal();"
+                                            style="margin-top: 2px; background: #2563eb; color: #ffffff; border: none; padding: 7px 20px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.35); transition: all 0.2s ease;">로그인</button>
                                     </div>
                                 </div>
                             </div>
@@ -4801,36 +4835,53 @@
 
                         <!-- 종합 학군 & 교육 인프라 분석 요약 -->
                         <div
-                            style="background: #f8fafc; border-radius: 16px; border: 1px solid #e2e8f0; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+                            style="background: #f8fafc; border-radius: 16px; border: 1px solid #e2e8f0; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); position: relative; overflow: hidden;">
                             <h4
                                 style="font-size: 14px; font-weight: 800; color: #1e293b; margin: 0 0 12px 0; display: flex; align-items: center; gap: 6px;">
                                 <span>📝</span> <span>종합 학군 & 교육 인프라 분석 요약</span>
                             </h4>
 
-                            <div
-                                style="background: white; border-radius: 12px; padding: 16px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
-                                <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-                                    <span>📍</span>
-                                    <strong style="color: #2563eb; font-weight: 800; font-size: 13px; line-height: 1.4;"
-                                        id="eduSummaryTitle">서초구 내 교원 비율 및 특목고 진학 최상위 학군</strong>
-                                </div>
-                                <p style="font-size: 12px; color: #475569; line-height: 1.6; margin: 0; padding-left: 24px;"
-                                    id="eduSummaryDesc">
-                                    성취도 전수평가는 미공시 상태이나 교원 1인당 학생 수(13.8명)가 서초구 평균 대비 우수하며, 강남·서초 인접 학원가(반포·서초권) 인프라 연계로
-                                    학업 선호도가 지속적으로 유지되고 있습니다.
-                                </p>
-                            </div>
+                            <!-- 잠금 래퍼 (오버레이가 블러의 영향을 받지 않도록 분리) -->
+                            <div style="position: relative;">
+                                <!-- 잠금 대상 본문 컨테이너 (블러/마스크 적용) -->
+                                <div id="eduInfraSummaryContentBody" class="school-card-lockable-content" style="position: relative; transition: all 0.3s ease;">
+                                    <div
+                                        style="background: white; border-radius: 12px; padding: 16px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
+                                        <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                                            <span>📍</span>
+                                            <strong style="color: #2563eb; font-weight: 800; font-size: 13px; line-height: 1.4;"
+                                                id="eduSummaryTitle">서초구 내 교원 비율 및 특목고 진학 최상위 학군</strong>
+                                        </div>
+                                        <p style="font-size: 12px; color: #475569; line-height: 1.6; margin: 0; padding-left: 24px;"
+                                            id="eduSummaryDesc">
+                                            성취도 전수평가는 미공시 상태이나 교원 1인당 학생 수(13.8명)가 서초구 평균 대비 우수하며, 강남·서초 인접 학원가(반포·서초권) 인프라 연계로
+                                            학업 선호도가 지속적으로 유지되고 있습니다.
+                                        </p>
+                                    </div>
 
-                            <div style="display: flex; gap: 8px;">
-                                <button
-                                    style="flex: 1; background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 0; font-size: 12px; font-weight: 700; color: #334155; cursor: pointer;"
-                                    onclick="switchSchoolCardTab('RealEstate')">🏡 학원가 분석</button>
-                                <button
-                                    style="flex: 1; background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 0; font-size: 12px; font-weight: 700; color: #334155; cursor: pointer;">🎓
-                                    진학상세</button>
-                                <button
-                                    style="flex: 1; background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 0; font-size: 12px; font-weight: 700; color: #334155; cursor: pointer;"
-                                    onclick="switchSchoolCardTab('Community')">💬 학부모 소통</button>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button
+                                            style="flex: 1; background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 0; font-size: 12px; font-weight: 700; color: #334155; cursor: pointer;"
+                                            onclick="switchSchoolCardTab('RealEstate')">🏡 학원가 분석</button>
+                                        <button
+                                            style="flex: 1; background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 0; font-size: 12px; font-weight: 700; color: #334155; cursor: pointer;">🎓
+                                            진학상세</button>
+                                        <button
+                                            style="flex: 1; background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 0; font-size: 12px; font-weight: 700; color: #334155; cursor: pointer;"
+                                            onclick="switchSchoolCardTab('Community')">💬 학부모 소통</button>
+                                    </div>
+                                </div>
+
+                                <!-- 로그인 유도 선명한 오버레이 (블러 외부 분리) -->
+                                <div id="eduInfraSummaryLockOverlay" class="school-card-lock-overlay"
+                                    style="display: none; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.45) 30%, rgba(255,255,255,0.96) 75%, #ffffff 100%); flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 16px; z-index: 10; border-radius: 12px; pointer-events: auto;">
+                                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                        <div style="font-size: 20px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">🔒</div>
+                                        <div style="font-size: 13px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">자세히 보려면 로그인이 필요해요</div>
+                                        <button onclick="if(window.openSidebarLogin) window.openSidebarLogin(); else if(window.openAuthModal) window.openAuthModal();"
+                                            style="margin-top: 2px; background: #2563eb; color: #ffffff; border: none; padding: 7px 20px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.35); transition: all 0.2s ease;">로그인</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -5099,10 +5150,22 @@
                                         1.2억 (+4.7%)</span>
                                 </div>
 
-                                <div
-                                    style="background: #f8fafc; border-radius: 16px; border: 1px solid #e2e8f0; padding: 12px 10px 8px 10px;">
-                                    <svg id="estateTrendGraph" width="100%" height="115"
-                                        style="display: block; overflow: visible;"></svg>
+                                <div style="position: relative;">
+                                    <div id="estateTrendGraphContentBody" class="school-card-lockable-content"
+                                        style="background: #f8fafc; border-radius: 16px; border: 1px solid #e2e8f0; padding: 12px 10px 8px 10px; position: relative; transition: all 0.3s ease;">
+                                        <svg id="estateTrendGraph" width="100%" height="115"
+                                            style="display: block; overflow: visible;"></svg>
+                                    </div>
+                                    <!-- 로그인 유도 선명한 오버레이 -->
+                                    <div id="estateTrendGraphLockOverlay" class="school-card-lock-overlay"
+                                        style="display: none; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.45) 30%, rgba(255,255,255,0.96) 75%, #ffffff 100%); flex-direction: column; align-items: center; justify-content: center; z-index: 10; border-radius: 16px; pointer-events: auto;">
+                                        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                            <div style="font-size: 20px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">🔒</div>
+                                            <div style="font-size: 13px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">자세히 보려면 로그인이 필요해요</div>
+                                            <button onclick="if(window.openSidebarLogin) window.openSidebarLogin(); else if(window.openAuthModal) window.openAuthModal();"
+                                                style="margin-top: 2px; background: #2563eb; color: #ffffff; border: none; padding: 7px 20px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.35); transition: all 0.2s ease;">로그인</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -5120,8 +5183,22 @@
                                     style="font-size: 11px; background: #eff6ff; color: #2563eb; padding: 3px 8px; border-radius: 10px; font-weight: 700;"
                                     id="complexSchoolDistLabel">3개 주요 배정단지</span>
                             </div>
-                            <div id="schoolComplexList" style="display: flex; flex-direction: column; gap: 8px;">
-                                <!-- 동적 할당 영역 -->
+                            <div style="position: relative;">
+                                <div id="schoolComplexListContentBody" class="school-card-lockable-content" style="position: relative; transition: all 0.3s ease;">
+                                    <div id="schoolComplexList" style="display: flex; flex-direction: column; gap: 8px; min-height: 120px;">
+                                        <!-- 동적 할당 영역 -->
+                                    </div>
+                                </div>
+                                <!-- 로그인 유도 선명한 오버레이 -->
+                                <div id="schoolComplexListLockOverlay" class="school-card-lock-overlay"
+                                    style="display: none; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.45) 30%, rgba(255,255,255,0.96) 75%, #ffffff 100%); flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 18px; z-index: 10; border-radius: 14px; pointer-events: auto;">
+                                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                        <div style="font-size: 20px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">🔒</div>
+                                        <div style="font-size: 13px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">자세히 보려면 로그인이 필요해요</div>
+                                        <button onclick="if(window.openSidebarLogin) window.openSidebarLogin(); else if(window.openAuthModal) window.openAuthModal();"
+                                            style="margin-top: 2px; background: #2563eb; color: #ffffff; border: none; padding: 7px 20px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.35); transition: all 0.2s ease;">로그인</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -5148,7 +5225,7 @@
                                         운행 여부</span>
                                     <strong
                                         style="color: #166534; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px;"
-                                        id="shuttleStatusText" title="운행 중 (학교 자체 통학차량)">운행 중 (학교 자체 통학차량)</strong>
+                                        id="shuttleStatusText" data-title="운행 중 (학교 자체 통학차량)">운행 중 (학교 자체 통학차량)</strong>
                                 </div>
                                 <div
                                     style="display: flex; justify-content: space-between; align-items: flex-start; font-size: 12.5px; border-top: 1px solid #f1f5f9; padding-top: 7px; gap: 10px;">
@@ -5306,25 +5383,38 @@
                             </div>
 
                             <!-- 계산 결과 박스 -->
-                            <div
-                                style="margin-top: 14px; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 14px; border-radius: 14px; border: 1px solid #bfdbfe;">
-                                <div
-                                    style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #64748b; margin-bottom: 4px;">
-                                    <span>표준 수강료 (추정):</span>
-                                    <span id="benefitStandardFee" style="text-decoration: line-through;">약
-                                        750,000원</span>
+                            <div style="position: relative; margin-top: 14px;">
+                                <div id="benefitResultContentBody" class="school-card-lockable-content"
+                                    style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 14px; border-radius: 14px; border: 1px solid #bfdbfe; position: relative; transition: all 0.3s ease;">
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #64748b; margin-bottom: 4px;">
+                                        <span>표준 수강료 (추정):</span>
+                                        <span id="benefitStandardFee" style="text-decoration: line-through;">약
+                                            750,000원</span>
+                                    </div>
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #dc2626; margin-bottom: 8px; font-weight: 700;">
+                                        <span>예상 월 절감 혜택:</span>
+                                        <span id="benefitDiscountVal">-105,000원</span>
+                                    </div>
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #93c5fd; padding-top: 8px;">
+                                        <strong style="color: #1e3a8a; font-size: 12.5px;">최종 예상 실부담금:</strong>
+                                        <strong id="benefitFinalFee"
+                                            style="color: #2563eb; font-size: 16px; font-weight: 900;">약 645,000원 /
+                                            월</strong>
+                                    </div>
                                 </div>
-                                <div
-                                    style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #dc2626; margin-bottom: 8px; font-weight: 700;">
-                                    <span>예상 월 절감 혜택:</span>
-                                    <span id="benefitDiscountVal">-105,000원</span>
-                                </div>
-                                <div
-                                    style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #93c5fd; padding-top: 8px;">
-                                    <strong style="color: #1e3a8a; font-size: 12.5px;">최종 예상 실부담금:</strong>
-                                    <strong id="benefitFinalFee"
-                                        style="color: #2563eb; font-size: 16px; font-weight: 900;">약 645,000원 /
-                                        월</strong>
+
+                                <!-- 로그인 유도 선명한 오버레이 -->
+                                <div id="benefitResultLockOverlay" class="school-card-lock-overlay"
+                                    style="display: none; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.45) 25%, rgba(255,255,255,0.96) 70%, #ffffff 100%); flex-direction: column; align-items: center; justify-content: center; z-index: 10; border-radius: 14px; pointer-events: auto;">
+                                    <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                                        <div style="font-size: 18px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">🔒</div>
+                                        <div style="font-size: 12.5px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">자세히 보려면 로그인이 필요해요</div>
+                                        <button onclick="if(window.openSidebarLogin) window.openSidebarLogin(); else if(window.openAuthModal) window.openAuthModal();"
+                                            style="margin-top: 2px; background: #2563eb; color: #ffffff; border: none; padding: 6px 18px; border-radius: 20px; font-size: 11.5px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.35); transition: all 0.2s ease;">로그인</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -5393,7 +5483,7 @@
 
                         <!-- 2. 🔥 학부모 실시간 키워드 토크 -->
                         <div
-                            style="background: white; border-radius: 20px; border: 1px solid #e2e8f0; padding: 20px; box-shadow: 0 4px 14px rgba(0,0,0,0.03);">
+                            style="background: white; border-radius: 20px; border: 1px solid #e2e8f0; padding: 20px; box-shadow: 0 4px 14px rgba(0,0,0,0.03); position: relative; overflow: hidden;">
                             <div
                                 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                                 <h4
@@ -5408,82 +5498,99 @@
                                 </span>
                             </div>
 
-                            <!-- 키워드 태그들 -->
-                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;">
-                                <span
-                                    style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
-                                        style="color: #3b82f6;">#</span>면학분위기_차분함</span>
-                                <span
-                                    style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
-                                        style="color: #3b82f6;">#</span>내신_변별력높음</span>
-                                <span
-                                    style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
-                                        style="color: #3b82f6;">#</span>특목고_진학관심</span>
-                                <span
-                                    style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
-                                        style="color: #3b82f6;">#</span>서초동_인근학원연계</span>
-                                <span
-                                    style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
-                                        style="color: #3b82f6;">#</span>교장·선생님_열정</span>
-                            </div>
+                            <!-- 잠금 래퍼 (오버레이가 블러의 영향을 받지 않도록 분리) -->
+                            <div style="position: relative;">
+                                <!-- 잠금 대상 본문 컨테이너 (블러/마스크 적용) -->
+                                <div id="parentKeywordTalkContentBody" class="school-card-lockable-content" style="position: relative; transition: all 0.3s ease;">
+                                    <!-- 키워드 태그들 -->
+                                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;">
+                                        <span
+                                            style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
+                                                style="color: #3b82f6;">#</span>면학분위기_차분함</span>
+                                        <span
+                                            style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
+                                                style="color: #3b82f6;">#</span>내신_변별력높음</span>
+                                        <span
+                                            style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
+                                                style="color: #3b82f6;">#</span>특목고_진학관심</span>
+                                        <span
+                                            style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
+                                                style="color: #3b82f6;">#</span>서초동_인근학원연계</span>
+                                        <span
+                                            style="padding: 6px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12px; font-weight: 600; color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.02);"><span
+                                                style="color: #3b82f6;">#</span>교장·선생님_열정</span>
+                                    </div>
 
-                            <!-- 실시간 리뷰 아이템들 -->
-                            <div style="display: flex; flex-direction: column; gap: 12px;">
-                                <!-- 리뷰 1 -->
-                                <div
-                                    style="border: 1px solid #f1f5f9; border-radius: 14px; padding: 16px; background: #fafafa;">
-                                    <div
-                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            <span style="font-size: 13px; font-weight: 800; color: #1e293b;">재학생 중2
-                                                학부모</span>
-                                            <span
-                                                style="background: #dcfce7; color: #166534; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 12px;">인증
-                                                완료</span>
+                                    <!-- 실시간 리뷰 아이템들 -->
+                                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                                        <!-- 리뷰 1 -->
+                                        <div
+                                            style="border: 1px solid #f1f5f9; border-radius: 14px; padding: 16px; background: #fafafa;">
+                                            <div
+                                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                                <div style="display: flex; align-items: center; gap: 8px;">
+                                                    <span style="font-size: 13px; font-weight: 800; color: #1e293b;">재학생 중2
+                                                        학부모</span>
+                                                    <span
+                                                        style="background: #dcfce7; color: #166534; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 12px;">인증
+                                                        완료</span>
+                                                </div>
+                                                <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">2025.02
+                                                    인증</span>
+                                            </div>
+                                            <div
+                                                style="font-size: 13px; color: #334155; line-height: 1.5; font-weight: 500; margin-bottom: 14px; letter-spacing: -0.2px;">
+                                                "1학년 때부터 면학 분위기가 잘 잡혀 있어 스스로 공부하는 습관 들이기 좋습니다. 서초권 학원가 연계도 매우 편해요."
+                                            </div>
+                                            <div style="display: flex; gap: 12px; align-items: center;">
+                                                <span
+                                                    style="font-size: 12px; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 4px;">👍
+                                                    공감 24</span>
+                                                <span
+                                                    style="font-size: 12px; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 4px;">💬
+                                                    댓글 6</span>
+                                            </div>
                                         </div>
-                                        <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">2025.02
-                                            인증</span>
-                                    </div>
-                                    <div
-                                        style="font-size: 13px; color: #334155; line-height: 1.5; font-weight: 500; margin-bottom: 14px; letter-spacing: -0.2px;">
-                                        "1학년 때부터 면학 분위기가 잘 잡혀 있어 스스로 공부하는 습관 들이기 좋습니다. 서초권 학원가 연계도 매우 편해요."
-                                    </div>
-                                    <div style="display: flex; gap: 12px; align-items: center;">
-                                        <span
-                                            style="font-size: 12px; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 4px;">👍
-                                            공감 24</span>
-                                        <span
-                                            style="font-size: 12px; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 4px;">💬
-                                            댓글 6</span>
+
+                                        <!-- 리뷰 2 -->
+                                        <div
+                                            style="border: 1px solid #f1f5f9; border-radius: 14px; padding: 16px; background: #fafafa;">
+                                            <div
+                                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                                <div style="display: flex; align-items: center; gap: 8px;">
+                                                    <span style="font-size: 13px; font-weight: 800; color: #1e293b;">졸업생
+                                                        학부모</span>
+                                                    <span
+                                                        style="background: #e0f2fe; color: #0369a1; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 12px;">동문
+                                                        인증</span>
+                                                </div>
+                                                <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">2024.12
+                                                    인증</span>
+                                            </div>
+                                            <div
+                                                style="font-size: 13px; color: #334155; line-height: 1.5; font-weight: 500; margin-bottom: 14px; letter-spacing: -0.2px;">
+                                                "특목-자사고 준비반 및 방과후 프로그램이 알차고, 진학 상담이 구체적이어서 큰 도움이 되었습니다."
+                                            </div>
+                                            <div style="display: flex; gap: 12px; align-items: center;">
+                                                <span
+                                                    style="font-size: 12px; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 4px;">👍
+                                                    공감 19</span>
+                                                <span
+                                                    style="font-size: 12px; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 4px;">💬
+                                                    댓글 3</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <!-- 리뷰 2 -->
-                                <div
-                                    style="border: 1px solid #f1f5f9; border-radius: 14px; padding: 16px; background: #fafafa;">
-                                    <div
-                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            <span style="font-size: 13px; font-weight: 800; color: #1e293b;">졸업생
-                                                학부모</span>
-                                            <span
-                                                style="background: #e0f2fe; color: #0369a1; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 12px;">동문
-                                                인증</span>
-                                        </div>
-                                        <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">2024.12
-                                            인증</span>
-                                    </div>
-                                    <div
-                                        style="font-size: 13px; color: #334155; line-height: 1.5; font-weight: 500; margin-bottom: 14px; letter-spacing: -0.2px;">
-                                        "특목-자사고 준비반 및 방과후 프로그램이 알차고, 진학 상담이 구체적이어서 큰 도움이 되었습니다."
-                                    </div>
-                                    <div style="display: flex; gap: 12px; align-items: center;">
-                                        <span
-                                            style="font-size: 12px; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 4px;">👍
-                                            공감 19</span>
-                                        <span
-                                            style="font-size: 12px; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 4px;">💬
-                                            댓글 3</span>
+                                <!-- 로그인 유도 선명한 오버레이 (블러 외부 분리) -->
+                                <div id="parentKeywordTalkLockOverlay" class="school-card-lock-overlay"
+                                    style="display: none; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.45) 30%, rgba(255,255,255,0.96) 75%, #ffffff 100%); flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 24px; z-index: 10; border-radius: 14px; pointer-events: auto;">
+                                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                        <div style="font-size: 20px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">🔒</div>
+                                        <div style="font-size: 13px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">자세히 보려면 로그인이 필요해요</div>
+                                        <button onclick="if(window.openSidebarLogin) window.openSidebarLogin(); else if(window.openAuthModal) window.openAuthModal();"
+                                            style="margin-top: 2px; background: #2563eb; color: #ffffff; border: none; padding: 7px 20px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.35); transition: all 0.2s ease;">로그인</button>
                                     </div>
                                 </div>
                             </div>
@@ -5965,8 +6072,10 @@
                     onmouseout="this.style.color='var(--text-muted)'">&times;</button>
             </div>
 
-            <div id="budgetDetailPanel" class="hide-scrollbar"
-                style="background: white; border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; font-size: 12px; max-height: 70vh; overflow-y: auto; padding-right: 4px;">
+            <!-- 잠금 래퍼 (오버레이가 블러의 영향을 받지 않도록 분리) -->
+            <div style="position: relative;">
+                <div id="budgetDetailPanel" class="hide-scrollbar modal-lockable-content"
+                    style="background: white; border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; font-size: 12px; min-height: 240px; max-height: 70vh; overflow-y: auto; padding-right: 4px; transition: all 0.3s ease;">
                 <!-- 등급 + 1인당 환산 -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <div>
@@ -6038,8 +6147,20 @@
                     style="display: block; text-align: center; font-size: 11px; color: var(--primary-blue); text-decoration: none; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 4px;">🏫
                     학교알리미에서 원본 확인 →</a>
             </div>
+
+            <!-- 로그인 유도 선명한 오버레이 (블러 외부 분리, 상하 가운데 정렬) -->
+            <div id="budgetModalLockOverlay" class="school-card-lock-overlay"
+                style="display: none; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.85) 30%, rgba(255,255,255,0.95) 70%, rgba(255,255,255,0.98) 100%); flex-direction: column; align-items: center; justify-content: center; padding: 20px; z-index: 10; border-radius: 10px; pointer-events: auto;">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                    <div style="font-size: 22px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">🔒</div>
+                    <div style="font-size: 14px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">자세히 보려면 로그인이 필요해요</div>
+                    <button onclick="if(window.openSidebarLogin) window.openSidebarLogin(); else if(window.openAuthModal) window.openAuthModal();"
+                        style="margin-top: 4px; background: #2563eb; color: #ffffff; border: none; padding: 8px 22px; border-radius: 20px; font-size: 12.5px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.35); transition: all 0.2s ease;">로그인</button>
+                </div>
+            </div>
         </div>
     </div>
+</div>
 
     <!-- 관심 학교 설정 및 메모 모달 -->
     <div id="favMemoModal"
@@ -6111,8 +6232,22 @@
                     onmouseout="this.style.color='var(--text-muted)'">&times;</button>
             </div>
 
-            <div id="graduateModalContent" style="font-size: 12px;">
-                <!-- 콘텐츠가 app.js에 의해 동적으로 주입됩니다. -->
+            <!-- 잠금 래퍼 (오버레이가 블러의 영향을 받지 않도록 분리) -->
+            <div style="position: relative;">
+                <div id="graduateModalContent" class="modal-lockable-content" style="font-size: 12px; min-height: 240px; max-height: 70vh; overflow-y: auto; transition: all 0.3s ease;">
+                    <!-- 콘텐츠가 app.js에 의해 동적으로 주입됩니다. -->
+                </div>
+
+                <!-- 로그인 유도 선명한 오버레이 (블러 외부 분리, 상하 가운데 정렬) -->
+                <div id="graduateModalLockOverlay" class="school-card-lock-overlay"
+                    style="display: none; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.85) 30%, rgba(255,255,255,0.95) 70%, rgba(255,255,255,0.98) 100%); flex-direction: column; align-items: center; justify-content: center; padding: 20px; z-index: 10; border-radius: 10px; pointer-events: auto;">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                        <div style="font-size: 22px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">🔒</div>
+                        <div style="font-size: 14px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">자세히 보려면 로그인이 필요해요</div>
+                        <button onclick="if(window.openSidebarLogin) window.openSidebarLogin(); else if(window.openAuthModal) window.openAuthModal();"
+                            style="margin-top: 4px; background: #2563eb; color: #ffffff; border: none; padding: 8px 22px; border-radius: 20px; font-size: 12.5px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.35); transition: all 0.2s ease;">로그인</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -6134,8 +6269,10 @@
                     onmouseover="this.style.color='var(--deep-blue)'"
                     onmouseout="this.style.color='var(--text-muted)'">&times;</button>
             </div>
-            <div class="hide-scrollbar"
-                style="font-size: 12px; max-height: 70vh; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 16px; -ms-overflow-style: none; scrollbar-width: none;">
+            <!-- 잠금 래퍼 (오버레이가 블러의 영향을 받지 않도록 분리) -->
+            <div style="position: relative;">
+                <div id="studentStatsContent" class="hide-scrollbar modal-lockable-content"
+                    style="font-size: 12px; min-height: 240px; max-height: 70vh; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 16px; -ms-overflow-style: none; scrollbar-width: none; transition: all 0.3s ease;">
                 <!-- 전학생 현황 -->
                 <div>
                     <div style="font-weight: 700; color: var(--deep-blue); margin-bottom: 8px; font-size: 13px;">📋 전학생
@@ -6279,8 +6416,20 @@
                     style="font-size:10px; color:var(--text-muted); padding-top:8px; border-top:1px solid var(--border-color);">
                     ※ 출처: 학교알리미 수준 집계 데이터 (개인 식별 불가)</div>
             </div>
+
+            <!-- 로그인 유도 선명한 오버레이 (블러 외부 분리, 상하 가운데 정렬) -->
+            <div id="studentStatsModalLockOverlay" class="school-card-lock-overlay"
+                style="display: none; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.85) 30%, rgba(255,255,255,0.95) 70%, rgba(255,255,255,0.98) 100%); flex-direction: column; align-items: center; justify-content: center; padding: 20px; z-index: 10; border-radius: 10px; pointer-events: auto;">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                    <div style="font-size: 22px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">🔒</div>
+                    <div style="font-size: 14px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">자세히 보려면 로그인이 필요해요</div>
+                    <button onclick="if(window.openSidebarLogin) window.openSidebarLogin(); else if(window.openAuthModal) window.openAuthModal();"
+                        style="margin-top: 4px; background: #2563eb; color: #ffffff; border: none; padding: 8px 22px; border-radius: 20px; font-size: 12.5px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.35); transition: all 0.2s ease;">로그인</button>
+                </div>
+            </div>
         </div>
     </div>
+</div>
     </div>
 
     <!-- 학교폭력 현황 상세 모달 -->
@@ -6304,8 +6453,10 @@
                     onmouseover="this.style.color='var(--deep-blue)'"
                     onmouseout="this.style.color='var(--text-muted)'">&times;</button>
             </div>
-            <div class="hide-scrollbar"
-                style="font-size: 12px; max-height: 70vh; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 16px; -ms-overflow-style: none; scrollbar-width: none;">
+            <!-- 잠금 래퍼 (오버레이가 블러의 영향을 받지 않도록 분리) -->
+            <div style="position: relative;">
+                <div id="studentStatsContent" class="hide-scrollbar modal-lockable-content"
+                    style="font-size: 12px; min-height: 240px; max-height: 70vh; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 16px; -ms-overflow-style: none; scrollbar-width: none; transition: all 0.3s ease;">
                 <!-- 총 신고건수 -->
                 <div>
                     <div style="font-weight: 700; color: var(--deep-blue); margin-bottom: 8px; font-size: 13px;">📋 연간
@@ -7284,8 +7435,8 @@
                     style="font-size: 17.5px; font-weight: 800; color: #0f172a; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; letter-spacing: -0.3px;">학교명</h4>
                 <button type="button" id="btnMobilePeekFavorite" onclick="if(typeof window.toggleFavoriteSchool==='function')window.toggleFavoriteSchool();"
                     style="background: none; border: none; font-size: 19px; line-height: 1; cursor: pointer; color: #94a3b8; padding: 0; flex-shrink: 0;"
-                    title="관심 학교 등록">☆</button>
-                <div id="mobilePeekWalkBadge" style="display: flex; align-items: center; gap: 2px; background: #eef2ff; color: #2563eb; font-size: 12px; font-weight: 800; padding: 3px 8px; border-radius: 12px; white-space: nowrap; flex-shrink: 0; cursor: pointer; transition: transform 0.15s ease;" title="도보 기준 안내">
+                    data-title="관심 학교 등록" aria-label="관심 학교 등록">☆</button>
+                <div id="mobilePeekWalkBadge" style="display: flex; align-items: center; gap: 2px; background: #eef2ff; color: #2563eb; font-size: 12px; font-weight: 800; padding: 3px 8px; border-radius: 12px; white-space: nowrap; flex-shrink: 0; cursor: pointer; transition: transform 0.15s ease;" data-title="도보 기준 안내">
                     <span style="font-size: 13px;">🚶</span>
                     <span id="mobilePeekWalkTimeText">3분</span>
                 </div>

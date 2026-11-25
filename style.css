@@ -3539,6 +3539,118 @@ body.is-resizing-sidebar .housing-sidebar-section {
     }
 }
 
+/* ============================================================
+   School Detail Floating Tooltip & Action Button Tooltips
+   ============================================================ */
+.school-top-action-bar [data-title],
+#schoolCard [data-title],
+#mobilePeekWalkBadge[data-title],
+#btnMobilePeekFavorite[data-title] {
+    position: relative;
+}
+
+.school-top-action-bar [data-title]::after,
+#mobilePeekWalkBadge[data-title]::after,
+#btnMobilePeekFavorite[data-title]::after {
+    content: attr(data-title);
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-4px);
+    background: rgba(15, 23, 42, 0.94);
+    color: #ffffff;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.4;
+    padding: 5px 10px;
+    border-radius: 7px;
+    white-space: nowrap;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+    z-index: 10100;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.school-top-action-bar [data-title]::before,
+#mobilePeekWalkBadge[data-title]::before,
+#btnMobilePeekFavorite[data-title]::before {
+    content: '';
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-4px);
+    border-width: 0 5px 6px 5px;
+    border-style: solid;
+    border-color: transparent transparent rgba(15, 23, 42, 0.94) transparent;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+    z-index: 10101;
+}
+
+.school-top-action-bar [data-title]:hover::after,
+.school-top-action-bar [data-title]:hover::before,
+#mobilePeekWalkBadge[data-title]:hover::after,
+#mobilePeekWalkBadge[data-title]:hover::before,
+#btnMobilePeekFavorite[data-title]:hover::after,
+#btnMobilePeekFavorite[data-title]:hover::before {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* 닫기 및 우측 버튼 툴팁 우측 정렬 방어 */
+.school-top-action-bar #btnDeselectSchool[data-title]::after {
+    left: auto;
+    right: 0;
+    transform: translateX(0) translateY(-4px);
+}
+.school-top-action-bar #btnDeselectSchool[data-title]::before {
+    left: auto;
+    right: 12px;
+    transform: translateX(0) translateY(-4px);
+}
+.school-top-action-bar #btnDeselectSchool[data-title]:hover::after {
+    transform: translateX(0) translateY(0);
+}
+.school-top-action-bar #btnDeselectSchool[data-title]:hover::before {
+    transform: translateX(0) translateY(0);
+}
+
+/* 범용 동적 플로팅 툴팁 요소 스타일 */
+#schoolFloatingTooltip {
+    position: fixed;
+    z-index: 99999;
+    background: rgba(15, 23, 42, 0.94);
+    color: #ffffff;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.4;
+    padding: 6px 11px;
+    border-radius: 7px;
+    white-space: nowrap;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateY(4px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+}
+#schoolFloatingTooltip.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
 
 
 

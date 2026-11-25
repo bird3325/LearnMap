@@ -63,6 +63,185 @@ window.promptLoginForReview = function (message) {
         }
     });
 };
+
+// 교육분석 탭 카드 3종, 교육여건 탭 모달창 3종, 학부모 소통 탭 카드, 주거학원 탭 3개 영역 로그인 상태에 따른 가우시안 그라데이션 잠금 제어
+window.applySchoolDetailLockState = function () {
+    const isLoggedIn = (typeof window.isReviewUserLoggedIn === 'function') ? window.isReviewUserLoggedIn() : false;
+    const targets = [
+        { bodyId: 'advancementContentBody', overlayId: 'advancementAnalysisLockOverlay' },
+        { bodyId: 'eduConditionContentBody', overlayId: 'eduConditionLockOverlay' },
+        { bodyId: 'eduInfraSummaryContentBody', overlayId: 'eduInfraSummaryLockOverlay' },
+        { bodyId: 'budgetDetailPanel', overlayId: 'budgetModalLockOverlay' },
+        { bodyId: 'graduateModalContent', overlayId: 'graduateModalLockOverlay' },
+        { bodyId: 'studentStatsContent', overlayId: 'studentStatsModalLockOverlay' },
+        { bodyId: 'parentKeywordTalkContentBody', overlayId: 'parentKeywordTalkLockOverlay' },
+        { bodyId: 'estateTrendGraphContentBody', overlayId: 'estateTrendGraphLockOverlay' },
+        { bodyId: 'schoolComplexListContentBody', overlayId: 'schoolComplexListLockOverlay' },
+        { bodyId: 'benefitResultContentBody', overlayId: 'benefitResultLockOverlay' }
+    ];
+
+    targets.forEach(({ bodyId, overlayId }) => {
+        const bodyEl = document.getElementById(bodyId);
+        const overlayEl = document.getElementById(overlayId);
+
+        if (bodyEl) {
+            if (!isLoggedIn) {
+                // 로그인 전: 위에서 아래로 그라데이션 가우시안 (서서히 안보이게)
+                bodyEl.style.maskImage = 'linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.75) 30%, rgba(0, 0, 0, 0.2) 65%, rgba(0, 0, 0, 0) 92%)';
+                bodyEl.style.webkitMaskImage = 'linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.75) 30%, rgba(0, 0, 0, 0.2) 65%, rgba(0, 0, 0, 0) 92%)';
+                bodyEl.style.filter = 'blur(1.5px)';
+                bodyEl.style.pointerEvents = 'none';
+                bodyEl.style.userSelect = 'none';
+            } else {
+                // 로그인 후: 정상 노출
+                bodyEl.style.maskImage = 'none';
+                bodyEl.style.webkitMaskImage = 'none';
+                bodyEl.style.filter = 'none';
+                bodyEl.style.pointerEvents = 'auto';
+                bodyEl.style.userSelect = 'auto';
+            }
+        }
+
+        if (overlayEl) {
+            overlayEl.style.display = isLoggedIn ? 'none' : 'flex';
+        }
+    });
+};
+
+// 학교 상세(schoolCard 및 모바일 피크) 내부 요소들의 alt/title 네이티브 툴팁을 완벽히 차단하고 단일 커스텀 플로팅 툴팁으로만 노출
+window.setupSchoolDetailFloatingTooltips = function () {
+    let tooltipEl = document.getElementById('schoolFloatingTooltip');
+    if (!tooltipEl) {
+        tooltipEl = document.createElement('div');
+        tooltipEl.id = 'schoolFloatingTooltip';
+        document.body.appendChild(tooltipEl);
+    }
+
+    // 1. 학교 상세 내부의 모든 title / alt 속성을 data-title로 변환하고 원본 네이티브 속성 완전 박멸
+    const sanitizeContainer = (container) => {
+        if (!container) return;
+        const elementsWithNativeTooltip = container.querySelectorAll('[title], [alt]');
+        elementsWithNativeTooltip.forEach(el => {
+            const titleVal = el.getAttribute('title');
+            const altVal = el.getAttribute('alt');
+            const textVal = el.getAttribute('data-title') || titleVal || altVal;
+            if (textVal && textVal.trim()) {
+                el.setAttribute('data-title', textVal.trim());
+            }
+            if (el.hasAttribute('title')) el.removeAttribute('title');
+            if (el.hasAttribute('alt')) el.removeAttribute('alt');
+        });
+    };
+
+    // 2. 초기 및 DOM 갱신 시 자동 살균
+    const schoolCard = document.getElementById('schoolCard');
+    const mobilePeek = document.getElementById('mobileSchoolPeekBar');
+    if (schoolCard) sanitizeContainer(schoolCard);
+    if (mobilePeek) sanitizeContainer(mobilePeek);
+
+    // 3. MutationObserver로 동적 콘텐츠(단지 목록, 차트 바 등) 삽입 시 실시간으로 title/alt 제거
+    if (schoolCard && window.MutationObserver) {
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === 1) { // Element node
+                            if (node.hasAttribute('title') || node.hasAttribute('alt')) {
+                                const text = node.getAttribute('data-title') || node.getAttribute('title') || node.getAttribute('alt');
+                                if (text) node.setAttribute('data-title', text.trim());
+                                node.removeAttribute('title');
+                                node.removeAttribute('alt');
+                            }
+                            sanitizeContainer(node);
+                        }
+                    });
+                } else if (mutation.type === 'attributes') {
+                    if (mutation.attributeName === 'title' || mutation.attributeName === 'alt') {
+                        const targetEl = mutation.target;
+                        const text = targetEl.getAttribute('data-title') || targetEl.getAttribute('title') || targetEl.getAttribute('alt');
+                        if (text) targetEl.setAttribute('data-title', text.trim());
+                        targetEl.removeAttribute('title');
+                        targetEl.removeAttribute('alt');
+                    }
+                }
+            }
+        });
+        observer.observe(schoolCard, { childList: true, subtree: true, attributes: true, attributeFilter: ['title', 'alt'] });
+    }
+
+    let hideTimer = null;
+
+    // 4. 마우스 오버 시 캡처 단계에서 네이티브 alt/title 브라우저 타이머 즉시 소멸 & 플로팅 툴팁 노출
+    const handleMouseOver = (e) => {
+        // 커서 아래의 모든 조상 노드에서 혹시 남아있는 title / alt 즉시 소멸
+        let curr = e.target;
+        while (curr && curr !== document.body) {
+            if (curr.hasAttribute && (curr.hasAttribute('title') || curr.hasAttribute('alt'))) {
+                const text = curr.getAttribute('data-title') || curr.getAttribute('title') || curr.getAttribute('alt');
+                if (text) curr.setAttribute('data-title', text.trim());
+                curr.removeAttribute('title');
+                curr.removeAttribute('alt');
+            }
+            curr = curr.parentElement;
+        }
+
+        const target = e.target.closest('#schoolCard [data-title], .school-top-action-bar [data-title], #mobileSchoolPeekBar [data-title], #mobilePeekWalkBadge[data-title], #btnMobilePeekFavorite[data-title]');
+        if (!target) return;
+
+        // CSS 가상 요소 플로팅 툴팁이 이미 적용된 상단 액션바 버튼은 JS 툴팁 중복 노출 방지
+        if (target.closest('.school-top-action-bar')) {
+            clearTimeout(hideTimer);
+            tooltipEl.classList.remove('active');
+            return;
+        }
+
+        const text = target.getAttribute('data-title');
+        if (!text || !text.trim()) return;
+
+        clearTimeout(hideTimer);
+        tooltipEl.textContent = text;
+        tooltipEl.classList.add('active');
+
+        // 위치 계산 (타깃 요소 상단 또는 하단에 플로팅)
+        const rect = target.getBoundingClientRect();
+        const tipRect = tooltipEl.getBoundingClientRect();
+
+        let left = rect.left + (rect.width / 2) - (tipRect.width / 2);
+        left = Math.max(8, Math.min(left, window.innerWidth - tipRect.width - 8));
+
+        let top = rect.top - tipRect.height - 8;
+        if (top < 10) {
+            top = rect.bottom + 8;
+        }
+
+        tooltipEl.style.left = `${left}px`;
+        tooltipEl.style.top = `${top}px`;
+    };
+
+    document.addEventListener('mouseover', handleMouseOver, true);
+    document.addEventListener('pointerenter', handleMouseOver, true);
+
+    document.addEventListener('mouseout', (e) => {
+        const target = e.target.closest('#schoolCard [data-title], #mobileSchoolPeekBar [data-title], #mobilePeekWalkBadge[data-title], #btnMobilePeekFavorite[data-title]');
+        if (target) {
+            hideTimer = setTimeout(() => {
+                tooltipEl.classList.remove('active');
+            }, 60);
+        }
+    }, true);
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof window.applySchoolDetailLockState === 'function') window.applySchoolDetailLockState();
+        if (typeof window.setupSchoolDetailFloatingTooltips === 'function') window.setupSchoolDetailFloatingTooltips();
+    });
+} else {
+    setTimeout(() => {
+        if (typeof window.applySchoolDetailLockState === 'function') window.applySchoolDetailLockState();
+        if (typeof window.setupSchoolDetailFloatingTooltips === 'function') window.setupSchoolDetailFloatingTooltips();
+    }, 100);
+}
 import { eduCultureService } from './src/services/edu_culture_service.js';
 let defaultDistrictData = null;
 let orchestrator;
@@ -6703,6 +6882,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tabName === 'RealEstate' && typeof window.calculateAcademyBenefits === 'function') {
             setTimeout(window.calculateAcademyBenefits, 100);
         }
+        if (typeof window.applySchoolDetailLockState === 'function') {
+            window.applySchoolDetailLockState();
+        }
     };
 
     window.calculateAcademyBenefits = function () {
@@ -6926,7 +7108,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (walkEl) walkEl.textContent = '도보 -분';
             if (walkBadge) {
                 walkBadge.style.cursor = 'pointer';
-                walkBadge.title = '회원정보 주소 입력 시 도보시간 계산 (클릭하여 주소 입력)';
+                walkBadge.removeAttribute('title');
+                walkBadge.setAttribute('data-title', '회원정보 주소 입력 시 도보시간 계산 (클릭하여 주소 입력)');
                 walkBadge.onclick = (e) => {
                     if (e) e.stopPropagation();
                     walkBadge.style.transform = 'scale(0.92)';
@@ -6950,7 +7133,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (walkBadge) {
                     walkBadge.style.cursor = 'pointer';
                     const distStr = distM < 1000 ? `${distM}m` : `${(distM / 1000).toFixed(1)}km`;
-                    walkBadge.title = `회원 등록 주소 기준: 도보 ${walkMin}분 (${distStr})`;
+                    walkBadge.removeAttribute('title');
+                    walkBadge.setAttribute('data-title', `회원 등록 주소 기준: 도보 ${walkMin}분 (${distStr})`);
                     walkBadge.onclick = (e) => {
                         if (e) e.stopPropagation();
                         walkBadge.style.transform = 'scale(0.92)';
@@ -8715,7 +8899,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                       style="font-size: 10.5px; color: #2563eb; font-weight: 700; background: #eff6ff; padding: 4px 9px; border-radius: 8px; border: 1px solid #dbeafe; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 3px;"
                                       onmouseover="this.style.background='#dbeafe'; this.style.color='#1d4ed8';"
                                       onmouseout="this.style.background='#eff6ff'; this.style.color='#2563eb';"
-                                      title="📍 클릭 시 이 단지를 출발지로 안심 통학로 도보 분석 지정">
+                                      data-title="📍 클릭 시 이 단지를 출발지로 안심 통학로 도보 분석 지정">
                                     📍 ${c.distance}
                                 </span>
                             </div>
@@ -8725,7 +8909,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #64748b; border-top: 1px solid #f1f5f9; padding-top: 4px;">
                                 <span>단지 소재지</span>
-                                <strong style="color: #334155; font-weight: 500; font-size: 11px; text-align: right; max-width: 65%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${c.scale}">${c.scale}</strong>
+                                <strong style="color: #334155; font-weight: 500; font-size: 11px; text-align: right; max-width: 65%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" data-title="${c.scale}">${c.scale}</strong>
                             </div>
                         </div>
                     `;
@@ -11729,7 +11913,10 @@ async function updateRealEstateMapMarkers(radius = 1000) {
         if (elMarkText) elMarkText.innerText = `▲ ${targetName} 평균`;
 
         const elMark = document.getElementById('competitionBarRegionMark');
-        if (elMark) elMark.title = `${targetName} 평균 ${compareAvg}점`;
+        if (elMark) {
+            elMark.removeAttribute('title');
+            elMark.setAttribute('data-title', `${targetName} 평균 ${compareAvg}점`);
+        }
 
         const maxVal = Math.max(schoolVal, compareAvg, 100);
         const leftPct = Math.min((compareAvg / maxVal) * 100, 100);
@@ -11929,7 +12116,7 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                 </div>
                 <div style="position: relative; background: #e2e8f0; border-radius: 8px; height: 12px; overflow: visible; margin-bottom: 24px;">
                     <div id="competitionBarSchool" style="position: absolute; left: 0; top: 0; height: 100%; background: linear-gradient(90deg, #2563eb 0%, #1d4ed8 100%); border-radius: 8px; transition: width 0.6s ease;"></div>
-                    <div id="competitionBarRegionMark" style="position: absolute; top: -3px; width: 3px; height: 18px; background: #ea580c; border-radius: 2px;" title="지역 평균"></div>
+                    <div id="competitionBarRegionMark" style="position: absolute; top: -3px; width: 3px; height: 18px; background: #ea580c; border-radius: 2px;" data-title="지역 평균"></div>
                     <div id="competitionBarRegionMarkText" style="position: absolute; top: 20px; font-size: 10.5px; color: #ea580c; white-space: nowrap; transform: translateX(-50%); font-weight: 800; transition: left 0.6s ease;">▲ 지역 평균</div>
                 </div>
             </div>
@@ -11943,10 +12130,10 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                             <span>국어 (우수 A: ${distKor[0]}% | 기초 D: ${distKor[3]}%)</span>
                         </div>
                         <div style="display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: #e2e8f0;">
-                            <div style="width: ${distKor[0]}%; background: #2563eb;" title="우수 (A)"></div>
-                            <div style="width: ${distKor[1]}%; background: #60a5fa;" title="보통 (B)"></div>
-                            <div style="width: ${distKor[2]}%; background: #f59e0b;" title="기초 (C)"></div>
-                            <div style="width: ${distKor[3]}%; background: #ef4444;" title="기초미달 (D)"></div>
+                            <div style="width: ${distKor[0]}%; background: #2563eb;" data-title="우수 (A)"></div>
+                            <div style="width: ${distKor[1]}%; background: #60a5fa;" data-title="보통 (B)"></div>
+                            <div style="width: ${distKor[2]}%; background: #f59e0b;" data-title="기초 (C)"></div>
+                            <div style="width: ${distKor[3]}%; background: #ef4444;" data-title="기초미달 (D)"></div>
                         </div>
                     </div>
                     <div>
@@ -11954,10 +12141,10 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                             <span>영어 (우수 A: ${distEng[0]}% | 기초 D: ${distEng[3]}%)</span>
                         </div>
                         <div style="display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: #e2e8f0;">
-                            <div style="width: ${distEng[0]}%; background: #2563eb;" title="우수 (A)"></div>
-                            <div style="width: ${distEng[1]}%; background: #60a5fa;" title="보통 (B)"></div>
-                            <div style="width: ${distEng[2]}%; background: #f59e0b;" title="기초 (C)"></div>
-                            <div style="width: ${distEng[3]}%; background: #ef4444;" title="기초미달 (D)"></div>
+                            <div style="width: ${distEng[0]}%; background: #2563eb;" data-title="우수 (A)"></div>
+                            <div style="width: ${distEng[1]}%; background: #60a5fa;" data-title="보통 (B)"></div>
+                            <div style="width: ${distEng[2]}%; background: #f59e0b;" data-title="기초 (C)"></div>
+                            <div style="width: ${distEng[3]}%; background: #ef4444;" data-title="기초미달 (D)"></div>
                         </div>
                     </div>
                     <div>
@@ -11965,10 +12152,10 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                             <span>수학 (우수 A: ${distMath[0]}% | 기초 D: ${distMath[3]}%)</span>
                         </div>
                         <div style="display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: #e2e8f0;">
-                            <div style="width: ${distMath[0]}%; background: #2563eb;" title="우수 (A)"></div>
-                            <div style="width: ${distMath[1]}%; background: #60a5fa;" title="보통 (B)"></div>
-                            <div style="width: ${distMath[2]}%; background: #f59e0b;" title="기초 (C)"></div>
-                            <div style="width: ${distMath[3]}%; background: #ef4444;" title="기초미달 (D)"></div>
+                            <div style="width: ${distMath[0]}%; background: #2563eb;" data-title="우수 (A)"></div>
+                            <div style="width: ${distMath[1]}%; background: #60a5fa;" data-title="보통 (B)"></div>
+                            <div style="width: ${distMath[2]}%; background: #f59e0b;" data-title="기초 (C)"></div>
+                            <div style="width: ${distMath[3]}%; background: #ef4444;" data-title="기초미달 (D)"></div>
                         </div>
                     </div>
                 </div>
@@ -12098,7 +12285,10 @@ async function updateRealEstateMapMarkers(radius = 1000) {
         if (elMarkText) elMarkText.innerText = `▲ ${targetName} 평균`;
 
         const elMark = document.getElementById('graduateBarRegionMark');
-        if (elMark) elMark.title = `${targetName} 평균 ${compareAvg}%`;
+        if (elMark) {
+            elMark.removeAttribute('title');
+            elMark.setAttribute('data-title', `${targetName} 평균 ${compareAvg}%`);
+        }
 
         const maxVal = Math.max(schoolVal, compareAvg, 10) * 1.25;
         const leftPct = Math.min((compareAvg / maxVal) * 100, 100);
@@ -12257,7 +12447,7 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                 </div>
                 <div style="position: relative; background: #f0f4f8; border-radius: 6px; height: 10px; overflow: visible; margin-bottom: 24px;">
                     <div id="graduateBarSchool" style="position: absolute; left: 0; top: 0; height: 100%; background: var(--primary-blue, #1976d2); border-radius: 6px; transition: width 0.6s ease;"></div>
-                    <div id="graduateBarRegionMark" style="position: absolute; top: -3px; width: 2px; height: 16px; background: #f57c00; border-radius: 2px;" title="지역 평균"></div>
+                    <div id="graduateBarRegionMark" style="position: absolute; top: -3px; width: 2px; height: 16px; background: #f57c00; border-radius: 2px;" data-title="지역 평균"></div>
                     <div id="graduateBarRegionMarkText" style="position: absolute; top: 16px; font-size: 10px; color: #f57c00; white-space: nowrap; transform: translateX(-50%); font-weight: bold; transition: left 0.6s ease;">▲ 지역 평균</div>
                 </div>
             </div>
@@ -12436,6 +12626,10 @@ async function updateRealEstateMapMarkers(radius = 1000) {
 
         if (typeof window.updateGraduateCompare === 'function') {
             window.updateGraduateCompare('region');
+        }
+
+        if (typeof window.applySchoolDetailLockState === 'function') {
+            window.applySchoolDetailLockState();
         }
     }
 
@@ -12645,7 +12839,7 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                 label: '✨ 자녀 매칭 적합도', key: 'suitability', callback: (val, school) => {
                     const diffLabel = school.suitabilityDiff >= 0 ? `+${Math.round(school.suitabilityDiff * 10) / 10}` : `${Math.round(school.suitabilityDiff * 10) / 10}`;
                     const color = val === '상' ? 'var(--success-green)' : (val === '중' ? 'var(--warning-yellow)' : 'var(--danger-red)');
-                    return `<span title="${school.suitabilityDesc}" style="cursor:help; border-bottom:1px dotted var(--text-muted);"><strong style="color:${color}">${val}</strong> (${diffLabel}점)</span>`;
+                    return `<span data-title="${school.suitabilityDesc}" style="cursor:help; border-bottom:1px dotted var(--text-muted);"><strong style="color:${color}">${val}</strong> (${diffLabel}점)</span>`;
                 }
             }
         ];
@@ -12782,7 +12976,7 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                 <div style="font-size:11px; color:var(--text-muted); margin-top:6px;">📈 성취도 추세</div>
                 ${sparklineHtml}
 
-                <div style="font-size:12px;margin-top:8px;border-top:1px solid var(--border-color);padding-top:6px; display:flex; justify-content:space-between; align-items:center;" title="${item.suitabilityDesc}">
+                <div style="font-size:12px;margin-top:8px;border-top:1px solid var(--border-color);padding-top:6px; display:flex; justify-content:space-between; align-items:center;" data-title="${item.suitabilityDesc}">
                     <span style="border-bottom: 1px dotted var(--text-muted); cursor: help;">✨ 우리 아이 적합도:</span>
                     <strong style="color:${item.suitability === '상' ? 'var(--success-green)' : (item.suitability === '중' ? 'var(--warning-yellow)' : 'var(--danger-red)')}; font-size:13px;">${item.suitability} (${item.suitabilityDiff >= 0 ? '+' : ''}${Math.round(item.suitabilityDiff * 10) / 10}점)</strong>
                 </div>
@@ -15398,6 +15592,9 @@ window.toggleBudgetPanel = function () {
         modal.style.display = 'flex';
         const panel = document.getElementById('budgetDetailPanel');
         if (panel) panel.style.display = 'block';
+        if (typeof window.applySchoolDetailLockState === 'function') {
+            window.applySchoolDetailLockState();
+        }
     } else {
         modal.style.display = 'none';
     }
@@ -15723,6 +15920,9 @@ window.toggleGraduateModal = function () {
     if (!modal) return;
     if (modal.style.display === 'none' || modal.style.display === '') {
         modal.style.display = 'flex';
+        if (typeof window.applySchoolDetailLockState === 'function') {
+            window.applySchoolDetailLockState();
+        }
     } else {
         modal.style.display = 'none';
     }
@@ -16038,6 +16238,9 @@ window.toggleStudentStatsModal = function () {
     if (!modal) return;
     if (modal.style.display === 'none' || modal.style.display === '') {
         modal.style.display = 'flex';
+        if (typeof window.applySchoolDetailLockState === 'function') {
+            window.applySchoolDetailLockState();
+        }
     } else {
         modal.style.display = 'none';
     }
@@ -17213,10 +17416,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            const btn = document.getElementById('btnSaveFavorite');
-            if (btn) {
-                btn.innerHTML = '🌟';
-                btn.title = '관심 학교 저장됨';
+            if (typeof window.updateSchoolDetailFavoriteButton === 'function') {
+                window.updateSchoolDetailFavoriteButton(true);
             }
 
             alert('관심 학교 메모 및 순위 정보가 정상적으로 저장되었습니다.');
@@ -17249,10 +17450,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            const btn = document.getElementById('btnSaveFavorite');
-            if (btn) {
-                btn.innerHTML = '⭐';
-                btn.title = '관심 학교 저장';
+            if (typeof window.updateSchoolDetailFavoriteButton === 'function') {
+                window.updateSchoolDetailFavoriteButton(false);
             }
 
             alert(`${school.school_name}이(가) 관심 학교에서 제거되었습니다.`);
@@ -17272,10 +17471,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // 관심 학교 저장 상태 UI (저장 전: ☆ / 저장 후: ⭐) 일관 동기화 헬퍼
+    window.updateSchoolDetailFavoriteButton = function (isFav) {
+        const btn = document.getElementById('btnSaveFavorite');
+        if (btn) {
+            if (isFav) {
+                btn.innerHTML = '⭐';
+                btn.style.color = '#f59e0b';
+                btn.setAttribute('data-title', '관심 학교 저장됨');
+            } else {
+                btn.innerHTML = '☆';
+                btn.style.color = '#64748b';
+                btn.setAttribute('data-title', '관심 학교 저장');
+            }
+            if (btn.hasAttribute('title')) btn.removeAttribute('title');
+        }
+        const mobilePeekBtn = document.getElementById('btnMobilePeekFavorite');
+        if (mobilePeekBtn) {
+            mobilePeekBtn.textContent = isFav ? '⭐' : '☆';
+            mobilePeekBtn.style.color = isFav ? '#f59e0b' : '#94a3b8';
+            mobilePeekBtn.setAttribute('data-title', isFav ? '관심 학교 저장됨' : '관심 학교 등록');
+            if (mobilePeekBtn.hasAttribute('title')) mobilePeekBtn.removeAttribute('title');
+        }
+    };
+
     // Globally expose toggleFavoriteSchool for inline HTML onclick handler
-    window.toggleFavoriteSchool = () => {
+    window.toggleFavoriteSchool = async () => {
+        // 1. 비로그인 시 로그인 유도 모달 오픈 (확인 시에만 로그인 페이지로 이동)
+        const isLoggedIn = (typeof window.isReviewUserLoggedIn === 'function') ? window.isReviewUserLoggedIn() : false;
+        if (!isLoggedIn) {
+            const confirmed = await confirm('🔒 관심 학교 저장은 로그인 후 이용하실 수 있습니다.\n로그인 페이지로 이동하시겠습니까?');
+            if (confirmed) {
+                if (typeof window.openSidebarLogin === 'function') {
+                    window.openSidebarLogin();
+                } else if (typeof window.openAuthModal === 'function') {
+                    window.openAuthModal();
+                }
+            }
+            return;
+        }
+
         if (!orchestrator.state.selectedSchool) {
-            alert('저장할 학교를 선택해 주세요.');
+            if (typeof showToastNoticeMsg === 'function') {
+                showToastNoticeMsg('⚠️ 저장할 학교를 먼저 지도에서 선택해 주세요.');
+            } else if (typeof window.showFloatingToast === 'function') {
+                window.showFloatingToast('⚠️ 저장할 학교를 먼저 선택해 주세요.');
+            } else {
+                alert('저장할 학교를 선택해 주세요.');
+            }
             return;
         }
         const school = orchestrator.state.selectedSchool;
@@ -17309,10 +17552,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.clearAllFavorites = async () => {
         if (await confirm('관심 저장된 모든 학교 목록을 삭제하시겠습니까?')) {
             localStorage.removeItem('favoriteSchools');
-            const btn = document.getElementById('btnSaveFavorite');
-            if (btn) {
-                btn.innerHTML = '⭐';
-                btn.title = '관심 학교 저장';
+            if (typeof window.updateSchoolDetailFavoriteButton === 'function') {
+                window.updateSchoolDetailFavoriteButton(false);
             }
             updateFavUI();
             alert('모든 관심 학교가 삭제되었습니다.');
@@ -17332,10 +17573,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             const favs = JSON.parse(localStorage.getItem('favoriteSchools') || '[]');
             const exists = favs.find(f => f.id === school.school_id);
-            const btn = document.getElementById('btnSaveFavorite');
-            if (btn) {
-                btn.innerHTML = exists ? '🌟' : '⭐';
-                btn.title = exists ? '관심 학교 저장됨' : '관심 학교 저장';
+            if (typeof window.updateSchoolDetailFavoriteButton === 'function') {
+                window.updateSchoolDetailFavoriteButton(!!exists);
             }
 
             // 신규 부가 서비스 연동 전 체크박스 초기화
@@ -18191,6 +18430,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    // 🌟 지도 1단계 확대 헬퍼 함수 (카카오맵 레벨 1단계 축소)
+    window.zoomInMapOneLevel = function () {
+        try {
+            const mapObj = window.kakaoMapInstance
+                || (typeof kakaoMap !== 'undefined' ? kakaoMap : null)
+                || (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.mapAgent ? orchestrator.mapAgent.map : null)
+                || (window.orchestrator && window.orchestrator.mapAgent ? window.orchestrator.mapAgent.map : null);
+            if (mapObj && typeof mapObj.getLevel === 'function' && typeof mapObj.setLevel === 'function') {
+                const curLevel = mapObj.getLevel();
+                if (curLevel > 1) {
+                    mapObj.setLevel(curLevel - 1, { animate: true });
+                }
+            }
+        } catch (e) {
+            console.warn('zoomInMapOneLevel error:', e);
+        }
+    };
+
     function syncCheckboxesAndTrigger(type, checked) {
         const cPath = document.getElementById('chkCommutePath');
         const cPathAca = document.getElementById('chkCommutePathAcademy');
@@ -18205,6 +18462,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (panelAca) panelAca.style.display = checked ? 'flex' : 'none';
             if (guideEl && !checked) {
                 guideEl.style.display = 'none';
+            }
+
+            // 🌟 안심 통학로 도보 분석 활성화 체크 시 지도 1단계 확대
+            if (checked && typeof window.zoomInMapOneLevel === 'function') {
+                window.zoomInMapOneLevel();
             }
         }
 
@@ -22632,7 +22894,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     <span style="font-size: 12px; color: #64748b; font-weight: 600;">기준 학교 거리</span>
                     <span onclick="window.selectCommuteStartFromComplex(${latVal}, ${lngVal}, '${safePropName}')"
                           style="font-size: 11px; color: #2563eb; font-weight: 700; background: #eff6ff; padding: 3px 8px; border-radius: 6px; border: 1px solid #dbeafe; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;"
-                          title="클릭 시 안심 통학로 도보 분석 지정">
+                          data-title="클릭 시 안심 통학로 도보 분석 지정">
                         📍 도보 ${walkMin}분 (${distText})
                     </span>
                 </div>
@@ -24831,6 +25093,20 @@ window.addEventListener('DOMContentLoaded', () => {
         window.loadKakaoShareSDK = loadKakaoShareSDK;
 
         window.shareSchoolDetail = async function () {
+            // 0. 비로그인 시 로그인 유도 모달 오픈 (확인 시에만 로그인 페이지로 이동)
+            const isLoggedIn = (typeof window.isReviewUserLoggedIn === 'function') ? window.isReviewUserLoggedIn() : false;
+            if (!isLoggedIn) {
+                const confirmed = await confirm('🔒 학교 정보 공유는 로그인 후 이용하실 수 있습니다.\n로그인 페이지로 이동하시겠습니까?');
+                if (confirmed) {
+                    if (typeof window.openSidebarLogin === 'function') {
+                        window.openSidebarLogin();
+                    } else if (typeof window.openAuthModal === 'function') {
+                        window.openAuthModal();
+                    }
+                }
+                return;
+            }
+
             const selected = (window.orchestrator && window.orchestrator.state) ? window.orchestrator.state.selectedSchool : null;
             const schoolNameEl = document.getElementById('schoolCardName');
             const schoolName = selected ? (selected.school_name || selected.name || '학교') : (schoolNameEl ? schoolNameEl.innerText : '학교');
@@ -25929,6 +26205,11 @@ window.addEventListener('DOMContentLoaded', () => {
                     if (typeof checkUserNotifications === 'function') {
                         checkUserNotifications(null);
                     }
+                }
+
+                // 🌟 교육분석 탭 잠금 오버레이/가우시안 블러 상태 동기화
+                if (typeof window.applySchoolDetailLockState === 'function') {
+                    window.applySchoolDetailLockState();
                 }
             };
 
