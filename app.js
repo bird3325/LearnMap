@@ -9109,8 +9109,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         window.fetchAcademyRatingsFromDb = fetchAcademyRatingsFromDb;
 
-        // 학원/학교 핀 위치를 지도의 가시 영역 중앙으로 오프셋 이동시키는 헬퍼 함수 (단일 부드러운 이동)
-        window.centerAcademyPinWithSidebarOffset = function (lng, lat, name) {
+        // 🌟 학원 리스트 열림/닫힘 시 선택 학교 핀의 정밀 대칭 오프셋 이동 (열릴 때 좌측 가시 영역 중앙, 닫힐 때 원래 위치 우측 복귀)
+        window.__isMapShiftedForAcademyList = false;
+        window.shiftSchoolPinForAcademySidebar = function (open) {
+            if (window.innerWidth <= 1024) return;
+            const mapObj = window.kakaoMapInstance || (typeof kakaoMap !== 'undefined' ? kakaoMap : null);
+            if (!mapObj || typeof mapObj.panBy !== 'function') return;
+
+            const academySidebar = document.getElementById('academySidebar');
+            const acaWidth = (academySidebar && academySidebar.offsetWidth > 0) ? academySidebar.offsetWidth : 340;
+            const shiftX = Math.round(acaWidth / 2);
+
+            if (open) {
+                if (!window.__isMapShiftedForAcademyList) {
+                    window.__isMapShiftedForAcademyList = true;
+                    mapObj.panBy(shiftX, 0); // 핀을 화면 왼쪽으로 이동하여 남은 가시 영역 중앙 정렬
+                }
+            } else {
+                if (window.__isMapShiftedForAcademyList) {
+                    window.__isMapShiftedForAcademyList = false;
+                    mapObj.panBy(-shiftX, 0); // 핀을 화면 오른쪽으로 이동하여 원래 위치로 정확히 복귀!
+                }
+            }
+        };
+        window.centerSchoolPinForSidebarState = window.shiftSchoolPinForAcademySidebar;
+
+        window.centerAcademyPinWithSidebarOffset = function (lng, lat, name, forceCenter = false) {
             if (!lng || !lat) return;
             const numLng = parseFloat(lng);
             const numLat = parseFloat(lat);
@@ -9121,7 +9145,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const pos = new kakao.maps.LatLng(numLat, numLng);
 
-            // 사이드바 가림 영역 계산 (PC 1024px 초과 기준)
+            // 사이드바 가림 영역 계산 (PC 1024px 초과 기준: 학교 상세 + 학원/주택 사이드바)
             let rightBlocked = 0;
             if (window.innerWidth > 1024) {
                 const mainSidebar = document.querySelector('.sidebar-section');
@@ -9155,13 +9179,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     const unblockedWidth = containerWidth - rightBlocked;
                     const padding = 50;
 
-                    // 핀 위치가 우측 사이드바에 가려지지 않는 좌측 가시 영역 내에 이미 있다면 절대로 이동하지 않음
-                    if (curPt && curPt.x >= padding && curPt.x <= (unblockedWidth - padding) &&
+                    // forceCenter가 아닐 때만: 핀 위치가 이미 가시 영역 내에 충분히 위치하면 이동 생략
+                    if (!forceCenter && curPt && curPt.x >= padding && curPt.x <= (unblockedWidth - padding) &&
                         curPt.y >= padding && curPt.y <= (containerHeight - padding)) {
                         return;
                     }
 
-                    // 핀이 사이드바 뒤로 가려졌거나 화면 밖인 경우에만 가시 영역 중앙으로 오프셋 이동
+                    // 🌟 학원 리스트 영역을 제외한 좌측 가시 영역의 '정중앙(가운데)'으로 학교 위치 부드럽게 오프셋 이동
                     const targetX = Math.round(unblockedWidth / 2);
                     const targetY = Math.round(containerHeight / 2);
 
@@ -9761,10 +9785,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.logAnalyticsEvent('profile_view', premInfo.businessId, { place_name: cleanAcadName });
                 }
                 window.__expandingMobileItemDetailExplicitly = true;
+                window.__openingAcademyFromList = true;
                 if (typeof window.openAcademyDetailModal === 'function') {
                     window.openAcademyDetailModal(place);
                 }
                 window.__expandingMobileItemDetailExplicitly = false;
+                window.__openingAcademyFromList = false;
             };
 
             return card;
@@ -22169,12 +22195,15 @@ window.addEventListener('DOMContentLoaded', () => {
                 container.classList.add('sidebar-open');
             }
 
-            if (typeof window.toggleAcademySidebar === 'function') {
-                window.toggleAcademySidebar(true);
-            } else {
-                const academySidebar = document.getElementById('academySidebar');
-                if (academySidebar) academySidebar.style.display = 'flex';
-                if (container) container.classList.add('academy-open');
+            const acaSide = document.getElementById('academySidebar');
+            const isAcaSideAlreadyOpen = acaSide && (acaSide.style.display === 'flex' || acaSide.offsetWidth > 0);
+            if (!isAcaSideAlreadyOpen) {
+                if (typeof window.toggleAcademySidebar === 'function') {
+                    window.toggleAcademySidebar(true);
+                } else {
+                    if (acaSide) acaSide.style.display = 'flex';
+                    if (container) container.classList.add('academy-open');
+                }
             }
 
             const btnToggleTop = document.getElementById('btnToggleSidebarTop');
@@ -22285,8 +22314,11 @@ window.addEventListener('DOMContentLoaded', () => {
                 }, 2000);
             }
 
-            // 6) 클릭한 학원 핀 위치를 사이드바를 제외한 지도의 가시 영역 정중앙에 노출
-            if (xCoord && yCoord && typeof window.checkAndAdjustMapForAcademyPin === 'function') {
+            // 6) 클릭한 학원 핀 위치 노출
+            // 🌟 학원 리스트에서 학원 선택 시에는 선택한 학교의 위치가 왼쪽으로 밀리지 않도록 지도 위치를 절대 변경하지 않음!
+            // (지도 위의 학원 핀을 직접 클릭하여 상세를 연 경우에만 지도 중앙 정렬 수행)
+            const isFromList = Boolean(window.__openingAcademyFromList || isAcaSideAlreadyOpen);
+            if (!isFromList && window.isOpeningFromAcademyPin && xCoord && yCoord && typeof window.checkAndAdjustMapForAcademyPin === 'function') {
                 setTimeout(() => {
                     window.checkAndAdjustMapForAcademyPin(xCoord, yCoord);
                 }, 60);

@@ -385,6 +385,13 @@
                         const btnToggle = document.getElementById('btnToggleSidebarTop');
                         if (btnToggle) btnToggle.style.display = 'flex';
 
+                        // 🌟 PC 환경: 학원 리스트 닫힐 때 선택 학교 핀을 원래 위치(학교 상세만 남은 가시 영역 중앙)로 부드럽게 복귀!
+                        if (window.innerWidth > 1024) {
+                            if (typeof window.centerSchoolPinForSidebarState === 'function') {
+                                window.centerSchoolPinForSidebarState(false);
+                            }
+                        }
+
                         // 🌟 모바일에서 사용자가 학교 상세를 직접 연 경우가 아니라면, 학교 상세는 노출하지 않고 지도/미니카드로 복귀!
                         if (window.innerWidth <= 1024 && !window.__schoolDetailOpenedDirectly) {
                             if (container) container.classList.remove('sidebar-open');
@@ -446,8 +453,11 @@
                                 let sLat = schoolObj && (schoolObj.lat || schoolObj.y || schoolObj.latitude) ? parseFloat(schoolObj.lat || schoolObj.y || schoolObj.latitude) : null;
                                 let sLng = schoolObj && (schoolObj.lng || schoolObj.x || schoolObj.longitude) ? parseFloat(schoolObj.lng || schoolObj.x || schoolObj.longitude) : null;
 
-                                if (sLat && sLng && typeof window.centerAcademyPinWithSidebarOffset === 'function') {
-                                    window.centerAcademyPinWithSidebarOffset(sLng, sLat, schoolObj.school_name);
+                                if (typeof window.centerSchoolPinForSidebarState === 'function') {
+                                    // 🌟 학원 리스트 영역을 제외한 좌측 가시 영역의 한가운데(정중앙)에 선택 학교 핀을 정확하게 정렬!
+                                    window.centerSchoolPinForSidebarState(true);
+                                } else if (sLat && sLng && typeof window.centerAcademyPinWithSidebarOffset === 'function') {
+                                    window.centerAcademyPinWithSidebarOffset(sLng, sLat, schoolObj.school_name, true);
                                 }
                             }, 100);
                         }

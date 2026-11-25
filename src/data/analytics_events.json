@@ -2472,5 +2472,15 @@
       "school_name": "신원초등학교"
     },
     "createdAt": "2026-11-17T04:30:59.800Z"
+  },
+  {
+    "id": "evt_1795529834113_u24b",
+    "businessId": "biz_1793878533975",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "서초 벽산블루밍 아파트",
+      "area": "서초동"
+    },
+    "createdAt": "2026-11-24T14:17:14.113Z"
   }
 ]
