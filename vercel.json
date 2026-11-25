@@ -49,14 +49,6 @@
   },
   "rewrites": [
     {
-      "source": "/robots.txt",
-      "destination": "/server.js"
-    },
-    {
-      "source": "/sitemap.xml",
-      "destination": "/server.js"
-    },
-    {
       "source": "/api/(.*)",
       "destination": "/server.js"
     },

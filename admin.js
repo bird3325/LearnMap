@@ -17,8 +17,11 @@ function updateAdminKpiMetrics() {
             }
         }
     }
-    if (kpiHousing && Array.isArray(allStoredRealEstates)) {
-        kpiHousing.innerText = allStoredRealEstates.length.toLocaleString();
+    if (kpiHousing) {
+        const count = (typeof storedRealEstateTotalCount !== 'undefined' && storedRealEstateTotalCount > 0)
+            ? storedRealEstateTotalCount
+            : (Array.isArray(allStoredRealEstates) ? allStoredRealEstates.length : 0);
+        kpiHousing.innerText = count.toLocaleString();
     }
     if (kpiReview) {
         const revItems = document.querySelectorAll('#adminReviewsListContainer .review-item');
@@ -2127,6 +2130,9 @@ const btnRetryMissingTrades = document.getElementById('btnRetryMissingTrades');
 const btnRepairCoordinates = document.getElementById('btnRepairCoordinates');
 
 let allStoredRealEstates = [];
+let storedRealEstateTotalCount = 0;
+let storedRealEstatePageSize = 100;
+let isStoredRealEstateLoadingMore = false;
 
 function isValidBjdong(dong) {
     if (!dong || typeof dong !== 'string') return false;
@@ -2525,7 +2531,13 @@ function renderStoredRealEstateList() {
     if (!storedRealEstateListContainer || !storedRealEstateCount) return;
 
     const filtered = getFilteredRealEstates();
-    storedRealEstateCount.innerText = filtered.length.toLocaleString();
+    const isFiltered = (realEstateRegionFilter && realEstateRegionFilter.value !== 'all') ||
+                       (realEstateSearchInput && realEstateSearchInput.value.trim() !== '') ||
+                       (realEstateTypeFilter && realEstateTypeFilter.value !== 'all') ||
+                       (realEstateAreaFilter && realEstateAreaFilter.value !== 'all') ||
+                       (realEstateTradeFilter && realEstateTradeFilter.value !== 'all');
+    const totalDisplayCount = isFiltered ? filtered.length : Math.max(storedRealEstateTotalCount, filtered.length);
+    storedRealEstateCount.innerText = totalDisplayCount.toLocaleString();
 
     if (filtered.length === 0) {
         storedRealEstateListContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px 0;">조건에 해당하는 주택 데이터가 없습니다.</div>';
@@ -2656,12 +2668,15 @@ function renderStoredRealEstateList() {
         `;
     }).join('');
 
-    if (filtered.length > currentStoredRealEstateLimit) {
+    const hasMoreLocal = filtered.length > currentStoredRealEstateLimit;
+    const hasMoreServer = !isFiltered && (allStoredRealEstates.length < storedRealEstateTotalCount);
+
+    if (hasMoreLocal || hasMoreServer) {
         html += `
             <div style="text-align: center; padding: 14px 0 6px 0;">
                 <button id="btnLoadMoreStoredRealEstate" class="btn-secondary" style="width: auto; padding: 8px 24px; font-size: 12.5px; margin: 0 auto; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                     <span>➕ 주택 목록 더 보기</span>
-                    <span style="background: #2563eb; color: #ffffff; padding: 1px 7px; border-radius: 10px; font-size: 11px;">${sliced.length.toLocaleString()} / ${filtered.length.toLocaleString()}건</span>
+                    <span style="background: #2563eb; color: #ffffff; padding: 1px 7px; border-radius: 10px; font-size: 11px;">${sliced.length.toLocaleString()} / ${totalDisplayCount.toLocaleString()}건</span>
                 </button>
             </div>
         `;
@@ -2671,9 +2686,17 @@ function renderStoredRealEstateList() {
 
     const btnLoadMore = document.getElementById('btnLoadMoreStoredRealEstate');
     if (btnLoadMore) {
-        btnLoadMore.onclick = () => {
-            currentStoredRealEstateLimit += 50;
-            renderStoredRealEstateList();
+        btnLoadMore.onclick = async () => {
+            if (filtered.length > currentStoredRealEstateLimit) {
+                currentStoredRealEstateLimit += 50;
+                renderStoredRealEstateList();
+            } else if (!isFiltered && allStoredRealEstates.length < storedRealEstateTotalCount) {
+                btnLoadMore.disabled = true;
+                btnLoadMore.innerHTML = '<span>⏳ 다음 페이지 불러오는 중...</span>';
+                await loadMoreStoredRealEstate();
+                currentStoredRealEstateLimit += 50;
+                renderStoredRealEstateList();
+            }
         };
     }
 }
@@ -2899,24 +2922,40 @@ if (btnResetRegionFilter) {
     });
 }
 
-async function loadStoredRealEstate() {
+async function loadStoredRealEstate(append = false) {
     try {
-        const res = await fetch('/api/realestate/stored', {
+        const offset = append ? allStoredRealEstates.length : 0;
+        const res = await fetch(`/api/realestate/stored?limit=${storedRealEstatePageSize}&offset=${offset}`, {
             headers: { 'Authorization': token }
         });
         if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data)) {
-                allStoredRealEstates = data;
-            } else {
-                allStoredRealEstates = [];
+            const totalHeader = res.headers.get('x-total-count');
+            if (totalHeader) {
+                storedRealEstateTotalCount = parseInt(totalHeader, 10) || 0;
             }
-        } else {
+            const data = await res.json();
+            const items = Array.isArray(data) ? data : (data && Array.isArray(data.items) ? data.items : []);
+            if (append) {
+                const existingKeys = new Set(allStoredRealEstates.map(it => it.id || `${it.sido}_${it.sigungu}_${it.name}`));
+                items.forEach(it => {
+                    const key = it.id || `${it.sido}_${it.sigungu}_${it.name}`;
+                    if (!existingKeys.has(key)) {
+                        allStoredRealEstates.push(it);
+                        existingKeys.add(key);
+                    }
+                });
+            } else {
+                allStoredRealEstates = items;
+                if (!storedRealEstateTotalCount && items.length > 0) {
+                    storedRealEstateTotalCount = items.length;
+                }
+            }
+        } else if (!append) {
             allStoredRealEstates = [];
         }
     } catch (e) {
         console.warn('Failed to load /api/realestate/stored:', e.message);
-        allStoredRealEstates = [];
+        if (!append) allStoredRealEstates = [];
     }
     updateRealEstateSigunguDropdown();
     updateRealEstateGuDropdown();
@@ -2924,6 +2963,16 @@ async function loadStoredRealEstate() {
     renderStoredRealEstateList();
     renderRealEstateRegionStats();
     if (typeof updateAdminKpiMetrics === 'function') updateAdminKpiMetrics(); // sync realestate kpi
+}
+
+async function loadMoreStoredRealEstate() {
+    if (isStoredRealEstateLoadingMore) return;
+    isStoredRealEstateLoadingMore = true;
+    try {
+        await loadStoredRealEstate(true);
+    } finally {
+        isStoredRealEstateLoadingMore = false;
+    }
 }
 
 async function saveStoredRealEstate(list) {
@@ -3134,6 +3183,9 @@ if (storedRealEstateListContainer) {
                 const key = item.id ? item.id : `${item.sido || ''}_${item.sigungu || ''}_${item.name || ''}`;
                 return key !== rawKey;
             });
+            if (storedRealEstateTotalCount > 0 && newList.length < allStoredRealEstates.length) {
+                storedRealEstateTotalCount--;
+            }
             await saveStoredRealEstate(newList);
             showAlert(`"${name}" 주택 정보가 성공적으로 삭제되었습니다.`);
         });

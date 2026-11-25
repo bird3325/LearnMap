@@ -623,29 +623,70 @@ function requireBusinessOrAdminAuth(req, res, next) {
     next();
 }
 
-// 1-1. GET /api/realestate/stored - Serve stored real estate JSON data (관리자 인증 필수)
+// 1-1. GET /api/realestate/stored - Serve stored real estate JSON data (관리자 인증 필수 및 페이징 지원)
 app.get('/api/realestate/stored', requireAdminAuth, (req, res) => {
     try {
         const { lawdCd, code, sigungu } = req.query;
+        const isAll = req.query.all === 'true' || req.query.limit === 'all';
         const limitParam = parseInt(req.query.limit, 10);
-        const maxLimit = (!isNaN(limitParam) && limitParam > 0) ? limitParam : (process.env.VERCEL ? 1500 : 5000);
+        
+        // 기본 페이지 크기 100건 (전체 요청 시 Vercel 4.5MB 제한 보호 위해 최대 1500건)
+        const limit = isAll
+            ? (process.env.VERCEL ? 1500 : 5000)
+            : (!isNaN(limitParam) && limitParam > 0 ? Math.min(limitParam, 1000) : 100);
+
+        let offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
+        if (req.query.page && isNaN(parseInt(req.query.offset, 10))) {
+            const pageNum = Math.max(1, parseInt(req.query.page, 10) || 1);
+            offset = (pageNum - 1) * limit;
+        }
 
         // 1. 특정 지역 요청 시 해당 지역 파일만 온디맨드 로드 (초고속, 1MB 미만)
         const targetCode = lawdCd || code;
         if (targetCode) {
-            const regionItems = getRealEstateItemsForRegion(targetCode);
-            res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=1800');
-            return res.json(regionItems.slice(0, maxLimit));
+            let regionItems = getRealEstateItemsForRegion(targetCode);
+            if (!Array.isArray(regionItems)) regionItems = [];
+            if (sigungu) {
+                const sigunguQuery = String(sigungu).trim();
+                regionItems = regionItems.filter(it => it.sigungu === sigunguQuery || (it.address && it.address.includes(sigunguQuery)));
+            }
+            const totalCount = regionItems.length;
+            const pagedItems = isAll ? regionItems.slice(0, limit) : regionItems.slice(offset, offset + limit);
+
+            res.setHeader('X-Total-Count', String(totalCount));
+            res.setHeader('X-Page-Offset', String(offset));
+            res.setHeader('X-Page-Limit', String(limit));
+            res.setHeader('Access-Control-Expose-Headers', 'X-Total-Count, X-Page-Offset, X-Page-Limit');
+            res.setHeader('Cache-Control', 'private, no-cache');
+            
+            if (req.query.format === 'paged' || req.query.meta === 'true') {
+                return res.json({ total: totalCount, offset, limit, items: pagedItems });
+            }
+            return res.json(pagedItems);
         }
 
         // 2. 전체 요청 시 Vercel 람다 메모리/응답 페이로드(4.5MB) 안전 보호
         let items = getCachedRealEstateItems();
         if (!Array.isArray(items)) items = [];
 
-        // Vercel Payload Limit(4.5MB) 초과 방지: 최대 maxLimit 건 슬라이스 반환
-        const safeItems = items.length > maxLimit ? items.slice(0, maxLimit) : items;
-        res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
-        return res.json(safeItems);
+        if (sigungu) {
+            const sigunguQuery = String(sigungu).trim();
+            items = items.filter(it => it.sigungu === sigunguQuery || (it.address && it.address.includes(sigunguQuery)));
+        }
+
+        const totalCount = items.length;
+        const pagedItems = isAll ? (items.length > limit ? items.slice(0, limit) : items) : items.slice(offset, offset + limit);
+
+        res.setHeader('X-Total-Count', String(totalCount));
+        res.setHeader('X-Page-Offset', String(offset));
+        res.setHeader('X-Page-Limit', String(limit));
+        res.setHeader('Access-Control-Expose-Headers', 'X-Total-Count, X-Page-Offset, X-Page-Limit');
+        res.setHeader('Cache-Control', 'private, no-cache');
+
+        if (req.query.format === 'paged' || req.query.meta === 'true') {
+            return res.json({ total: totalCount, offset, limit, items: pagedItems });
+        }
+        return res.json(pagedItems);
     } catch (e) {
         console.error('Error reading real estate data:', e);
         return res.status(200).json([]);
