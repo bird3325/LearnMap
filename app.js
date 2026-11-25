@@ -14899,7 +14899,7 @@ async function updateRealEstateMapMarkers(radius = 1000) {
         }
 
         // ② 공유 URL 구성 (scrapId + 지역 파라미터 모두 포함)
-        const baseUrl = 'https://leamap.vercel.app/';
+        const baseUrl = 'https://leamap.kr/';
         const params = new URLSearchParams({
             sim: '1',
             sidoA: sidoAVal, gugunA: gugunAVal, dongA: dongAVal,
@@ -14942,7 +14942,7 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                     content: {
                         title: `🏫 ${nameA} vs ${nameB} 학군 비교 결과`,
                         description: `학업성취도: ${statsAAvg} vs ${statsBAvg}  |  자녀 위치: ${pctA} vs ${pctB}\n시세: ${priceTextA} vs ${priceTextB} (${priceSaveText})`,
-                        imageUrl: 'https://leamap.vercel.app/og-image.png',
+                        imageUrl: 'https://leamap.kr/og-image.png',
                         link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
                     },
                     buttons: [{
@@ -25183,8 +25183,8 @@ const initMobileAndZoneModules = () => {
                 achievementText = '학업성취도 우수 학군';
             }
 
-            // 3. 학업여지도 사이트 딥링크 URL 구성 (https://leamap.vercel.app/ 기준)
-            const baseUrl = 'https://leamap.vercel.app/';
+            // 3. 학업여지도 사이트 딥링크 URL 구성 (https://leamap.kr/ 기준)
+            const baseUrl = 'https://leamap.kr/';
             let shareUrl = baseUrl;
             const targetId = selected ? (selected.school_id || selected.id || selected.school_name) : (schoolName !== '학교' ? schoolName : '');
             if (targetId) {
@@ -25245,7 +25245,7 @@ const initMobileAndZoneModules = () => {
 
         window.shareAcademyDetail = async function () {
             const acadName = window.currentAcademyForCommunity || '학원';
-            const baseUrl = 'https://leamap.vercel.app/';
+            const baseUrl = 'https://leamap.kr/';
             let shareUrl = baseUrl;
             if (acadName && acadName !== '학원') {
                 shareUrl += `?academy=${encodeURIComponent(acadName)}`;

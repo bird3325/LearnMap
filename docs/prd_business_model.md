@@ -4,7 +4,7 @@
 - **문서 버전**: 1.0
 - **작성일**: 2026년 10월 26일
 - **서비스**: 학업여지도
-- **서비스 URL**: [https://leamap.vercel.app/](https://leamap.vercel.app/)
+- **서비스 URL**: [https://leamap.kr/](https://leamap.kr/) (별칭: [https://leamap.vercel.app/](https://leamap.vercel.app/))
 - **제품 유형**: 교육환경 탐색 플랫폼 및 사업자 대상 구독형 SaaS
 - **핵심 수익원**: 학원 프리미엄 구독, 부동산 지역 홍보 구독, 향후 지역 분석 구독
 - **개발 원칙**: 기존 서비스 재사용, 1인 운영 최적화, 빠른 유료화 검증

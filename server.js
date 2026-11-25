@@ -76,7 +76,7 @@ Disallow: /admin
 Disallow: /api/
 Disallow: /scratch/
 
-Sitemap: https://leamap.vercel.app/sitemap.xml
+Sitemap: https://leamap.kr/sitemap.xml
 `;
 
 app.get('/robots.txt', (req, res) => {
@@ -95,11 +95,11 @@ app.get('/sitemap.xml', (req, res) => {
     res.type('application/xml; charset=utf-8');
     res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://leamap.vercel.app/</loc><lastmod>2026-11-20</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
-  <url><loc>https://leamap.vercel.app/index.html</loc><lastmod>2026-11-20</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
-  <url><loc>https://leamap.vercel.app/blog.html</loc><lastmod>2026-11-20</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
-  <url><loc>https://leamap.vercel.app/business.html</loc><lastmod>2026-11-20</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://leamap.vercel.app/partner-auth.html</loc><lastmod>2026-11-20</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://leamap.kr/</loc><lastmod>2026-11-20</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://leamap.kr/index.html</loc><lastmod>2026-11-20</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://leamap.kr/blog.html</loc><lastmod>2026-11-20</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://leamap.kr/business.html</loc><lastmod>2026-11-20</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://leamap.kr/partner-auth.html</loc><lastmod>2026-11-20</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
 </urlset>`);
 });
 
@@ -11098,9 +11098,9 @@ app.get('/api/school-zones/lookup', (req, res) => {
 // 9. [SEO] 실시간 최신 칼럼 목록을 포함한 동적 sitemap.xml 서빙 API
 app.get('/sitemap.xml', async (req, res) => {
     try {
-        const domain = (req.headers['x-forwarded-host'] || req.headers.host || 'learnmap.co.kr').split(':')[0];
+        const domain = (req.headers['x-forwarded-host'] || req.headers.host || 'leamap.kr').split(':')[0];
         const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-        const baseUrl = `${protocol}://${domain}`;
+        const baseUrl = 'https://leamap.kr';
 
         // 1) 기본 필수 정적 페이지들
         const staticPages = [

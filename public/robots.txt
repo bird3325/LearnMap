@@ -13,4 +13,4 @@ Disallow: /api/
 Disallow: /scratch/
 
 # 사이트맵 경로 안내 (배포 도메인 표준)
-Sitemap: https://leamap.vercel.app/sitemap.xml
+Sitemap: https://leamap.kr/sitemap.xml

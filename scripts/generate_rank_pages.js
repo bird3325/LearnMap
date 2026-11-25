@@ -253,6 +253,7 @@ function renderRankingHtml({ title, description, canonicalUrl, regionName, schoo
   <title>${title}</title>
   <meta name="description" content="${description}">
   <link rel="canonical" href="${canonicalUrl}">
+  <meta name="naver-site-verification" content="fc0bfbc6eb91c6d3871359d8a0c3388e">
   <meta name="naver-site-verification" content="e9069c6ebc833440c7859323acf51457">
   
   <!-- Open Graph -->
@@ -261,7 +262,7 @@ function renderRankingHtml({ title, description, canonicalUrl, regionName, schoo
   <meta property="og:description" content="${description}">
   <meta property="og:url" content="${canonicalUrl}">
   <meta property="og:site_name" content="학업여지도">
-  <meta property="og:image" content="https://leamap.vercel.app/og-image.png">
+  <meta property="og:image" content="https://leamap.kr/og-image.png">
 
   <!-- Schema.org ItemList JSON-LD -->
   <script type="application/ld+json">
@@ -540,14 +541,15 @@ function renderHubHtml() {
   </script>
   <title>2026 서울 학교 순위 랭킹 센터 | 초·중·고 학업성취도 전수 분석 - 학업여지도</title>
   <meta name="description" content="2026학년도 서울 초등학교·중학교·고등학교 순위 랭킹 전수 분석. 2025년 4월 학교알리미 공시 기준 1,320개교 종합점수, 학업평균, 후기 일반고 원서접수(12/3~12/7) 가이드.">
-  <link rel="canonical" href="https://leamap.vercel.app/rank/index.html">
+  <link rel="canonical" href="https://leamap.kr/rank/index.html">
+  <meta name="naver-site-verification" content="fc0bfbc6eb91c6d3871359d8a0c3388e">
   <meta name="naver-site-verification" content="e9069c6ebc833440c7859323acf51457">
   
   <meta property="og:type" content="website">
   <meta property="og:title" content="2026 서울 학교 순위 랭킹 센터 | 초·중·고 학업성취도 전수 분석 - 학업여지도">
   <meta property="og:description" content="서울 25개 자치구 초·중·고 학교 순위, 종합 평가 스코어, 국영수 학업평균 팩트 비교.">
-  <meta property="og:url" content="https://leamap.vercel.app/rank/index.html">
-  <meta property="og:image" content="https://leamap.vercel.app/og-image.png">
+  <meta property="og:url" content="https://leamap.kr/rank/index.html">
+  <meta property="og:image" content="https://leamap.kr/og-image.png">
 
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
@@ -740,7 +742,7 @@ const generatedUrls = [];
 // 1. 랭킹 메인 허브 생성
 const hubHtml = renderHubHtml();
 fs.writeFileSync(path.join(OUTPUT_DIR, 'index.html'), hubHtml, 'utf8');
-generatedUrls.push('https://leamap.vercel.app/rank/index.html');
+generatedUrls.push('https://leamap.kr/rank/index.html');
 console.log('✓ 랭킹 허브 생성 완료: /rank/index.html');
 
 // 2. 서울 전체 학교급별 메인 페이지 3개 생성
@@ -750,7 +752,7 @@ SCHOOL_TYPES.forEach(st => {
     .sort((a, b) => b.compositeScore - a.compositeScore);
 
   const filename = `seoul-${st.slug}.html`;
-  const canonicalUrl = `https://leamap.vercel.app/rank/${filename}`;
+  const canonicalUrl = `https://leamap.kr/rank/${filename}`;
   const title = `2026 서울 ${st.label} 순위 및 학업성취도 Top ${list.length} | 학업여지도`;
   const description = `2026학년도 서울 ${st.label} 순위 전수 분석. 2025년 4월 학교알리미 공시 기준 ${list.length}개교 종합 교육환경 점수, 국영수 학업평균, A등급 비율.${st.slug === 'high' ? ' 후기 일반고 원서접수(12/3~12/7) 필승 가이드.' : ''}`;
 
@@ -777,7 +779,7 @@ SEOUL_GUS.forEach(g => {
       .sort((a, b) => b.compositeScore - a.compositeScore);
 
     const filename = `seoul-${st.slug}-${g.slug}.html`;
-    const canonicalUrl = `https://leamap.vercel.app/rank/${filename}`;
+    const canonicalUrl = `https://leamap.kr/rank/${filename}`;
     const title = `2026 서울 ${g.name} ${st.label} 순위 및 학업성취도 Top ${list.length} | 학업여지도`;
     const description = `2026학년도 서울 ${g.name} ${st.label} 순위 팩트 분석. 2025년 4월 학교알리미 공시 기준 ${g.name} 관내 ${list.length}개 ${st.label} 종합 스코어, 국영수 학업평균, 안전도 비교.${st.slug === 'high' ? ' 12월 서울 후기 일반고 원서접수 전략.' : ''}`;
 

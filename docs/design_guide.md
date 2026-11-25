@@ -474,15 +474,15 @@
 - **robots.txt 정적 서빙 및 크롤러 허용 보장**:
   - `vercel.json`의 SPA fallback rewrite(`/(.*) -> /index.html`)에 의해 `/robots.txt` 요청 시 HTML이 반환되던 문제를 원천 해결.
   - `server.js`에 명시적 `app.get('/robots.txt')` 라우트를 두고 Content-Type `text/plain; charset=utf-8` 및 RFC 9309 표준 준수 포맷 반환.
-  - 모든 정상 검색엔진 크롤러 허용(`User-agent: *`, `Allow: /`), 관리자 및 내부 API 수집 제외(`Disallow: /admin`, `Disallow: /api/`), 절대 URL 사이트맵 명시(`Sitemap: https://leamap.vercel.app/sitemap.xml`).
+  - 모든 정상 검색엔진 크롤러 허용(`User-agent: *`, `Allow: /`), 관리자 및 내부 API 수집 제외(`Disallow: /admin`, `Disallow: /api/`), 절대 URL 사이트맵 명시(`Sitemap: https://leamap.kr/sitemap.xml`).
 - **sitemap.xml 도메인 정정 및 최신화**:
-  - 구버전 도메인(`learnmap.co.kr`)을 실제 운영 도메인인 `https://leamap.vercel.app`으로 전면 정정.
+  - 대표 운영 도메인인 `https://leamap.kr`으로 전면 정정 (apex → www 리다이렉트, leamap.vercel.app 별칭 호환 유지).
   - 최신 갱신일자(`lastmod: 2026-11-20`) 반영.
   - 메인(`index.html`), 파트너 비즈니스(`business.html`), 블로그 리서치 메인(`blog.html`), 파트너 인증(`partner-auth.html`) 및 주요 학군 분석 리서치 칼럼 URL 포함.
   - `server.js`의 `app.get('/sitemap.xml')` 라우트(`application/xml; charset=utf-8`) 및 `dist/sitemap.xml` 정적 빌드 2중 서빙 구조 구축.
 - **네이버 서치어드바이저 및 구글 서치콘솔 소유확인**:
-  - 네이버 소유확인 HTML 파일(`public/navere9069c6ebc833440c7859323acf51457.html`) 및 `index.html` 내 `<meta name="naver-site-verification">` 메타 태그 2중 인증 지원.
-  - canonical URL(`https://leamap.vercel.app/`) 명시로 검색엔진 중복 색인 방지.
+  - 네이버 소유확인 HTML 파일(`public/naverfc0bfbc6eb91c6d3871359d8a0c3388e.html`, `public/navere9069c6ebc833440c7859323acf51457.html`) 및 `index.html` 내 `<meta name="naver-site-verification">` 메타 태그 2중 인증 지원.
+  - canonical URL(`https://leamap.kr/`) 명시로 검색엔진 중복 색인 방지.
 
 ## 32. 학교급별·구별 정적 랭킹 페이지(SSG) 및 검색엔진 색인 시스템 (2026-11-20)
 - **배경 및 목적**:

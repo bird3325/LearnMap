@@ -775,8 +775,8 @@ const DEFAULT_SEO = {
     title: '학업여지도 칼럼 & 리서치 블로그',
     desc: '공공데이터 기반 학군 심층 분석, 고교학점제 입시 정보, 학군지 부동산 가치 평가 리포트를 제공합니다.',
     keywords: '학업여지도, 학군분석, 학업성취도, 특목고자사고, 고교학점제, 대입실적, 학군지부동산, 입시리포트',
-    image: 'favicon.svg',
-    url: 'blog.html'
+    image: 'https://leamap.kr/og-image.png',
+    url: 'https://leamap.kr/blog.html'
 };
 
 function stripMarkdownToPlainText(text) {
@@ -801,16 +801,16 @@ function updatePageSeoMetadata(post) {
     const fullTitle = `${post.title} | 학업여지도 칼럼 & 리서치`;
     const plainSnippet = stripMarkdownToPlainText(post.summary || post.content || '').slice(0, 160) || DEFAULT_SEO.desc;
     
-    // 절대 URL 생성
-    const origin = window.location.origin;
-    const postUrl = `${origin}${window.location.pathname}?id=${encodeURIComponent(post.id || post.slug)}`;
+    // 절대 URL 생성 (대표 도메인 leamap.kr 기준)
+    const origin = (window.location && window.location.hostname && !window.location.hostname.includes('localhost')) ? 'https://leamap.kr' : (window.location.origin || 'https://leamap.kr');
+    const postUrl = `${origin}/blog.html?id=${encodeURIComponent(post.id || post.slug)}`;
     
     let imageUrl = post.thumbnail ? post.thumbnail.trim() : '';
     if (imageUrl && !imageUrl.startsWith('http')) {
         imageUrl = `${origin}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
     }
     if (!imageUrl) {
-        imageUrl = `${origin}/favicon.svg`;
+        imageUrl = `${origin}/og-image.png`;
     }
 
     // 1) Title
@@ -895,7 +895,7 @@ function resetPageSeoMetadata() {
     if (elKeywords) elKeywords.setAttribute('content', DEFAULT_SEO.keywords);
 
     const elCanonical = document.getElementById('seoCanonical');
-    if (elCanonical) elCanonical.setAttribute('href', 'blog.html');
+    if (elCanonical) elCanonical.setAttribute('href', 'https://leamap.kr/blog.html');
 
     const setMeta = (id, attr, val) => {
         const el = document.getElementById(id);
@@ -905,7 +905,7 @@ function resetPageSeoMetadata() {
     setMeta('seoOgTitle', 'content', DEFAULT_SEO.title);
     setMeta('seoOgDesc', 'content', DEFAULT_SEO.desc);
     setMeta('seoOgImage', 'content', DEFAULT_SEO.image);
-    setMeta('seoOgUrl', 'content', 'blog.html');
+    setMeta('seoOgUrl', 'content', 'https://leamap.kr/blog.html');
     setMeta('seoOgType', 'content', 'website');
 
     setMeta('seoTwTitle', 'content', DEFAULT_SEO.title);
