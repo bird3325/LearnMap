@@ -872,3 +872,37 @@
       - 이메일 가입(handleSettingsRegister, handleRegisterSubmit), 카카오 가입/간편가입(handleKakaoLogin), 파트너 가입(handlePartnerRegister) 완료 시 즉시 gtag('event', 'sign_up', { method: 'email' | 'kakao' | 'partner' }) 전송.
       - 카카오 인증 후 미가입 회원이 가입 탭으로 전환되어 가입을 완료할 때에도 카카오 가입(method: 'kakao')으로 정확히 분류·추적.
       - 개인정보(이메일, 이름, 연락처 등)는 이벤트 파라미터에 일체 포함하지 않는 개인정보 보호 원칙 준수.
+
+---
+
+### [시스템 인프라] 공개 읽기 API Vercel 엣지 캐시 및 보안 캐시 정책
+
+#### 1. 도입 배경 및 목적
+- **Vercel Serverless Function 호출 절감**: 하루 방문자 대비 반복적인 크롤러/모니터링 조회로 인한 서버리스 실행 시간(Execution Duration) 및 리소스 낭비 차단.
+- **반복 요청 흡수**: Vercel Edge Network(CDN 엣지 캐시)가 정적/공개 데이터를 직접 응답하여 응답 속도 향상 및 서버리스 인보케이션 급감 유도.
+
+#### 2. 엔드포인트별 Cache-Control 정책
+1. **불변/장기 정적 데이터 (s-maxage: 1일~7일)**
+   - `/api/schools`, `/api/config/map-key`, `/api/schoolinfo/violence`, `/api/school-zones/lookup`:
+     `Cache-Control: public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800`
+   - `/api/crime-zones`, `/api/accident-statistics`, `/api/traffic-accidents`:
+     `Cache-Control: public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400`
+2. **지역/주택/학원 검색 및 공공데이터 (s-maxage: 1시간)**
+   - `/api/realestate/regions`, `/api/realestate/region/:code`, `/api/realestate`, `/api/realestate/pins`:
+     `Cache-Control: public, max-age=600, s-maxage=3600, stale-while-revalidate=86400`
+   - `/api/academies/count`, `/api/academies/search`, `/api/academies/fees`, `/api/neis/school-search`, `/api/neis/meals`, `/api/neis/schedule`:
+     `Cache-Control: public, max-age=300~600, s-maxage=3600, stale-while-revalidate=86400`
+3. **파트너/광고/평점 (s-maxage: 30분)**
+   - `/api/academies/premium`, `/api/academies/partners`, `/api/real-estates/partners`, `/api/academies/ratings`:
+     `Cache-Control: public, max-age=300, s-maxage=1800, stale-while-revalidate=86400`
+4. **블로그 및 리뷰 데이터 (즉각 반영 및 짧은 엣지 캐시)**
+   - `/api/blog/posts` (일반 공개 조회): `public, max-age=10, s-maxage=60, stale-while-revalidate=300` (새 글 발행 시 1분 내 자동 갱신)
+   - `/api/blog/posts` (관리자 조회, `?admin=true`): `no-store, no-cache, must-revalidate` (즉시 최신 상태 반영)
+   - `/api/blog/posts/:id`: `public, max-age=60, s-maxage=600, stale-while-revalidate=1800`
+   - `/api/reviews`: `public, max-age=10, s-maxage=60, stale-while-revalidate=300`
+   - `/api/blog/image/:filename`: `public, max-age=31536000, immutable`
+
+#### 3. 캐시 절대 적용 제외 대상 (보안 및 데이터 일관성)
+- **관리자/비즈니스 전역 미들웨어 방어**: `/api/admin/*`, `/api/business/*`는 서버 상단 전역 미들웨어에서 `no-store, no-cache, must-revalidate, proxy-revalidate`를 기본 강제 주입하여 어떤 경우에도 엣지/브라우저 캐시되지 않도록 보장.
+- **블로그 CUD(생성/수정/삭제) 및 문의/리뷰 쓰기 API**: `POST`, `PUT`, `DELETE` 요청은 일체 캐시 대상에서 제외.
+- **개인별/세션 데이터**: 알림(`/api/notifications`), 문의 조회 등 개인화 데이터는 캐시 제외.

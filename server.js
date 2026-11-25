@@ -50,6 +50,14 @@ app.use(express.json({ limit: '50mb' })); // Allow large payloads for bulk schoo
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// 🔒 관리자 및 비즈니스 API(/api/admin/*, /api/business/*)는 엣지/브라우저 캐시 원천 차단
+app.use(['/api/admin', '/api/business'], (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    next();
+});
+
 // 로컬 개발 환경에서만 정적 파일 서빙 (Vercel 배포 시에는 Vercel CDN이 dist 정적 자산을 서빙하므로 람다 번들 비대화 방지)
 if (!process.env.VERCEL) {
     app.use(express.static(path.join(__dirname)));
@@ -72,11 +80,13 @@ Sitemap: https://leamap.vercel.app/sitemap.xml
 `;
 
 app.get('/robots.txt', (req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400');
     res.type('text/plain; charset=utf-8');
     res.send(ROBOTS_TXT_CONTENT);
 });
 
 app.get('/sitemap.xml', (req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400');
     const sitemapPath = path.join(__dirname, 'public', 'sitemap.xml');
     if (fs.existsSync(sitemapPath)) {
         res.type('application/xml; charset=utf-8');
@@ -480,6 +490,7 @@ async function saveConfig(config) {
 // 1. GET /api/schools - Serve stored school JSON data
 app.get('/api/schools', (req, res) => {
     try {
+        res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
         if (fs.existsSync(SCHOOLS_PATH)) {
             const data = fs.readFileSync(SCHOOLS_PATH, 'utf8');
             return res.json(JSON.parse(data));
@@ -607,6 +618,7 @@ app.get('/api/realestate/stored', requireAdminAuth, (req, res) => {
 // 1-1-1. GET /api/realestate/regions - Serve regions index metadata (시·군·구 목록 및 건수)
 app.get('/api/realestate/regions', (req, res) => {
     try {
+        res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400');
         if (fs.existsSync(REAL_ESTATE_REGIONS_PATH)) {
             const raw = fs.readFileSync(REAL_ESTATE_REGIONS_PATH, 'utf8');
             return res.json(JSON.parse(raw));
@@ -621,6 +633,7 @@ app.get('/api/realestate/regions', (req, res) => {
 // 1-1-2. GET /api/realestate/region/:code - Serve specific region JSON data (시·군·구별 경량 데이터)
 app.get('/api/realestate/region/:code', (req, res) => {
     try {
+        res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400');
         const code = req.params.code;
         const fileName = code.endsWith('.json') ? code : `${code}.json`;
         const filePath = path.join(REAL_ESTATE_DIR, fileName);
@@ -3923,6 +3936,7 @@ app.post('/api/realestate/sync-kapt', requireAdminAuth, async (req, res) => {
 
 // 2. GET /api/config/map-key - Serves Kakao Map Key dynamically
 app.get('/api/config/map-key', async (req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
     const config = await readConfig();
     return res.json({ 
         kakao_app_key: config.kakao_app_key || '',
@@ -4789,6 +4803,7 @@ function getKakaoHeaders(req, appkey) {
 
 // 8. GET /api/academies/count - Fetch true academy count bypassing JS SDK limit
 app.get('/api/academies/count', async (req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
     const { x, y } = req.query;
     if (!x || !y) return res.status(400).json({ error: '좌표가 없습니다.' });
 
@@ -5215,6 +5230,7 @@ app.get('/api/academies/search', async (req, res) => {
             }
         });
 
+        res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
         res.json({ items: allItems, total_count: allItems.length });
     } catch (err) {
         console.error('Kakao Keyword Search Error:', err);
@@ -5255,6 +5271,7 @@ app.get('/api/academies/ratings', async (req, res) => {
                 obj.avgRating = obj.count > 0 ? parseFloat((obj.totalRating / obj.count).toFixed(1)) : 0;
             });
         }
+        res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=1800, stale-while-revalidate=86400');
         res.json(ratingsMap);
     } catch (err) {
         console.error('Academy Ratings Fetch Error:', err);
@@ -5318,6 +5335,7 @@ app.get('/api/reviews', async (req, res) => {
         }
 
         const data = await response.json();
+        res.setHeader('Cache-Control', 'public, max-age=10, s-maxage=60, stale-while-revalidate=300');
         res.json({ items: data, total: data.length });
     } catch (err) {
         console.error('Review Get Error:', err);
@@ -5344,6 +5362,7 @@ app.get('/api/academies/fees', async (req, res) => {
             return res.json({ acaInsTiInfo: null });
         }
         const data = await response.json();
+        res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400');
         res.json(data);
     } catch (err) {
         console.warn('Academy Fees API Warning:', err);
@@ -5401,6 +5420,7 @@ app.get('/api/neis/school-search', async (req, res) => {
             address: r.ORG_RDNMA,
             homepage: r.HMPG_ADRES
         }));
+        res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400');
         return res.json({ schools });
     } catch (err) {
         console.warn('NEIS School Search Error:', err);
@@ -5469,6 +5489,7 @@ app.get('/api/neis/meals', async (req, res) => {
             };
         });
 
+        res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400');
         return res.json({ meals });
     } catch (err) {
         console.warn('NEIS Meals API Error:', err);
@@ -5532,6 +5553,7 @@ app.get('/api/neis/schedule', async (req, res) => {
         // 날짜순 정렬
         schedule.sort((a, b) => a.rawDate.localeCompare(b.rawDate));
 
+        res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400');
         return res.json({ schedule });
     } catch (err) {
         console.warn('NEIS Schedule API Error:', err);
@@ -5565,6 +5587,7 @@ app.get('/api/schoolinfo/violence', async (req, res) => {
 
         const targetName = matchedSchool?.school_name || school_name || '';
 
+        res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
         return res.json({
             success: true,
             school_id: matchedSchool?.school_id || school_id || '',
@@ -5740,6 +5763,7 @@ app.get('/api/realestate', async (req, res) => {
     try {
         const url = `https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=${encodeURIComponent(serviceKey)}&pageNo=1&numOfRows=1000&LAWD_CD=${lawd_cd}&DEAL_YMD=${deal_ymd}`;
         const responseText = await httpsGet(url);
+        res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400');
         res.type('application/xml').send(responseText);
     } catch (err) {
         console.warn('Real Estate API Warning:', err);
@@ -9281,6 +9305,7 @@ app.get('/api/academies/premium', async (req, res) => {
                 };
             });
 
+        res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=1800, stale-while-revalidate=86400');
         return res.json(premiumAcademies);
     } catch (err) {
         console.error('Premium Academies Error:', err);
@@ -9332,6 +9357,7 @@ app.get('/api/academies/partners', async (req, res) => {
                 };
             });
 
+        res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=1800, stale-while-revalidate=86400');
         return res.json(partnerAcademies);
     } catch (err) {
         console.error('Partner Academies Error:', err);
@@ -9382,6 +9408,7 @@ app.get('/api/real-estates/partners', (req, res) => {
             });
         }
 
+        res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=1800, stale-while-revalidate=86400');
         return res.json(partners);
     } catch (err) {
         console.error('Real Estate Partners Error:', err);
@@ -10183,6 +10210,11 @@ app.get('/api/blog/posts', async (req, res) => {
             });
         }
 
+        if (admin === 'true') {
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+        } else {
+            res.setHeader('Cache-Control', 'public, max-age=10, s-maxage=60, stale-while-revalidate=300');
+        }
         res.json(posts);
     } catch (err) {
         console.error('[Blog API Error] GET /api/blog/posts:', err);
@@ -10205,6 +10237,7 @@ app.get('/api/blog/posts/:id', async (req, res) => {
         if (!post) {
             return res.status(404).json({ error: '게시글을 찾을 수 없습니다.' });
         }
+        res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=600, stale-while-revalidate=1800');
         res.json(mapDbRowToBlogPost(post));
     } catch (err) {
         console.error('[Blog API Error] GET /api/blog/posts/:id:', err);
@@ -10946,6 +10979,7 @@ app.get('/api/school-zones/lookup', (req, res) => {
             ? Math.round((candidateMiddles.reduce((acc, m) => acc + m.special_rate, 0) / candidateMiddles.length) * 10) / 10
             : 0;
 
+        res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=86400, stale-while-revalidate=604800');
         res.json({
             success: true,
             location: { lat: targetLat, lng: targetLng, sido, sigungu, dong, address: refAddr },
