@@ -173,8 +173,11 @@ window.setupSchoolDetailFloatingTooltips = function () {
 
     // 4. 마우스 오버 시 캡처 단계에서 네이티브 alt/title 브라우저 타이머 즉시 소멸 & 플로팅 툴팁 노출
     const handleMouseOver = (e) => {
+        const el = (e.target && e.target.nodeType === 1) ? e.target : (e.target ? e.target.parentElement : null);
+        if (!el || typeof el.closest !== 'function') return;
+
         // 커서 아래의 모든 조상 노드에서 혹시 남아있는 title / alt 즉시 소멸
-        let curr = e.target;
+        let curr = el;
         while (curr && curr !== document.body) {
             if (curr.hasAttribute && (curr.hasAttribute('title') || curr.hasAttribute('alt'))) {
                 const text = curr.getAttribute('data-title') || curr.getAttribute('title') || curr.getAttribute('alt');
@@ -185,7 +188,7 @@ window.setupSchoolDetailFloatingTooltips = function () {
             curr = curr.parentElement;
         }
 
-        const target = e.target.closest('#schoolCard [data-title], .school-top-action-bar [data-title], #mobileSchoolPeekBar [data-title], #mobilePeekWalkBadge[data-title], #btnMobilePeekFavorite[data-title]');
+        const target = el.closest('#schoolCard [data-title], .school-top-action-bar [data-title], #mobileSchoolPeekBar [data-title], #mobilePeekWalkBadge[data-title], #btnMobilePeekFavorite[data-title]');
         if (!target) return;
 
         // CSS 가상 요소 플로팅 툴팁이 이미 적용된 상단 액션바 버튼은 JS 툴팁 중복 노출 방지
@@ -222,7 +225,9 @@ window.setupSchoolDetailFloatingTooltips = function () {
     document.addEventListener('pointerenter', handleMouseOver, true);
 
     document.addEventListener('mouseout', (e) => {
-        const target = e.target.closest('#schoolCard [data-title], #mobileSchoolPeekBar [data-title], #mobilePeekWalkBadge[data-title], #btnMobilePeekFavorite[data-title]');
+        const el = (e.target && e.target.nodeType === 1) ? e.target : (e.target ? e.target.parentElement : null);
+        if (!el || typeof el.closest !== 'function') return;
+        const target = el.closest('#schoolCard [data-title], #mobileSchoolPeekBar [data-title], #mobilePeekWalkBadge[data-title], #btnMobilePeekFavorite[data-title]');
         if (target) {
             hideTimer = setTimeout(() => {
                 tooltipEl.classList.remove('active');
@@ -2999,6 +3004,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnOpenSimulation && simulationModal) {
         btnOpenSimulation.addEventListener('click', () => {
             if (typeof resetSafeCommute === 'function') resetSafeCommute();
+            simulationModal.style.zIndex = '100095';
             simulationModal.style.display = 'flex';
             document.getElementById('simulationResultPanel').style.display = 'none';
             initSimulationDropdowns(); // 모달 오픈 시 드롭다운 초기화
@@ -10491,9 +10497,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                         `;
 
-                        // 플로팅 바에서 개별 학원 클릭 시 (플로팅 창 유지)
+                        // 플로팅 바에서 개별 학원 클릭 시
                         itemRow.addEventListener('click', (e) => {
                             e.stopPropagation();
+                            if (window.innerWidth <= 1024) {
+                                closeClusterPopup();
+                            }
 
                             window.isOpeningFromAcademyPin = true;
                             if (typeof window.openAcademyDetailModal === 'function') {
@@ -20131,7 +20140,7 @@ window.addEventListener('resize', function () {
 })();
 
 // 모바일 학부모 필터 및 설정 닫기(X) 버튼 이벤트 연동
-window.addEventListener('DOMContentLoaded', () => {
+const initMobileAndZoneModules = () => {
     const btnCloseParentsFilter = document.getElementById('btnCloseParentsFilter');
     if (btnCloseParentsFilter) {
         btnCloseParentsFilter.addEventListener('click', (e) => {
@@ -24321,8 +24330,8 @@ window.addEventListener('DOMContentLoaded', () => {
             const highList = allHighCandidates.slice(0, 3);
             const peerHighList = allHighCandidates.filter(h => String(h.school_id) !== String(fullSchool.school_id)).slice(0, 3);
 
-            const safeLabel = String(useSearched ? searched.label : fullSchool.school_name).replace(/'/g, "\\'");
-            const safeAddr = String(refAddr || "").replace(/'/g, "\\'");
+            const safeLabel = String(useSearched ? searched.label : fullSchool.school_name).replace(/['"\\]/g, "");
+            const safeAddr = String(refAddr || "").replace(/['"\\]/g, "");
             const estLabel = fullSchool.establishment_type || "공립";
 
             let bodyRowsHTML = "";
@@ -24385,7 +24394,7 @@ window.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </div>
                 </button>
-                <button type="button" onclick="window.openSimulationWithHousing(${refLat}, ${refLng}, '${safeLabel}', '${safeAddr}')"
+                <button type="button" id="btnSchoolAcademicCompare" onclick="if(typeof window.openSimulationWithHousing==='function'){window.openSimulationWithHousing(${refLat}, ${refLng}, '${safeLabel}', '${safeAddr}');}else if(typeof window.openSimulationForCurrentSchool==='function'){window.openSimulationForCurrentSchool();}"
                         style="flex: 0.85; padding: 8px 12px; background: #0f172a; border: none; border-radius: 10px; color: #ffffff; font-size: 12px; font-weight: 700; letter-spacing: -0.3px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); transition: background 0.15s ease;"
                         onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='#0f172a'">
                     <span>⚖️</span>
@@ -24487,81 +24496,116 @@ window.addEventListener('DOMContentLoaded', () => {
         };
 
         window.openSimulationWithHousing = async function (lat, lng, propName, addressStr) {
-            const btnOpenSim = document.getElementById("btnOpenSimulation");
+            // 1. 인자가 누락된 경우 현재 선택된 학교 객체에서 fallback
+            const sch = window.currentSelectedSchool || window.selectedTargetSchool || (window.orchestrator && window.orchestrator.state && window.orchestrator.state.selectedSchool);
+            if (!lat && sch) lat = parseFloat(sch.lat) || 0;
+            if (!lng && sch) lng = parseFloat(sch.lng) || 0;
+            if (!propName && sch) propName = sch.school_name || "선택 학교";
+            if (!addressStr && sch) addressStr = sch.address || "";
+
+            // 2. 이사 시뮬레이션 모달 직접 표시 (z-index 보장)
             const simModal = document.getElementById("simulationModal");
-            if (btnOpenSim) {
-                btnOpenSim.click();
-            } else if (simModal) {
-                simModal.style.display = "flex";
-                if (typeof window.initSimulationDropdowns === "function") {
+            if (!simModal) {
+                console.error("simulationModal 엘리먼트를 찾을 수 없습니다.");
+                return;
+            }
+
+            try {
+                if (typeof resetSafeCommute === "function") resetSafeCommute();
+            } catch (e) {
+                console.warn(e);
+            }
+
+            simModal.style.setProperty("z-index", "100095", "important");
+            simModal.style.setProperty("display", "flex", "important");
+
+            const resPanel = document.getElementById("simulationResultPanel");
+            if (resPanel) resPanel.style.display = "none";
+
+            // 3. 드롭다운 초기화 완료 대기
+            if (typeof window.initSimulationDropdowns === "function") {
+                try {
                     await window.initSimulationDropdowns();
+                } catch (e) {
+                    console.warn(e);
                 }
             }
 
-            setTimeout(async () => {
-                // 현재 거주지 (A): 기존 선택값 또는 자녀 학교 정보 기반 추출 (하드코딩 제거)
-                let sidoA = document.getElementById("simSidoA")?.value || "";
-                let gugunA = document.getElementById("simGugunA")?.value || "";
-                let dongA = document.getElementById("simDongA")?.value || "";
+            // 4. 현재 거주지 (A): 기존 선택값 또는 자녀 학교 정보 기반 추출
+            let sidoA = document.getElementById("simSidoA")?.value || "";
+            let gugunA = document.getElementById("simGugunA")?.value || "";
+            let dongA = document.getElementById("simDongA")?.value || "";
 
-                if (!sidoA || !gugunA || !dongA) {
-                    if (typeof getActiveChildSchoolInfo === 'function' && typeof resolveSchoolRegionData === 'function') {
-                        const { school: childSchool } = getActiveChildSchoolInfo();
-                        const childReg = await resolveSchoolRegionData(childSchool);
-                        if (childReg) {
-                            sidoA = sidoA || childReg.sido;
-                            gugunA = gugunA || childReg.gugun;
-                            dongA = dongA || childReg.dong;
-                        }
+            if (!sidoA || !gugunA || !dongA) {
+                if (typeof getActiveChildSchoolInfo === "function" && typeof resolveSchoolRegionData === "function") {
+                    const { school: childSchool } = getActiveChildSchoolInfo();
+                    const childReg = await resolveSchoolRegionData(childSchool);
+                    if (childReg) {
+                        sidoA = sidoA || childReg.sido;
+                        gugunA = gugunA || childReg.gugun;
+                        dongA = dongA || childReg.dong;
                     }
                 }
-                sidoA = sidoA || "경기도";
-                gugunA = gugunA || "고양시 덕양구";
-                dongA = dongA || "신원동";
+            }
+            sidoA = sidoA || "경기도";
+            gugunA = gugunA || "고양시 덕양구";
+            dongA = dongA || "신원동";
 
-                const valA = `${sidoA} ${gugunA} ${dongA}`.trim();
-                const labelA = dongA || gugunA || "현재 거주지";
+            const valA = `${sidoA} ${gugunA} ${dongA}`.trim();
+            const labelA = dongA || gugunA || "현재 거주지";
 
-                const targetAddr = (addressStr && addressStr.trim()) ? addressStr.trim() : (propName || "이사 후보지");
-                const labelB = propName || targetAddr;
+            const targetAddr = (addressStr && addressStr.trim()) ? addressStr.trim() : (propName || "이사 후보지");
+            const labelB = propName || targetAddr;
 
-                // B 지역 드롭다운 동기화: targetAddr에서 sido, gugun, dong 추출 및 세팅
-                if (addressStr) {
-                    const parts = addressStr.split(/\s+/);
-                    const foundSido = parts.find(p => /^(서울|경기|인천|부산|대구|광주|대전|울산|세종|강원|충북|충남|전북|전남|경북|경남|제주)/.test(p));
-                    const foundGu = parts.find(p => /[시군구]$/.test(p));
-                    const foundDong = parts.find(p => /[동읍면]$/.test(p));
+            // 5. 학교급 자동 동기화 (초/중/고)
+            const sType = (sch && sch.school_type) || (propName && propName.includes("고등") ? "고등학교" : (propName && propName.includes("초등") ? "초등학교" : "중학교"));
+            if (typeof window.setSimSchoolType === "function") {
+                window.setSimSchoolType(sType);
+            }
 
-                    const sidoBEl = document.getElementById("simSidoB");
-                    const gugunBEl = document.getElementById("simGugunB");
-                    const dongBEl = document.getElementById("simDongB");
+            // 6. B 지역 드롭다운 동기화: targetAddr / sch 정보에서 sido, gugun, dong 추출 및 세팅
+            if (addressStr || sch) {
+                const fullAddr = addressStr || (sch && sch.address) || "";
+                const parts = fullAddr.split(/\s+/);
+                const foundSido = parts.find(p => /^(서울|경기|인천|부산|대구|광주|대전|울산|세종|강원|충북|충남|전북|전남|경북|경남|제주)/.test(p)) || (sch && sch.region);
+                const foundGu = parts.find(p => /[시군구]$/.test(p));
+                let foundDong = parts.find(p => /[동읍면]$/.test(p));
 
-                    if (sidoBEl && foundSido) {
-                        const opt = Array.from(sidoBEl.options).find(o => o.value.includes(foundSido.substring(0, 2)));
-                        if (opt) {
-                            sidoBEl.value = opt.value;
-                            sidoBEl.dispatchEvent(new Event('change'));
-                        }
-                    }
-                    if (gugunBEl && foundGu) {
-                        const opt = Array.from(gugunBEl.options).find(o => o.value.includes(foundGu));
-                        if (opt) {
-                            gugunBEl.value = opt.value;
-                            gugunBEl.dispatchEvent(new Event('change'));
-                        }
-                    }
-                    if (dongBEl && foundDong && typeof updateDongDropdown === 'function') {
-                        await updateDongDropdown(sidoBEl.value, gugunBEl.value, dongBEl, foundDong);
-                    }
-                    if (typeof updateSimRegionSubInfo === 'function') {
-                        updateSimRegionSubInfo();
-                    }
+                if (!foundDong && sch && sch.dong) {
+                    foundDong = sch.dong;
                 }
 
-                if (typeof window.runMovingSimulation === "function") {
-                    window.runMovingSimulation(valA, targetAddr, labelA, labelB);
+                const sidoBEl = document.getElementById("simSidoB");
+                const gugunBEl = document.getElementById("simGugunB");
+                const dongBEl = document.getElementById("simDongB");
+
+                if (sidoBEl && foundSido) {
+                    const shortSido = foundSido.substring(0, 2);
+                    const opt = Array.from(sidoBEl.options).find(o => o.value.includes(shortSido));
+                    if (opt) {
+                        sidoBEl.value = opt.value;
+                        sidoBEl.dispatchEvent(new Event('change'));
+                    }
                 }
-            }, 350);
+                if (gugunBEl && foundGu) {
+                    const opt = Array.from(gugunBEl.options).find(o => o.value.includes(foundGu) || foundGu.includes(o.value));
+                    if (opt) {
+                        gugunBEl.value = opt.value;
+                        gugunBEl.dispatchEvent(new Event('change'));
+                    }
+                }
+                if (dongBEl && typeof updateDongDropdown === "function") {
+                    await updateDongDropdown(sidoBEl ? sidoBEl.value : "", gugunBEl ? gugunBEl.value : "", dongBEl, foundDong);
+                }
+                if (typeof updateSimRegionSubInfo === "function") {
+                    updateSimRegionSubInfo();
+                }
+            }
+
+            // 7. 시뮬레이션 연산 즉시 실행
+            if (typeof window.runMovingSimulation === "function") {
+                window.runMovingSimulation(valA, targetAddr, labelA, labelB);
+            }
         };
 
         function renderHousingSchoolSection(place) {
@@ -29155,7 +29199,13 @@ window.addEventListener('DOMContentLoaded', () => {
         loadDistrictData();
         initEduCultureModule();
     })();
-});
+};
+
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', initMobileAndZoneModules);
+} else {
+    initMobileAndZoneModules();
+}
 
 
 

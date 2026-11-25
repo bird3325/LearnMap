@@ -3543,15 +3543,11 @@ body.is-resizing-sidebar .housing-sidebar-section {
    School Detail Floating Tooltip & Action Button Tooltips
    ============================================================ */
 .school-top-action-bar [data-title],
-#schoolCard [data-title],
-#mobilePeekWalkBadge[data-title],
-#btnMobilePeekFavorite[data-title] {
+#schoolCard [data-title] {
     position: relative;
 }
 
-.school-top-action-bar [data-title]::after,
-#mobilePeekWalkBadge[data-title]::after,
-#btnMobilePeekFavorite[data-title]::after {
+.school-top-action-bar [data-title]::after {
     content: attr(data-title);
     position: absolute;
     top: calc(100% + 8px);
@@ -3576,9 +3572,7 @@ body.is-resizing-sidebar .housing-sidebar-section {
     border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.school-top-action-bar [data-title]::before,
-#mobilePeekWalkBadge[data-title]::before,
-#btnMobilePeekFavorite[data-title]::before {
+.school-top-action-bar [data-title]::before {
     content: '';
     position: absolute;
     top: calc(100% + 2px);
@@ -3595,11 +3589,7 @@ body.is-resizing-sidebar .housing-sidebar-section {
 }
 
 .school-top-action-bar [data-title]:hover::after,
-.school-top-action-bar [data-title]:hover::before,
-#mobilePeekWalkBadge[data-title]:hover::after,
-#mobilePeekWalkBadge[data-title]:hover::before,
-#btnMobilePeekFavorite[data-title]:hover::after,
-#btnMobilePeekFavorite[data-title]:hover::before {
+.school-top-action-bar [data-title]:hover::before {
     opacity: 1;
     visibility: visible;
     transform: translateX(-50%) translateY(0);

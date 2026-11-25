@@ -2482,5 +2482,15 @@
       "area": "서초동"
     },
     "createdAt": "2026-11-24T14:17:14.113Z"
+  },
+  {
+    "id": "evt_1795588507610_947k",
+    "businessId": "biz_1793878533975",
+    "eventType": "premium_impression",
+    "metadata": {
+      "complex": "래미안서초스위트",
+      "area": "서초동"
+    },
+    "createdAt": "2026-11-25T06:35:07.610Z"
   }
 ]
