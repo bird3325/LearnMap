@@ -222,6 +222,8 @@ COMMENT ON COLUMN public.blog_posts.images IS '본문 첨부 이미지 메타데
 1. **에셋 영구 저장소 활용 (`category = '__asset__'`)**:
    - Vercel 등 읽기 전용 및 인메모리 휘발성 서버리스 환경 대응을 위해, 업로드된 이미지를 `public.blog_posts`에 `id: 'asset_' || filename`, `category: '__asset__'`, `summary: base64DataUrl` 형태로 안전하게 보관합니다.
    - 일반 게시글 쿼리 시에는 `category != '__asset__'` 조건으로 자동 제외되므로 기존 서비스에 영향을 주지 않습니다.
-2. **다단계 서빙 파이프라인 및 스마트 Fallback**:
-   - `GET /api/blog/image/:filename` 요청 시: [메모리 캐시] ➔ [로컬 파일시스템] ➔ [Supabase 에셋(asset_*)] ➔ [게시글 images 컬럼] 순서로 조회합니다.
+2. **정적 경로 서빙 및 301 리다이렉트 파이프라인**:
+   - 블로그 이미지 URL 표준: `/uploads/blog/:filename` (정적 경로로 Vercel CDN 엣지에서 함수 실행 없이 직접 서빙)
+   - 기존 경로 호환: `GET /api/blog/image/:filename` 요청 시 301 영구 리다이렉트를 통해 `/uploads/blog/:filename`으로 즉각 연결되어 기존 글 이미지 깨짐을 방지합니다.
+   - 디스크 부재 시 폴백: [정적 파일 서빙] ➔ [메모리 캐시] ➔ [Supabase 에셋(asset_*)] ➔ [게시글 images 컬럼] 순서로 안전하게 조회됩니다.
    - 파일이 완전히 유실된 구버전 글이라도 404 에러 대신 기본 리서치 이미지를 200 OK로 반환하여 브라우저에서 엑박 아이콘이 노출되지 않도록 영구 방어합니다.

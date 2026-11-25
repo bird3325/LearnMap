@@ -900,9 +900,23 @@
    - `/api/blog/posts` (관리자 조회, `?admin=true`): `no-store, no-cache, must-revalidate` (즉시 최신 상태 반영)
    - `/api/blog/posts/:id`: `public, max-age=60, s-maxage=600, stale-while-revalidate=1800`
    - `/api/reviews`: `public, max-age=10, s-maxage=60, stale-while-revalidate=300`
-   - `/api/blog/image/:filename`: `public, max-age=31536000, immutable`
+   - `/uploads/blog/:filename`: `public, max-age=31536000, immutable` (정적 파일 CDN 직행)
+   - `/api/blog/image/:filename`: `301 Moved Permanently` ➔ `/uploads/blog/:filename` (리다이렉트 영구 캐시)
 
 #### 3. 캐시 절대 적용 제외 대상 (보안 및 데이터 일관성)
 - **관리자/비즈니스 전역 미들웨어 방어**: `/api/admin/*`, `/api/business/*`는 서버 상단 전역 미들웨어에서 `no-store, no-cache, must-revalidate, proxy-revalidate`를 기본 강제 주입하여 어떤 경우에도 엣지/브라우저 캐시되지 않도록 보장.
 - **블로그 CUD(생성/수정/삭제) 및 문의/리뷰 쓰기 API**: `POST`, `PUT`, `DELETE` 요청은 일체 캐시 대상에서 제외.
 - **개인별/세션 데이터**: 알림(`/api/notifications`), 문의 조회 등 개인화 데이터는 캐시 제외.
+
+---
+
+### [정적 서빙 아키텍처] 블로그 이미지 Vercel 함수 탈피 및 정적 경로 서빙
+- **배경**: 블로그 목록 및 상세 페이지 열람 시마다 `/api/blog/image/*`를 경유하여 server.js 서버리스 함수가 불필요하게 실행되는 문제 해결.
+- **저장 및 서빙 경로**:
+  - 업로드 및 서빙 경로를 정적 경로인 `/uploads/blog/:filename`으로 전환.
+  - 빌드 시 `public/uploads/blog/` 내 파일이 Vite에 의해 `dist/uploads/blog/`로 100% 복사되어 Vercel CDN 정적 에셋으로 직접 배포.
+  - Vercel CDN 엣지에서 서버리스 함수 호출 없이 즉시 200 OK로 정적 서빙.
+- **하위 호환성 (301 영구 리다이렉트)**:
+  - 기존 글, 외부 링크, 브라우저 캐시에서 오는 `/api/blog/image/:filename` 요청은 `301 Moved Permanently`로 `/uploads/blog/:filename`으로 리다이렉트 처리하여 이미지 깨짐(엑박)을 원천 차단.
+- **안전성 (스마트 폴백)**:
+  - 서버리스 콜드스타트 등 정적 파일 부재 시에도 Express 정적 서빙 후단에서 Supabase DB 에셋(`category = '__asset__'`) 및 메모리 캐시 폴백이 동작하여 상시 100% 이미지 가용성 보장.

@@ -10050,17 +10050,28 @@ async function incrementBlogPostViewInDb(id, currentViews = 0) {
     return null;
 }
 
+// 헬퍼: 블로그 이미지 URL을 함수 경로(/api/blog/image/)에서 정적 서빙 경로(/uploads/blog/)로 자동 정규화
+function normalizeBlogStaticUrls(str) {
+    if (!str || typeof str !== 'string') return str;
+    return str.replaceAll('/api/blog/image/', '/uploads/blog/');
+}
+
 // 4. Supabase 새 글 등록 (INSERT)
 async function insertBlogPostToDb(post) {
     try {
+        const normalizedImages = Array.isArray(post.images) ? post.images.map(img => ({
+            ...img,
+            url: normalizeBlogStaticUrls(img.url)
+        })) : [];
+
         const dbPayload = {
             id: post.id,
             slug: post.slug || post.id,
             title: post.title,
             category: post.category,
             summary: post.summary || '',
-            content: post.content || '',
-            thumbnail: post.thumbnail || '',
+            content: normalizeBlogStaticUrls(post.content || ''),
+            thumbnail: normalizeBlogStaticUrls(post.thumbnail || ''),
             tags: Array.isArray(post.tags) ? post.tags : [],
             author: post.author || '학업여지도 리서치팀',
             author_role: post.authorRole || '수석연구원',
@@ -10069,7 +10080,7 @@ async function insertBlogPostToDb(post) {
             likes: 0,
             is_published: post.isPublished !== false,
             related_schools: Array.isArray(post.relatedSchools) ? post.relatedSchools : [],
-            images: Array.isArray(post.images) ? post.images : [],
+            images: normalizedImages,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
@@ -10108,8 +10119,8 @@ async function updateBlogPostInDb(id, updateData) {
         if (updateData.title !== undefined) dbPayload.title = updateData.title;
         if (updateData.category !== undefined) dbPayload.category = updateData.category;
         if (updateData.summary !== undefined) dbPayload.summary = updateData.summary;
-        if (updateData.content !== undefined) dbPayload.content = updateData.content;
-        if (updateData.thumbnail !== undefined) dbPayload.thumbnail = updateData.thumbnail;
+        if (updateData.content !== undefined) dbPayload.content = normalizeBlogStaticUrls(updateData.content);
+        if (updateData.thumbnail !== undefined) dbPayload.thumbnail = normalizeBlogStaticUrls(updateData.thumbnail);
         if (updateData.tags !== undefined) dbPayload.tags = Array.isArray(updateData.tags) ? updateData.tags : [];
         if (updateData.author !== undefined) dbPayload.author = updateData.author;
         if (updateData.authorRole !== undefined || updateData.author_role !== undefined) {
@@ -10125,7 +10136,10 @@ async function updateBlogPostInDb(id, updateData) {
             dbPayload.related_schools = updateData.relatedSchools || updateData.related_schools;
         }
         if (updateData.images !== undefined) {
-            dbPayload.images = Array.isArray(updateData.images) ? updateData.images : [];
+            dbPayload.images = Array.isArray(updateData.images) ? updateData.images.map(img => ({
+                ...img,
+                url: normalizeBlogStaticUrls(img.url)
+            })) : [];
         }
 
         const response = await fetch(`${SUPABASE_URL}/rest/v1/blog_posts?id=eq.${encodeURIComponent(id)}`, {
@@ -10444,10 +10458,10 @@ app.post('/api/business/upload-image', requireBusinessOrAdminAuth, async (req, r
                     category: '__asset__',
                     summary: fullDataUrl,
                     content: mimeType,
-                    thumbnail: `/api/blog/image/${uniqueFilename}`,
+                    thumbnail: `/uploads/academy/${uniqueFilename}`,
                     images: [{
                         filename: uniqueFilename,
-                        url: `/api/blog/image/${uniqueFilename}`,
+                        url: `/uploads/academy/${uniqueFilename}`,
                         dataUrl: fullDataUrl,
                         size: buffer.length
                     }],
@@ -10458,7 +10472,7 @@ app.post('/api/business/upload-image', requireBusinessOrAdminAuth, async (req, r
             console.warn('[Academy DB Asset Exception]:', dbErr.message);
         }
 
-        const publicUrl = `/api/blog/image/${uniqueFilename}`;
+        const publicUrl = `/uploads/academy/${uniqueFilename}`;
 
         res.json({
             success: true,
@@ -10587,10 +10601,10 @@ app.post('/api/admin/blog/upload-image', async (req, res) => {
                     category: '__asset__',
                     summary: fullDataUrl,
                     content: mimeType,
-                    thumbnail: `/api/blog/image/${uniqueFilename}`,
+                    thumbnail: `/uploads/blog/${uniqueFilename}`,
                     images: [{
                         filename: uniqueFilename,
-                        url: `/api/blog/image/${uniqueFilename}`,
+                        url: `/uploads/blog/${uniqueFilename}`,
                         dataUrl: fullDataUrl,
                         size: buffer.length
                     }],
@@ -10601,7 +10615,7 @@ app.post('/api/admin/blog/upload-image', async (req, res) => {
             console.warn('[Academy DB Asset Exception]:', dbErr.message);
         }
 
-        const publicUrl = `/api/blog/image/${uniqueFilename}`;
+        const publicUrl = `/uploads/blog/${uniqueFilename}`;
 
         res.json({
             success: true,
@@ -10618,8 +10632,23 @@ app.post('/api/admin/blog/upload-image', async (req, res) => {
     }
 });
 
-// 8-1. 블로그 및 학원 업로드 이미지 서빙 API (메모리 캐시 -> 로컬 파일 -> Supabase blog_posts.images 조회)
-app.get(['/api/blog/image/:filename', '/uploads/blog/:filename', '/uploads/academy/:filename'], async (req, res) => {
+// 8-1. 블로그 및 학원 업로드 이미지 정적 서빙 미들웨어 (디스크에 존재하는 파일은 정적 서빙)
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'), { maxAge: '1y', immutable: true }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { maxAge: '1y', immutable: true }));
+
+// 기존 /api/blog/image/:filename 요청을 정적 경로(/uploads/blog/:filename)로 301 영구 리다이렉트하여 하위 호환성 및 캐시 보장
+app.get('/api/blog/image/:filename', (req, res) => {
+    const rawFilename = req.params.filename || '';
+    const filename = path.basename(rawFilename);
+    if (!filename || filename === '.' || filename === '..') {
+        return res.status(400).send('Invalid filename');
+    }
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    return res.redirect(301, `/uploads/blog/${encodeURIComponent(filename)}`);
+});
+
+// 디스크에 정적 파일이 없을 때(Vercel 서버리스 콜드스타트 등) 메모리 캐시 및 Supabase DB 폴백 서빙
+app.get(['/uploads/blog/:filename', '/uploads/academy/:filename'], async (req, res) => {
     try {
         const rawFilename = req.params.filename || '';
         const filename = path.basename(rawFilename);
