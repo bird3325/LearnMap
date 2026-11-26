@@ -3747,6 +3747,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnOpenCompareFloating) {
         btnOpenCompareFloating.addEventListener('click', () => {
+            const list = (orchestrator && orchestrator.state && Array.isArray(orchestrator.state.comparisonList))
+                ? orchestrator.state.comparisonList
+                : [];
+            if (!list || list.length === 0) {
+                alert('비교보드에 담긴 학교가 없습니다. 학교 카드에서 [비교보드 담기]를 먼저 눌러주세요.');
+                if (compareOverlay) compareOverlay.style.display = 'none';
+                updateCompareFloatingButton();
+                return;
+            }
             const comparisonTable = orchestrator.compareAgent.generateComparisonMatrix(orchestrator.state.comparisonList, orchestrator.state.childProfile.scores);
             renderComparisonBoard(comparisonTable);
             if (compareOverlay) {
@@ -12907,6 +12916,12 @@ async function updateRealEstateMapMarkers(radius = 1000) {
     }
 
     function renderComparisonBoard(matrix) {
+        if (!matrix || matrix.length === 0) {
+            if (compareOverlay) compareOverlay.style.display = 'none';
+            if (typeof updateCompareFloatingButton === 'function') updateCompareFloatingButton();
+            return;
+        }
+
         // Toggle view button setup
         const btnToggleCompareView = document.getElementById('btnToggleCompareView');
         if (btnToggleCompareView && !btnToggleCompareView.dataset.hasListener) {
@@ -16787,34 +16802,83 @@ function initOnboardingDeterministically() {
             try {
                 localStorage.setItem('visitedOnboarding', 'true');
                 localStorage.setItem('learnmap_hide_onboarding', 'true');
+                localStorage.setItem('learnmap_dismiss_onboard_chip', 'true');
             } catch (e) { }
             window.__isOnboardingVisible = false;
+            const chip = document.getElementById('onboardingPromptChip');
+            if (chip) chip.style.display = 'none';
+        };
+
+        window.closeOnboardingWithoutSave = function () {
+            onboardingModal.style.display = 'none';
+            try {
+                localStorage.setItem('visitedOnboarding', 'true');
+            } catch (e) { }
+            window.__isOnboardingVisible = false;
+            // '나중에 하기' 클릭 시 하단에 플로팅 칩을 계속 노출하여 언제든 다시 열 수 있도록 유지
+            const chip = document.getElementById('onboardingPromptChip');
+            if (chip && localStorage.getItem('learnmap_dismiss_onboard_chip') !== 'true') {
+                chip.style.display = 'inline-flex';
+            }
+        };
+
+        window.openOnboardingModal = function () {
+            onboardingModal.style.display = 'flex';
+            window.__isOnboardingVisible = true;
+            // Step 1로 초기화
+            const s1 = document.getElementById('onboardingStep1');
+            const s2 = document.getElementById('onboardingStep2');
+            const s3 = document.getElementById('onboardingStep3');
+            if (s1) s1.style.display = 'block';
+            if (s2) s2.style.display = 'none';
+            if (s3) s3.style.display = 'none';
+        };
+
+        window.dismissOnboardingPromptChip = function () {
+            const chip = document.getElementById('onboardingPromptChip');
+            if (chip) chip.style.display = 'none';
+            try {
+                localStorage.setItem('learnmap_dismiss_onboard_chip', 'true');
+            } catch (e) { }
         };
 
         const elFinish = document.getElementById('btnFinishOnboarding');
         if (elFinish) elFinish.addEventListener('click', closeOnboarding);
         const elClose = document.getElementById('btnCloseOnboarding');
         if (elClose) {
-            elClose.setAttribute('title', '닫기 (다시 보지 않기)');
-            elClose.setAttribute('aria-label', '닫기 (다시 보지 않기)');
-            elClose.addEventListener('click', closeOnboarding);
+            elClose.setAttribute('title', '닫기 (나중에 하기)');
+            elClose.setAttribute('aria-label', '닫기 (나중에 하기)');
+            elClose.addEventListener('click', window.closeOnboardingWithoutSave);
         }
 
-        // 모달 배경 클릭 시에도 안전하게 닫고 '다시 보지 않기' 플래그 기록
+        // 모달 배경 클릭 시에도 안전하게 닫기
         onboardingModal.addEventListener('click', (e) => {
             if (e.target === onboardingModal) {
-                closeOnboarding();
+                window.closeOnboardingWithoutSave();
             }
         });
     }
 
-    // 결정적 표시 조건 검증
-    if (checkShouldShowOnboarding()) {
-        onboardingModal.style.display = 'flex';
-        window.__isOnboardingVisible = true;
-    } else {
-        onboardingModal.style.display = 'none';
-        window.__isOnboardingVisible = false;
+    // 첫 방문 시 전체 화면을 가리는 강제 모달 팝업 대신 하단 안내 칩 배너로 자연스럽게 유도
+    onboardingModal.style.display = 'none';
+    window.__isOnboardingVisible = false;
+
+    // 온보딩 완료하지 않았거나 사용자가 칩을 명시적으로 닫지 않은 경우 플로팅 칩 노출
+    const isChipDismissed = (function () {
+        try {
+            return localStorage.getItem('learnmap_dismiss_onboard_chip') === 'true';
+        } catch (e) {
+            return false;
+        }
+    })();
+
+    const chip = document.getElementById('onboardingPromptChip');
+    if (chip) {
+        if (!isChipDismissed) {
+            chip.style.display = 'inline-flex';
+        } else {
+            chip.style.display = 'none';
+        }
     }
 }
 
@@ -20002,6 +20066,20 @@ window.toggleMypageAccordion = function (sectionName) {
     if (!content) return;
 
     if (content.style.display === 'none') {
+        // 비교보드 아코디언의 경우 담긴 학교가 0건이면 열리지 않도록 차단
+        if (sectionName === 'comparison') {
+            let compList = [];
+            try {
+                compList = JSON.parse(localStorage.getItem('learnmap_comparison_list') || '[]');
+            } catch (e) {
+                compList = (typeof orchestrator !== 'undefined' && orchestrator.state && Array.isArray(orchestrator.state.comparisonList)) ? orchestrator.state.comparisonList : [];
+            }
+            if (!compList || compList.length === 0) {
+                alert('비교보드에 담긴 학교가 없습니다. 학교 카드에서 [비교보드 담기]를 먼저 눌러주세요.');
+                return;
+            }
+        }
+
         content.style.display = 'block';
         if (arrow) arrow.textContent = '▲';
 

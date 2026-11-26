@@ -824,3 +824,31 @@
      - 안내 문구: "로그인하시면 AI 비교 결론, 예상 배정학교 및 통학거리, 핵심 지표 1:1 비교, 자녀 가상 학업 위치 분석 전체를 즉시 확인하실 수 있습니다." (12.5px `#cbd5e1`)
      - CTA 버튼: 블루 그라데이션 풀 위드 버튼 (`background: linear-gradient(135deg, #2563eb, #1d4ed8); border: 1px solid #3b82f6; padding: 12px 20px; border-radius: 12px; font-size: 14px; font-weight: 800; color: #ffffff;`) "🔑 1초만에 로그인하고 전체 리포트 보기"
      - 인터랙션: 클릭 시 `window.openSidebarLogin()` 호출 및 시뮬레이션 모달 닫기 처리.
+
+## 48. 첫 방문 온보딩 진입 장벽 완화 및 플로팅 칩 유도 사양 (2026-11-26)
+- **개요 및 목적**:
+  - 첫 방문 시 화면 전체(모바일 85%, 데스크톱 전체)를 강제로 가리던 3단계 온보딩 모달 자동 팝업을 폐지하여, 학부모가 서비스 진입 즉시 지도와 학교 인프라 데이터를 탐색할 수 있도록 보장.
+  - 지도 도달률을 높이고 이탈률을 낮추기 위해 하단 플로팅 칩 배너로 자연스럽게 맞춤 설정을 유도.
+- **컴포넌트 및 인터랙션 사양**:
+  1. **하단 맞춤 설정 유도 플로팅 칩 (`#onboardingPromptChip`)**:
+     - 위치: 지도 하단 중앙 (`position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%); z-index: 10075;`, 모바일: `bottom: 74px;`)
+     - 스타일: 슬림 다크 글래스모피즘 (`background: rgba(15, 23, 42, 0.92); backdrop-filter: blur(8px); color: #ffffff; padding: 10px 18px; border-radius: 30px; box-shadow: 0 8px 24px rgba(15,23,42,0.28); border: 1px solid rgba(255,255,255,0.18); display: inline-flex; align-items: center; gap: 10px; cursor: pointer;`)
+     - 문구 및 아이콘: `🎯` 블루 서클 + "우리 아이 맞춤 설정하기" (13px 볼드) + "(학년·지역·우선순위)" (11px `#94a3b8`) + 닫기(`×`) 버튼.
+     - 동작: 칩 클릭 시 `window.openOnboardingModal()` 호출하여 3단계 맞춤 설정 모달 오픈. 닫기 버튼 클릭 시 칩 숨김 및 플래그 영구 기록.
+  2. **온보딩 모달 1단계 '나중에 하기' 명시**:
+     - Step 1 하단 버튼 영역에 `[나중에 하기]` 보조 버튼(`background: #f1f5f9; color: #64748b;`)과 `[다음 단계로 (1/3) →]` 주요 버튼을 나란히 배치.
+     - 사용자가 가치를 먼저 체험하고 싶을 때 부담 없이 모달을 닫고 지도로 바로 복귀할 수 있도록 지원.
+
+## 49. 비교보드 0건 시 열림 방지 및 안내 정책 (2026-11-26)
+- **개요 및 목적**:
+  - 비교보드에 담긴 학교가 0건인 상태에서 빈 모달이나 아코디언이 열리는 불필요한 인터랙션을 방지.
+  - 사용자가 먼저 학교를 담을 수 있도록 친절한 안내를 제공하여 혼란 방지 및 탐색 유도.
+- **인터랙션 및 방어 로직 사양**:
+  1. **플로팅 비교보드 버튼 (`#btnOpenCompareFloating`)**:
+     - 담긴 학교 수(`comparisonList.length`)가 0건일 경우 버튼 자체를 자동 숨김(`display: none`).
+     - 클릭 이벤트 핸들러에서도 0건일 경우 열기(`compareOverlay.style.display = 'flex'`)를 전면 차단하고 안내 메시지 출력.
+  2. **마이페이지 '비교중인 학교' 아코디언 (`toggleMypageAccordion('comparison')`)**:
+     - 아코디언 클릭 시 로컬 스토리지 및 전역 상태의 비교 학교 목록을 즉시 검사.
+     - 0건일 경우 아코디언 전개를 차단하고 안내 팝업 출력: *"비교보드에 담긴 학교가 없습니다. 학교 카드에서 [비교보드 담기]를 먼저 눌러주세요."*
+  3. **비교보드 렌더러 방어 로직 (`renderComparisonBoard`)**:
+     - 인자로 전달된 비교 매트릭스가 비어있거나 0건일 경우 모달을 즉시 닫고 버튼 상태 갱신.
