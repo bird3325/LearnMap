@@ -786,4 +786,41 @@
     - **4개 핵심 통계 요약 카드 (`.stat-cards-grid`, `.stat-card`)**: 평가 대상 학교수, 평균 종합 교육환경, 평균 국영수 학업점수, 1위 학교 하이라이트 실시간 지표 카드
     - **정식 랭킹 테이블 (`.ranking-table-container`, `.ranking-table`)**: 6개 컬럼(순위, 학교명 및 정보, 종합 스코어, 국·영·수 평균, 창체활동비/학생수, 지도 탐색) 구조 (공시 미제공 학교폭력 컬럼 제외).
 
+## 46. 나이스 및 정부24 서류 발급 안내 모달 컴포넌트 사양 (2026-11-25)
+- **개요 및 목적**:
+  - 생기부/성적표 파일(PDF·TXT) 간편 분석 카드에서 학부모가 어디서 서류를 발급받는지 즉각 알 수 있도록 타이틀 옆 물음표 아이콘(`?`) 버튼 및 상세 안내 모달 구현.
+- **컴포넌트 및 인터랙션 사양**:
+  1. **물음표 버튼 (`btnNeisDocGuide`)**:
+     - 위치: `생기부·성적표 파일(PDF·TXT) 간편 분석` 타이틀 우측
+     - 스타일: `width: 20px; height: 20px; border-radius: 50%; background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; font-size: 11.5px; font-weight: 800; cursor: pointer;`
+     - 인터랙션: 클릭 시 `window.openNEISDocGuideModal(event)` 트리거.
+  2. **서류 발급 안내 모달 (`#neisDocGuideModal`)**:
+     - 오버레이: `position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.65); backdrop-filter: blur(4px); z-index: 999999;`
+     - 카드 컨테이너: 최대 가로 `540px`, 둥근 모서리 `18px`, 내부 스크롤 `max-height: 88vh`.
+     - 헤더: 파란색 문서 아이콘, 타이틀 "생기부·성적표 발급 안내", 우측 상단 닫기(X) 원형 버튼.
+     - 본문 구성:
+       - **상단 배너**: 녹색 알림 배너로 대상 서류(학교생활기록부, 학기말 성적통지표) 및 AI 자동 추출 기능 요약.
+       - **방법 1 (나이스 학부모서비스)**: 재학생 추천 뱃지, 단계별 발급 경로 안내 및 `neis.go.kr` 바로가기 링크 버튼.
+       - **방법 2 (정부24)**: 재학생·졸업생 뱃지, 민원 신청 절차 안내 및 `gov.kr` 바로가기 링크 버튼.
+       - **발급 꿀팁 카드**: PDF 비밀번호 해제 방법(재인쇄 팁), 텍스트(.txt) 복사 분석 지원 안내, 브라우저 로컬 파싱을 통한 개인정보 보호 정책.
+     - 하단: `확인했습니다` 버튼 및 ESC 키/배경 클릭 시 닫기 지원.
 
+
+
+
+
+## 47. 학군 이사 시뮬레이션 비교 결론 포함 아래 전체 그라데이션 가우시안 잠금 및 로그인 유도 오버레이 사양 (2026-11-26)
+- **개요 및 목적**:
+  - 학군 이사 시뮬레이션 모달(`simulationModal`)에서 비로그인 사용자가 시뮬레이션을 실행했을 때, 결과 패널 최상단 **'시뮬레이션 비교 결론'**을 포함하여 그 아래의 **배정학교·통학 비교, 핵심 지표 1:1 비교 매트릭스, 자녀 가상 학업 위치, 액션 버튼** 등 전체 분석 영역을 세로 방향 점진적 가우시안 블러 및 그라데이션 마스크로 처리하고, 중앙에 선명한 다크 글래스모피즘 로그인 유도 오버레이 카드를 노출하여 회원가입 및 로그인 전환율을 극대화.
+- **컴포넌트 및 스타일 사양**:
+  1. **가우시안 그라데이션 블러 래퍼 (`#simResultBlurWrapper`)**:
+     - 대상: `#simulationResultPanel` 내부의 시뮬레이션 비교 결론 및 하위 전체 컴포넌트
+     - 스타일: `filter: blur(3.5px); -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.65) 50px, rgba(0,0,0,0.18) 160px, rgba(0,0,0,0) 380px); mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.65) 50px, rgba(0,0,0,0.18) 160px, rgba(0,0,0,0) 380px); pointer-events: none; user-select: none; max-height: 460px; overflow: hidden;`
+     - 최상단 헤더는 살짝 윤곽이 보이나 결론 본문부터 아래쪽으로 갈수록 가우시안 블러와 투명도 마스크가 짙어져 시각적 호기심과 로그인 필요성을 강력히 전달.
+  2. **로그인 유도 오버레이 레이어 (`#simResultLockOverlay`)**:
+     - 배치: `#simulationResultPanel`(`position: relative; overflow: hidden;`) 기준 `position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(15, 23, 42, 0.08) 0%, rgba(15, 23, 42, 0.55) 70px, rgba(15, 23, 42, 0.92) 180px, #0f172a 340px, #0f172a 100%); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 75px; z-index: 25; pointer-events: auto;`
+     - 카드 디자인: 다크 글래스모피즘 컨테이너 (`background: rgba(30, 41, 59, 0.92); border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.45); border-radius: 18px; padding: 22px 20px; max-width: 440px; width: 90%; backdrop-filter: blur(8px);`)
+     - 아이콘 및 타이틀: 원형 블루 백그라운드 내 `🔒` 아이콘 + "시뮬레이션 비교 결론 및 전체 분석" (16px 볼드 흰색)
+     - 안내 문구: "로그인하시면 AI 비교 결론, 예상 배정학교 및 통학거리, 핵심 지표 1:1 비교, 자녀 가상 학업 위치 분석 전체를 즉시 확인하실 수 있습니다." (12.5px `#cbd5e1`)
+     - CTA 버튼: 블루 그라데이션 풀 위드 버튼 (`background: linear-gradient(135deg, #2563eb, #1d4ed8); border: 1px solid #3b82f6; padding: 12px 20px; border-radius: 12px; font-size: 14px; font-weight: 800; color: #ffffff;`) "🔑 1초만에 로그인하고 전체 리포트 보기"
+     - 인터랙션: 클릭 시 `window.openSidebarLogin()` 호출 및 시뮬레이션 모달 닫기 처리.

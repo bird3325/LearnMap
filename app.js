@@ -3167,7 +3167,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ['수학 평균점수', `${school.subjects.math.avg}점`],
             ['종합 가중평균', `${school.weightedAvg ?? '-'}점`],
             ['창체 활동비', `${school.extracurricular_budget ?? 0}만원`],
-            ['학교폭력 건수(연)', `${school.violence_stats ? school.violence_stats.total_cases : 0}건`],
             ['종합 교육환경 스코어', `${school.envScore ?? '-'}점`],
         ];
 
@@ -4563,8 +4562,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Initialize Kakao Map Object
     const initMap = () => {
         return new Promise((resolve) => {
+            let isResolved = false;
+            const safeResolve = () => {
+                if (!isResolved) {
+                    isResolved = true;
+                    resolve();
+                }
+            };
+
+            // 카카오 지도 SDK 내부 로드 타임아웃 세이프가드 (1.5초 이상 콜백 미호출 시 자동 통과)
+            const mapTimeout = setTimeout(() => {
+                logDiagnostic('[Warning] 카카오 지도 SDK 로드 응답 지연 -> 세이프가드 실행');
+                safeResolve();
+            }, 1500);
+
             if (window.kakao && window.kakao.maps) {
                 window.kakao.maps.load(() => {
+                    clearTimeout(mapTimeout);
                     try {
                         const container = document.getElementById('mapCanvas');
                         container.innerHTML = ''; // Clear SVG fallback content
@@ -4692,11 +4706,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     } catch (e) {
                         logDiagnostic(`카카오 지도 객체 생성 에러: ${e.message}`);
                     }
-                    resolve();
+                    safeResolve();
                 });
             } else {
+                clearTimeout(mapTimeout);
                 logDiagnostic('window.kakao 객체를 찾을 수 없습니다.');
-                resolve();
+                safeResolve();
             }
         });
     };
@@ -4798,16 +4813,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     logDiagnostic('지도 및 로컬 DB 연동 완료.');
                     window.schoolsDatabase = schoolsDatabase;
                     window.allSchoolsCache = schoolsDatabase;
-                    onMapAction();
-                    if (typeof window.centerMapOnChildSchool === 'function') {
-                        window.centerMapOnChildSchool();
+                    try {
+                        onMapAction();
+                    } catch (mapActionErr) {
+                        console.error('[Startup] onMapAction 에러 방어:', mapActionErr);
                     }
-                    updateCompareFloatingButton();
+                    if (typeof window.centerMapOnChildSchool === 'function') {
+                        try { window.centerMapOnChildSchool(); } catch (e) { }
+                    }
+                    try { updateCompareFloatingButton(); } catch (e) { }
                     hideLoadingOverlay();
                     if (typeof window.checkAndOpenDeepLinkFromURL === 'function') {
-                        window.checkAndOpenDeepLinkFromURL();
+                        try { window.checkAndOpenDeepLinkFromURL(); } catch (e) { }
                     }
+                }).catch((err) => {
+                    console.error('[Startup] schoolsLoadPromise 에러:', err);
+                    hideLoadingOverlay();
                 });
+            }).catch((err) => {
+                console.error('[Startup] initMap 에러:', err);
+                hideLoadingOverlay();
             });
         } else {
             logDiagnostic('오프라인 대체 모드로 시뮬레이션을 작동합니다.');
@@ -4815,15 +4840,24 @@ document.addEventListener('DOMContentLoaded', () => {
             schoolsLoadPromise.then(() => {
                 window.schoolsDatabase = schoolsDatabase;
                 window.allSchoolsCache = schoolsDatabase;
-                renderPins(schoolsDatabase.slice(0, 10), false);
-                updateCompareFloatingButton();
+                try { renderPins(schoolsDatabase.slice(0, 10), false); } catch (e) { }
+                try { updateCompareFloatingButton(); } catch (e) { }
                 hideLoadingOverlay();
                 if (typeof window.checkAndOpenDeepLinkFromURL === 'function') {
-                    window.checkAndOpenDeepLinkFromURL();
+                    try { window.checkAndOpenDeepLinkFromURL(); } catch (e) { }
                 }
+            }).catch(() => {
+                hideLoadingOverlay();
             });
         }
+    }).catch(() => {
+        hideLoadingOverlay();
     });
+
+    // 절대 무한 로딩 방지 세이프가드: 어떤 비동기 락/지연이 발생해도 최대 2.5초 후 오버레이 무조건 해제
+    setTimeout(() => {
+        hideLoadingOverlay();
+    }, 2500);
 
     function onRegionFilterChange() {
         if (!kakaoMap) return;
@@ -5192,37 +5226,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 학부모 맞춤 필터 및 가중치 기반 학교 필터링 함수
     function filterSchools(schools, selectedRegion, typeLabel, isClusterMode = false) {
-        const curLevel = parseFloat(document.getElementById('currentLevelRange').value);
-        const tarLevel = parseFloat(document.getElementById('targetLevelRange').value);
+        const curLevel = parseFloat(document.getElementById('currentLevelRange')?.value || 80);
+        const tarLevel = parseFloat(document.getElementById('targetLevelRange')?.value || 90);
 
-        const wKor = parseFloat(document.getElementById('weightKorRange').value) / 10;
-        const wEng = parseFloat(document.getElementById('weightEngRange').value) / 10;
-        const wMath = parseFloat(document.getElementById('weightMathRange').value) / 10;
+        const wKor = parseFloat(document.getElementById('weightKorRange')?.value || 10) / 10;
+        const wEng = parseFloat(document.getElementById('weightEngRange')?.value || 10) / 10;
+        const wMath = parseFloat(document.getElementById('weightMathRange')?.value || 10) / 10;
         const sumW = wKor + wEng + wMath;
 
-        const pScore = parseFloat(document.getElementById('envScoreRange').value) / 100;
-        const pTeacher = parseFloat(document.getElementById('envTeacherRange').value) / 100;
-        const pViolence = parseFloat(document.getElementById('envViolenceRange').value) / 100;
-        const pBudget = parseFloat(document.getElementById('envBudgetRange').value) / 100;
+        const pScore = parseFloat(document.getElementById('envScoreRange')?.value || 50) / 100;
+        const pTeacher = parseFloat(document.getElementById('envTeacherRange')?.value || 35) / 100;
+        const pViolence = parseFloat(document.getElementById('envViolenceRange')?.value || 0) / 100;
+        const pBudget = parseFloat(document.getElementById('envBudgetRange')?.value || 15) / 100;
 
-        const profile = document.getElementById('profileRecommendFilter').value;
-        const commuteMode = document.getElementById('commuteRadiusFilter').value;
-        const showTrendUpward = document.getElementById('trendUpwardCheckbox').checked;
+        const profile = document.getElementById('profileRecommendFilter')?.value || 'none';
+        const commuteMode = document.getElementById('commuteRadiusFilter')?.value || 'off';
+        const showTrendUpward = document.getElementById('trendUpwardCheckbox')?.checked || false;
 
         // New Advanced Filter values
-        const minAvgScore = parseFloat(document.getElementById('filterMinAvgScore').value);
-        const minSubjectScore = parseFloat(document.getElementById('filterMinSubjectScore').value);
-        const minTopRatio = parseFloat(document.getElementById('filterMinTopRatio').value);
-        const maxBottomRatio = parseFloat(document.getElementById('filterMaxBottomRatio').value);
+        const minAvgScore = parseFloat(document.getElementById('filterMinAvgScore')?.value || 0);
+        const minSubjectScore = parseFloat(document.getElementById('filterMinSubjectScore')?.value || 0);
+        const minTopRatio = parseFloat(document.getElementById('filterMinTopRatio')?.value || 0);
+        const maxBottomRatio = parseFloat(document.getElementById('filterMaxBottomRatio')?.value || 100);
 
-        const classSizePreset = document.getElementById('filterClassSizePreset').value;
-        const maxStudentPerTeacher = parseFloat(document.getElementById('filterMaxStudentPerTeacher').value);
-        const studentTrend = document.getElementById('filterStudentTrend').value;
-        const specialClassOnly = document.getElementById('filterSpecialClass').checked;
+        const classSizePreset = document.getElementById('filterClassSizePreset')?.value || 'all';
+        const maxStudentPerTeacher = parseFloat(document.getElementById('filterMaxStudentPerTeacher')?.value || 35);
+        const studentTrend = document.getElementById('filterStudentTrend')?.value || 'all';
+        const specialClassOnly = document.getElementById('filterSpecialClass')?.checked || false;
 
-        const minGraduateRate = parseFloat(document.getElementById('filterMinGraduateRate').value);
-        const minSpecialAdmission = parseFloat(document.getElementById('filterMinSpecialAdmission').value);
-        const maxViolence = parseFloat(document.getElementById('filterMaxViolence').value);
+        const minGraduateRate = parseFloat(document.getElementById('filterMinGraduateRate')?.value || 0);
+        const minSpecialAdmission = parseFloat(document.getElementById('filterMinSpecialAdmission')?.value || 0);
+        const maxViolence = parseFloat(document.getElementById('filterMaxViolence')?.value || 999);
 
         const activeSelectedSchool = (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) || window.currentSelectedSchool || null;
         const activeSelectedId = activeSelectedSchool ? String(activeSelectedSchool.school_id || activeSelectedSchool.id) : null;
@@ -12842,7 +12876,6 @@ async function updateRealEstateMapMarkers(radius = 1000) {
             { label: '💳 평균 영어 학원비', key: 'fee_eng' },
             { label: '💳 평균 수학 학원비', key: 'fee_math' },
             { label: '💰 창체 활동비', key: 'extracurricular_budget', suffix: '만원' },
-            { label: '🛡️ 학교폭력 발생 건수', key: 'violence_stats', callback: (val) => val ? `${val.total_cases}건` : '0건' },
             { label: '🏫 종합 교육환경 점수', key: 'envScore', suffix: '점' },
             {
                 label: '✨ 자녀 매칭 적합도', key: 'suitability', callback: (val, school) => {
@@ -12976,7 +13009,6 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                 <div style="font-size:12px;margin-bottom:5px;">🔑 평균 전세가: <strong style="color:var(--success-green);">${item.housing_jeonse}</strong></div>
                 <div style="font-size:12px;margin-bottom:5px;">📚 주변 학원 수: <strong>${item.academy_count_est}개</strong></div>
                 <div style="font-size:12px;margin-bottom:5px;">💰 창체 활동비: <strong>${item.extracurricular_budget}만원</strong></div>
-                <div style="font-size:12px;margin-bottom:5px;">🛡️ 학교폭력 건수: <strong style="color:${item.violence_stats && item.violence_stats.total_cases > 3 ? 'var(--danger-red)' : 'var(--text-main)'}">${violenceCases}</strong></div>
                 <div style="font-size:12px;margin-bottom:5px; margin-top:8px; border-top:1px solid var(--border-color); padding-top:6px;">
                     🏫 교육환경 스코어: <strong style="color:var(--primary-blue); font-size:13px;">${envScoreLabel}</strong>
                     ${envDetailsHtml}
@@ -14340,9 +14372,11 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                 dongB: dongBVal
             };
 
-            resultPanel.innerHTML = `
-                <!-- 1. Top Dark Banner Box -->
-                <div style="background: #0f172a; border-radius: 20px; padding: 20px 22px; color: #ffffff; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.2); margin-bottom: 16px;">
+            const isSimUserLoggedIn = (typeof window.isReviewUserLoggedIn === 'function') ? window.isReviewUserLoggedIn() : false;
+
+            const simulationDetailHtml = `
+                <!-- 1. Top Dark Banner Box (시뮬레이션 비교 결론) -->
+                <div style="background: #0f172a; border-radius: 20px; padding: 20px 22px; color: #ffffff; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.2); margin-bottom: 16px; position: relative; overflow: hidden;">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 6px;">
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span style="background: #f59e0b; color: #0f172a; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 12px; letter-spacing: -0.2px;">AI 분석 완료</span>
@@ -14588,19 +14622,6 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                                 </td>
                             </tr>
 
-                            <!-- Row 7: 평균 학교폭력 발생 -->
-                            <tr style="border-bottom: 1px solid #f8fafc;">
-                                <td style="padding: 12px 4px; color: #334155; font-weight: 700;">🛡️ 평균 학교폭력 발생</td>
-                                <td style="padding: 12px 4px; text-align: center; vertical-align: middle;">
-                                    <span style="font-weight: 800; color: ${statsA.violence <= statsB.violence ? '#2563eb' : '#0f172a'};">${statsA.violence}건/년</span>
-                                    ${statsA.violence <= statsB.violence ? `<span style="background: #eff6ff; color: #2563eb; font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: block; margin-top: 2px;">안심 우수</span>` : ''}
-                                </td>
-                                <td style="padding: 12px 4px; text-align: center; vertical-align: middle;">
-                                    <span style="font-weight: 800; color: ${statsB.violence <= statsA.violence ? '#059669' : '#0f172a'};">${statsB.violence}건/년</span>
-                                    ${statsB.violence <= statsA.violence ? `<span style="background: #ecfdf5; color: #059669; font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: block; margin-top: 2px;">안심 우수</span>` : ''}
-                                </td>
-                            </tr>
-
                             <!-- Row 8: 전용 84㎡ 평균 시세 -->
                             <tr>
                                 <td style="padding: 12px 4px; color: #334155; font-weight: 700;">🏢 전용 84㎡ 평균 시세</td>
@@ -14655,11 +14676,17 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                     </div>
 
                     <!-- AI Consultant Box -->
-                    <div style="background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 14px; padding: 14px 16px; display: flex; gap: 10px; align-items: flex-start;">
+                    <div style="background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 14px; padding: 14px 16px; display: flex; gap: 10px; align-items: flex-start; position: relative; overflow: hidden;">
                         <span style="font-size: 18px; line-height: 1;">💡</span>
+                        ${isSimUserLoggedIn ? `
                         <div style="font-size: 12.5px; color: #475569; line-height: 1.6; letter-spacing: -0.2px;">
                             <strong style="color: #1e293b;">학업 컨설턴트 의견:</strong> ${consultantText}
                         </div>
+                        ` : `
+                        <div style="font-size: 12.5px; color: #475569; line-height: 1.6; letter-spacing: -0.2px; filter: blur(2.5px); -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0) 80%); mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0) 80%); pointer-events: none; user-select: none;">
+                            <strong style="color: #1e293b;">학업 컨설턴트 의견:</strong> ${consultantText}
+                        </div>
+                        `}
                     </div>
                 </div>
 
@@ -14691,6 +14718,44 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                     새로운 학군 조건으로 다시 비교하기
                 </button>
             `;
+
+            if (isSimUserLoggedIn) {
+                resultPanel.style.position = 'static';
+                resultPanel.style.overflow = 'visible';
+                resultPanel.innerHTML = simulationDetailHtml;
+            } else {
+                resultPanel.style.position = 'relative';
+                resultPanel.style.overflow = 'hidden';
+                resultPanel.innerHTML = `
+                    <!-- 비로그인 시: 결론 포함 아래 전체 그라데이션 가우시안 블러 마스크 -->
+                    <div id="simResultBlurWrapper" style="filter: blur(3.5px); -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.65) 50px, rgba(0,0,0,0.18) 160px, rgba(0,0,0,0) 380px); mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.65) 50px, rgba(0,0,0,0.18) 160px, rgba(0,0,0,0) 380px); pointer-events: none; user-select: none; max-height: 460px; overflow: hidden;">
+                        ${simulationDetailHtml}
+                    </div>
+                    <!-- 선명한 로그인 유도 오버레이 카드 -->
+                    <div id="simResultLockOverlay" style="position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(15, 23, 42, 0.08) 0%, rgba(15, 23, 42, 0.55) 70px, rgba(15, 23, 42, 0.92) 180px, #0f172a 340px, #0f172a 100%); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 75px; z-index: 25; border-radius: 20px; pointer-events: auto;">
+                        <div style="background: rgba(30, 41, 59, 0.92); border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.45); border-radius: 18px; padding: 22px 20px; max-width: 440px; width: 90%; text-align: center; backdrop-filter: blur(8px);">
+                            <div style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 50%; margin-bottom: 12px;">
+                                <span style="font-size: 22px;">🔒</span>
+                            </div>
+                            <h4 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px;">
+                                시뮬레이션 비교 결론 및 전체 분석
+                            </h4>
+                            <p style="margin: 0 0 16px 0; font-size: 12.5px; line-height: 1.55; color: #cbd5e1; letter-spacing: -0.2px;">
+                                로그인하시면 AI 비교 결론, 예상 배정학교 및 통학거리, 핵심 지표 1:1 비교, 자녀 가상 학업 위치 분석 전체를 즉시 확인하실 수 있습니다.
+                            </p>
+                            <button type="button" onclick="if(window.openSidebarLogin) { window.openSidebarLogin(); const sm = document.getElementById('simulationModal'); if(sm) sm.style.display='none'; } else if(window.openAuthModal) { window.openAuthModal(); }"
+                                style="width: 100%; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff; border: 1px solid #3b82f6; padding: 12px 20px; border-radius: 12px; font-size: 14px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 14px rgba(37,99,235,0.4); display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s ease;"
+                                onmouseover="this.style.background='#1d4ed8'; this.style.transform='translateY(-1px)';"
+                                onmouseout="this.style.background='linear-gradient(135deg, #2563eb, #1d4ed8)'; this.style.transform='none';">
+                                🔑 1초만에 로그인하고 전체 리포트 보기
+                            </button>
+                            <div style="margin-top: 10px; font-size: 11px; color: #94a3b8;">
+                                💡 간편 로그인 후 모든 학군 시뮬레이션 기능을 무료로 이용하세요.
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
             if (typeof scrollSimulationToResult === 'function') scrollSimulationToResult();
         });
     }
@@ -17157,7 +17222,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div>🔑 평균 전세가: <strong style="color:var(--success-green);">${item.housing_jeonse}</strong></div>
                         <div>📚 주변 학원 수: <strong>${item.academy_count_est}개</strong></div>
                         <div>💰 창체 활동비: <strong>${item.extracurricular_budget}만원</strong></div>
-                        <div>🛡️ 학교폭력 건수: <strong style="color:${item.violence_stats && item.violence_stats.total_cases > 3 ? 'var(--danger-red)' : 'var(--text-main)'}">${violenceCases}</strong></div>
                         
                         <div style="margin-top: 6px; border-top: 1px dashed var(--border-color); padding-top: 6px;">
                             🏫 교육환경 스코어: <strong style="color:var(--primary-blue);">${envScoreLabel}</strong>
@@ -27441,6 +27505,123 @@ const initMobileAndZoneModules = () => {
             }
         };
 
+        // 나이스/정부24 서류 발급 안내 모달
+        window.closeNEISDocGuideModal = function () {
+            const modal = document.getElementById('neisDocGuideModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        };
+
+        window.openNEISDocGuideModal = function (event) {
+            if (event && event.stopPropagation) {
+                event.stopPropagation();
+            }
+            let modal = document.getElementById('neisDocGuideModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'neisDocGuideModal';
+                modal.style.cssText = 'display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); z-index:999999; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;';
+                modal.onclick = function (e) {
+                    if (e.target === modal) window.closeNEISDocGuideModal();
+                };
+                modal.innerHTML = `
+                    <div style="background:#ffffff; border-radius:18px; max-width:540px; width:100%; max-height:88vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); border:1px solid #e2e8f0; font-family:-apple-system,BlinkMacSystemFont,'Pretendard',sans-serif;">
+                        <!-- 모달 헤더 -->
+                        <div style="background:#ffffff; padding:16px 20px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <div style="width:36px; height:36px; border-radius:10px; background:#eff6ff; border:1px solid #dbeafe; display:flex; align-items:center; justify-content:center; font-size:18px;">📄</div>
+                                <div>
+                                    <h3 style="margin:0; font-size:15px; font-weight:800; color:#1e293b;">생기부·성적표 발급 안내</h3>
+                                    <p style="margin:2px 0 0 0; font-size:11.5px; color:#64748b;">나이스(NEIS) 및 정부24 무료 발급 방법</p>
+                                </div>
+                            </div>
+                            <button type="button" onclick="window.closeNEISDocGuideModal()" style="background:#f8fafc; border:1px solid #e2e8f0; color:#64748b; width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:17px; display:flex; justify-content:center; align-items:center; transition:all 0.15s; line-height:1;" onmouseover="this.style.background='#f1f5f9'; this.style.color='#1e293b';" onmouseout="this.style.background='#f8fafc'; this.style.color='#64748b';" title="닫기">&times;</button>
+                        </div>
+                        
+                        <!-- 모달 본문 (스크롤) -->
+                        <div style="padding:18px 20px; overflow-y:auto; font-size:12.5px; color:#334155; line-height:1.6; display:flex; flex-direction:column; gap:14px;">
+                            
+                            <!-- 상단 안내 배너 -->
+                            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:11px 13px; display:flex; align-items:flex-start; gap:8px;">
+                                <span style="font-size:15px; line-height:1;">💡</span>
+                                <span style="font-size:12px; color:#166534; font-weight:600;">
+                                    자녀의 <strong>학교생활기록부(초·중·고)</strong> 또는 <strong>학기말 성적통지표</strong>를 PDF/텍스트로 발급받아 등록하시면 과목 성적·출결·PAPS를 AI가 즉시 자동 추출합니다.
+                                </span>
+                            </div>
+
+                            <!-- 방법 1: 나이스 학부모서비스 -->
+                            <div style="border:1px solid #e2e8f0; border-radius:12px; padding:14px; background:#f8fafc;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+                                    <div style="display:flex; align-items:center; gap:6px;">
+                                        <span style="font-size:11.5px; background:#2563eb; color:#ffffff; padding:2px 7px; border-radius:5px; font-weight:800;">방법 1</span>
+                                        <strong style="font-size:13.5px; color:#1e293b;">나이스(NEIS) 학부모서비스</strong>
+                                        <span style="font-size:10.5px; color:#0284c7; background:#e0f2fe; padding:2px 6px; border-radius:4px; font-weight:700;">재학생 추천 ⭐</span>
+                                    </div>
+                                    <a href="https://www.neis.go.kr" target="_blank" rel="noopener noreferrer" style="font-size:11px; color:#2563eb; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:3px; background:#ffffff; border:1px solid #bfdbfe; padding:3px 8px; border-radius:6px; box-shadow:0 1px 2px rgba(37,99,235,0.06);">
+                                        나이스 바로가기 ↗
+                                    </a>
+                                </div>
+                                <ol style="margin:0; padding-left:18px; display:flex; flex-direction:column; gap:4px; font-size:12px; color:#475569;">
+                                    <li><strong>나이스 대국민서비스(neis.go.kr)</strong> 또는 <strong>나이스 학부모서비스</strong> 접속</li>
+                                    <li>간편인증(카카오톡·토스·PASS 등) 또는 공동인증서 로그인</li>
+                                    <li><strong>[자녀 등록/조회]</strong> ➔ <strong>[학교생활기록부]</strong> 또는 <strong>[성적표]</strong> 메뉴 선택</li>
+                                    <li>화면 상단 우측의 <strong>[인쇄]</strong> 아이콘 클릭</li>
+                                    <li>인쇄 설정 창에서 프린터 대상을 <strong>'PDF로 저장'</strong> (또는 Save as PDF)으로 선택 후 파일 저장</li>
+                                </ol>
+                            </div>
+
+                            <!-- 방법 2: 정부24 -->
+                            <div style="border:1px solid #e2e8f0; border-radius:12px; padding:14px; background:#f8fafc;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+                                    <div style="display:flex; align-items:center; gap:6px;">
+                                        <span style="font-size:11.5px; background:#475569; color:#ffffff; padding:2px 7px; border-radius:5px; font-weight:800;">방법 2</span>
+                                        <strong style="font-size:13.5px; color:#1e293b;">정부24 (gov.kr) 민원 신청</strong>
+                                        <span style="font-size:10.5px; color:#475569; background:#e2e8f0; padding:2px 6px; border-radius:4px; font-weight:700;">재학생·졸업생</span>
+                                    </div>
+                                    <a href="https://www.gov.kr" target="_blank" rel="noopener noreferrer" style="font-size:11px; color:#475569; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:3px; background:#ffffff; border:1px solid #cbd5e1; padding:3px 8px; border-radius:6px; box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+                                        정부24 바로가기 ↗
+                                    </a>
+                                </div>
+                                <ol style="margin:0; padding-left:18px; display:flex; flex-direction:column; gap:4px; font-size:12px; color:#475569;">
+                                    <li><strong>정부24(gov.kr)</strong> 접속 후 로그인 (간편인증 지원)</li>
+                                    <li>검색창에 <strong>'학교생활기록부'</strong> 입력 후 <strong>[발급 신청]</strong> 클릭</li>
+                                    <li>자녀의 소속 학교 및 필요한 학년을 선택하여 신청 완료</li>
+                                    <li><strong>[MyGOV] ➔ [서비스 신청내역]</strong>에서 <strong>[문서출력]</strong> 버튼 클릭</li>
+                                    <li>인쇄 화면에서 대상을 <strong>'PDF로 저장'</strong>으로 선택하여 파일 다운로드</li>
+                                </ol>
+                            </div>
+
+                            <!-- 꿀팁 & 주의사항 -->
+                            <div style="background:#fefce8; border:1px solid #fef08a; border-radius:10px; padding:12px 14px; font-size:11.5px; color:#713f12; display:flex; flex-direction:column; gap:6px;">
+                                <div style="font-weight:800; display:flex; align-items:center; gap:4px; font-size:12px; color:#854d0e;">
+                                    📌 꼭 확인해주세요! (발급 꿀팁)
+                                </div>
+                                <div>• <strong>PDF 암호가 걸려있는 경우:</strong> 발급된 PDF 파일에 생년월일 비밀번호가 있다면, 크롬/엣지 브라우저에서 암호를 입력해 연 뒤 <strong>[인쇄 ➔ PDF로 저장]</strong>을 하시면 암호가 해제된 PDF로 다시 저장됩니다.</div>
+                                <div>• <strong>텍스트(.txt) 파일 업로드 지원:</strong> PDF 저장이 어려우신 경우, 화면의 성적/출결 표를 드래그하여 복사(Ctrl+C)한 후 메모장에 붙여넣고 <code>.txt</code>로 저장해 올리셔도 동일하게 자동 분석됩니다.</div>
+                                <div>• <strong>개인정보 철저 보호:</strong> 업로드된 파일은 서버로 전송되지 않으며, 고객님의 웹 브라우저 내에서만 안전하게 1회성으로 파싱된 후 즉시 소멸됩니다.</div>
+                            </div>
+                        </div>
+
+                        <!-- 모달 하단 버튼 -->
+                        <div style="background:#f8fafc; padding:12px 20px; border-top:1px solid #f1f5f9; display:flex; justify-content:flex-end; flex-shrink:0;">
+                            <button type="button" onclick="window.closeNEISDocGuideModal()" style="background:#2563eb; color:#ffffff; border:none; padding:8px 18px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; box-shadow:0 1px 3px rgba(37,99,235,0.2); transition:background 0.15s;" onmouseover="this.style.background='#1d4ed8';" onmouseout="this.style.background='#2563eb';">
+                                확인했습니다
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                document.addEventListener('keydown', function (e) {
+                    if (e.key === 'Escape' && modal.style.display === 'flex') {
+                        window.closeNEISDocGuideModal();
+                    }
+                });
+            }
+            modal.style.display = 'flex';
+        };
+
         // PDF.js 라이브러리 동적 로더
         async function ensurePdfJsLoaded() {
             if (window.pdfjsLib) return window.pdfjsLib;
@@ -27858,8 +28039,11 @@ const initMobileAndZoneModules = () => {
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="font-size: 20px;">📄</span>
                         <div>
-                            <h4 style="margin: 0; font-size: 13.5px; font-weight: 800; color: #1e293b;">생기부·성적표 파일(PDF·TXT) 간편 분석</h4>
-                            <p style="margin: 2px 0 0 0; font-size: 11px; color: #64748b;">나이스/정부24 문서를 넣으시면 과목 성적·출결·PAPS를 자동 추출합니다.</p>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <h4 style="margin: 0; font-size: 13.5px; font-weight: 800; color: #1e293b;">생기부·성적표 파일(PDF·TXT) 간편 분석</h4>
+                                <button type="button" onclick="if(window.openNEISDocGuideModal) window.openNEISDocGuideModal(event);" title="어디서 발급받나요? (나이스·정부24 서류 발급 안내)" style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; font-size: 11.5px; font-weight: 800; cursor: pointer; padding: 0; transition: all 0.2s; line-height: 1; flex-shrink: 0;" onmouseover="this.style.background='#0284c7'; this.style.color='#ffffff';" onmouseout="this.style.background='#e0f2fe'; this.style.color='#0284c7';">?</button>
+                            </div>
+                            <p style="margin: 2px 0 0 0; font-size: 11px; color: #64748b;">나이스/정부24 문서를 넣으시면 과목 성적·출결·PAPS를 자동 추출합니다. <span onclick="if(window.openNEISDocGuideModal) window.openNEISDocGuideModal(event);" style="color: #2563eb; font-weight: 600; cursor: pointer; text-decoration: underline; margin-left: 4px;">[발급 방법 안내]</span></p>
                         </div>
                     </div>
                 </div>
