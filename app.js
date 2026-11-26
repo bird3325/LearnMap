@@ -21754,8 +21754,9 @@ const initMobileAndZoneModules = () => {
             const isAsc = currentDir === 'asc';
 
             listContainer.innerHTML = list.map((item, idx) => {
-                // 순위 모달 목록은 선택된 정렬 기준에 따라 1위부터 순서대로 번호 부여
-                const rank = idx + 1;
+                // 🌟 순위 모달 목록 순위 번호: 높은순(desc)일 때는 1위부터, 낮은순(asc)일 때는 최하위 등수(list.length - idx)로 매겨 최저점이 1위가 되는 왜곡 방지
+                const isBestFirst = (currentTopic === 'violence') ? isAsc : !isAsc;
+                const rank = isBestFirst ? (idx + 1) : (list.length - idx);
                 let medalBadge = `<span style="background:#e2e8f0; color:#475569; font-weight:bold; padding:2px 6px; border-radius:10px; font-size:11px;">${rank}위</span>`;
                 if (rank === 1) medalBadge = `<span style="background:#fef08a; color:#854d0e; font-weight:bold; padding:2px 7px; border-radius:10px; font-size:11px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">🥇 1위</span>`;
                 else if (rank === 2) medalBadge = `<span style="background:#e2e8f0; color:#334155; font-weight:bold; padding:2px 7px; border-radius:10px; font-size:11px;">🥈 2위</span>`;
@@ -21980,14 +21981,10 @@ const initMobileAndZoneModules = () => {
         // 6. 이벤트 바인딩
         window.openTopicStatsModal = function () {
             if (modal) {
-                // 🌟 [핵심] 현재 선택된 학교가 있으면 해당 학교급을 최우선 연동, 없으면 메인 필터와 100% 동기화
-                const currentSchool = window.currentSelectedSchool ||
-                                      (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) ||
-                                      window.selectedTargetSchool || null;
+                // 🌟 [수정] 순위 모달은 메인 필터(schoolTypeFilter)의 학교급을 100% 그대로 따름
                 const mainSchoolTypeEl = document.getElementById('schoolTypeFilter');
-                let mainVal = (currentSchool && (currentSchool.school_type || currentSchool.type)) ||
-                              (mainSchoolTypeEl ? mainSchoolTypeEl.value : '') ||
-                              (typeof orchestrator !== 'undefined' && orchestrator?.state?.filters?.schoolType) || 'middle';
+                const orchestratorType = (typeof orchestrator !== 'undefined' && orchestrator?.state?.filters?.schoolType);
+                let mainVal = (mainSchoolTypeEl && mainSchoolTypeEl.value) || orchestratorType || 'middle';
 
                 if (schoolTypeSelect) {
                     if (mainVal === 'high' || mainVal === '고등학교' || String(mainVal).includes('고등')) {
@@ -22349,9 +22346,9 @@ const initMobileAndZoneModules = () => {
                 let arrowIcon = '';
                 if (isActive && !isNoDir && state.dir) {
                     if (topic === 'violence') {
-                        arrowIcon = state.dir === 'asc' ? ' ▼ 적은순' : ' ▲ 많은순';
+                        arrowIcon = state.dir === 'asc' ? ' ▼ 적은순 (안전)' : ' ▲ 많은순 (역순)';
                     } else {
-                        arrowIcon = state.dir === 'desc' ? ' ▼ 높은순' : ' ▲ 낮은순';
+                        arrowIcon = state.dir === 'desc' ? ' ▼ 높은순' : ' ▲ 낮은순 (역순)';
                     }
                 }
 
