@@ -48,9 +48,11 @@ function utf8HeadersPlugin() {
       server.middlewares.use((req, res, next) => {
         // /admin 또는 /admin/ 접속 시 admin.js 소스 노출 방지 및 admin.html 페이지로 rewrite
         const cleanUrl = req.url ? req.url.split('?')[0] : '';
-        if (cleanUrl === '/admin' || cleanUrl === '/admin/') {
+        if (cleanUrl === '/admin' || cleanUrl === '/admin/' || cleanUrl === '/admin.html') {
+          const cookieHeader = req.headers.cookie || '';
+          const hasAdminCookie = /(?:^|;\s*)admin_token=([^;]+)/.test(cookieHeader);
           const query = req.url.includes('?') ? '?' + req.url.split('?')[1] : '';
-          req.url = '/admin.html' + query;
+          req.url = (hasAdminCookie ? '/templates/admin_dashboard.html' : '/admin.html') + query;
         }
         if (cleanUrl === '/business' || cleanUrl === '/business/' || cleanUrl === '/partner' || cleanUrl === '/partner/') {
           const query = req.url.includes('?') ? '?' + req.url.split('?')[1] : '';
@@ -122,6 +124,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         admin: resolve(__dirname, 'admin.html'),
+        adminDashboard: resolve(__dirname, 'templates/admin_dashboard.html'),
         business: resolve(__dirname, 'business.html'),
         blog: resolve(__dirname, 'blog.html'),
         partnerAuth: resolve(__dirname, 'partner-auth.html')

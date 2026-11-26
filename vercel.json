@@ -19,7 +19,9 @@
           "src/data/inquiries.json",
           "src/data/blog_posts.json",
           "config.json",
-          "public/sitemap.xml"
+          "public/sitemap.xml",
+          "admin.html",
+          "templates/admin_dashboard.html"
         ],
         "excludeFiles": [
           "dist/**",
@@ -74,11 +76,15 @@
     },
     {
       "source": "/admin",
-      "destination": "/admin.html"
+      "destination": "/server.js"
     },
     {
       "source": "/admin/",
-      "destination": "/admin.html"
+      "destination": "/server.js"
+    },
+    {
+      "source": "/admin.html",
+      "destination": "/server.js"
     },
     {
       "source": "/blog",

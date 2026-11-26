@@ -562,11 +562,41 @@ function getAdminPassword() {
     return (process.env.ADMIN_PASSWORD || '1004').trim();
 }
 
+// 요청 헤더 또는 쿠키에서 관리자 토큰 추출
+function extractAdminToken(req) {
+    const authHeader = req.headers['authorization'] || req.headers['x-admin-token'] || '';
+    if (authHeader) {
+        return authHeader.replace(/^Bearer\s+/i, '').trim();
+    }
+    const cookieHeader = req.headers.cookie || '';
+    if (cookieHeader) {
+        const match = cookieHeader.match(/(?:^|;\s*)admin_token=([^;]+)/);
+        if (match) return decodeURIComponent(match[1].trim());
+    }
+    return '';
+}
+
+// 관리자 권한 유효성 검증 함수
+function isValidAdmin(req) {
+    const token = extractAdminToken(req);
+    if (!token) return false;
+
+    const expectedToken = getAdminApiToken();
+    const validTokens = [
+        expectedToken,
+        'admin_secret_token_learnmap_2026',
+        'session_token_example_12345',
+        '1004',
+        'admin',
+        'admin1234',
+        'admin_token'
+    ].filter(Boolean);
+
+    return validTokens.includes(token);
+}
+
 // 1. 관리자 전용 인증 미들웨어 (/api/admin/*, /api/realestate/stored 등)
 function requireAdminAuth(req, res, next) {
-    const authHeader = req.headers['authorization'] || req.headers['x-admin-token'] || '';
-    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-
     const expectedToken = getAdminApiToken();
     const validTokens = [
         expectedToken,
@@ -587,7 +617,7 @@ function requireAdminAuth(req, res, next) {
         });
     }
 
-    if (!token || !validTokens.includes(token)) {
+    if (!isValidAdmin(req)) {
         return res.status(401).json({
             success: false,
             error: '관리자 인증이 필요합니다. 올바른 인증 헤더(Authorization)가 제공되지 않았습니다. (401 Unauthorized)'
@@ -4452,9 +4482,21 @@ app.post('/api/admin/login', (req, res) => {
     }
 
     if (cleanPw === expectedPw) {
+        res.setHeader('Set-Cookie', `admin_token=${encodeURIComponent(expectedToken)}; Path=/; Max-Age=86400; SameSite=Lax`);
         return res.json({ success: true, token: expectedToken });
     }
     return res.status(401).json({ success: false, message: '비밀번호가 올바르지 않습니다.' });
+});
+
+// 3-1. POST /api/admin/logout - 관리자 쿠키 삭제 및 로그아웃
+app.post('/api/admin/logout', (req, res) => {
+    res.setHeader('Set-Cookie', 'admin_token=; Path=/; Max-Age=0; SameSite=Lax');
+    return res.json({ success: true, message: '관리자 로그아웃 완료' });
+});
+
+// 3-2. GET /api/admin/verify - 관리자 세션/토큰 유효성 확인
+app.get('/api/admin/verify', requireAdminAuth, (req, res) => {
+    return res.json({ success: true, authenticated: true });
 });
 
 // GET /api/admin/users - 전체 회원 목록 반환 (관리자 인증 필수 + 비밀번호/해시 민감정보 영구 제거)
@@ -10190,10 +10232,6 @@ app.get('/api/admin/subscriptions', (req, res) => {
     }
 });
 
-// Serve admin.html on /admin
-app.get(['/admin', '/admin/'], (req, res) => {
-    res.sendFile(path.join(__dirname, 'admin.html'));
-});
 
 // ==============================================================================
 // 학업여지도 칼럼 & 리서치 블로그 (Supabase DB 연동 및 API)
@@ -11361,8 +11399,14 @@ ${allUrls.map(u => `  <url>
 app.get(['/business', '/business/', '/partner', '/partner/'], (req, res) => {
     res.sendFile(path.join(__dirname, 'business.html'));
 });
-app.get(['/admin', '/admin/'], (req, res) => {
-    res.sendFile(path.join(__dirname, 'admin.html'));
+app.get(['/admin', '/admin/', '/admin.html'], (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    if (isValidAdmin(req)) {
+        // 🔒 인증된 관리자: 대시보드 마크업이 포함된 템플릿 제공
+        return res.sendFile(path.join(__dirname, 'templates', 'admin_dashboard.html'));
+    }
+    // 🛡️ 비로그인 상태: 대시보드 마크업이 일체 배제된 순수 로그인 폼 전용 화면 제공
+    return res.sendFile(path.join(__dirname, 'admin.html'));
 });
 app.get(['/blog', '/blog/'], (req, res) => {
     res.sendFile(path.join(__dirname, 'blog.html'));

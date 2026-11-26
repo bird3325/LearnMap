@@ -851,13 +851,9 @@ function logout() {
     
     token = '';
     localStorage.removeItem('admin_token');
-    const loginSection = document.getElementById('loginSection');
-    if (loginSection) loginSection.style.display = 'flex';
-    if (loginCard) loginCard.style.display = 'block';
-    if (managementPanel) managementPanel.style.display = 'none';
-    if (btnLogout) btnLogout.style.display = 'none';
-    const container = document.querySelector('.admin-container');
-    if (container) container.classList.remove('logged-in');
+    document.cookie = 'admin_token=; path=/; max-age=0; SameSite=Lax;';
+    fetch('/api/admin/logout', { method: 'POST' }).catch(() => {});
+    window.location.href = '/admin';
 }
 
 // Dynamic Kakao SDK loader for Admin Geocoder
