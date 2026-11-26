@@ -1161,3 +1161,24 @@
      - 인증된 관리자에게만 `templates/admin_dashboard.html`을 렌더링하고, 비로그인 상태에서는 `admin.html`(로그인 전용)을 서빙.
   3. **관리자 API(`/api/admin/*`) 서버 측 접근 제어 검증**:
      - 마스터키 또는 유효한 관리자 토큰 없이 호출 시 `401 Unauthorized`로 즉각 차단.
+
+
+---
+
+### [SEO 및 검색엔진 수집 정책] robots.txt 실제 텍스트 서빙 및 leamap.kr 단일 표준 sitemap.xml 90개 URL 전면 갱신 (2026-11-26)
+- **배경**:
+  - `/robots.txt` 요청 시 Vercel SPA 폴백에 의해 메인 HTML이 반환되던 현상을 해결하고, `/sitemap.xml`의 도메인이 잘못 인식되거나 과거 날짜(2026-10-29) 및 6개 URL만 제한적으로 반환되던 라우팅 충돌 문제를 전면 정비.
+- **주요 개선 내용**:
+  1. **robots.txt 순수 텍스트 서빙 보장 (`server.js`, `vercel.json`, `public/robots.txt`)**:
+     - `vercel.json` 내 `/robots.txt` 전용 라우트를 등록하여 메인 HTML 폴백을 차단하고 `text/plain; charset=utf-8` 실제 텍스트를 즉시 반환.
+     - 전체 검색엔진(Google, Naver Yeti, Daumoa 등) 수집 허용(`Allow: /`) 및 관리자/내부 API(`Disallow: /admin`, `/api/`) 차단, 공식 사이트맵 주소(`https://leamap.kr/sitemap.xml`) 명시.
+  2. **sitemap.xml 공식 도메인(`leamap.kr`) 통일 및 90개 전체 URL 갱신**:
+     - 공식 서비스 도메인을 `https://leamap.kr`로 100% 확정 및 고정.
+     - 최신 `lastmod` 날짜(`2026-11-26`) 동기화.
+     - 수집 대상 전체 90개 URL 완전 등록:
+       - 메인 핵심 페이지 5개 (`/`, `/index.html`, `/blog.html`, `/business.html`, `/partner-auth.html`)
+       - 교육 칼럼 및 리서치 블로그 6개
+       - 서울 학교 순위 정적 랭킹 페이지 79개 (허브 1개 + 서울전체 3개 + 25개 자치구별 초/중/고 75개)
+  3. **검색엔진 수집 및 색인 가이드 동기화**:
+     - 네이버 서치어드바이저(`naver-site-verification`) 태그 2종 기등록 유지.
+     - 구글 서치콘솔 및 네이버 웹마스터도구에 `https://leamap.kr/sitemap.xml` 제출 안내 준비 완료.

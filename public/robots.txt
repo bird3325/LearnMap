@@ -1,5 +1,5 @@
 # robots.txt for 학업여지도 (LearnMap)
-# 모든 검색엔진 크롤러 허용 및 관리자/내부 API 수집 제외
+# 모든 검색엔진 크롤러(Googlebot, Yeti, Daumoa, Bingbot 등) 허용 및 관리자/내부 API 수집 제외
 
 User-agent: *
 Allow: /
@@ -12,5 +12,5 @@ Disallow: /admin
 Disallow: /api/
 Disallow: /scratch/
 
-# 사이트맵 경로 안내 (배포 도메인 표준)
+# 사이트맵 경로 안내 (공식 배포 도메인 표준)
 Sitemap: https://leamap.kr/sitemap.xml

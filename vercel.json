@@ -20,6 +20,9 @@
           "src/data/blog_posts.json",
           "config.json",
           "public/sitemap.xml",
+          "public/robots.txt",
+          "robots.txt",
+          "sitemap.xml",
           "admin.html",
           "templates/admin_dashboard.html"
         ],
@@ -27,7 +30,6 @@
           "dist/**",
           "scratch/**",
           "docs/**",
-          "*.txt",
           "src/data/realestate_seoul.json",
           "**/realestate_seoul.json"
         ]
@@ -52,6 +54,14 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
+      "destination": "/server.js"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "/server.js"
+    },
+    {
+      "source": "/sitemap.xml",
       "destination": "/server.js"
     },
     {

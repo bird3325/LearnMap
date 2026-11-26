@@ -67,6 +67,8 @@ if (!process.env.VERCEL) {
 
 // robots.txt & sitemap.xml SEO 라우트 (Vercel SPA fallback에 의한 HTML 반환 문제 원천 차단)
 const ROBOTS_TXT_CONTENT = `# robots.txt for 학업여지도 (LearnMap)
+# 모든 검색엔진 크롤러(Googlebot, Yeti, Daumoa, Bingbot 등) 허용 및 관리자/내부 API 수집 제외
+
 User-agent: *
 Allow: /
 Allow: /rank/
@@ -78,6 +80,7 @@ Disallow: /admin
 Disallow: /api/
 Disallow: /scratch/
 
+# 사이트맵 경로 안내 (공식 배포 도메인 표준)
 Sitemap: https://leamap.kr/sitemap.xml
 `;
 
@@ -89,20 +92,16 @@ app.get('/robots.txt', (req, res) => {
 
 app.get('/sitemap.xml', (req, res) => {
     res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400');
+    res.type('application/xml; charset=utf-8');
     const sitemapPath = path.join(__dirname, 'public', 'sitemap.xml');
     if (fs.existsSync(sitemapPath)) {
-        res.type('application/xml; charset=utf-8');
         return res.sendFile(sitemapPath);
     }
-    res.type('application/xml; charset=utf-8');
-    res.send(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://leamap.kr/</loc><lastmod>2026-11-20</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
-  <url><loc>https://leamap.kr/index.html</loc><lastmod>2026-11-20</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
-  <url><loc>https://leamap.kr/blog.html</loc><lastmod>2026-11-20</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
-  <url><loc>https://leamap.kr/business.html</loc><lastmod>2026-11-20</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://leamap.kr/partner-auth.html</loc><lastmod>2026-11-20</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
-</urlset>`);
+    const rootPath = path.join(__dirname, 'sitemap.xml');
+    if (fs.existsSync(rootPath)) {
+        return res.sendFile(rootPath);
+    }
+    return res.status(404).send('sitemap.xml not found');
 });
 
 
@@ -11319,79 +11318,6 @@ app.get('/api/school-zones/lookup', (req, res) => {
     } catch (err) {
         console.error('[SchoolZone Lookup Error]:', err);
         res.status(500).json({ error: '배정 학구 정보 조회 중 오류가 발생했습니다.' });
-    }
-});
-
-// 9. [SEO] 실시간 최신 칼럼 목록을 포함한 동적 sitemap.xml 서빙 API
-app.get('/sitemap.xml', async (req, res) => {
-    try {
-        const domain = (req.headers['x-forwarded-host'] || req.headers.host || 'leamap.kr').split(':')[0];
-        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-        const baseUrl = 'https://leamap.kr';
-
-        // 1) 기본 필수 정적 페이지들
-        const staticPages = [
-            { loc: `${baseUrl}/index.html`, priority: '1.0', changefreq: 'daily', lastmod: new Date().toISOString().slice(0, 10) },
-            { loc: `${baseUrl}/blog.html`, priority: '0.9', changefreq: 'daily', lastmod: new Date().toISOString().slice(0, 10) },
-            { loc: `${baseUrl}/business.html`, priority: '0.7', changefreq: 'monthly', lastmod: '2026-10-29' }
-        ];
-
-        // 2) 발행된 최신 블로그 칼럼 목록 로드
-        let blogPosts = [];
-        try {
-            // DB 또는 로컬 JSON에서 칼럼 로드 시도
-            if (supabase) {
-                const { data } = await supabase.from('blog_posts').select('*').eq('is_published', true).order('created_at', { ascending: false });
-                if (data && data.length > 0) {
-                    blogPosts = data.map(mapDbRowToBlogPost);
-                }
-            }
-        } catch (_) {}
-
-        if (blogPosts.length === 0 && fs.existsSync(BLOG_POSTS_PATH)) {
-            try {
-                const raw = fs.readFileSync(BLOG_POSTS_PATH, 'utf8');
-                const parsed = JSON.parse(raw);
-                if (Array.isArray(parsed)) {
-                    blogPosts = parsed.filter(p => p.isPublished !== false);
-                }
-            } catch (_) {}
-        }
-
-        // 칼럼 상세 URL 매핑
-        const postUrls = blogPosts.map(post => {
-            const lastmod = (post.updatedAt || post.createdAt || new Date().toISOString()).slice(0, 10);
-            return {
-                loc: `${baseUrl}/blog.html?id=${encodeURIComponent(post.id || post.slug)}`,
-                priority: '0.8',
-                changefreq: 'weekly',
-                lastmod
-            };
-        });
-
-        // 3) XML 빌드
-        const allUrls = [...staticPages, ...postUrls];
-        const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${allUrls.map(u => `  <url>
-    <loc>${u.loc}</loc>
-    <lastmod>${u.lastmod}</lastmod>
-    <changefreq>${u.changefreq}</changefreq>
-    <priority>${u.priority}</priority>
-  </url>`).join('\n')}
-</urlset>`;
-
-        res.set('Content-Type', 'application/xml');
-        res.send(xmlContent);
-    } catch (err) {
-        console.error('[Sitemap Error]:', err);
-        // 에러 시 public/sitemap.xml 정적 파일 서빙
-        const fallbackPath = path.join(__dirname, 'public', 'sitemap.xml');
-        if (fs.existsSync(fallbackPath)) {
-            res.sendFile(fallbackPath);
-        } else {
-            res.status(500).send('Sitemap generation failed');
-        }
     }
 });
 
