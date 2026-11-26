@@ -356,3 +356,29 @@ CREATE POLICY "Allow public update access for notifications" ON public.notificat
 GRANT ALL ON TABLE public.notifications TO anon;
 GRANT ALL ON TABLE public.notifications TO authenticated;
 GRANT ALL ON TABLE public.notifications TO service_role;
+
+-- ==============================================================================
+-- 15. 성과 분석 및 학원/비즈니스 통계 이벤트 테이블 (analytics_events)
+-- ==============================================================================
+-- 학원 핀 클릭, 상세 프로필 오픈 조회수, 주택/단지 핀 클릭 및 상세 조회수, 광고 노출, 전화/웹사이트 클릭 등의 실시간 성과 추적
+CREATE TABLE IF NOT EXISTS public.analytics_events (
+    id VARCHAR(100) PRIMARY KEY,
+    business_id VARCHAR(100), -- 매핑된 사업자 ID (biz_xxx, 미매핑 시 NULL)
+    academy_name VARCHAR(200), -- 학원명/상호명 또는 주택·단지명
+    event_type VARCHAR(50) NOT NULL, -- 'pin_click' | 'profile_view' | 'detail_view' | 'housing_pin_click' | 'housing_view' | 'housing_detail_view' | 'premium_impression' | 'phone_click' | 'contact_click' | 'website_click'
+    metadata JSONB DEFAULT '{}'::jsonb, -- 부가 정보 (place_id, address, dong, sigungu, category, lat, lng 등)
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_analytics_business_id ON public.analytics_events(business_id);
+CREATE INDEX IF NOT EXISTS idx_analytics_academy_name ON public.analytics_events(academy_name);
+CREATE INDEX IF NOT EXISTS idx_analytics_event_type ON public.analytics_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_analytics_created_at ON public.analytics_events(created_at DESC);
+
+ALTER TABLE public.analytics_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read access for analytics_events" ON public.analytics_events FOR SELECT USING (true);
+CREATE POLICY "Allow public insert access for analytics_events" ON public.analytics_events FOR INSERT WITH CHECK (true);
+GRANT ALL ON TABLE public.analytics_events TO anon;
+GRANT ALL ON TABLE public.analytics_events TO authenticated;
+GRANT ALL ON TABLE public.analytics_events TO service_role;
+

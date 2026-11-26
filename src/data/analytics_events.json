@@ -2492,5 +2492,63 @@
       "area": "서초동"
     },
     "createdAt": "2026-11-25T06:35:07.610Z"
+  },
+  {
+    "id": "evt_1795661715272_05st",
+    "businessId": null,
+    "academyName": "테스트학원",
+    "eventType": "pin_click",
+    "metadata": {},
+    "createdAt": "2026-11-26T02:55:15.272Z"
+  },
+  {
+    "id": "evt_1795661715286_06g1",
+    "businessId": null,
+    "academyName": "테스트학원",
+    "eventType": "profile_view",
+    "metadata": {},
+    "createdAt": "2026-11-26T02:55:15.286Z"
+  },
+  {
+    "id": "evt_1795661768573_2oel",
+    "businessId": "biz_1793878533975",
+    "academyName": "원탑 공인중개사",
+    "eventType": "pin_click",
+    "metadata": {},
+    "createdAt": "2026-11-26T02:56:08.573Z"
+  },
+  {
+    "id": "evt_1795661768591_k04v",
+    "businessId": "biz_1793878533975",
+    "academyName": "원탑 공인중개사",
+    "eventType": "profile_view",
+    "metadata": {},
+    "createdAt": "2026-11-26T02:56:08.591Z"
+  },
+  {
+    "id": "evt_1795664177105_nfkh",
+    "businessId": "biz_1793878533975",
+    "academyName": "신원마을 1단지",
+    "eventType": "housing_pin_click",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을 1단지",
+      "dong": "신원동",
+      "address": "경기 고양시 덕양구 신원동 600"
+    },
+    "createdAt": "2026-11-26T03:36:17.105Z"
+  },
+  {
+    "id": "evt_1795664177120_tqvo",
+    "businessId": "biz_1793878533975",
+    "academyName": "신원마을 1단지",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을 1단지",
+      "dong": "신원동",
+      "address": "경기 고양시 덕양구 신원동 600"
+    },
+    "createdAt": "2026-11-26T03:36:17.120Z"
   }
 ]

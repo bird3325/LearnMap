@@ -15,7 +15,7 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+    <script src="//t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 
     <style>
         :root {
@@ -2775,13 +2775,22 @@
         <div id="tab-dashboard" class="tab-content active">
             <!-- 핵심 성과 지표 (KPI) -->
             <div class="metric-grid">
+                <div class="metric-card">
+                    <div class="metric-info">
+                        <h4 id="labelMetricPinClicks">학원 핀 클릭수</h4>
+                        <div class="metric-value"><span id="metricPinClicks">0</span><span class="unit">회</span></div>
+                        <div class="metric-subtext" id="subtextMetricPinClicks">지도에서 학원 핀을 클릭한 횟수</div>
+                    </div>
+                    <div class="metric-icon" id="iconMetricPinClicks">📍</div>
+                </div>
+
                 <div class="metric-card primary">
                     <div class="metric-info">
-                        <h4>프로필 상세 조회</h4>
+                        <h4 id="labelMetricProfileViews">학원 상세 조회수</h4>
                         <div class="metric-value"><span id="metricProfileViews">0</span><span class="unit">회</span></div>
-                        <div class="metric-subtext">학부모가 상세 페이지를 확인한 횟수</div>
+                        <div class="metric-subtext" id="subtextMetricProfileViews">학부모가 상세 페이지를 확인한 횟수</div>
                     </div>
-                    <div class="metric-icon">👁️</div>
+                    <div class="metric-icon" id="iconMetricProfileViews">👁️</div>
                 </div>
 
                 <div class="metric-card primary">
@@ -5956,10 +5965,35 @@
                 const data = await res.json();
 
                 // KPI 수치
+                const pinClicksEl = document.getElementById('metricPinClicks');
+                if (pinClicksEl) pinClicksEl.innerText = (data.stats?.pin_clicks || 0).toLocaleString();
                 document.getElementById('metricProfileViews').innerText = (data.stats?.profile_views || 0).toLocaleString();
                 document.getElementById('metricImpressions').innerText = (data.stats?.premium_impressions || 0).toLocaleString();
                 document.getElementById('metricPhoneClicks').innerText = (data.stats?.phone_clicks || 0).toLocaleString();
                 document.getElementById('metricInquiriesCount').innerText = (data.inquiries?.length || 0).toLocaleString();
+
+                // 파트너 유형(부동산 vs 학원)에 따른 KPI 라벨 동적 최적화
+                const isRe = (currentBiz && currentBiz.type === 'real_estate') || (currentBiz && currentBiz.name && currentBiz.name.includes('공인중개'));
+                const labelPin = document.getElementById('labelMetricPinClicks');
+                const subPin = document.getElementById('subtextMetricPinClicks');
+                const labelView = document.getElementById('labelMetricProfileViews');
+                const subView = document.getElementById('subtextMetricProfileViews');
+                const iconPin = document.getElementById('iconMetricPinClicks');
+                const iconView = document.getElementById('iconMetricProfileViews');
+
+                if (isRe) {
+                    if (labelPin) labelPin.innerText = '주택·단지 핀 클릭수';
+                    if (subPin) subPin.innerText = '관할 지역 주택/단지 핀을 클릭한 횟수';
+                    if (iconPin) iconPin.innerText = '🏢';
+                    if (labelView) labelView.innerText = '단지 상세 조회수';
+                    if (subView) subView.innerText = '학부모가 단지 상세 정보를 확인한 횟수';
+                } else {
+                    if (labelPin) labelPin.innerText = '학원 핀 클릭수';
+                    if (subPin) subPin.innerText = '지도에서 학원 핀을 클릭한 횟수';
+                    if (iconPin) iconPin.innerText = '📍';
+                    if (labelView) labelView.innerText = '학원 상세 조회수';
+                    if (subView) subView.innerText = '학부모가 상세 페이지를 확인한 횟수';
+                }
 
                 // 구독 요약 - 단일 진실 소스 (Single Source of Truth) 일치
                 const activeSub = data.subscription || currentSub;
@@ -5990,7 +6024,9 @@
             const ctx = document.getElementById('viewsTrendChart').getContext('2d');
             const labels = dailyViews.map(d => d.date);
             const views = dailyViews.map(d => d.views);
+            const pinClicks = dailyViews.map(d => d.pinClicks || 0);
             const impressions = dailyViews.map(d => d.impressions);
+            const isRe = (currentBiz && currentBiz.type === 'real_estate') || (currentBiz && currentBiz.name && currentBiz.name.includes('공인중개'));
 
             if (chartInstance) {
                 chartInstance.destroy();
@@ -6005,12 +6041,19 @@
                             label: '프리미엄 노출수',
                             data: impressions,
                             borderColor: '#2563eb',
-                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                            backgroundColor: 'rgba(37, 99, 235, 0.08)',
                             fill: true,
                             tension: 0.3
                         },
                         {
-                            label: '상세 조회수',
+                            label: isRe ? '주택 핀 클릭수' : '학원 핀 클릭수',
+                            data: pinClicks,
+                            borderColor: '#7c3aed',
+                            backgroundColor: 'transparent',
+                            tension: 0.3
+                        },
+                        {
+                            label: isRe ? '단지 상세 조회수' : '상세 조회수',
                             data: views,
                             borderColor: '#059669',
                             backgroundColor: 'transparent',

@@ -6401,7 +6401,7 @@ document.addEventListener('DOMContentLoaded', () => {
             executePostcode();
         } else {
             const script = document.createElement('script');
-            script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+            script.src = 'https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
             script.onload = executePostcode;
             script.onerror = () => {
                 alert('카카오 우편번호 스크립트 로드에 실패했습니다. 주소란에 직접 입력해 주세요.');
@@ -10547,6 +10547,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                 closeClusterPopup();
                             }
 
+                            // 개별 학원 핀/목록 클릭수 저장
+                            if (typeof window.trackAcademyEvent === 'function') {
+                                window.trackAcademyEvent('pin_click', place);
+                            }
+
                             window.isOpeningFromAcademyPin = true;
                             if (typeof window.openAcademyDetailModal === 'function') {
                                 window.openAcademyDetailModal(place);
@@ -10663,6 +10668,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 마커 클릭 시 액션:
                 containerEl.addEventListener('click', (e) => {
                     e.stopPropagation();
+
+                    // 학원 핀 클릭수(pin_click) 저장
+                    if (typeof window.trackAcademyEvent === 'function') {
+                        const targetPlace = (cluster.items && cluster.items[0]) || null;
+                        if (targetPlace) window.trackAcademyEvent('pin_click', targetPlace);
+                    }
 
                     if (typeof window.closeActiveHousingClusterPopup === 'function') {
                         window.closeActiveHousingClusterPopup();
@@ -11218,6 +11229,9 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                                         if (typeof window.closeActiveAcademyClusterPopup === 'function') {
                                             window.closeActiveAcademyClusterPopup();
                                         }
+                                        if (typeof window.trackHousingEvent === 'function') {
+                                            window.trackHousingEvent('housing_pin_click', place);
+                                        }
                                         window.isOpeningFromHousingPin = true;
                                         if (typeof window.openHousingDetailModal === 'function') {
                                             window.openHousingDetailModal(place);
@@ -11322,6 +11336,12 @@ async function updateRealEstateMapMarkers(radius = 1000) {
 
                             containerEl.addEventListener('click', (e) => {
                                 e.stopPropagation();
+
+                                // 주택/단지 핀 클릭수(housing_pin_click) 저장
+                                if (typeof window.trackHousingEvent === 'function') {
+                                    const targetPlace = (cluster.items && cluster.items[0]) || null;
+                                    if (targetPlace) window.trackHousingEvent('housing_pin_click', targetPlace);
+                                }
 
                                 if (typeof window.closeActiveAcademyClusterPopup === 'function') {
                                     window.closeActiveAcademyClusterPopup();
@@ -13152,7 +13172,7 @@ async function updateRealEstateMapMarkers(radius = 1000) {
 
             if (showMarker) {
                 const markerImage = new kakao.maps.MarkerImage(
-                    'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png',
+                    'https://t1.kakaocdn.net/localimg/localimages/07/mapapidoc/marker_red.png',
                     new kakao.maps.Size(24, 35),
                     { offset: new kakao.maps.Point(12, 35) }
                 );
@@ -17895,7 +17915,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 map: window.kakaoMapInstance,
                 title: '통학 출발지 (수동 지정)',
                 image: new kakao.maps.MarkerImage(
-                    'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/red_b.png',
+                    'https://t1.kakaocdn.net/localimg/localimages/07/mapapidoc/red_b.png',
                     new kakao.maps.Size(30, 30),
                     { offset: new kakao.maps.Point(15, 30) }
                 )
@@ -17908,7 +17928,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 map: window.kakaoMapInstance,
                 title: school.school_name,
                 image: new kakao.maps.MarkerImage(
-                    'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/blue_b.png',
+                    'https://t1.kakaocdn.net/localimg/localimages/07/mapapidoc/blue_b.png',
                     new kakao.maps.Size(30, 30),
                     { offset: new kakao.maps.Point(15, 30) }
                 )
@@ -21696,7 +21716,7 @@ const initMobileAndZoneModules = () => {
                 if (currentTopic === 'violence') {
                     summaryText.innerHTML = `📍 <strong>${regionLabel}</strong> 평균 학교폭력: 100명당 <strong>${avgViolencePer100}건</strong>`;
                 } else if (currentTopic === 'composite') {
-                    summaryText.innerHTML = `📍 <strong>${regionLabel}</strong> 평균 종합 교육환경: <strong>${avgComposite}점</strong>`;
+                    summaryText.innerHTML = `📍 <strong>${regionLabel}</strong> 평균 종합점수: <strong>${avgComposite}점</strong>`;
                 } else if (currentTopic === 'academic') {
                     summaryText.innerHTML = `📍 <strong>${regionLabel}</strong> 평균 국영수 점수: <strong>${avgSubject}점</strong>`;
                 } else if (currentTopic === 'extracurricular') {
@@ -21784,7 +21804,7 @@ const initMobileAndZoneModules = () => {
                     metricDetailsHTML = `
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
                             <span style="font-size:12px; font-weight:800; color:var(--primary-blue);">
-                                종합 스코어: <strong>${item.compositeScore}점</strong> / 100점
+                                종합점수: <strong>${item.compositeScore}점</strong> / 100점
                             </span>
                             ${extraInfo}
                         </div>
@@ -21960,17 +21980,21 @@ const initMobileAndZoneModules = () => {
         // 6. 이벤트 바인딩
         window.openTopicStatsModal = function () {
             if (modal) {
-                // 🌟 [핵심] 메인 화면 필터(학교급 & 지역)와 순위 모달 100% 동기화
+                // 🌟 [핵심] 현재 선택된 학교가 있으면 해당 학교급을 최우선 연동, 없으면 메인 필터와 100% 동기화
+                const currentSchool = window.currentSelectedSchool ||
+                                      (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) ||
+                                      window.selectedTargetSchool || null;
                 const mainSchoolTypeEl = document.getElementById('schoolTypeFilter');
-                const mainVal = (mainSchoolTypeEl ? mainSchoolTypeEl.value : '') ||
-                                (typeof orchestrator !== 'undefined' && orchestrator?.state?.filters?.schoolType) || 'middle';
+                let mainVal = (currentSchool && (currentSchool.school_type || currentSchool.type)) ||
+                              (mainSchoolTypeEl ? mainSchoolTypeEl.value : '') ||
+                              (typeof orchestrator !== 'undefined' && orchestrator?.state?.filters?.schoolType) || 'middle';
 
                 if (schoolTypeSelect) {
-                    if (mainVal === 'high' || mainVal === '고등학교') {
+                    if (mainVal === 'high' || mainVal === '고등학교' || String(mainVal).includes('고등')) {
                         schoolTypeSelect.value = '고등학교';
-                    } else if (mainVal === 'middle' || mainVal === '중학교') {
+                    } else if (mainVal === 'middle' || mainVal === '중학교' || String(mainVal).includes('중학')) {
                         schoolTypeSelect.value = '중학교';
-                    } else if (mainVal === 'elementary' || mainVal === '초등학교') {
+                    } else if (mainVal === 'elementary' || mainVal === '초등학교' || String(mainVal).includes('초등')) {
                         schoolTypeSelect.value = '초등학교';
                     } else if (mainVal === 'all') {
                         schoolTypeSelect.value = 'all';
@@ -22545,6 +22569,112 @@ const initMobileAndZoneModules = () => {
         })();
 
         // ==========================================
+        // 학원 성과 통계 추적 헬퍼 (핀 클릭수 및 상세 조회수 수집)
+        // ==========================================
+        window.trackAcademyEvent = function (eventType, placeOrName) {
+            try {
+                if (!placeOrName) return;
+                let place = null;
+                let acadName = '';
+                if (typeof placeOrName === 'string') {
+                    acadName = placeOrName;
+                    if (Array.isArray(window.allFetchedAcademies)) {
+                        place = window.allFetchedAcademies.find(p => (p.place_name || '').trim() === acadName.trim());
+                    }
+                } else if (typeof placeOrName === 'object') {
+                    place = placeOrName;
+                    acadName = place.place_name || place.name || '학원';
+                }
+                if (!acadName) return;
+
+                const placeId = place?.id || place?.place_id || null;
+                const businessId = place?.businessId || place?.bizId || null;
+
+                // 1.2초 내 동일 학원 중복 이벤트 디바운스
+                const dedupeKey = `_evt_${eventType}_${acadName}_${placeId || ''}`;
+                if (window[dedupeKey] && (Date.now() - window[dedupeKey] < 1200)) {
+                    return;
+                }
+                window[dedupeKey] = Date.now();
+
+                fetch('/api/analytics/event', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        eventType: eventType, // 'pin_click' | 'profile_view'
+                        businessId: businessId,
+                        academyName: acadName,
+                        metadata: {
+                            academy_name: acadName,
+                            place_id: placeId,
+                            address: place?.road_address_name || place?.address_name || '',
+                            lat: place?.y || place?.lat || null,
+                            lng: place?.x || place?.lng || null
+                        }
+                    })
+                }).catch(() => {});
+            } catch (e) {
+                // 조용한 예외 방어 (UX 무중단)
+            }
+        };
+
+        // ==========================================
+        // 주택/단지 성과 통계 추적 헬퍼 (부동산 파트너용 핀 클릭수 및 상세 조회수 수집)
+        // ==========================================
+        window.trackHousingEvent = function (eventType, placeOrName) {
+            try {
+                if (!placeOrName) return;
+                let place = null;
+                let propName = '';
+                if (typeof placeOrName === 'string') {
+                    propName = placeOrName;
+                    if (Array.isArray(window.allFetchedHousings)) {
+                        place = window.allFetchedHousings.find(p => (p.name || '').trim() === propName.trim());
+                    }
+                } else if (typeof placeOrName === 'object') {
+                    place = placeOrName;
+                    propName = place.name || '';
+                }
+                if (!propName) return;
+
+                const placeId = place?.id || place?.complexNo || place?.hscpNo || null;
+                const businessId = place?.businessId || place?.bizId || null;
+                const addr = place?.address || place?.road_address || place?.road_address_name || place?.address_name || '';
+                const dong = place?.dong || '';
+                const sigungu = place?.sigungu || '';
+
+                // 1.2초 내 동일 주택 중복 이벤트 디바운스
+                const dedupeKey = `_evt_h_${eventType}_${propName}_${placeId || ''}`;
+                if (window[dedupeKey] && (Date.now() - window[dedupeKey] < 1200)) {
+                    return;
+                }
+                window[dedupeKey] = Date.now();
+
+                fetch('/api/analytics/event', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        eventType: eventType, // 'housing_pin_click' | 'housing_view'
+                        businessId: businessId,
+                        academyName: propName,
+                        metadata: {
+                            category: 'housing',
+                            housing_name: propName,
+                            place_id: placeId,
+                            address: addr,
+                            dong: dong,
+                            sigungu: sigungu,
+                            lat: place?.lat || place?.y || null,
+                            lng: place?.lng || place?.x || null
+                        }
+                    })
+                }).catch(() => {});
+            } catch (e) {
+                // 조용한 예외 방어 (UX 무중단)
+            }
+        };
+
+        // ==========================================
         // 학원 상세 모달 액션 헬퍼 및 신규 기능 함수들
         // ==========================================
         window.openAcademyDetailModal = function (placeOrName) {
@@ -22552,6 +22682,11 @@ const initMobileAndZoneModules = () => {
             setTimeout(() => { window.isOpeningFromAcademyDetail = false; }, 600);
 
             if (!placeOrName) return;
+
+            // 학원 상세 오픈 시 조회수(profile_view) 자동 저장
+            if (typeof window.trackAcademyEvent === 'function') {
+                window.trackAcademyEvent('profile_view', placeOrName);
+            }
 
             // [모바일 환경 분기]: 지도 핀 클릭 시에만 미니 카드로 노출 (리스트 사이드바가 열려있거나 명시적 오픈일 때는 상세 모달 즉시 오픈)
             const isAcademyListOpen = Boolean(document.querySelector('.app-container')?.classList.contains('academy-open') || document.getElementById('academySidebar')?.style.display === 'flex');
@@ -22864,6 +22999,11 @@ const initMobileAndZoneModules = () => {
             setTimeout(() => { window.isOpeningFromHousingDetail = false; }, 600);
 
             if (!placeOrName) return;
+
+            // 주택 상세 오픈 시 조회수(housing_view) 자동 저장
+            if (typeof window.trackHousingEvent === 'function') {
+                window.trackHousingEvent('housing_view', placeOrName);
+            }
 
             // [모바일 환경 분기]: 지도 핀 클릭 시에만 미니 카드로 노출 (리스트 사이드바가 열려있거나 명시적 오픈일 때는 상세 모달 즉시 오픈)
             const isHousingListOpen = Boolean(document.querySelector('.app-container')?.classList.contains('housing-open') || document.getElementById('housingSidebar')?.style.display === 'flex');

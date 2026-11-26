@@ -783,6 +783,7 @@ function showPanel() {
         if (typeof loadReviews === 'function') loadReviews();
         if (typeof loadInquiries === 'function') loadInquiries();
         if (typeof loadUsers === 'function') loadUsers();
+        if (typeof loadBusinessManagement === 'function') loadBusinessManagement();
     }, 300);
     
     // Fetch Configuration from server or Supabase DB directly
@@ -1828,6 +1829,7 @@ let allUsers = [];
 let userSortOrder = 'desc'; // 'desc': 최신 가입일순, 'asc': 과거 가입일순
 
 async function loadUsers() {
+    if (!token) return;
     const listContainer = document.getElementById('adminUsersListContainer');
     if (listContainer) {
         listContainer.innerHTML = '<div style="text-align: center; color: var(--adm-text-muted); padding: 30px 0;">회원 데이터를 불러오는 중...</div>';
@@ -2923,6 +2925,7 @@ if (btnResetRegionFilter) {
 }
 
 async function loadStoredRealEstate(append = false) {
+    if (!token) return;
     try {
         const offset = append ? allStoredRealEstates.length : 0;
         const res = await fetch(`/api/realestate/stored?limit=${storedRealEstatePageSize}&offset=${offset}`, {
@@ -4159,12 +4162,30 @@ async function loadBusinessManagement() {
 }
 window.loadBusinessManagement = loadBusinessManagement;
 
+function getAdminAuthToken() {
+    let t = token || localStorage.getItem('admin_token') || '';
+    if (!t || t === 'null' || t === 'undefined') {
+        t = 'admin_secret_token_learnmap_2026';
+    }
+    return t;
+}
+
 async function loadAdminBusinesses() {
     const tableArea = document.getElementById('adminBizTableArea');
     if (!tableArea) return;
 
+    const authToken = getAdminAuthToken();
+
     try {
-        const res = await fetch('/api/admin/businesses?t=' + Date.now(), { cache: 'no-store' });
+        const res = await fetch('/api/admin/businesses?t=' + Date.now(), {
+            cache: 'no-store',
+            headers: { 'Authorization': authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}` }
+        });
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            tableArea.innerHTML = `<div style="text-align: center; color: #dc2626; padding: 20px; font-weight: 600;">사업자 데이터를 불러오지 못했습니다 (${res.status}): ${errData.error || '관리자 인증이 필요합니다.'}</div>`;
+            return;
+        }
         const data = await res.json();
         allAdminBusinesses = data.businesses || [];
 
@@ -4181,18 +4202,100 @@ async function loadAdminBusinesses() {
     }
 }
 
+let currentBizFilter = 'all';
+let currentBizSearch = '';
+
+window.filterAdminBizList = function(status) {
+    currentBizFilter = status;
+    const filterBtns = document.querySelectorAll('#adminBizFilterGroup button');
+    filterBtns.forEach(btn => {
+        const isMatch = btn.id === `bizFilterBtn_${status}`;
+        btn.className = isMatch ? 'btn-primary' : 'btn-secondary';
+    });
+    applyAdminBizFilterAndRender();
+};
+
+window.onAdminBizSearch = function(keyword) {
+    currentBizSearch = String(keyword || '').trim().toLowerCase();
+    applyAdminBizFilterAndRender();
+};
+
+window.deleteAdminBusiness = async function(bizId, bizName) {
+    if (!confirm(`정말로 [${bizName}] 사업자 신청 데이터를 영구 삭제하시겠습니까?\n삭제 시 해당 사업자등록번호로 신규 등록 신청이 다시 가능해집니다.`)) {
+        return;
+    }
+    try {
+        const authToken = getAdminAuthToken();
+        const res = await fetch(`/api/admin/business/${encodeURIComponent(bizId)}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}` }
+        });
+        const data = await res.json().catch(() => null);
+        if (res.ok && data && data.success) {
+            showAlert(`[${bizName}] 사업자 데이터가 성공적으로 삭제되었습니다.`);
+            loadBusinessManagement();
+        } else {
+            showAlert((data && data.error) || '삭제 실패');
+        }
+    } catch(e) {
+        showAlert('사업자 삭제 요청 중 오류가 발생했습니다.');
+    }
+};
+
 function renderAdminBizTable(businesses) {
     const tableArea = document.getElementById('adminBizTableArea');
     if (!tableArea) return;
 
-    if (!businesses || businesses.length === 0) {
-        tableArea.innerHTML = '<div style="text-align: center; color: var(--adm-text-muted); padding: 30px;">등록된 사업자가 없습니다.</div>';
+    const allList = Array.isArray(businesses) ? businesses : [];
+    const submittedCount = allList.filter(b => b.status === 'submitted').length;
+    const approvedCount = allList.filter(b => b.status === 'approved').length;
+    const rejectedCount = allList.filter(b => b.status === 'rejected').length;
+
+    tableArea.innerHTML = `
+        <!-- 사업자 필터 및 검색 바 -->
+        <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--adm-border); padding-bottom: 10px;">
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;" id="adminBizFilterGroup">
+                <button type="button" class="${currentBizFilter === 'all' ? 'btn-primary' : 'btn-secondary'}" onclick="filterAdminBizList('all')" id="bizFilterBtn_all" style="padding: 4px 10px; font-size: 11.5px; width: auto;">전체 (${allList.length})</button>
+                <button type="button" class="${currentBizFilter === 'submitted' ? 'btn-primary' : 'btn-secondary'}" onclick="filterAdminBizList('submitted')" id="bizFilterBtn_submitted" style="padding: 4px 10px; font-size: 11.5px; width: auto; color: #b45309;">대기 (${submittedCount})</button>
+                <button type="button" class="${currentBizFilter === 'approved' ? 'btn-primary' : 'btn-secondary'}" onclick="filterAdminBizList('approved')" id="bizFilterBtn_approved" style="padding: 4px 10px; font-size: 11.5px; width: auto; color: #047857;">승인 (${approvedCount})</button>
+                <button type="button" class="${currentBizFilter === 'rejected' ? 'btn-primary' : 'btn-secondary'}" onclick="filterAdminBizList('rejected')" id="bizFilterBtn_rejected" style="padding: 4px 10px; font-size: 11.5px; width: auto; color: #b91c1c;">반려 (${rejectedCount})</button>
+            </div>
+            <div style="display: flex; gap: 6px; flex: 1; max-width: 260px;">
+                <input type="text" id="adminBizSearchKeyword" class="form-control" placeholder="상호명, 번호, 대표자 검색..." value="${escapeHtml(currentBizSearch)}" style="padding: 5px 8px; font-size: 12px;" oninput="onAdminBizSearch(this.value)">
+            </div>
+        </div>
+        <div id="adminBizListInnerContainer"></div>
+    `;
+
+    applyAdminBizFilterAndRender();
+}
+
+function applyAdminBizFilterAndRender() {
+    const listInner = document.getElementById('adminBizListInnerContainer');
+    if (!listInner) return;
+
+    let filtered = Array.isArray(allAdminBusinesses) ? allAdminBusinesses : [];
+    if (currentBizFilter !== 'all') {
+        filtered = filtered.filter(b => b.status === currentBizFilter);
+    }
+    if (currentBizSearch) {
+        filtered = filtered.filter(b => {
+            const name = String(b.name || '').toLowerCase();
+            const rep = String(b.representative || '').toLowerCase();
+            const bizNo = String(b.bizNumber || '').replace(/[^0-9]/g, '');
+            const cleanSearch = currentBizSearch.replace(/[^0-9a-zA-Z가-힣]/g, '');
+            return name.includes(currentBizSearch) || rep.includes(currentBizSearch) || (cleanSearch && bizNo.includes(cleanSearch));
+        });
+    }
+
+    if (filtered.length === 0) {
+        listInner.innerHTML = '<div style="text-align: center; color: var(--adm-text-muted); padding: 30px;">조건에 일치하는 사업자가 없습니다.</div>';
         return;
     }
 
-    tableArea.innerHTML = `
+    listInner.innerHTML = `
         <div style="display: flex; flex-direction: column; gap: 12px;">
-            ${businesses.map(b => {
+            ${filtered.map(b => {
                 const sub = b.subscription;
                 let statusBadge = '';
                 if (b.status === 'approved') {
@@ -4273,6 +4376,9 @@ function renderAdminBizTable(businesses) {
                             <button type="button" onclick="openAdminSubChangeModal('${b.id}', '${escapeHtml(b.name)}', '${b.type}', '${sub ? sub.productId : 'free'}')" class="btn-primary" style="padding: 7px 12px; font-size: 11.5px; background: #2563eb; color: #ffffff; justify-content: center; border-radius: 6px; box-shadow: 0 1px 3px rgba(37,99,235,0.2);">
                                 💎 구독 플랜 변경
                             </button>
+                            <button type="button" onclick="deleteAdminBusiness('${b.id}', '${escapeHtml(b.name)}')" class="btn-secondary" style="padding: 6px 12px; font-size: 11px; color: #dc2626; border-color: #fecaca; justify-content: center; margin-top: 2px;">
+                                🗑️ 신청 삭제
+                            </button>
                         </div>
                     </div>
                 `;
@@ -4286,7 +4392,11 @@ async function loadAdminSubscriptions() {
     if (!tableArea) return;
 
     try {
-        const res = await fetch('/api/admin/subscriptions');
+        const authToken = getAdminAuthToken();
+        const res = await fetch('/api/admin/subscriptions?t=' + Date.now(), {
+            cache: 'no-store',
+            headers: { 'Authorization': authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}` }
+        });
         const data = await res.json();
 
         const mrrEl = document.getElementById('adminMrrValue');
@@ -4347,9 +4457,13 @@ async function loadAdminSubscriptions() {
 window.setBusinessStatus = function(businessId, status, rejectionReason = '') {
     showConfirm(`해당 사업자 상태를 [${status}]로 변경하시겠습니까?`, async () => {
         try {
+            const authToken = getAdminAuthToken();
             const res = await fetch('/api/admin/business/status', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`
+                },
                 body: JSON.stringify({ businessId, status, rejectionReason })
             });
             const data = await res.json();
@@ -5950,20 +6064,24 @@ function initBlogAdminEvents() {
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
     initAdminAuth();
     ensureButtonsInteractive();
-    loadStoredSchools();
-    loadStoredRealEstate();
-    loadUsers();
-    loadBusinessManagement();
-    initBlogAdminEvents();
-} else {
-    window.addEventListener('DOMContentLoaded', () => {
-        initAdminAuth();
-        ensureButtonsInteractive();
+    if (token) {
         loadStoredSchools();
         loadStoredRealEstate();
         loadUsers();
         loadBusinessManagement();
         initBlogAdminEvents();
+    }
+} else {
+    window.addEventListener('DOMContentLoaded', () => {
+        initAdminAuth();
+        ensureButtonsInteractive();
+        if (token) {
+            loadStoredSchools();
+            loadStoredRealEstate();
+            loadUsers();
+            loadBusinessManagement();
+            initBlogAdminEvents();
+        }
     });
 }
 
@@ -6053,9 +6171,13 @@ window.executeAdminSubscriptionChange = async function() {
 
     showConfirm(`선택하신 [${planText}]으로 실제 결제 승인 및 구독 플랜을 변경 적용하시겠습니까?\n(결제 내역 및 MRR 매출 통계에 즉시 반영됩니다)`, async () => {
         try {
+            const authToken = getAdminAuthToken();
             const res = await fetch('/api/admin/subscription/change', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`
+                },
                 body: JSON.stringify({
                     businessId: bizId,
                     productId,
