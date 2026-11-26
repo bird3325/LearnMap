@@ -124,7 +124,6 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         admin: resolve(__dirname, 'admin.html'),
-        adminDashboard: resolve(__dirname, 'templates/admin_dashboard.html'),
         business: resolve(__dirname, 'business.html'),
         blog: resolve(__dirname, 'blog.html'),
         partnerAuth: resolve(__dirname, 'partner-auth.html')
