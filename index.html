@@ -293,6 +293,8 @@
                         button.innerHTML = iconClose;
                     } else {
                         if (typeof window.clearAcademyMarker === 'function') window.clearAcademyMarker();
+                        if (typeof window.clearAcademyMapMarkers === 'function') window.clearAcademyMapMarkers();
+                        if (typeof window.clearRealEstateMapMarkers === 'function') window.clearRealEstateMapMarkers();
                         container.classList.remove('sidebar-open');
                         container.classList.remove('academy-open');
                         button.innerHTML = iconMenu;
@@ -2281,36 +2283,56 @@
                                 <button id="btnAddNewChild-pc"></button>
                             </div>
 
-                            <!-- 섹션 타이틀 헤더 -->
-                            <div
-                                style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
-                                <div style="display: flex; align-items: flex-start; gap: 10px;">
+                            <!-- 섹션 타이틀 헤더 (클릭 시 열고 닫기 토글, 기본: 접힘) -->
+                            <div id="settingsChildSectionHeader"
+                                onclick="if(typeof window.toggleChildSettingsCard === 'function') window.toggleChildSettingsCard();"
+                                style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 0px; margin-bottom: 0px; border-bottom: none; cursor: pointer; user-select: none;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
                                     <span style="font-size: 20px; line-height: 1;">🏫</span>
                                     <div>
-                                        <h4
-                                            style="margin: 0; font-size: 15px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px;">
-                                            자녀 정보 및 성적 설정</h4>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <h4
+                                                style="margin: 0; font-size: 15px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px;">
+                                                자녀 정보 및 성적 설정</h4>
+                                            <span id="childCardCollapsedBadge"
+                                                style="display: inline-block; font-size: 11px; font-weight: 700; color: #2563eb; background: #eff6ff; padding: 2px 8px; border-radius: 6px; border: 1px solid #dbeafe;"></span>
+                                        </div>
                                         <p style="margin: 3px 0 0 0; font-size: 11.5px; color: #64748b;">내신 예측과 학군 맞춤 학원
                                             추천에 반영됩니다</p>
                                     </div>
                                 </div>
-                                <!-- 자녀 삭제 버튼 -->
-                                <button type="button" id="btnDeleteChildAction"
-                                    onclick="if(typeof window.handleDeleteCurrentChild === 'function') { window.handleDeleteCurrentChild(); } else { const b = document.getElementById('btnDeleteSelectedChild-pc'); if(b) b.click(); }"
-                                    style="background: #ffffff; border: 1px solid #fecaca; border-radius: 8px; padding: 5px 10px; font-size: 11.5px; font-weight: 600; color: #ef4444; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.03);"
-                                    onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#f87171';"
-                                    onmouseout="this.style.background='#ffffff'; this.style.borderColor='#fecaca';"
-                                    title="선택된 자녀 정보 삭제">
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="3 6 5 6 21 6"></polyline>
-                                        <path
-                                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
-                                        </path>
-                                    </svg>
-                                    <span>자녀 삭제</span>
-                                </button>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <!-- 자녀 삭제 버튼 -->
+                                    <button type="button" id="btnDeleteChildAction"
+                                        onclick="event.stopPropagation(); if(typeof window.handleDeleteCurrentChild === 'function') { window.handleDeleteCurrentChild(); } else { const b = document.getElementById('btnDeleteSelectedChild-pc'); if(b) b.click(); }"
+                                        style="background: #ffffff; border: 1px solid #fecaca; border-radius: 8px; padding: 5px 10px; font-size: 11.5px; font-weight: 600; color: #ef4444; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.03);"
+                                        onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#f87171';"
+                                        onmouseout="this.style.background='#ffffff'; this.style.borderColor='#fecaca';"
+                                        title="선택된 자녀 정보 삭제">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path
+                                                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                            </path>
+                                        </svg>
+                                        <span>자녀 삭제</span>
+                                    </button>
+                                    <!-- 열기 / 닫기 (접기 / 펼치기) 버튼 -->
+                                    <button type="button" id="btnToggleChildCard"
+                                        onclick="event.stopPropagation(); if(typeof window.toggleChildSettingsCard === 'function') window.toggleChildSettingsCard();"
+                                        style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 5px 10px; font-size: 11.5px; font-weight: 700; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.02);"
+                                        onmouseover="this.style.background='#f1f5f9';"
+                                        onmouseout="this.style.background='#f8fafc';"
+                                        title="자녀 정보 및 성적 설정 카드 열기/닫기">
+                                        <span id="txtToggleChildCard">열기</span>
+                                        <span id="arrowToggleChildCard" style="display: inline-block; transition: transform 0.2s; transform: rotate(180deg); font-size: 9px;">▲</span>
+                                    </button>
+                                </div>
                             </div>
+
+                            <!-- [접기/펼치기 대상 본문 영역, 기본: 접힘] -->
+                            <div id="settingsChildSectionBody" style="display: none;">
 
                             <!-- 자녀 선택 칩/알약 탭 목록 컨테이너 -->
                             <div id="childPillTabsContainer"
@@ -2620,6 +2642,54 @@
                                 </svg>
                                 <span>자녀 성적 저장 및 분석 동기화</span>
                             </button>
+                            </div><!-- end settingsChildSectionBody -->
+                        </div>
+
+                        <!-- [카드: 관심 학교 및 관심 학원 보관함] -->
+                        <div id="settingsFavoritesSection-pc" class="settings-card-item card"
+                            style="margin-bottom: 16px; box-sizing: border-box;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: nowrap; padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+                                <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
+                                    <span style="font-size: 16px; flex-shrink: 0;">⭐</span>
+                                    <div style="min-width: 0;">
+                                        <h3
+                                            style="font-size: 15px; font-weight: 800; color: #1e293b; margin: 0; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                            관심 학교 및 학원 보관함</h3>
+                                        <div style="font-size: 11.5px; color: #64748b; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">즐겨찾는 학교와 관심 등록된 학원을 바로 확인하고 이동할 수 있습니다</div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 4px; flex-shrink: 0; white-space: nowrap;">
+                                    <button type="button" id="btnTabFavSchoolsPC"
+                                        onclick="if(typeof window.switchPCFavTab === 'function') window.switchPCFavTab('schools');"
+                                        style="background: #2563eb; color: white; border: none; border-radius: 6px; padding: 4px 8px; font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap;">🏫 학교</button>
+                                    <button type="button" id="btnTabFavAcademiesPC"
+                                        onclick="if(typeof window.switchPCFavTab === 'function') window.switchPCFavTab('academies');"
+                                        style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px; font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap;">🔖 학원</button>
+                                </div>
+                            </div>
+
+                            <!-- PC 관심학교 리스트 컨테이너 -->
+                            <div id="mypageFavSchoolsContainerPC">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 11.5px; color: #64748b; font-weight: 600;">등록된 관심 학교</span>
+                                    <button type="button"
+                                        onclick="if(typeof window.clearAllFavorites === 'function') window.clearAllFavorites();"
+                                        style="background: none; border: none; font-size: 11px; color: #ef4444; font-weight: 600; cursor: pointer; padding: 2px 4px;">전체 삭제</button>
+                                </div>
+                                <div id="mypageFavoriteSchoolsListPC" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                            </div>
+
+                            <!-- PC 관심학원 리스트 컨테이너 -->
+                            <div id="mypageFavAcademiesContainerPC" style="display: none;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 11.5px; color: #64748b; font-weight: 600;">등록된 관심 학원</span>
+                                    <button type="button"
+                                        onclick="if(typeof window.clearAllFavoriteAcademies === 'function') window.clearAllFavoriteAcademies();"
+                                        style="background: none; border: none; font-size: 11px; color: #ef4444; font-weight: 600; cursor: pointer; padding: 2px 4px;">전체 삭제</button>
+                                </div>
+                                <div id="mypageFavoriteAcademiesListPC" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                            </div>
                         </div>
 
                         <!-- [카드: 학군 이사 시뮬레이션 보관함] -->
@@ -3017,9 +3087,9 @@
 
                         <!-- 2. Hogangnono Style Menu Sections -->
 
-                        <!-- Section: 나의 활동 (로그인 회원 전용) -->
+                        <!-- Section: 나의 활동 -->
                         <div id="settingsMyActivitySectionMobile"
-                            style="display: none; flex-direction: column; gap: 1px; background: white; border-radius: 12px; border: 1px solid var(--border-color); overflow: hidden; flex-shrink: 0;">
+                            style="display: flex; flex-direction: column; gap: 1px; background: white; border-radius: 12px; border: 1px solid var(--border-color); overflow: hidden; flex-shrink: 0;">
                             <div
                                 style="font-size: 11px; font-weight: 700; color: var(--text-muted); background: #f8f9fa; padding: 10px 16px; border-bottom: 1px solid var(--border-color); text-align: left;">
                                 나의 활동</div>
@@ -3053,6 +3123,36 @@
                                         삭제</button>
                                 </div>
                                 <div id="mypageFavoriteSchoolsList"
+                                    style="display: flex; flex-direction: column; gap: 6px;"></div>
+                            </div>
+
+                            <!-- Divider -->
+                            <div style="height: 1px; background: var(--border-color); margin: 0 16px;"></div>
+
+                            <!-- Menu Item: 관심 학원 -->
+                            <div onclick="if(typeof window.toggleMypageAccordion === 'function') window.toggleMypageAccordion('favorite-academies');"
+                                style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; cursor: pointer; transition: background 0.2s; background: white;"
+                                onmouseover="this.style.background='#f8f9fa'"
+                                onmouseout="this.style.background='white'">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 16px;">🔖</span>
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">관심 학원</span>
+                                </div>
+                                <span style="font-size: 12px; color: var(--text-muted);"
+                                    id="mypageAccordionArrow-favorite-academies">▼</span>
+                            </div>
+                            <!-- Accordion Content: 관심 학원 리스트 -->
+                            <div id="mypageAccordionContent-favorite-academies"
+                                style="display: none; padding: 12px 16px; border-top: 1px dashed var(--border-color); background: #fcfcfc;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 11px; color: var(--text-muted);">관심 저장된 학원 목록</span>
+                                    <button
+                                        onclick="if(typeof window.clearAllFavoriteAcademies === 'function') window.clearAllFavoriteAcademies();"
+                                        style="background: none; border: none; font-size: 10px; color: var(--danger-red, #ff3b30); cursor: pointer; padding: 2px 4px; font-weight: 600;">전체
+                                        삭제</button>
+                                </div>
+                                <div id="mypageFavoriteAcademiesList"
                                     style="display: flex; flex-direction: column; gap: 6px;"></div>
                             </div>
 
@@ -5853,6 +5953,15 @@
                             style="font-size: 16px; font-weight: 800; color: #0f172a; letter-spacing: -0.3px; line-height: 1.2;">학원상세</span>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
+                        <button id="btnFavAcademyDetail" onclick="window.toggleFavoriteAcademy()"
+                            style="background: #f1f5f9; border: none; cursor: pointer; color: #64748b; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; padding: 0; transition: all 0.2s ease;"
+                            onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background=this.dataset.isFav === 'true' ? '#ffe4e6' : '#f1f5f9'"
+                            title="관심학원 등록">
+                            <svg id="iconFavAcademyDetail" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                        </button>
                         <button onclick="window.shareAcademyDetail()"
                             style="background: #f1f5f9; border: none; cursor: pointer; color: #64748b; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; padding: 0; transition: background 0.2s ease;"
                             onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'"
@@ -5875,14 +5984,18 @@
 
                 <!-- 학원 상세 메인 타이틀 & 뱃지 영역 -->
                 <div style="margin-bottom: 14px;">
-                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
-                        <h2
-                            style="font-size: 20px; font-weight: 800; color: #0f172a; margin: 0; line-height: 1.3; word-break: break-all;">
-                            <span id="communityAcademyName">학원명</span>
-                        </h2>
-                        <span
-                            style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #2563eb; color: #fff; border-radius: 50%; font-size: 11px; font-weight: bold; flex-shrink: 0;"
-                            title="교육청 인가 검증 완료">✓</span>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                        <img id="communityAcademyLogo" src="" alt="학원 로고"
+                            style="display: none; width: 44px; height: 44px; border-radius: 10px; object-fit: cover; border: 1px solid #e2e8f0; flex-shrink: 0; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.06);" />
+                        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0;">
+                            <h2
+                                style="font-size: 20px; font-weight: 800; color: #0f172a; margin: 0; line-height: 1.3; word-break: break-all;">
+                                <span id="communityAcademyName">학원명</span>
+                            </h2>
+                            <span
+                                style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #2563eb; color: #fff; border-radius: 50%; font-size: 11px; font-weight: bold; flex-shrink: 0;"
+                                title="교육청 인가 검증 완료">✓</span>
+                        </div>
                     </div>
                     <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
                         <span id="communityAcademyType"
@@ -8165,7 +8278,7 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script type="module" src="app.js?v=20261126_rank_fix2"></script>
+    <script type="module" src="app.js?v=20261127_fix_v14"></script>
 
     <!-- 이용약관 및 개인정보처리방침 통합 모달 -->
     <div id="termsModal"

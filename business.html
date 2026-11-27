@@ -7,6 +7,9 @@
     <title>학업여지도 파트너 센터</title>
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏢</text></svg>">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
 
     <!-- Google Fonts Inter & Pretendard -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -4853,6 +4856,7 @@
         const urlParamsInit = new URLSearchParams(window.location.search);
         let currentBizId = urlParamsInit.get('bizId') || null;
         let isDemoMode = urlParamsInit.get('demo') === 'true';
+        let currentUser = null;
         let currentBiz = null;
         let currentSub = null;
         let chartInstance = null;
@@ -5017,7 +5021,9 @@
 
             const bizId = currentBiz.id;
             try {
-                const res = await fetch(`/api/business/market-analysis?businessId=${bizId}&radius=${radius}`);
+                const res = await fetch(`/api/business/market-analysis?businessId=${bizId}&radius=${radius}`, {
+                    headers: typeof getPartnerAuthHeaders === 'function' ? getPartnerAuthHeaders() : {}
+                });
                 const data = await res.json();
 
                 if (!res.ok) {
@@ -5389,7 +5395,9 @@
             if ((!lat || !lng || isNaN(lat) || isNaN(lng)) && currentBiz && currentBiz.id) {
                 try {
                     showToast('학원 위치 좌표를 확인하고 있습니다...', '🗺️');
-                    const res = await fetch('/api/business/market-analysis?businessId=' + currentBiz.id + '&radius=' + (currentMarketRadius || 1000));
+                    const res = await fetch('/api/business/market-analysis?businessId=' + currentBiz.id + '&radius=' + (currentMarketRadius || 1000), {
+                        headers: typeof getPartnerAuthHeaders === 'function' ? getPartnerAuthHeaders() : {}
+                    });
                     const data = await res.json();
                     if (data && data.center && data.center.lat && data.center.lng) {
                         lastMarketData = data;
@@ -5689,6 +5697,12 @@
 
             updateAuthLockOverlay(tabId);
 
+            if (tabId === 'tab-dashboard') {
+                if (typeof loadDashboard === 'function' && currentBiz) {
+                    loadDashboard(currentBiz.id);
+                }
+            }
+
             if (tabId === 'tab-payments') {
                 loadPaymentHistory();
             }
@@ -5760,9 +5774,21 @@
             }
         }
 
+        // 파트너 인증 토큰 헤더 생성 헬퍼
+        function getPartnerAuthHeaders() {
+            let u = null;
+            try {
+                u = JSON.parse(localStorage.getItem('learnmap_current_user') || 'null');
+            } catch (e) {}
+            const token = (u && (u.token || u.id || u.email)) || (currentBiz && (currentBiz.userId || currentBiz.id)) || localStorage.getItem('admin_token') || 'authenticated_partner';
+            return {
+                'Authorization': `Bearer ${token}`
+            };
+        }
+
         async function loadSession() {
             try {
-                let currentUser = null;
+                currentUser = null;
                 try {
                     currentUser = JSON.parse(localStorage.getItem('learnmap_current_user') || 'null');
                 } catch (e) {}
@@ -5786,7 +5812,10 @@
                 if (isDemoMode) params.set('demo', 'true');
 
                 const queryStr = params.toString() ? `?${params.toString()}` : '';
-                const res = await fetch(`/api/business/session${queryStr}`);
+                const res = await fetch(`/api/business/session${queryStr}`, {
+                    headers: getPartnerAuthHeaders(),
+                    cache: 'no-store'
+                });
                 const data = await res.json();
 
                 if (demoBadge) {
@@ -5955,6 +5984,11 @@
 
         async function loadDashboard(bizId) {
             try {
+                if (!currentUser) {
+                    try {
+                        currentUser = JSON.parse(localStorage.getItem('learnmap_current_user') || 'null');
+                    } catch (e) {}
+                }
                 const targetBizId = bizId || (currentBiz && currentBiz.id) || (currentUser && (currentUser.businessId || currentUser.id)) || '';
                 const queryStr = targetBizId ? `?businessId=${encodeURIComponent(targetBizId)}` : '';
                 const authUserToken = (currentUser && (currentUser.token || currentUser.id || currentUser.email)) || (currentBiz && (currentBiz.userId || currentBiz.id)) || localStorage.getItem('admin_token') || 'authenticated_partner';
@@ -6019,6 +6053,29 @@
                 renderChart([]);
             }
         }
+
+        // 🌟 실시간 성과 통계 자동 동기화 리스너 (지도에서 학원핀 클릭/상세 열람 즉시 반영)
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'learnmap_last_analytics_event' && currentBiz) {
+                loadDashboard(currentBiz.id);
+            }
+        });
+        window.addEventListener('focus', () => {
+            if (currentBiz && document.getElementById('tab-dashboard')?.classList.contains('active')) {
+                loadDashboard(currentBiz.id);
+            }
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && currentBiz && document.getElementById('tab-dashboard')?.classList.contains('active')) {
+                loadDashboard(currentBiz.id);
+            }
+        });
+        // 대시보드 열려있을 때 8초 주기 자동 폴링 동기화
+        setInterval(() => {
+            if (currentBiz && document.getElementById('tab-dashboard')?.classList.contains('active')) {
+                loadDashboard(currentBiz.id);
+            }
+        }, 8000);
 
         function renderChart(dailyViews) {
             const ctx = document.getElementById('viewsTrendChart').getContext('2d');
@@ -7779,7 +7836,10 @@
             try {
                 const res = await fetch('/api/business/profile', {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(typeof getPartnerAuthHeaders === 'function' ? getPartnerAuthHeaders() : {})
+                    },
                     body: JSON.stringify(payload)
                 });
                 const result = await res.json();
@@ -8210,7 +8270,10 @@
             try {
                 const res = await fetch('/api/business/target-schools', {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(typeof getPartnerAuthHeaders === 'function' ? getPartnerAuthHeaders() : {})
+                    },
                     body: JSON.stringify({
                         businessId: currentBiz.id,
                         targetSchools: selectedSchools
@@ -8281,7 +8344,10 @@
             try {
                 const res = await fetch('/api/subscription/checkout', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(typeof getPartnerAuthHeaders === 'function' ? getPartnerAuthHeaders() : {})
+                    },
                     body: JSON.stringify({
                         businessId: currentBiz.id,
                         productId: productId,
@@ -8321,7 +8387,9 @@
             try {
                 let data = null;
                 try {
-                    const res = await fetch(`/api/business/payment-history?businessId=${encodeURIComponent(currentBiz.id)}`);
+                    const res = await fetch(`/api/business/payment-history?businessId=${encodeURIComponent(currentBiz.id)}`, {
+                        headers: typeof getPartnerAuthHeaders === 'function' ? getPartnerAuthHeaders() : {}
+                    });
                     if (res.ok) {
                         const json = await res.json();
                         if (json && json.success) data = json;
@@ -8531,7 +8599,10 @@
             try {
                 const res = await fetch('/api/business/report-order', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(typeof getPartnerAuthHeaders === 'function' ? getPartnerAuthHeaders() : {})
+                    },
                     body: JSON.stringify({
                         businessId: currentBiz.id,
                         reportId: reportId
@@ -8559,7 +8630,10 @@
             try {
                 const res = await fetch('/api/subscription/cancel', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(typeof getPartnerAuthHeaders === 'function' ? getPartnerAuthHeaders() : {})
+                    },
                     body: JSON.stringify({
                         businessId: currentBiz.id,
                         subscriptionId: subId
@@ -8747,7 +8821,10 @@
             try {
                 const res = await fetch('/api/business/register', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(typeof getPartnerAuthHeaders === 'function' ? getPartnerAuthHeaders() : {})
+                    },
                     body: JSON.stringify(payload)
                 });
 
@@ -9379,14 +9456,19 @@
 
                 const res = await fetch('/api/business/upload-image', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(typeof getPartnerAuthHeaders === 'function' ? getPartnerAuthHeaders() : {})
+                    },
                     body: JSON.stringify({
                         type: 'logo',
                         category: 'logo',
                         imageData: base64Data,
                         data: base64Data,
                         fileName: file.name,
-                        filename: file.name
+                        filename: file.name,
+                        businessId: currentBiz ? currentBiz.id : '',
+                        email: currentBiz ? currentBiz.email : ''
                     })
                 });
                 const data = await res.json();
@@ -9418,8 +9500,14 @@
             try {
                 await fetch('/api/business/delete-image', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: oldUrl })
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(typeof getPartnerAuthHeaders === 'function' ? getPartnerAuthHeaders() : {})
+                    },
+                    body: JSON.stringify({
+                        url: oldUrl,
+                        businessId: currentBiz ? currentBiz.id : ''
+                    })
                 });
             } catch (e) {
                 console.warn('Server image deletion warning:', e);
@@ -9525,14 +9613,19 @@
 
                     const res = await fetch('/api/business/upload-image', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(typeof getPartnerAuthHeaders === 'function' ? getPartnerAuthHeaders() : {})
+                        },
                         body: JSON.stringify({
                             type: 'photo',
                             category: 'photos',
                             imageData: base64Data,
                             data: base64Data,
                             fileName: file.name,
-                            filename: file.name
+                            filename: file.name,
+                            businessId: currentBiz ? currentBiz.id : '',
+                            email: currentBiz ? currentBiz.email : ''
                         })
                     });
                     const data = await res.json();
@@ -9568,8 +9661,14 @@
                 if (targetUrl) {
                     await fetch('/api/business/delete-image', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ url: targetUrl })
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(typeof getPartnerAuthHeaders === 'function' ? getPartnerAuthHeaders() : {})
+                        },
+                        body: JSON.stringify({
+                            url: targetUrl,
+                            businessId: currentBiz ? currentBiz.id : ''
+                        })
                     });
                 }
             } catch (e) {
@@ -9595,8 +9694,14 @@
                 try {
                     await fetch('/api/business/delete-image', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ url })
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(typeof getPartnerAuthHeaders === 'function' ? getPartnerAuthHeaders() : {})
+                        },
+                        body: JSON.stringify({
+                            url,
+                            businessId: currentBiz ? currentBiz.id : ''
+                        })
                     });
                 } catch (e) {}
             }

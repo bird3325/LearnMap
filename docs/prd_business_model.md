@@ -1182,3 +1182,150 @@
   3. **검색엔진 수집 및 색인 가이드 동기화**:
      - 네이버 서치어드바이저(`naver-site-verification`) 태그 2종 기등록 유지.
      - 구글 서치콘솔 및 네이버 웹마스터도구에 `https://leamap.kr/sitemap.xml` 제출 안내 준비 완료.
+
+
+### [관심학원 이동 시 선택 마커 및 말풍선 자동 해제 정책] (2026-11-27)
+- **요구사항**:
+  - 마이페이지 관심학원에서 특정 학원을 선택하여 지도로 이동했을 때 노출되는 선택 마커(파란색 기본 핀)와 말풍선 오버레이(📍 학원명)가 다음 4가지 동작 시 즉시 지도에서 깨끗하게 해제되도록 구현:
+    1. 학원 상세를 닫을 때
+    2. 학원 리스트에서 다른 학원을 선택할 때
+    3. 지도에서 다른 핀(학교, 다른 학원, 주택 등)을 선택할 때
+    4. 지도를 이동(드래그)할 때
+- **원인 분석**:
+  - `focusAcademyLocationOnMap`에서 생성하는 임시 마커(`window.tempAddressMarker`)와 커스텀 오버레이 말풍선(`window.tempAddressInfoWindow`)을 제거하는 `window.clearAcademyMarker()` 호출 코드는 전역 여러 곳에 존재했으나, 정작 `window.clearAcademyMarker` 함수 본체가 선언/정의되어 있지 않아 마커 해제가 절대 발동되지 않는 결함이 존재함.
+  - 또한 지도 드래그(`dragstart`), 학원 리스트 카드 클릭(`card.onclick`), 다른 학교 핀 선택(`selectSchoolById`), 주택 핀 선택(`openHousingDetailModal`) 시점에 임시 마커 해제 트리거가 누락되어 있었음.
+- **주요 구현 내용 ([app.js](file:///c:/Users/bird3/100%20shop/LearnMap/app.js), [index.html](file:///c:/Users/bird3/100%20shop/LearnMap/index.html))**:
+  1. **전역 마커 해제 함수 구현 (`window.clearAcademyMarker`)**:
+     - `window.tempAddressMarker.setMap(null)` 및 `window.tempAddressInfoWindow` 해제를 안전하게 수행하고 메모리 참조를 초기화.
+  2. **4대 자동 해제 트리거 완벽 연동**:
+     - ① **학원 상세 닫기**: `window.closeAcademyDetailModal` 실행 시 `window.clearAcademyMarker()`가 정상 발화되어 마커/말풍선 즉시 해제.
+     - ② **학원 리스트에서 다른 학원 선택**: 학원 카드 `card.onclick` 및 `openAcademyDetailModal`에서 다른 학원이 오픈될 때 기존 마커 자동 해제.
+     - ③ **지도에서 다른 핀 선택**: 학교 핀(`selectSchoolById`, `showSchoolDetails`), 주택 핀(`openHousingDetailModal`), 지도 빈 영역 클릭 시 자동 해제.
+     - ④ **지도 이동(드래그) 시**: 카카오맵 `dragstart` 및 `dragend` 이벤트 리스너에서 관심학원 이동 직후(400ms 이후) 사용자가 지도를 직접 드래그/이동할 때 `window.clearAcademyMarker()`를 호출하여 마커를 즉시 해제.
+- **검증 완료**:
+  - `node --check app.js` 문법 검증 및 `npm run build` 프로덕션 빌드 100% 통과.
+
+
+### [관심학원 이동 시 학원 핀 마우스 오버 플로팅 라벨 노출 정책] (2026-11-27)
+- **요구사항**:
+  - 마이페이지 관심학원에서 특정 학원을 선택하여 지도로 이동했을 때, 마우스 오버(Hover) 시에 뜨는 세련된 플로팅 라벨(`🎓 학원명`)이 해당 학원 핀 위에 자동으로 노출되도록 개선.
+  - 기존의 임시 파란색 마커와 흰색 말풍선 대신, 지도 위의 실제 학원 핀에 마우스 오버 플로팅 라벨이 표시되어야 함.
+- **주요 구현 내용 ([app.js](file:///c:/Users/bird3/100%20shop/LearnMap/app.js), [index.html](file:///c:/Users/bird3/100%20shop/LearnMap/index.html))**:
+  1. **클러스터 팝업 동작 원복 및 마우스 오버 플로팅 헬퍼 연동**:
+     - 학원 핀 클릭 시의 클러스터 팝업 동작(`count > 1`에만 팝업 생성)은 원래대로 깔끔하게 복원.
+     - 각 학원 핀 컨테이너(`containerEl`)에 마우스 오버 플로팅 라벨을 프로그래밍 방식으로 열고 닫을 수 있는 헬퍼(`_showFloatingLabel`, `_hideFloatingLabel`) 연결.
+  2. **마우스 오버 플로팅 라벨 노출 함수 신규 구현 (`window.showAcademyHoverFloatingOnMap`)**:
+     - 관심학원 이동 시 학원명과 좌표를 기반으로 지도상의 실제 학원 핀을 정확히 탐색.
+     - 핀 탐색 성공 시 해당 학원 핀 위에 마우스 오버 플로팅 라벨(`🎓 학원명`)을 즉시 노출하고 핀을 살짝 하이라이트.
+     - 지도를 해당 핀의 가시 영역 중심(`checkAndAdjustMapForAcademyPin`)으로 부드럽게 정렬.
+     - 임시 파란색 마커나 흰색 말풍선은 생성하지 않아 핀 중복을 방지.
+  3. **자동 해제 라이프사이클 연동 (`window.clearAcademyMarker`)**:
+     - 학원 상세를 닫거나, 학원 리스트에서 다른 학원을 선택하거나, 지도에서 다른 핀을 선택하거나, 지도를 드래그하여 이동할 때 노출된 마우스 오버 플로팅 라벨이 즉시 깔끔하게 닫히도록 완벽 연동.
+- **검증 완료**:
+  - `node --check app.js` 문법 검증 및 `npm run build` 프로덕션 빌드 100% 통과.
+
+
+### [마이페이지 자녀 정보 및 성적 설정 카드 열고 닫기(접기/펼치기) 토글 정책] (2026-11-27)
+- **요구사항**:
+  - 로그인 후 마이페이지(설정 모달)에 노출되는 '자녀 정보 및 성적 설정' 카드가 세로로 매우 길어 아래 위치한 보관함이나 기타 설정을 확인하기 불편한 점을 개선.
+  - 카드를 자유롭게 열고 닫을 수 있도록(접기/펼치기) 토글 기능을 제공.
+- **주요 구현 내용 ([index.html](file:///c:/Users/bird3/100%20shop/LearnMap/index.html), [app.js](file:///c:/Users/bird3/100%20shop/LearnMap/app.js))**:
+  1. **헤더 인터랙션 및 접기/펼치기 버튼 추가 ([index.html](file:///c:/Users/bird3/100%20shop/LearnMap/index.html))**:
+     - 카드 상단 헤더 영역(`settingsChildSectionHeader`)에 커서 포인터 및 클릭 토글 이벤트를 연결.
+     - 헤더 우측에 `[접기 ▲] / [열기 ▼]` 직관적인 버튼(`btnToggleChildCard`) 추가.
+     - 본문 영역(자녀 알약 탭, 인적사항, 성적 슬라이더, 저장 버튼)을 `settingsChildSectionBody` 컨테이너로 감싸 원클릭 접기/펼치기 구조 확립.
+  2. **접힘 상태 요약 뱃지 제공 (`childCardCollapsedBadge`)**:
+     - 카드가 접혀 있을 때도 현재 어떤 자녀가 선택되어 있는지 헤더 제목 옆에 요약 뱃지(예: `김민수 (중2)`)를 자동으로 노출하여 사용자가 본문을 열지 않고도 선택 상태를 즉시 확인 가능.
+  3. **초기 접힘 기본값 및 로컬스토리지 보존 ([app.js](file:///c:/Users/bird3/100%20shop/LearnMap/app.js))**:
+     - 카드의 초기 진입 시 기본 상태를 **접힌 상태**로 설정하여, 로그인 후 마이페이지 진입 시 긴 폼이 화면을 가리지 않고 아래 보관함과 메뉴들을 즉시 쾌적하게 조회 가능.
+     - 사용자가 의도적으로 펼치거나 접은 상태는 `learnmap_child_card_collapsed`에 저장되어 다음 진입 시에도 완벽히 유지.
+- **검증 완료**:
+  - `node --check app.js` 문법 검증 및 `npm run build` 성공.
+
+
+### [학교 상세 닫기 시 학원리스트 동시 닫힘 정책] (2026-11-27)
+- **요구사항**:
+  - 학교 상세 정보를 닫을 때, 만약 학원 리스트(사이드바)가 열려 있는 경우 학원 리스트도 함께 닫히도록 연동 처리.
+- **주요 구현 내용 ([app.js](file:///c:/Users/bird3/100%20shop/LearnMap/app.js))**:
+  1. **학교 해제 메인 핸들러 (`window.deselectSchoolEntirely`) 연동 강화**:
+     - 사용자가 학교 상세의 상단 뒤로가기 버튼(`<`), 닫기 버튼(`×`, `#btnDeselectSchool`), 또는 지도 빈 영역을 클릭하여 학교 선택을 해제할 때 실행되는 `deselectSchoolEntirely` 함수 내에 학원 리스트 상태 감지 로직 적용.
+     - `academySidebar`가 열려 있거나 `.app-container`에 `academy-open` 클래스가 있는 경우 즉시 `academy-open`을 제거하고 `academySidebar.style.display = 'none'` 처리.
+     - 주택 사이드바(`housingSidebar`) 및 교육·문화 사이드바(`eduCultureSidebar`)도 열려 있는 경우 함께 안전하게 닫히도록 일관성 보장.
+     - 카카오 지도 레이아웃 리사이징(`kakaoMapInstance.relayout()`)을 호출하여 지도 뷰가 지체 없이 확장되도록 최적화.
+- **검증 완료**:
+  - `node --check app.js` 문법 검증 및 `npm run build` 프로덕션 빌드 100% 통과.
+
+
+### [학교 상세 해제 후 지도 드래그 시 학원 반경 원 잔존 버그 픽스] (2026-11-27)
+- **증상 및 원인**:
+  - 학교 상세를 닫거나 사이드바를 접은 후 지도를 드래그했을 때, 이전에 조회했던 학교(예: 신원초) 중심의 파란색 점선 반경 원(`window.academyRadiusCircle`) 및 학원 핀이 지도에 다시 노출되는 현상 발생.
+  - 지도 이동/드래그 시 발생하는 `onMapAction` -> `_renderMapForRegion` -> `updateAcademyMapMarkers` / `updateRealEstateMapMarkers` 흐름에서, 클로저 매개변수인 `fullSchool`을 폴백으로 조회하여 학교가 선택 해제되었음에도 불구하고 이전 학교 객체를 활성 학교로 인식하여 반경 원을 다시 생성한 것이 원인.
+- **조치 사항 ([app.js](file:///c:/Users/bird3/100%20shop/LearnMap/app.js), [index.html](file:///c:/Users/bird3/100%20shop/LearnMap/index.html))**:
+  1. **활성 학교 상태 엄격 검증 (`isSchoolActive`) 도입**:
+     - `window.__isSchoolPinSelectedByUser` 플래그가 `true`이고, 학교 상세 카드(`schoolCard`)가 열려 있으며, 사이드바(`sidebar-section`)가 닫히지 않은 경우에만 학교 기준 반경 원(`window.academyRadiusCircle`) 및 일반 학원/주택 핀을 렌더링하도록 조건 강화.
+     - 클로저 잔존 변수인 `fullSchool` 폴백 참조를 제거하여 학교가 해제되었을 때 절대 반경 원이 재생성되지 않도록 원천 차단.
+  2. **사이드바 접힘 시 오버레이 즉시 정리 ([index.html](file:///c:/Users/bird3/100%20shop/LearnMap/index.html))**:
+     - `toggleSidebar`로 사이드바를 닫을 때 `clearAcademyMapMarkers()` 및 `clearRealEstateMapMarkers()`를 즉각 호출하여 지도 위 반경 원과 마커를 즉시 소멸 처리.
+- **검증 완료**:
+  - `node --check app.js` 문법 검사 및 `npm run build` 프로덕션 빌드 100% 통과.
+
+
+### [학교 상세 닫힘/미선택 시 파트너 학원(미래탐구) 핀 지도 미노출 정책 반영] (2026-11-27)
+- **증상 및 원인**:
+  - 학교 상세를 닫거나 학교를 선택하지 않은 기본 지도 상태에서도 공식 파트너 학원(미래탐구) 핀이 지도에 보라색 아이콘으로 상시 노출되던 현상 발생.
+  - 기존에 `updateAcademyMapMarkers` 내부에서 공식 파트너 학원을 학교 선택 여부와 무관하게 상시 렌더링하도록 설정되어 있었기 때문임.
+- **수정 사항 ([app.js](file:///c:/Users/bird3/100%20shop/LearnMap/app.js))**:
+  - 학교 상세 카드 및 사이드바가 닫혀있거나 학교가 선택되지 않은 비활성 상태(`!isSchoolActive`)일 때는 `clearAcademyMapMarkers()`를 즉시 실행하고 함수를 리턴하도록 처리.
+  - 이를 통해 학교 상세를 닫거나 학교가 선택되지 않은 상태에서는 미래탐구를 포함한 모든 학원 핀 및 반경 영역이 지도에 절대 노출되지 않도록 완전 정돈.
+- **검증 완료**:
+  - `node --check app.js` 문법 검증 및 `npm run build` 프로덕션 빌드 정상 통과.
+
+
+### [학원 핀 클릭수 및 상세 조회수 실시간 카운트 집계 연동 강화] (2026-11-27)
+- **증상 및 원인**:
+  - 지도에서 학원 핀을 클릭하거나 학원 상세가 노출되어도 파트너 콘솔(`business.html`) 대시보드의 '학원 핀 클릭수' 및 '학원 상세 조회수' 지표가 실시간으로 카운트되지 않거나 갱신되지 않는 현상.
+  - 1) 학원 핀 클릭 이벤트(`trackAcademyEvent`) 시 `place._businessId` 속성 누락 및 파트너 학원 자동 매칭(`findMatchedPartnerAcademy`)이 연동되지 않아 일부 이벤트에서 `businessId`가 전달되지 못했던 문제.
+  - 2) 파트너 콘솔(`business.html`)이 지도 탭에서 클릭이 발생해도 화면을 실시간으로 다시 조회하지 않아 대시보드 숫자가 변하지 않았던 문제.
+- **조치 사항 ([app.js](file:///c:/Users/bird3/100%20shop/LearnMap/app.js), [business.html](file:///c:/Users/bird3/100%20shop/LearnMap/business.html))**:
+  1. **학원 이벤트 추적 헬퍼 (`trackAcademyEvent`) 강화 ([app.js](file:///c:/Users/bird3/100%20shop/LearnMap/app.js))**:
+     - `place._businessId` 및 `window.findMatchedPartnerAcademy`, `window.partnerAcademiesList` 매칭을 전면 지원하여 미래탐구 등 공식 파트너 학원의 `businessId`를 즉시 100% 확실하게 매핑.
+     - 학원 리스트 카드 클릭 시에도 `pin_click` 이벤트를 함께 발행하여 리스트/핀 클릭 모두 클릭수에 완벽 누적되도록 개선.
+     - 이벤트 수집 완료 시 `localStorage` 브로드캐스트(`learnmap_last_analytics_event`)를 발행하여 다른 탭에 즉시 신호 전달.
+  2. **파트너 콘솔 실시간 대시보드 갱신 리스너 구축 ([business.html](file:///c:/Users/bird3/100%20shop/LearnMap/business.html))**:
+     - `storage` 이벤트 리스너를 통해 지도에서 핀 클릭/상세 열람 발생 시 0.1초 만에 `loadDashboard()` 자동 실행.
+     - 창 포커스(`focus`), 탭 활성화(`visibilitychange`), [홈 / 대시보드] 메뉴 클릭(`openTab`) 시 즉시 최신 통계 재조회.
+     - 대시보드 탭 활성화 중 8초 주기 자동 폴링 동기화 추가로 실시간 수치 반영 완결성 보장.
+- **검증 완료**:
+  - `node --check app.js` 문법 검사 및 `npm run build` 프로덕션 빌드 100% 통과.
+
+
+### [전체 학원 클릭수·조회수 수집 및 신규 파트너 소급 바인딩 시스템 구축] (2026-11-27)
+- **개발 배경 및 목적**:
+  - 파트너 등록 학원뿐만 아니라 **플랫폼 내 모든 일반 학원의 핀 클릭수(`pin_click`) 및 상세 조회수(`profile_view`)를 전수 수집**.
+  - 미가입 일반 학원 원장님에게 학부모 관심도(클릭수/조회수) 데이터를 근거로 강력한 입점 영업 훅(Lead Generation) 제공.
+  - 신규 파트너 가입 즉시 과거 30일간의 누적 데이터를 대시보드에 즉시 소급 바인딩(Backfill)하여 플랫폼 신뢰도 및 유료 플랜 전환율 극대화.
+- **주요 구현 내용 ([server.js](file:///c:/Users/bird3/100%20shop/LearnMap/server.js), [app.js](file:///c:/Users/bird3/100%20shop/LearnMap/app.js), [business.html](file:///c:/Users/bird3/100%20shop/LearnMap/business.html))**:
+  1. **전체 학원 실시간 이벤트 수집 및 메타데이터 정밀화 ([app.js](file:///c:/Users/bird3/100%20shop/LearnMap/app.js))**:
+     - 지도 핀 클릭, 클러스터 팝업 목록 클릭, 리스트 카드 클릭, 상세 모달 열람, 검색 결과 선택 등 모든 사용자 동선에서 일반 학원 및 파트너 학원 구분 없이 `pin_click` 및 `profile_view` 이벤트 수집.
+     - 학원명, 카카오 장소 ID(`place_id`), 상세 주소, 위경도 좌표를 포함하여 메타데이터 완결성 확보.
+  2. **과거 이벤트 소급 바인딩(Backfill) 엔진 ([server.js](file:///c:/Users/bird3/100%20shop/LearnMap/server.js))**:
+     - `/api/business/dashboard` 조회 시 사업자의 이름, `matchedPlaceId`, 관할 주소(구/동)를 기반으로 미가입 시절(`businessId: null`) 축적되었던 과거 클릭/조회 이벤트를 자동 발굴하여 대시보드 통계에 즉시 합산.
+     - 발굴된 과거 이벤트에 `e.businessId = biz.id`를 영구 바인딩하여 저장소에 자동 갱신.
+  3. **전체 학원 트래픽 랭킹 및 영업 리드 API 신설 (`GET /api/analytics/top-academies`) ([server.js](file:///c:/Users/bird3/100%20shop/LearnMap/server.js))**:
+     - 플랫폼 내 가장 많은 학부모 관심을 받는 일반 학원 순위, 클릭수, 조회수, 파트너 여부(`isPartner`)를 한눈에 파악할 수 있는 관리자/운영진 전용 랭킹 엔드포인트 제공.
+- **검증 완료**:
+  - `node --check server.js`, `node --check app.js` 문법 검사 및 `npm run build` 프로덕션 빌드 100% 통과.
+  - `GET /api/analytics/top-academies` 실제 호출을 통해 일반 학원(단단수학학원, 뮤엠영어 등)의 클릭수/조회수 집계 정상 동작 확인 완료.
+
+
+### [파트너 콘솔 대시보드 렌더링 스코프 오류(ReferenceError) 픽스 및 지표 복구] (2026-11-27)
+- **증상 및 원인**:
+  - 학원 핀 클릭 및 상세 조회가 발생하여 서버에 정상 수집되었음에도, 파트너 콘솔(`business.html`) 화면에서 `학원 핀 클릭수: 0회`, `학원 상세 조회수: 0회`, `구독 플랜 확인 중...`으로 멈춰있는 현상 발생.
+  - 원인: `business.html` 내부 `loadDashboard` 함수에서 전역 변수로 선언되지 않은 `currentUser`를 직접 참조하여 `ReferenceError: currentUser is not defined` 예외가 발생, `catch` 블록으로 떨어져 초기 HTML(0회, '구독 플랜 확인 중...') 상태로 렌더링이 중단되었음.
+- **조치 사항 ([business.html](file:///c:/Users/bird3/100%20shop/LearnMap/business.html))**:
+  - `business.html` 전역 변수로 `let currentUser = null;`을 명시 선언 및 세션 로드 시 전역 변수 동기화.
+  - `loadDashboard` 함수 시작 시 `currentUser`가 비어있을 경우 `localStorage`로부터 안전 복구하는 방어 로직 추가.
+  - `<head>`에 `no-cache` 메타 태그를 명시하여 브라우저 새로고침 시 항상 최신 스크립트 실행 보장.
+- **검증 완료**:
+  - `node --check server.js`, `node --check app.js` 문법 검사 및 `npm run build` 프로덕션 빌드 100% 통과.
+  - 백엔드 API(`/api/business/dashboard?businessId=biz_1795693060096`) 정상 응답(`pin_clicks: 21`, `profile_views: 55`) 확인 완료.

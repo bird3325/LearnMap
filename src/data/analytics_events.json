@@ -2550,5 +2550,1661 @@
       "address": "경기 고양시 덕양구 신원동 600"
     },
     "createdAt": "2026-11-26T03:36:17.120Z"
+  },
+  {
+    "id": "evt_1795693060314",
+    "businessId": "biz_1795693060096",
+    "eventType": "business_signup",
+    "metadata": {
+      "type": "academy",
+      "name": "미래탐구"
+    },
+    "createdAt": "2026-11-26T11:37:40.314Z"
+  },
+  {
+    "id": "evt_1795694826612_6krx",
+    "businessId": null,
+    "academyName": "디어잉글리쉬 영어도서관&영어학원",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "디어잉글리쉬 영어도서관&영어학원",
+      "place_id": "343424076",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.6654914916581",
+      "lng": "126.884207104399"
+    },
+    "createdAt": "2026-11-26T12:07:06.612Z"
+  },
+  {
+    "id": "evt_1795695556442_uekb",
+    "businessId": null,
+    "academyName": "신원마을4단지",
+    "eventType": "housing_pin_click",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을4단지",
+      "place_id": "master-hub-apt-1792721516136-pyvzq",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6655408782092",
+      "lng": "126.888522457742"
+    },
+    "createdAt": "2026-11-26T12:19:16.442Z"
+  },
+  {
+    "id": "evt_1795695556446_gd52",
+    "businessId": null,
+    "academyName": "신원마을4단지",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을4단지",
+      "place_id": "master-hub-apt-1792721516136-pyvzq",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6655408782092",
+      "lng": "126.888522457742"
+    },
+    "createdAt": "2026-11-26T12:19:16.446Z"
+  },
+  {
+    "id": "evt_1795695568820_pn5o",
+    "businessId": null,
+    "academyName": "신원이화음악교습소",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "신원이화음악교습소",
+      "place_id": "741284794",
+      "address": "경기 고양시 덕양구 통일로 374",
+      "lat": "37.668541863646325",
+      "lng": "126.89044653124826"
+    },
+    "createdAt": "2026-11-26T12:19:28.820Z"
+  },
+  {
+    "id": "evt_1795695568828_pe9m",
+    "businessId": null,
+    "academyName": "신원이화음악교습소",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "신원이화음악교습소",
+      "place_id": "741284794",
+      "address": "경기 고양시 덕양구 통일로 374",
+      "lat": "37.668541863646325",
+      "lng": "126.89044653124826"
+    },
+    "createdAt": "2026-11-26T12:19:28.828Z"
+  },
+  {
+    "id": "evt_1795695594894_gh8i",
+    "businessId": null,
+    "academyName": "뮤엠영어 신원교습소",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "뮤엠영어 신원교습소",
+      "place_id": "1071211438",
+      "address": "경기 고양시 덕양구 신원3로 20",
+      "lat": "37.6682160061993",
+      "lng": "126.885077889767"
+    },
+    "createdAt": "2026-11-26T12:19:54.894Z"
+  },
+  {
+    "id": "evt_1795695594897_cdm7",
+    "businessId": null,
+    "academyName": "뮤엠영어 신원교습소",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "뮤엠영어 신원교습소",
+      "place_id": "1071211438",
+      "address": "경기 고양시 덕양구 신원3로 20",
+      "lat": "37.6682160061993",
+      "lng": "126.885077889767"
+    },
+    "createdAt": "2026-11-26T12:19:54.897Z"
+  },
+  {
+    "id": "evt_1795695595969_kwkt",
+    "businessId": null,
+    "academyName": "빨간펜수학의달인 신원5단지우림필유점",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "빨간펜수학의달인 신원5단지우림필유점",
+      "place_id": "26556890",
+      "address": "경기 고양시 덕양구 신원로 55",
+      "lat": "37.6652152315106",
+      "lng": "126.886410858396"
+    },
+    "createdAt": "2026-11-26T12:19:55.969Z"
+  },
+  {
+    "id": "evt_1795695595972_qalu",
+    "businessId": null,
+    "academyName": "빨간펜수학의달인 신원5단지우림필유점",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "빨간펜수학의달인 신원5단지우림필유점",
+      "place_id": "26556890",
+      "address": "경기 고양시 덕양구 신원로 55",
+      "lat": "37.6652152315106",
+      "lng": "126.886410858396"
+    },
+    "createdAt": "2026-11-26T12:19:55.972Z"
+  },
+  {
+    "id": "evt_1795695597029_oauq",
+    "businessId": null,
+    "academyName": "디어잉글리쉬 영어도서관&영어학원",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "디어잉글리쉬 영어도서관&영어학원",
+      "place_id": "343424076",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.6654914916581",
+      "lng": "126.884207104399"
+    },
+    "createdAt": "2026-11-26T12:19:57.029Z"
+  },
+  {
+    "id": "evt_1795696806971_o4w9",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-26T12:40:06.972Z"
+  },
+  {
+    "id": "evt_1795698070415_a5no",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티)",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-26T13:01:10.415Z"
+  },
+  {
+    "id": "evt_1795736243338_u3x8",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-26T23:37:23.338Z"
+  },
+  {
+    "id": "evt_1795736243346_rwvq",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-26T23:37:23.346Z"
+  },
+  {
+    "id": "evt_1795736505747_gfgi",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티)",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-26T23:41:45.748Z"
+  },
+  {
+    "id": "evt_1795736665434_hs0n",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-26T23:44:25.434Z"
+  },
+  {
+    "id": "evt_1795736665442_ahfk",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-26T23:44:25.442Z"
+  },
+  {
+    "id": "evt_1795736692756_j2f2",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티)",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-26T23:44:52.756Z"
+  },
+  {
+    "id": "evt_1795737241234_1ufu",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티)",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-26T23:54:01.234Z"
+  },
+  {
+    "id": "evt_1795737268230_2yrv",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-26T23:54:28.230Z"
+  },
+  {
+    "id": "evt_1795737268237_q1i4",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-26T23:54:28.237Z"
+  },
+  {
+    "id": "evt_1795737408456_wjnb",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-26T23:56:48.456Z"
+  },
+  {
+    "id": "evt_1795737408467_nych",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-26T23:56:48.467Z"
+  },
+  {
+    "id": "evt_1795737433821_eo54",
+    "businessId": null,
+    "academyName": "신원마을 호반베르디움 9단지",
+    "eventType": "housing_pin_click",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을 호반베르디움 9단지",
+      "place_id": "master-hub-apt-1792721516136-vgdkz",
+      "address": "경기 고양시 덕양구 권율대로 831",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6615466975788",
+      "lng": "126.885004757845"
+    },
+    "createdAt": "2026-11-26T23:57:13.821Z"
+  },
+  {
+    "id": "evt_1795737433828_kryt",
+    "businessId": null,
+    "academyName": "신원마을 호반베르디움 9단지",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을 호반베르디움 9단지",
+      "place_id": "master-hub-apt-1792721516136-vgdkz",
+      "address": "경기 고양시 덕양구 권율대로 831",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6615466975788",
+      "lng": "126.885004757845"
+    },
+    "createdAt": "2026-11-26T23:57:13.828Z"
+  },
+  {
+    "id": "evt_1795737437126_o9dp",
+    "businessId": null,
+    "academyName": "신원마을엘에이치3단지",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을엘에이치3단지",
+      "place_id": "master-hub-apt-1792721516136-0zbxd",
+      "address": "경기 고양시 덕양구 오금로 7",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.663890193778",
+      "lng": "126.893298145545"
+    },
+    "createdAt": "2026-11-26T23:57:17.126Z"
+  },
+  {
+    "id": "evt_1795737438825_8m4k",
+    "businessId": null,
+    "academyName": "신원마을엘에이치2단지",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을엘에이치2단지",
+      "place_id": "master-hub-apt-1792721516136-ck67g",
+      "address": "경기 고양시 덕양구 오금2로 26",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.666416156551",
+      "lng": "126.891589872094"
+    },
+    "createdAt": "2026-11-26T23:57:18.825Z"
+  },
+  {
+    "id": "evt_1795737441517_uq5p",
+    "businessId": null,
+    "academyName": "신원마을고양삼송아이파크",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을고양삼송아이파크",
+      "place_id": "master-hub-apt-1792721516135-38ksd",
+      "address": "경기 고양시 덕양구 신원3로 20",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6682159162119",
+      "lng": "126.88507800325"
+    },
+    "createdAt": "2026-11-26T23:57:21.517Z"
+  },
+  {
+    "id": "evt_1795737444010_dvgk",
+    "businessId": null,
+    "academyName": "신원마을4단지",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을4단지",
+      "place_id": "master-hub-apt-1792721516136-pyvzq",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6655408782092",
+      "lng": "126.888522457742"
+    },
+    "createdAt": "2026-11-26T23:57:24.010Z"
+  },
+  {
+    "id": "evt_1795737449025_zhx9",
+    "businessId": null,
+    "academyName": "신원마을 호반베르디움 9단지",
+    "eventType": "housing_pin_click",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을 호반베르디움 9단지",
+      "place_id": "master-hub-apt-1792721516136-vgdkz",
+      "address": "경기 고양시 덕양구 권율대로 831",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6615466975788",
+      "lng": "126.885004757845"
+    },
+    "createdAt": "2026-11-26T23:57:29.025Z"
+  },
+  {
+    "id": "evt_1795737449031_jmza",
+    "businessId": null,
+    "academyName": "신원마을 호반베르디움 9단지",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을 호반베르디움 9단지",
+      "place_id": "master-hub-apt-1792721516136-vgdkz",
+      "address": "경기 고양시 덕양구 권율대로 831",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6615466975788",
+      "lng": "126.885004757845"
+    },
+    "createdAt": "2026-11-26T23:57:29.031Z"
+  },
+  {
+    "id": "evt_1795737451033_hsgp",
+    "businessId": null,
+    "academyName": "신원마을 5단지 우림필유아파트",
+    "eventType": "housing_pin_click",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을 5단지 우림필유아파트",
+      "place_id": "master-hub-apt-1792721516136-o3jio",
+      "address": "경기 고양시 덕양구 신원로 55",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6635512692018",
+      "lng": "126.886191253039"
+    },
+    "createdAt": "2026-11-26T23:57:31.033Z"
+  },
+  {
+    "id": "evt_1795737451040_8xs1",
+    "businessId": null,
+    "academyName": "신원마을 5단지 우림필유아파트",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을 5단지 우림필유아파트",
+      "place_id": "master-hub-apt-1792721516136-o3jio",
+      "address": "경기 고양시 덕양구 신원로 55",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6635512692018",
+      "lng": "126.886191253039"
+    },
+    "createdAt": "2026-11-26T23:57:31.040Z"
+  },
+  {
+    "id": "evt_1795737455365_wdqa",
+    "businessId": null,
+    "academyName": "뮤엠영어 신원교습소",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "뮤엠영어 신원교습소",
+      "place_id": "1071211438",
+      "address": "경기 고양시 덕양구 신원3로 20",
+      "lat": "37.6682160061993",
+      "lng": "126.885077889767"
+    },
+    "createdAt": "2026-11-26T23:57:35.365Z"
+  },
+  {
+    "id": "evt_1795737455373_4l3d",
+    "businessId": null,
+    "academyName": "뮤엠영어 신원교습소",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "뮤엠영어 신원교습소",
+      "place_id": "1071211438",
+      "address": "경기 고양시 덕양구 신원3로 20",
+      "lat": "37.6682160061993",
+      "lng": "126.885077889767"
+    },
+    "createdAt": "2026-11-26T23:57:35.373Z"
+  },
+  {
+    "id": "evt_1795737463245_nccr",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-26T23:57:43.245Z"
+  },
+  {
+    "id": "evt_1795737463252_kz0f",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-26T23:57:43.252Z"
+  },
+  {
+    "id": "evt_1795737722126_ipfd",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티)",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T00:02:02.126Z"
+  },
+  {
+    "id": "evt_1795738636489_uxch",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T00:17:16.489Z"
+  },
+  {
+    "id": "evt_1795738636498_pakb",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T00:17:16.498Z"
+  },
+  {
+    "id": "evt_1795738638828_95l1",
+    "businessId": null,
+    "academyName": "단단수학학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "단단수학학원",
+      "place_id": "1775653020",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T00:17:18.828Z"
+  },
+  {
+    "id": "evt_1795738640063_plo0",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T00:17:20.063Z"
+  },
+  {
+    "id": "evt_1795738648684_j5c8",
+    "businessId": null,
+    "academyName": "단단수학학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "단단수학학원",
+      "place_id": "1775653020",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T00:17:28.684Z"
+  },
+  {
+    "id": "evt_1795738650404_zi8r",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T00:17:30.404Z"
+  },
+  {
+    "id": "evt_1795738659420_rl66",
+    "businessId": null,
+    "academyName": "단단수학학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "단단수학학원",
+      "place_id": "1775653020",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T00:17:39.420Z"
+  },
+  {
+    "id": "evt_1795738660967_yn9o",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T00:17:40.967Z"
+  },
+  {
+    "id": "evt_1795738662859_8cbq",
+    "businessId": null,
+    "academyName": "단단수학학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "단단수학학원",
+      "place_id": "1775653020",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T00:17:42.859Z"
+  },
+  {
+    "id": "evt_1795738663870_aq60",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T00:17:43.870Z"
+  },
+  {
+    "id": "evt_1795738665718_cidx",
+    "businessId": null,
+    "academyName": "단단수학학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "단단수학학원",
+      "place_id": "1775653020",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T00:17:45.718Z"
+  },
+  {
+    "id": "evt_1795738666979_cbkh",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T00:17:46.979Z"
+  },
+  {
+    "id": "evt_1795738669051_r5xo",
+    "businessId": null,
+    "academyName": "단단수학학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "단단수학학원",
+      "place_id": "1775653020",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T00:17:49.051Z"
+  },
+  {
+    "id": "evt_1795738670268_4b3h",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T00:17:50.268Z"
+  },
+  {
+    "id": "evt_1795738671781_mo1q",
+    "businessId": null,
+    "academyName": "단단수학학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "단단수학학원",
+      "place_id": "1775653020",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T00:17:51.781Z"
+  },
+  {
+    "id": "evt_1795738672640_62qg",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T00:17:52.640Z"
+  },
+  {
+    "id": "evt_1795738699975_byee",
+    "businessId": null,
+    "academyName": "단단수학학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "단단수학학원",
+      "place_id": "1775653020",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T00:18:19.975Z"
+  },
+  {
+    "id": "evt_1795738819548_04sv",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티)",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T00:20:19.548Z"
+  },
+  {
+    "id": "evt_1795739163934_lr3c",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T00:26:03.934Z"
+  },
+  {
+    "id": "evt_1795739163938_lkx0",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T00:26:03.938Z"
+  },
+  {
+    "id": "evt_1795739525758_qm14",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티)",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T00:32:05.758Z"
+  },
+  {
+    "id": "evt_1795739556233_3vs9",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티)",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T00:32:36.233Z"
+  },
+  {
+    "id": "evt_1795739571869_m9bz",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T00:32:51.869Z"
+  },
+  {
+    "id": "evt_1795739571875_zqzz",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T00:32:51.875Z"
+  },
+  {
+    "id": "evt_1795741606185_4pku",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T01:06:46.185Z"
+  },
+  {
+    "id": "evt_1795741606190_sqnj",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T01:06:46.190Z"
+  },
+  {
+    "id": "evt_1795742426957_i0sd",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "",
+      "lat": null,
+      "lng": null
+    },
+    "createdAt": "2026-11-27T01:20:26.957Z"
+  },
+  {
+    "id": "evt_1795742443274_zupy",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "",
+      "lat": null,
+      "lng": null
+    },
+    "createdAt": "2026-11-27T01:20:43.274Z"
+  },
+  {
+    "id": "evt_1795743096024_jew8",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "",
+      "lat": null,
+      "lng": null
+    },
+    "createdAt": "2026-11-27T01:31:36.024Z"
+  },
+  {
+    "id": "evt_1795743397071_xd5a",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": null,
+      "lng": null
+    },
+    "createdAt": "2026-11-27T01:36:37.071Z"
+  },
+  {
+    "id": "evt_1795743861857_urmn",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T01:44:21.857Z"
+  },
+  {
+    "id": "evt_1795743861864_lszb",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T01:44:21.864Z"
+  },
+  {
+    "id": "evt_1795743870201_3gz9",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": null,
+      "lng": null
+    },
+    "createdAt": "2026-11-27T01:44:30.201Z"
+  },
+  {
+    "id": "evt_1795743894633_wc2x",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": null,
+      "lng": null
+    },
+    "createdAt": "2026-11-27T01:44:54.633Z"
+  },
+  {
+    "id": "evt_1795744077596_d1q3",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": null,
+      "lng": null
+    },
+    "createdAt": "2026-11-27T01:47:57.596Z"
+  },
+  {
+    "id": "evt_1795745409309_7k00",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T02:10:09.309Z"
+  },
+  {
+    "id": "evt_1795745819418_gysb",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T02:16:59.418Z"
+  },
+  {
+    "id": "evt_1795745819426_475a",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T02:16:59.426Z"
+  },
+  {
+    "id": "evt_1795755212416_u6j3",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T04:53:32.416Z"
+  },
+  {
+    "id": "evt_1795755212422_hk9k",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T04:53:32.422Z"
+  },
+  {
+    "id": "evt_1795755214450_ktyw",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T04:53:34.450Z"
+  },
+  {
+    "id": "evt_1795755214458_sfii",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T04:53:34.458Z"
+  },
+  {
+    "id": "evt_1795755225041_esdp",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T04:53:45.041Z"
+  },
+  {
+    "id": "evt_1795755243647_dy38",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T04:54:03.647Z"
+  },
+  {
+    "id": "evt_1795755287301_355j",
+    "businessId": null,
+    "academyName": "삼성영어셀레나 잉글포레영어교습소",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "삼성영어셀레나 잉글포레영어교습소",
+      "place_id": "666770516",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T04:54:47.301Z"
+  },
+  {
+    "id": "evt_1795755294377_dzr4",
+    "businessId": null,
+    "academyName": "삼성영어셀레나 잉글포레영어교습소",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "삼성영어셀레나 잉글포레영어교습소",
+      "place_id": "666770516",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T04:54:54.377Z"
+  },
+  {
+    "id": "evt_1795755296621_vsym",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T04:54:56.621Z"
+  },
+  {
+    "id": "evt_1795755301947_zaw3",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T04:55:01.947Z"
+  },
+  {
+    "id": "evt_1795755302873_5ypl",
+    "businessId": null,
+    "academyName": "단단수학학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "단단수학학원",
+      "place_id": "1775653020",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T04:55:02.873Z"
+  },
+  {
+    "id": "evt_1795755303957_u0wj",
+    "businessId": null,
+    "academyName": "삼성영어셀레나 잉글포레영어교습소",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "삼성영어셀레나 잉글포레영어교습소",
+      "place_id": "666770516",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T04:55:03.957Z"
+  },
+  {
+    "id": "evt_1795755304854_yvqp",
+    "businessId": null,
+    "academyName": "단단수학학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "단단수학학원",
+      "place_id": "1775653020",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T04:55:04.854Z"
+  },
+  {
+    "id": "evt_1795756170575_eee8",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T05:09:30.575Z"
+  },
+  {
+    "id": "evt_1795756195012_lwf5",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T05:09:55.012Z"
+  },
+  {
+    "id": "evt_1795756765897_5f7v",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T05:19:25.897Z"
+  },
+  {
+    "id": "evt_1795756771811_4c5b",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T05:19:31.811Z"
+  },
+  {
+    "id": "evt_1795756771817_0c20",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T05:19:31.817Z"
+  },
+  {
+    "id": "evt_1795757104951_p5ha",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T05:25:04.951Z"
+  },
+  {
+    "id": "evt_1795758180161_zf1v",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T05:43:00.161Z"
+  },
+  {
+    "id": "evt_1795758221703_2ap3",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T05:43:41.703Z"
+  },
+  {
+    "id": "evt_1795758221706_sedo",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T05:43:41.706Z"
+  },
+  {
+    "id": "evt_1795759237729_my56",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:00:37.729Z"
+  },
+  {
+    "id": "evt_1795759237740_5fqi",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:00:37.740Z"
+  },
+  {
+    "id": "evt_1795759822311_t3lt",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:10:22.312Z"
+  },
+  {
+    "id": "evt_1795759831953_8601",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:10:31.953Z"
+  },
+  {
+    "id": "evt_1795759831957_ki56",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:10:31.958Z"
+  },
+  {
+    "id": "evt_1795761005222_197t",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:30:05.222Z"
+  },
+  {
+    "id": "evt_1795761005225_lrsg",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:30:05.225Z"
+  },
+  {
+    "id": "evt_1795761042910_g9vr",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:30:42.910Z"
+  },
+  {
+    "id": "evt_1795761042918_2k6e",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:30:42.918Z"
+  },
+  {
+    "id": "evt_1795762290862_69y5",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:51:30.862Z"
+  },
+  {
+    "id": "evt_1795762290867_b9mo",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:51:30.867Z"
+  },
+  {
+    "id": "evt_1795762331015_cpop",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:52:11.015Z"
+  },
+  {
+    "id": "evt_1795762331027_4n2k",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:52:11.028Z"
+  },
+  {
+    "id": "evt_1795762569298_aoub",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:56:09.298Z"
+  },
+  {
+    "id": "evt_1795762569305_lxwk",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:56:09.305Z"
+  },
+  {
+    "id": "evt_1795762576276_2b1t",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:56:16.276Z"
+  },
+  {
+    "id": "evt_1795762576284_7p45",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:56:16.284Z"
   }
 ]

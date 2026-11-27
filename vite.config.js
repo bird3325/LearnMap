@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import { fork } from 'child_process';
+import fs from 'fs';
 
 let serverProcess = null;
 
@@ -51,8 +52,16 @@ function utf8HeadersPlugin() {
         if (cleanUrl === '/admin' || cleanUrl === '/admin/' || cleanUrl === '/admin.html') {
           const cookieHeader = req.headers.cookie || '';
           const hasAdminCookie = /(?:^|;\s*)admin_token=([^;]+)/.test(cookieHeader);
+          if (hasAdminCookie) {
+            const templatePath = resolve(__dirname, 'templates', 'admin_dashboard.template');
+            if (fs.existsSync(templatePath)) {
+              res.setHeader('Content-Type', 'text/html; charset=utf-8');
+              res.end(fs.readFileSync(templatePath, 'utf8'));
+              return;
+            }
+          }
           const query = req.url.includes('?') ? '?' + req.url.split('?')[1] : '';
-          req.url = (hasAdminCookie ? '/templates/admin_dashboard.html' : '/admin.html') + query;
+          req.url = '/admin.html' + query;
         }
         if (cleanUrl === '/business' || cleanUrl === '/business/' || cleanUrl === '/partner' || cleanUrl === '/partner/') {
           const query = req.url.includes('?') ? '?' + req.url.split('?')[1] : '';
@@ -100,7 +109,7 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://127.0.0.1:5000',
         changeOrigin: true,
         secure: false,
         configure: (proxy, _options) => {
@@ -113,7 +122,7 @@ export default defineConfig({
         }
       },
       '/data': {
-        target: 'http://localhost:5000',
+        target: 'http://127.0.0.1:5000',
         changeOrigin: true,
         secure: false
       }
