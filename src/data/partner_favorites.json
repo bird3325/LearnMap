@@ -1,0 +1,26 @@
+[
+  {
+    "id": "fav_1795769112326_2toh",
+    "businessId": "biz_1795693060096",
+    "targetType": "academy",
+    "targetName": "미래탐구",
+    "userId": "a117b1ea-0f64-4340-b3e8-61cb24d04972",
+    "userName": "조민기",
+    "userEmail": "bird3325@daum.net",
+    "userPhone": "",
+    "childGrade": "학부모 회원",
+    "userAddress": "",
+    "status": "active",
+    "action": "add",
+    "metadata": {
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "phone": "010-6393-0923",
+      "subject": "국어 · 영어",
+      "type": "학원",
+      "x": "126.882869",
+      "y": "37.670003"
+    },
+    "createdAt": "2026-11-27T08:45:12.326Z",
+    "updatedAt": "2026-11-27T08:45:12.326Z"
+  }
+]

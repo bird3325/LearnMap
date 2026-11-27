@@ -117,6 +117,7 @@ const BUSINESSES_PATH = path.join(DATA_DIR, 'businesses.json');
 const SUBSCRIPTIONS_PATH = path.join(DATA_DIR, 'subscriptions.json');
 const ANALYTICS_PATH = path.join(DATA_DIR, 'analytics_events.json');
 const INQUIRIES_PATH = path.join(DATA_DIR, 'inquiries.json');
+const FAVORITES_PATH = path.join(DATA_DIR, 'partner_favorites.json');
 const BLOG_POSTS_PATH = path.join(DATA_DIR, 'blog_posts.json');
 
 // Ensure data directory exists
@@ -8108,6 +8109,30 @@ app.get('/api/business/dashboard', requireBusinessOrAdminAuth, async (req, res) 
             ? allInquiries.filter(iq => iq.businessId === biz.id || iq.targetBusinessId === biz.id)
             : [];
 
+        // 🌟 해당 사업자의 관심 등록 회원 내역 (학원 또는 주택)
+        const allFavorites = readJsonFileSafe(FAVORITES_PATH, []);
+        const activeFavorites = allFavorites.filter(f => f.status !== 'cancelled' && f.action !== 'remove');
+        const bizFavorites = biz ? activeFavorites.filter(f => {
+            if (f.businessId && f.businessId === biz.id) return true;
+            if (!isRealEstateBiz && (f.targetType === 'academy' || !f.targetType)) {
+                const fName = (f.targetName || '').trim().toLowerCase();
+                const cleanFName = fName.replace(/\s+/g, '');
+                const cleanBizName = (bizName || '').replace(/\s+/g, '').toLowerCase();
+                if (fName === bizName || cleanFName === cleanBizName) return true;
+                if (cleanBizName && (cleanFName.includes(cleanBizName) || cleanBizName.includes(cleanFName))) return true;
+                const profileTarget = (biz.academyProfile?.targetAcademyName || '').trim().toLowerCase().replace(/\s+/g, '');
+                if (profileTarget && (cleanFName.includes(profileTarget) || profileTarget.includes(cleanFName))) return true;
+            }
+            if (isRealEstateBiz && (f.targetType === 'housing' || f.targetType === 'real_estate')) {
+                if (!bizDong) return true;
+                const targetDong = (f.metadata?.dong || f.metadata?.address || f.targetName || '');
+                return targetDong.includes(bizDong);
+            }
+            return false;
+        }) : [];
+
+        stats.favorites_count = bizFavorites.length;
+
         // 언제나 HTTP 200 OK로 안정적인 응답 반환 (400/404/500 에러 차단)
         return res.json({
             success: true,
@@ -8116,6 +8141,7 @@ app.get('/api/business/dashboard', requireBusinessOrAdminAuth, async (req, res) 
             stats,
             dailyViews,
             inquiries,
+            favorites: bizFavorites,
             partnerContactPhone: getPartnerContactPhone()
         });
     } catch (err) {
@@ -9701,6 +9727,170 @@ app.get('/api/inquiries', (req, res) => {
     } catch (err) {
         console.error('Get Inquiries Error:', err);
         return res.status(200).json({ success: false, inquiries: [], count: 0 });
+    }
+});
+
+// 10-2. 🌟 파트너 관심 등록(학원/주택) 및 회원 정보 수집 API
+app.post('/api/favorites/track', async (req, res) => {
+    try {
+        const { targetType, targetName, action = 'add', member = {}, metadata = {}, businessId } = req.body;
+        if (!targetType || !targetName) {
+            return res.status(400).json({ error: 'targetType과 targetName은 필수입니다.' });
+        }
+
+        let targetBizId = businessId || null;
+        const cleanTargetName = String(targetName).trim();
+        const businesses = await syncBusinessesFromDB(false);
+
+        // 파트너 사업자 매핑 (학원 또는 주택/부동산)
+        if (!targetBizId && targetType === 'academy') {
+            const cleanLower = cleanTargetName.toLowerCase();
+            const matched = businesses.find(b => {
+                if (b.type === 'real_estate') return false;
+                const bName = (b.name || b.academyName || b.companyName || b.businessName || b.academyProfile?.targetAcademyName || '').trim().toLowerCase();
+                return bName && (bName === cleanLower || cleanLower.includes(bName) || bName.includes(cleanLower));
+            });
+            if (matched) targetBizId = matched.id;
+        } else if (!targetBizId && targetType === 'housing') {
+            const targetDong = (metadata.dong || '').trim();
+            const targetAddr = (metadata.address || '').trim();
+            const matchedRe = businesses.find(b => {
+                if (b.type !== 'real_estate') return false;
+                const bAddr = (b.registeredAddress || b.address || '');
+                if (targetDong && bAddr.includes(targetDong)) return true;
+                if (targetAddr && (targetAddr.includes(bAddr) || bAddr.includes(targetAddr))) return true;
+                return false;
+            });
+            if (matchedRe) targetBizId = matchedRe.id;
+        }
+
+        const favorites = readJsonFileSafe(FAVORITES_PATH, []);
+        const cleanUserEmail = (member.userEmail || '').trim().toLowerCase();
+        const cleanUserId = (member.userId || '').trim();
+        const cleanUserName = (member.userName || '').trim();
+
+        // 동일 회원 동일 대상 중복 여부 확인
+        const existingIdx = favorites.findIndex(f => {
+            const sameTarget = f.targetType === targetType && f.targetName.trim().toLowerCase() === cleanTargetName.toLowerCase();
+            if (!sameTarget) return false;
+            if (cleanUserId && f.userId === cleanUserId) return true;
+            if (cleanUserEmail && (f.userEmail || '').toLowerCase() === cleanUserEmail) return true;
+            if (cleanUserName && f.userName === cleanUserName && (f.userPhone || '') === (member.userPhone || '')) return true;
+            return false;
+        });
+
+        const nowIso = new Date().toISOString();
+        let targetFavItem = null;
+
+        if (action === 'remove' || action === 'cancel') {
+            if (existingIdx !== -1) {
+                favorites[existingIdx].status = 'cancelled';
+                favorites[existingIdx].action = 'remove';
+                favorites[existingIdx].updatedAt = nowIso;
+                targetFavItem = favorites[existingIdx];
+            }
+        } else {
+            // add
+            if (existingIdx !== -1) {
+                favorites[existingIdx].status = 'active';
+                favorites[existingIdx].action = 'add';
+                favorites[existingIdx].businessId = targetBizId || favorites[existingIdx].businessId;
+                favorites[existingIdx].userName = cleanUserName || favorites[existingIdx].userName;
+                favorites[existingIdx].userEmail = cleanUserEmail || favorites[existingIdx].userEmail;
+                favorites[existingIdx].userPhone = member.userPhone || favorites[existingIdx].userPhone;
+                favorites[existingIdx].childGrade = member.childGrade || favorites[existingIdx].childGrade;
+                favorites[existingIdx].userAddress = member.userAddress || favorites[existingIdx].userAddress;
+                favorites[existingIdx].metadata = { ...(favorites[existingIdx].metadata || {}), ...metadata };
+                favorites[existingIdx].updatedAt = nowIso;
+                targetFavItem = favorites[existingIdx];
+            } else {
+                targetFavItem = {
+                    id: `fav_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+                    businessId: targetBizId,
+                    targetType,
+                    targetName: cleanTargetName,
+                    userId: cleanUserId || null,
+                    userName: cleanUserName || '학부모 회원',
+                    userEmail: cleanUserEmail || '',
+                    userPhone: (member.userPhone || '').trim(),
+                    childGrade: (member.childGrade || '').trim(),
+                    userAddress: (member.userAddress || '').trim(),
+                    status: 'active',
+                    action: 'add',
+                    metadata,
+                    createdAt: nowIso,
+                    updatedAt: nowIso
+                };
+                favorites.unshift(targetFavItem);
+            }
+        }
+
+        // 최대 10,000건 저장
+        writeJsonFileSafe(FAVORITES_PATH, favorites.slice(0, 10000));
+
+        // 성과 이벤트 기록 (analytics_events.json)
+        const events = readJsonFileSafe(ANALYTICS_PATH, []);
+        events.push({
+            id: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+            businessId: targetBizId,
+            academyName: cleanTargetName,
+            eventType: targetType === 'academy' ? 'academy_favorite' : 'housing_favorite',
+            metadata: { ...metadata, action, memberName: cleanUserName, memberEmail: cleanUserEmail },
+            createdAt: nowIso
+        });
+        writeJsonFileSafe(ANALYTICS_PATH, events.slice(-10000));
+
+        return res.json({ success: true, favorite: targetFavItem, matchedBizId: targetBizId });
+    } catch (err) {
+        console.error('Favorite Track Error:', err);
+        return res.status(500).json({ error: '관심 등록 추적 중 오류가 발생했습니다.' });
+    }
+});
+
+// 10-3. 🌟 파트너 관심 등록 회원 목록 단독 조회 API
+app.get('/api/business/favorites', requireBusinessOrAdminAuth, async (req, res) => {
+    try {
+        const { businessId, bizId } = req.query;
+        const targetId = (businessId || bizId || '').trim();
+        const businesses = await syncBusinessesFromDB(false);
+        const biz = businesses.find(b => b.id === targetId || b.userId === targetId) || null;
+
+        const allFavorites = readJsonFileSafe(FAVORITES_PATH, []);
+        const activeFavorites = allFavorites.filter(f => f.status !== 'cancelled' && f.action !== 'remove');
+
+        if (!biz) {
+            return res.json({ success: true, favorites: activeFavorites, count: activeFavorites.length });
+        }
+
+        const isRealEstateBiz = biz.type === 'real_estate' || (biz.name && biz.name.includes('공인중개'));
+        const bizName = (biz.name || biz.academyName || biz.companyName || biz.businessName || biz.academyProfile?.targetAcademyName || '').trim().toLowerCase();
+        let bizDong = '';
+        if (biz.registeredAddress || biz.address) {
+            const m = (biz.registeredAddress || biz.address).match(/([가-힣]+(?:동|읍|면))(?:\s|[0-9]|\(|$)/);
+            if (m) bizDong = m[1];
+        }
+
+        const filtered = activeFavorites.filter(f => {
+            if (f.businessId && f.businessId === biz.id) return true;
+            if (!isRealEstateBiz && (f.targetType === 'academy' || !f.targetType)) {
+                const fName = (f.targetName || '').trim().toLowerCase();
+                const cleanFName = fName.replace(/\s+/g, '');
+                const cleanBizName = (bizName || '').replace(/\s+/g, '').toLowerCase();
+                if (fName === bizName || cleanFName === cleanBizName) return true;
+                if (cleanBizName && (cleanFName.includes(cleanBizName) || cleanBizName.includes(cleanFName))) return true;
+            }
+            if (isRealEstateBiz && (f.targetType === 'housing' || f.targetType === 'real_estate')) {
+                if (!bizDong) return true;
+                const targetDong = (f.metadata?.dong || f.metadata?.address || f.targetName || '');
+                return targetDong.includes(bizDong);
+            }
+            return false;
+        });
+
+        return res.json({ success: true, favorites: filtered, count: filtered.length });
+    } catch (err) {
+        console.error('Business Favorites Get Error:', err);
+        return res.status(500).json({ error: '관심 회원 조회 실패' });
     }
 });
 

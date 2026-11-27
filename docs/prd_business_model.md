@@ -1329,3 +1329,157 @@
 - **검증 완료**:
   - `node --check server.js`, `node --check app.js` 문법 검사 및 `npm run build` 프로덕션 빌드 100% 통과.
   - 백엔드 API(`/api/business/dashboard?businessId=biz_1795693060096`) 정상 응답(`pin_clicks: 21`, `profile_views: 55`) 확인 완료.
+
+---
+
+### [2026-11-27 정책 추가] 학교 미선택 상태에서 관심학원 이동 시 인접 학교 핀 자동 선택 기능
+- **요청 사항**:
+  - 학교 핀이 선택되지 않은 상태에서 관심학원(마이페이지, 검색, 지도 포커스 등)을 클릭하여 지도로 이동할 때, 해당 학원에 매칭되는 학교 핀이 자동으로 선택되도록 기능 구현 요청.
+- **구현 내용 ([app.js](file:///c:/Users/bird3/100%20shop/LearnMap/app.js))**:
+  - `window.ensureNearestSchoolSelectedForAcademy(lng, lat)` 헬퍼 함수 구현:
+    - 현재 학교 핀이 활성화되어 있지 않은 상태(`!isSchoolActive`)일 때, 전달된 학원의 좌표(`lng`, `lat`)를 기준으로 전국/지역 학교 데이터베이스(`schoolsDatabase`)를 실시간 스캔.
+    - 하버사인(Haversine) 최단 거리 공식을 적용하여 학원과 가장 가까운 최인접 학교(`nearestSchool`)를 자동 산출.
+    - `window.__isSchoolPinSelectedByUser = true` 플래그 설정 및 `window.selectSchoolById(nearestSchool.school_id)`를 실행하여 학교 상세 정보 카드, 주변 반경 서클(1km 등), 인근 학원 핀 분석을 한 번에 자동 활성화.
+  - 적용 위치:
+    1. `updateMypageFavoriteAcademiesUI` 내 관심학원 카드 클릭 핸들러 (`item.onclick`)
+    2. `window.focusAcademyLocationOnMap` 전역 지도 포커스 함수 최상단
+- **기대 효과**:
+  - 학부모가 특정 관심학원을 조회할 때, 해당 학원이 속한 대표 배정/통학 학교가 자동으로 선택되어 학교 상세와 학원 위치가 지도 상에서 유기적으로 연동됨.
+
+---
+
+### [2026-11-27 정책 추가] 학원 상세 노출 시 학원 핀 마우스오버 플로팅 라벨 상시 노출 연동
+- **요청 사항**:
+  - 학원 상세 정보(모달 또는 사이드바)가 화면에 노출되어 있을 때, 지도 상의 해당 학원 핀에 마우스 오버 시 뜨는 플로팅 라벨(`🎓 학원명`)이 항상 노출되도록 처리.
+- **구현 내용 ([app.js](file:///c:/Users/bird3/100%20shop/LearnMap/app.js))**:
+  1. `window.showAcademyHoverFloatingOnMap(targetName, targetLng, targetLat, skipMapAdjust)`:
+     - `skipMapAdjust` 옵션 파라미터를 추가하여 목록 선택 시 지도가 불필요하게 튀지 않으면서도 플로팅 라벨만 안정적으로 활성화.
+  2. `openAcademyDetailModal`:
+     - 학원 상세가 열릴 때 해당 학원의 핀을 탐색하여 플로팅 라벨을 자동 노출하고 활성 컨테이너(`window.activeFloatingAcademyContainer`)로 등록.
+     - `mouseleave` 시에도 활성 상태인 동안 플로팅 라벨이 유지되도록 기존 보존 로직과 완벽 연동.
+  3. `updateAcademyMapMarkers`:
+     - 반경 변경이나 비동기 데이터 갱신으로 지도 핀이 재렌더링되더라도, 학원 상세가 열려 있다면 해당 핀의 플로팅 라벨을 즉시 복원.
+  4. `showMobileAcademyPeekCard`:
+     - 모바일 1단계 학원 카드 노출 시에도 학원 핀 플로팅 라벨 자동 동기화.
+  5. `closeAcademyDetailModal` / `closeMobileItemPeekCard`:
+     - 학원 상세를 닫으면 플로팅 라벨도 함께 깔끔하게 숨김 처리.
+- **기대 효과**:
+  - 학부모가 학원 상세를 열었을 때, 지도 상에서 자신이 보고 있는 학원의 핀 위치가 플로팅 라벨로 한눈에 명확하게 식별됨.
+
+---
+
+### [2026-11-27 정책 추가] 학원 리스트에서 학원 클릭 시 지도 학원 핀 위치로 자동 이동 연동
+- **요청 사항**:
+  - 학원 리스트(사이드바)에서 특정 학원 카드를 클릭했을 때, 지도 상에서 해당 학원 핀이 위치한 곳으로 지도를 즉시 이동(Pan)하도록 개선 요청.
+- **구현 내용 ([app.js](file:///c:/Users/bird3/100%20shop/LearnMap/app.js))**:
+  1. `createAcademyCard` (`card.onclick`):
+     - 학원 카드 클릭 시 학원의 좌표(`targetX`, `targetY`)를 추출하여 `window.checkAndAdjustMapForAcademyPin(targetX, targetY)` 즉시 실행.
+  2. `openAcademyDetailModal`:
+     - 리스트 선택 여부(`isFromList`)에 따른 지도 이동 제한을 해제하고, 학원 선택 시 항상 `checkAndAdjustMapForAcademyPin(xCoord, yCoord)`가 60ms/220ms 딜레이 보장으로 실행되도록 연동.
+     - PC 환경에서 사이드바와 상세 패널 가림 영역을 완벽히 계산한 유효 가시 영역 정중앙으로 학원 핀이 부드럽게 패닝(panTo)됨.
+- **기대 효과**:
+  - 학원 리스트 탐색 중 원하는 학원을 클릭하면 지도 화면이 해당 학원 핀의 정확한 위치로 포커스되어 시각적 연계성 및 사용자 경험(UX) 극대화.
+
+---
+
+### [2026-11-27 정책 추가] 주택 핀/리스트/상세 인터랙션 학원 핀과 동일 연동
+- **요청 사항**:
+  - 주택(아파트/단지)도 학원 핀과 완전히 동일하게 1) 학교 핀 미선택 시 최인접 학교 자동 선택, 2) 주택 상세 노출 시 주택 핀 마우스오버 플로팅 라벨 상시 노출, 3) 주택 리스트에서 주택 클릭 시 지도 위치로 자동 이동하도록 개선 요청.
+- **구현 내용 ([app.js](file:///c:/Users/bird3/100%20shop/LearnMap/app.js))**:
+  1. **학교 미선택 시 최인접 학교 자동 선택 연동**:
+     - `openHousingDetailModal` 및 `focusHousingLocationOnMap`:
+       - 학교 핀이 선택되지 않은 상태에서 주택 상세를 열거나 위치 이동 시 `window.ensureNearestSchoolSelectedForAcademy(hLng, hLat)`를 호출하여 가장 가까운 학교를 자동 선택하고 학교 상세, 반경 1km 서클, 주택 및 학원 핀을 일괄 활성화.
+  2. **주택 상세 노출 시 주택 핀 마우스오버 플로팅 라벨 상시 노출**:
+     - `window.showHousingHoverFloatingOnMap(targetName, targetLng, targetLat, skipMapAdjust)` 신규 구축:
+       - 지도 상의 주택 핀 컨테이너(`activeHousingPinContainers`)를 탐색하여 해당 단지명과 좌표가 일치하는 핀의 마우스오버 플로팅 라벨(`<div><strong>단지명</strong>...</div>`)을 상시 노출.
+       - 마우스가 벗어나도(`mouseleave`) 플로팅 라벨이 유지되도록 활성 컨테이너 방어 처리.
+     - `createOverlayForCluster`:
+       - 주택 마커 엘리먼트에 `_showFloatingLabel`, `_hideFloatingLabel` 메서드를 바인딩하고 `activeHousingPinContainers`에 등록.
+       - 마커 클러스터 재렌더링 시 주택 상세가 열려 있으면 플로팅 라벨 자동 복원.
+     - `showMobileHousingPeekCard` / `closeHousingDetailModal` / `closeMobileItemPeekCard`:
+       - 모바일 주택 카드 노출 시 플로팅 라벨 자동 동기화 및 상세 패널 닫기 시 플로팅 라벨 정상 숨김 및 컨테이너 해제.
+  3. **주택 리스트에서 클릭 시 지도 이동 연동**:
+     - `createHousingCard` (`card.onclick`):
+       - 주택 카드 클릭 시 `window.checkAndAdjustMapForHousingPin(targetX, targetY)`를 호출하여 사이드바를 제외한 지도 가시 영역 정중앙으로 부드럽게 패닝.
+- **기대 효과**:
+  - 학원과 주택 모두 일관된 사용자 경험(UX)을 제공하여 지도와 목록, 상세 화면 간의 상호작용이 매끄럽고 직관적으로 개선됨.
+
+---
+
+### [2026-11-27 정책 추가] 주택상세 관심주택 기능 추가 및 마이페이지 '관심리스트' 통합 개편
+- **요청 사항**:
+  1. 주택 상세(housingDetailPanel)에 관심주택 등록/해제 기능 추가.
+  2. 마이페이지의 관심 보관함에 주택도 포함하도록 확장.
+  3. 명칭 변경: '관심 학교 및 학원 보관함' → '관심리스트'로 직관적 통일.
+- **구현 내용**:
+  1. **주택 상세 관심주택 토글 버튼 (`btnFavHousingDetail`)**:
+     - 주택 상세 상단 내비게이션 바에 관심주택 북마크 버튼(`btnFavHousingDetail`) 배치.
+     - `toggleFavoriteHousing()`: 단지명, 주소, 주택유형, 실거래가/표시가격, 면적, 총세대수, 건축년도, 좌표 정보를 로컬스토리지(`learnmap_favorite_housings`)에 등록/해제.
+     - 등록/해제 시 토스트 알림 및 실시간 버튼 상태 동기화(`updateHousingFavButtonState`).
+  2. **마이페이지 PC 관심리스트 탭 확장**:
+     - 타이틀: '관심 학교 및 학원 보관함' → '관심리스트' (설명: 즐겨찾는 학교, 학원, 주택을 바로 확인하고 이동할 수 있습니다).
+     - 탭 세그먼트: `[🏫 학교]`, `[🔖 학원]`, `[🏢 주택]` 3종 지원 (`switchPCFavTab('housing')`).
+     - 주택 리스트 카드: 단지명, 유형 뱃지(아파트/오피스텔/빌라), 주소, 실거래가, 전용면적, 세대수 노출.
+     - 카드 클릭 시: 모달 닫기 → 최단거리 인접 학교 자동 선택 → 지도 핀 위치 패닝 및 플로팅 라벨 노출 → 주택 상세 모달 즉시 오픈.
+  3. **마이페이지 모바일 아코디언 메뉴 확장**:
+     - 모바일 '나의 활동' 내 '관심 주택' 아코디언 메뉴(`mypageAccordionContent-favorite-housing`) 신규 구축.
+     - 모바일 리스트 및 전체 삭제 기능 완비.
+- **기대 효과**:
+  - 학교, 학원, 주택 3대 핵심 교육·부동산 정보를 '관심리스트' 한 곳에서 유기적으로 관리하고 지도와 상세 화면을 자유롭게 넘나들 수 있음.
+
+---
+
+### [2026-11-27 정책 추가] 관심 학원·주택 등록 회원 파트너 콘솔 실시간 연동 및 조회 기능 구축
+- **요청 사항**:
+  - 학부모 회원이 학원 또는 주택을 관심리스트에 등록했을 때, 해당 파트너(학원 원장님 또는 부동산 공인중개사) 콘솔에 "어떤 회원이 우리 학원/단지에 관심을 표했는지" 실시간으로 보여주는 영업/리드 관리 기능 신설.
+- **구현 내용**:
+  1. **회원 관심 추적 백엔드 API (`/api/favorites/track`)**:
+     - 학원(`academy`) 또는 주택(`housing`) 관심 등록/해제 시 회원 정보(이름/닉네임, 이메일, 안심 연락처, 자녀 학년, 거주 지역 등)를 수집하여 `partner_favorites.json` 및 Supabase DB에 기록.
+     - 대상 학원명/단지명을 기반으로 가입된 파트너 사업자(`businessId`)를 자동 매핑.
+     - `analytics_events.json`에도 `academy_favorite`/`housing_favorite` 이벤트 동시 기록.
+  2. **파트너 대시보드(`business.html`) KPI 및 목록 UI 구축**:
+     - **KPI 카드 추가**: 대시보드 상단에 `관심 등록 회원 (N명)` 카드 신설 (부동산 파트너는 '관심 단지 등록 회원'으로 자동 레이블 전환).
+     - **상세 목록 패널**: `⭐ 관심 등록 회원 목록` 패널을 통해 등록 일시, 회원 닉네임, 자녀 학년, 거주지, 관심 대상명, 연락처 표시 및 `📞 바로 전화 / 💬 문자 발송` 원클릭 연결 버튼 지원.
+     - **실시간 반응형 연동**: 사용자가 지도나 상세창에서 관심 등록 시 `storage` 이벤트 핑을 통해 파트너 화면이 새로고침 없이 즉각 최신 상태로 갱신.
+  3. **사용자 인터랙션 최적화 (`app.js`)**:
+     - `toggleFavoriteAcademy` 및 `toggleFavoriteHousing`에서 관심 등록 시 회원 프로필 정보를 서버로 자동 전송.
+     - 비로그인 사용자의 경우 로그인 권장 알림을 띄우며, 취소 시에도 게스트 형태로 안전하게 로컬 및 파트너 통계에 반영.
+- **기대 효과**:
+  - 파트너가 단순 클릭수뿐만 아니라 실질적인 잠재 학부모 고객(리드)의 인적 사항과 관심도를 확인하고 즉시 상담으로 연결할 수 있어 플랫폼 비즈니스 가치 대폭 증대.
+
+---
+
+### [2026-11-27 정책 추가] 관심 학원·주택 플로팅 토스트 알림 이모지 폰트 깨짐('') 방지 및 UI 고도화
+- **문제 증상**:
+  - 학원 및 주택 상세에서 관심 등록/해제 클릭 시 노출되는 하단 플로팅 토스트에서 메시지 앞단의 4바이트 이모지(`🔖`, `🏢`)가 일부 PC/모바일 환경의 기본 폰트 미지원으로 인해 유니코드 대체 문자(``)로 깨져 노출되는 현상 발생.
+  - 도보 주소 안내용 플로팅 토스트(`walkDistanceFloatingToast`)를 공유하면서 우측에 주소 설정 이동용 파란색 화살표(`→`)가 불필요하게 함께 표시되는 문제.
+- **개선 내용 ([app.js](file:///c:/Users/bird3/100%20shop/LearnMap/app.js), [index.html](file:///c:/Users/bird3/100%20shop/LearnMap/index.html))**:
+  1. **텍스트 정제 및 깨짐 원천 방지**:
+     - `showFloatingToast`에서 메시지 앞단의 특수문자/이모지를 자동 정제(`cleanMsg`)하여 텍스트 영역에는 순수한 한글 메시지만 깨끗하게 노출.
+  2. **안전한 표준 아이콘 선별 분기**:
+     - 관심 등록 시: 모든 기기에서 100% 호환되는 별표(`⭐`)로 아이콘 영역에 명확히 표기.
+     - 관심 해제 시: 빈 하트(`🤍`)로 아이콘 영역 표기.
+     - 주소 설정 안내가 아닌 일반/관심 알림일 때는 우측 화살표(`→`)를 숨김(`display: none`) 처리하고 클릭 시 토스트가 즉시 닫히도록 개선.
+  3. **이모지 폰트 폴백 보강**:
+     - 토스트 요소 스타일의 `font-family`에 `'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji'`를 명시적으로 추가하여 OS별 컬러 이모지 렌더링을 완벽하게 보장.
+
+- **요청 사항**:
+  - 지도 상단 검색 필터가 **초등학교**로 설정되어 있으면 주택 및 학원 핀 클릭 시 **초등학교**가 기준 학교로 선택되도록 연동.
+  - 필터가 **중학교**로 되어 있으면 **중학교**, **고등학교**로 되어 있으면 **고등학교**가 기준 학교로 자동 선택되도록 고도화.
+- **구현 내용 ([app.js](file:///c:/Users/bird3/100%20shop/LearnMap/app.js))**:
+  1. `window.ensureNearestSchoolSelectedForAcademy(lng, lat)` 로직 개선:
+     - 현재 검색창/지도의 학교급 필터 `#schoolTypeFilter` 값(`elementary`, `middle`, `high`, `all`) 실시간 감지.
+     - `checkSchoolMatchesType(school, targetFilter)` 헬퍼를 통해 학교 객체의 `school_type` 및 교명 접미사(`초등/초`, `중학/중`, `고등/고`)를 검증.
+     - 현재 활성화된 학교의 학교급이 필터와 일치하지 않거나 학교가 미선택 상태인 경우, 전체 학교 DB에서 해당 학교급 후보군만을 우선 선별하여 학원/주택 좌표 기준 최단거리 학교를 자동 탐색 및 `window.selectSchoolById` 실행.
+  2. 전 구간 호출 연동:
+     - 학원 상세 모달(`openAcademyDetailModal`), 모바일 미니카드(`showMobileAcademyPeekCard`), 관심학원 위치 포커스(`focusAcademyLocationOnMap`)
+     - 주택 상세 모달(`openHousingDetailModal`), 모바일 주택 미니카드(`showMobileHousingPeekCard`), 관심주택 위치 포커스(`focusHousingLocationOnMap`)
+- **기대 효과**:
+  - 학부모가 초등/중등/고등 자녀 상황에 맞춰 학교급 필터를 선택한 상태에서 지도 상의 학원이나 아파트 단지를 둘러볼 때, 별도로 학교 핀을 다시 찾아서 누를 필요 없이 자녀 학년에 맞는 최인접 학교가 즉시 배정/분석되어 탐색 편의성이 비약적으로 향상됨.
+
+
+
+
+
+
+

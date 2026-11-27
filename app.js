@@ -2702,6 +2702,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.updateMypageFavoriteAcademiesUI();
             }
 
+            if (typeof window.updateMypageFavoriteHousingsUI === 'function') {
+                window.updateMypageFavoriteHousingsUI();
+            }
+
             if (typeof updateMypageComparisonUI === 'function') {
                 updateMypageComparisonUI();
             }
@@ -7403,28 +7407,53 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // 도보 뱃지 및 주소 안내 전용 플로팅 토스트 알림 헬퍼
-    window.showFloatingToast = function(msg, duration = 3500) {
+    // 도보 뱃지, 주소 안내 및 전역 플로팅 토스트 알림 헬퍼 (이모지 글리프 깨짐 완벽 방지)
+    window.showFloatingToast = function(msg, duration = 3200, isAddressGuide = false, customIcon = null) {
         let toastEl = document.getElementById('walkDistanceFloatingToast');
         if (!toastEl) toastEl = document.getElementById('mobileFilterToast');
         if (!toastEl) return;
 
         const msgEl = document.getElementById('walkToastMsg');
         const iconEl = document.getElementById('walkToastIcon');
+        const arrowEl = document.getElementById('walkToastArrow');
 
-        const cleanMsg = msg.replace(/^[💡🏡📍🚶\s]+/, '');
+        // 메시지 앞단에 포함된 깨지기 쉬운 4바이트 이모지/특수기호 깔끔하게 분리 (OS별 폰트 깨짐 '' 원천 방어)
+        const rawMsg = String(msg || '');
+        const cleanMsg = rawMsg
+            .replace(/^[\uD800-\uDBFF][\uDC00-\uDFFF]|^[💡🏡📍🚶🔖🏢⭐🤍❤️⚠️\s]+/, '')
+            .trim();
+
         if (msgEl) {
-            msgEl.textContent = cleanMsg;
+            msgEl.textContent = cleanMsg || rawMsg;
         } else {
-            toastEl.innerText = msg;
+            toastEl.innerText = cleanMsg || rawMsg;
         }
 
-        // 아이콘 동적 설정
+        // 아이콘 안전 결정 (표준 지원 이모지만 선별 매핑)
+        let iconChar = customIcon;
+        if (!iconChar) {
+            if (rawMsg.includes('해제') || rawMsg.includes('삭제') || rawMsg.includes('취소')) {
+                iconChar = '🤍';
+            } else if (rawMsg.includes('관심학원') || rawMsg.includes('관심주택') || rawMsg.includes('관심')) {
+                iconChar = '⭐';
+            } else if (rawMsg.includes('주택') || rawMsg.includes('단지') || rawMsg.includes('🏡') || rawMsg.includes('🏢')) {
+                iconChar = '🏢';
+            } else if (rawMsg.includes('학원') || rawMsg.includes('📍')) {
+                iconChar = '📍';
+            } else if (rawMsg.includes('도보') || rawMsg.includes('🚶')) {
+                iconChar = '🚶';
+            } else {
+                iconChar = '💡';
+            }
+        }
+
         if (iconEl) {
-            if (msg.includes('🏡')) iconEl.textContent = '🏡';
-            else if (msg.includes('📍')) iconEl.textContent = '📍';
-            else if (msg.includes('🚶')) iconEl.textContent = '🚶';
-            else iconEl.textContent = '💡';
+            iconEl.textContent = iconChar;
+        }
+
+        // 주소 설정 안내일 때만 파란색 화살표(→) 노출
+        if (arrowEl) {
+            arrowEl.style.display = isAddressGuide ? 'inline' : 'none';
         }
 
         toastEl.style.display = 'flex';
@@ -7434,18 +7463,24 @@ document.addEventListener('DOMContentLoaded', () => {
             toastEl.style.transform = 'translateX(-50%) translateY(0) scale(1)';
         });
 
-        // 🌟 플로팅 알림 클릭 시 회원정보 설정 및 주소 입력 모달로 즉시 연결
+        // 클릭 이벤트 핸들러 분기
         toastEl.onclick = () => {
             toastEl.style.transform = 'translateX(-50%) scale(0.93)';
             setTimeout(() => {
                 toastEl.style.transform = 'translateX(-50%) scale(1)';
             }, 120);
 
-            if (typeof window.toggleSettingsModal === 'function') {
-                window.toggleSettingsModal();
-                if (typeof window.handleEditMemberProfile === 'function') {
-                    setTimeout(() => { window.handleEditMemberProfile(); }, 250);
+            if (isAddressGuide) {
+                if (typeof window.toggleSettingsModal === 'function') {
+                    window.toggleSettingsModal();
+                    if (typeof window.handleEditMemberProfile === 'function') {
+                        setTimeout(() => { window.handleEditMemberProfile(); }, 250);
+                    }
                 }
+            } else {
+                // 일반/관심 토스트 클릭 시 부드럽게 닫기
+                toastEl.style.opacity = '0';
+                setTimeout(() => { toastEl.style.display = 'none'; }, 200);
             }
         };
 
@@ -7459,6 +7494,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }, 280);
         }, duration);
+    };
+
+    // 전역 토스트 헬퍼 호환 바인딩
+    window.showToastNoticeMsg = function(msg) {
+        if (typeof window.showFloatingToast === 'function') {
+            window.showFloatingToast(msg, 3200, false);
+        }
     };
 
     window.showMobileSchoolPeekCard = function(school) {
@@ -7879,6 +7921,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.currentMobilePeekItem = { type: 'academy', data: place || { place_name: acadName } };
 
+        // 🌟 학원 좌표 기준 학교급 필터(초/중/고)에 부합하는 최근접 학교 자동 연동
+        const peekALng = place ? (place.x || place.lng) : '';
+        const peekALat = place ? (place.y || place.lat) : '';
+        if (peekALng && peekALat && typeof window.ensureNearestSchoolSelectedForAcademy === 'function') {
+            window.ensureNearestSchoolSelectedForAcademy(peekALng, peekALat);
+        }
+
         // 학교 미니 카드 숨김
         const schPeek = document.getElementById('mobileSchoolPeekCard');
         if (schPeek) schPeek.style.display = 'none';
@@ -7960,6 +8009,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof window.checkAndAdjustMapForAcademyPin === 'function') {
                 window.checkAndAdjustMapForAcademyPin(aLng, aLat);
             }
+            if (typeof window.showAcademyHoverFloatingOnMap === 'function') {
+                window.showAcademyHoverFloatingOnMap(acadName, aLng, aLat, true);
+            }
         }
     };
 
@@ -7982,6 +8034,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         window.currentMobilePeekItem = { type: 'housing', data: place || { name: propName } };
+
+        // 🌟 주택 좌표 기준 학교급 필터(초/중/고)에 부합하는 최근접 학교 자동 연동
+        const peekHLng = place ? (place.x || place.lng) : '';
+        const peekHLat = place ? (place.y || place.lat) : '';
+        if (peekHLng && peekHLat && typeof window.ensureNearestSchoolSelectedForAcademy === 'function') {
+            window.ensureNearestSchoolSelectedForAcademy(peekHLng, peekHLat);
+        }
 
         // 학교 미니 카드 숨김
         const schPeek = document.getElementById('mobileSchoolPeekCard');
@@ -8075,6 +8134,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof window.checkAndAdjustMapForHousingPin === 'function') {
                 window.checkAndAdjustMapForHousingPin(hLng, hLat);
             }
+            if (typeof window.showHousingHoverFloatingOnMap === 'function') {
+                window.showHousingHoverFloatingOnMap(propName, hLng, hLat, true);
+            }
         }
     };
 
@@ -8102,6 +8164,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const peekCard = document.getElementById('mobileItemPeekCard');
         if (peekCard) peekCard.style.display = 'none';
         window.currentMobilePeekItem = null;
+        if (window.activeFloatingAcademyContainer && typeof window.activeFloatingAcademyContainer._hideFloatingLabel === 'function') {
+            try { window.activeFloatingAcademyContainer._hideFloatingLabel(); } catch (e) {}
+        }
+        window.activeFloatingAcademyContainer = null;
+        if (window.activeFloatingHousingContainer && typeof window.activeFloatingHousingContainer._hideFloatingLabel === 'function') {
+            try { window.activeFloatingHousingContainer._hideFloatingLabel(); } catch (e) {}
+        }
+        window.activeFloatingHousingContainer = null;
 
         // 기준 학교 미니 카드로 안전 복귀 (사용자가 학교핀을 선택했던 경우에만 복귀)
         const curSchool = window.currentSelectedSchool || (orchestrator && orchestrator.state && orchestrator.state.selectedSchool);
@@ -10187,7 +10257,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // 전역 관심학원 선택 이동 시 해당 학원 핀 마우스 오버 플로팅 라벨 노출 함수
-        window.showAcademyHoverFloatingOnMap = function (targetName, targetLng, targetLat) {
+        window.showAcademyHoverFloatingOnMap = function (targetName, targetLng, targetLat, skipMapAdjust = false) {
             if (!Array.isArray(window.activeAcademyPinContainers) || window.activeAcademyPinContainers.length === 0) {
                 return false;
             }
@@ -10247,7 +10317,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.activeFloatingAcademyContainer = bestMatch;
 
                 // 지도를 학원 핀 위치에 맞춰 가시 영역 중심으로 정렬
-                if (typeof window.checkAndAdjustMapForAcademyPin === 'function') {
+                if (!skipMapAdjust && typeof window.checkAndAdjustMapForAcademyPin === 'function') {
                     window.checkAndAdjustMapForAcademyPin(bestMatch._clusterLng, bestMatch._clusterLat);
                 }
 
@@ -10257,10 +10327,148 @@ document.addEventListener('DOMContentLoaded', () => {
             return false;
         };
 
+        // 전역 주택 핀 마우스 오버 플로팅 라벨 노출 함수 (학원 핀과 동일한 UX 연동)
+        window.showHousingHoverFloatingOnMap = function (targetName, targetLng, targetLat, skipMapAdjust = false) {
+            if (!Array.isArray(window.activeHousingPinContainers) || window.activeHousingPinContainers.length === 0) {
+                return false;
+            }
+
+            const cleanTargetName = (targetName || '').trim();
+            const fLng = parseFloat(targetLng);
+            const fLat = parseFloat(targetLat);
+
+            let bestMatch = null;
+            let minDistance = Infinity;
+
+            for (const container of window.activeHousingPinContainers) {
+                if (!container || !container._clusterItems) continue;
+
+                // 1) 이름 일치 여부 확인
+                const hasMatchingName = cleanTargetName && container._clusterItems.some(item => {
+                    const itemName = (item.name || item.complexName || item.hscpNm || '').trim();
+                    return itemName === cleanTargetName || itemName.includes(cleanTargetName) || cleanTargetName.includes(itemName);
+                });
+
+                if (hasMatchingName) {
+                    bestMatch = container;
+                    break;
+                }
+
+                // 2) 이름 매칭 실패 시 좌표 거리 비교 (40m 이내)
+                if (!isNaN(fLng) && !isNaN(fLat) && container._clusterLat && container._clusterLng) {
+                    const dy = (fLat - container._clusterLat) * 111000;
+                    const dx = (fLng - container._clusterLng) * 88800 * Math.cos(fLat * (Math.PI / 180));
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 40 && dist < minDistance) {
+                        minDistance = dist;
+                        bestMatch = container;
+                    }
+                }
+            }
+
+            if (bestMatch && typeof bestMatch._showFloatingLabel === 'function') {
+                if (window.activeFloatingHousingContainer && typeof window.activeFloatingHousingContainer._hideFloatingLabel === 'function') {
+                    window.activeFloatingHousingContainer._hideFloatingLabel();
+                }
+
+                bestMatch._showFloatingLabel(cleanTargetName);
+                window.activeFloatingHousingContainer = bestMatch;
+
+                if (!skipMapAdjust && typeof window.checkAndAdjustMapForHousingPin === 'function') {
+                    window.checkAndAdjustMapForHousingPin(bestMatch._clusterLng, bestMatch._clusterLat);
+                }
+
+                return true;
+            }
+
+            return false;
+        };
+
+        // 🌟 학원/주택 위치 기준 가장 인접한 학교 탐색 및 자동 선택 헬퍼
+        // [사용자 요구사항]: 지도 검색 학교급 필터(초/중/고)에 맞춰 해당 학교급의 인접 학교 자동 선택
+        window.ensureNearestSchoolSelectedForAcademy = function (lng, lat) {
+            const fLat = parseFloat(lat);
+            const fLng = parseFloat(lng);
+            if (isNaN(fLat) || isNaN(fLng)) return null;
+
+            // 1. 현재 검색/지도 필터의 학교급 확인 (elementary | middle | high | all)
+            const schoolTypeFilterEl = document.getElementById('schoolTypeFilter');
+            const targetSchoolType = (schoolTypeFilterEl ? schoolTypeFilterEl.value : '') 
+                || (typeof orchestrator !== 'undefined' && orchestrator?.state?.filters?.schoolType) 
+                || 'all';
+
+            // 학교 객체가 특정 학교급 필터에 부합하는지 판별하는 헬퍼
+            const checkSchoolMatchesType = function (s, typeFilter) {
+                if (!s || !typeFilter || typeFilter === 'all') return true;
+                const sType = String(s.school_type || s.schoolType || s.type || '').trim();
+                const sName = String(s.school_name || s.name || '').trim();
+                if (typeFilter === 'elementary') {
+                    return sType.includes('초등') || sName.endsWith('초등학교') || sName.endsWith('초');
+                }
+                if (typeFilter === 'middle') {
+                    return (sType.includes('중학') || sType === '중학교') || (sName.endsWith('중학교') || (sName.endsWith('중') && !sName.endsWith('고등') && !sName.endsWith('초등')));
+                }
+                if (typeFilter === 'high') {
+                    return sType.includes('고등') || sType === '고등학교' || sName.endsWith('고등학교') || (sName.endsWith('고') && !sName.endsWith('초등') && !sName.endsWith('중등'));
+                }
+                return true;
+            };
+
+            const schoolCardEl = document.getElementById('selectedSchoolCard');
+            const curSchool = window.currentSelectedSchool || (typeof orchestrator !== 'undefined' && orchestrator && orchestrator.state && orchestrator.state.selectedSchool) || null;
+            const isSchoolActive = Boolean(
+                window.__isSchoolPinSelectedByUser &&
+                curSchool &&
+                schoolCardEl && schoolCardEl.style.display !== 'none'
+            );
+
+            // 현재 선택된 학교가 이미 활성화되어 있고, 목표 학교급 필터와도 일치하면 기존 선택 유지
+            if (isSchoolActive && checkSchoolMatchesType(curSchool, targetSchoolType)) {
+                return curSchool;
+            }
+
+            const allDb = (typeof schoolsDatabase !== 'undefined' && schoolsDatabase && schoolsDatabase.length > 0)
+                ? schoolsDatabase
+                : (window.schoolsDatabase || window.allSchoolsCache || []);
+            if (!allDb || allDb.length === 0) return null;
+
+            // 2. 목표 학교급에 부합하는 학교 후보군 필터링 (없으면 전체 학교로 폴백)
+            let candidates = allDb.filter(s => checkSchoolMatchesType(s, targetSchoolType));
+            if (!candidates || candidates.length === 0) {
+                candidates = allDb;
+            }
+
+            let nearestSchool = null;
+            let minDist = Infinity;
+            candidates.forEach(s => {
+                const sLat = parseFloat(s.lat || s.latitude || s.y);
+                const sLng = parseFloat(s.lng || s.longitude || s.x);
+                if (!isNaN(sLat) && !isNaN(sLng)) {
+                    const d = Math.hypot((sLat - fLat) * 111000, (sLng - fLng) * 88800);
+                    if (d < minDist) {
+                        minDist = d;
+                        nearestSchool = s;
+                    }
+                }
+            });
+
+            if (nearestSchool && typeof window.selectSchoolById === 'function') {
+                window.__isSchoolPinSelectedByUser = true;
+                window.selectSchoolById(nearestSchool.school_id || nearestSchool.id);
+                return nearestSchool;
+            }
+            return null;
+        };
+
         // 전역 지적 이동/줌 헬퍼 등록 (학원 카드에서 📍 거리/지도 버튼 클릭시 동작)
         window.focusAcademyLocationOnMap = function (lng, lat, name, keepSidebarOpen = false) {
             window.__justFocusedFavoriteAcademyTime = Date.now();
             window.__justFocusedFavoriteAcademyName = name || '';
+
+            // 학교핀이 선택되지 않은 상태에서 학원 이동 시 해당 학원에서 가장 인접한 학교핀 자동 선택
+            if (typeof window.ensureNearestSchoolSelectedForAcademy === 'function') {
+                window.ensureNearestSchoolSelectedForAcademy(lng, lat);
+            }
 
             // 지도 상에 이미 해당 학원 핀이 존재하면 그 핀 위에 마우스 오버 플로팅 라벨 노출
             if (typeof window.showAcademyHoverFloatingOnMap === 'function') {
@@ -11374,17 +11582,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 window.academyMapOverlays.push(overlay);
             });
+
+            // 🌟 학원 상세가 노출되어 있을 때 해당 학원 핀의 플로팅 라벨을 자동으로 유지/노출
+            const cp = document.getElementById('communityPanel');
+            const peekCard = document.getElementById('mobileItemPeekCard');
+            const isDetailOpen = Boolean((cp && cp.style.display !== 'none') || (peekCard && peekCard.style.display !== 'none'));
+            const currentActiveAcad = window.currentAcademyForCommunity || (window.currentMobilePeekItem && window.currentMobilePeekItem.type === 'academy' && (window.currentMobilePeekItem.data?.place_name || window.currentMobilePeekItem.data?.name));
+            if (isDetailOpen && currentActiveAcad && typeof window.showAcademyHoverFloatingOnMap === 'function') {
+                const coords = window.currentAcademyCoords || {};
+                setTimeout(() => {
+                    window.showAcademyHoverFloatingOnMap(currentActiveAcad, coords.lng, coords.lat, true);
+                }, 50);
+            }
         }
         window.updateAcademyMapMarkers = updateAcademyMapMarkers;
 
         // 지도 상의 아파트, 연립·다세대, 단독·다가구, 오피스텔 부동산 실거래가 핀(Overlay) 렌더링 헬퍼
         window.realEstateMapOverlays = window.realEstateMapOverlays || [];
         window.realEstateReqSeq = 0;
+        window.activeHousingPinContainers = [];
 
         function clearRealEstateMapMarkers() {
             if (typeof window.closeActiveHousingClusterPopup === 'function') {
                 window.closeActiveHousingClusterPopup();
             }
+            if (window.activeFloatingHousingContainer && typeof window.activeFloatingHousingContainer._hideFloatingLabel === 'function') {
+                try { window.activeFloatingHousingContainer._hideFloatingLabel(); } catch (e) {}
+            }
+            window.activeFloatingHousingContainer = null;
+            window.activeHousingPinContainers = [];
             if (Array.isArray(window.realEstateMapOverlays)) {
                 window.realEstateMapOverlays.forEach(ov => {
                     if (ov && typeof ov.setMap === 'function') {
@@ -11982,6 +12208,9 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                             });
 
                             containerEl.addEventListener('mouseleave', () => {
+                                if (window.activeFloatingHousingContainer === containerEl) {
+                                    return;
+                                }
                                 badgeEl.style.transform = 'scale(1)';
                                 if (!isClusterPopupOpen) {
                                     floatingLabelEl.style.opacity = '0';
@@ -12031,6 +12260,41 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                                 }
                             });
 
+                            // 외부에서 해당 주택 핀 마우스 오버 플로팅 라벨 제어를 위한 헬퍼 연결
+                            const originalFloatingHtml = floatingLabelEl.innerHTML;
+                            containerEl._clusterItems = cluster.items;
+                            containerEl._clusterLat = cluster.lat;
+                            containerEl._clusterLng = cluster.lng;
+                            containerEl._badgeEl = badgeEl;
+                            containerEl._floatingLabelEl = floatingLabelEl;
+                            containerEl._showFloatingLabel = function (customText) {
+                                if (customText) {
+                                    floatingLabelEl.innerHTML = `<div><strong>${customText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</strong></div>`;
+                                }
+                                floatingLabelEl.style.opacity = '1';
+                                floatingLabelEl.style.visibility = 'visible';
+                                badgeEl.style.transform = 'scale(1.25)';
+                                if (overlay && typeof overlay.setZIndex === 'function') {
+                                    overlay.setZIndex(99999);
+                                }
+                                containerEl.style.zIndex = '99999';
+                            };
+                            containerEl._hideFloatingLabel = function () {
+                                floatingLabelEl.style.opacity = '0';
+                                floatingLabelEl.style.visibility = 'hidden';
+                                floatingLabelEl.innerHTML = originalFloatingHtml;
+                                badgeEl.style.transform = 'scale(1.0)';
+                                if (overlay && typeof overlay.setZIndex === 'function') {
+                                    overlay.setZIndex(950);
+                                }
+                                containerEl.style.zIndex = '950';
+                            };
+
+                            if (!Array.isArray(window.activeHousingPinContainers)) {
+                                window.activeHousingPinContainers = [];
+                            }
+                            window.activeHousingPinContainers.push(containerEl);
+
                             overlay = new kakao.maps.CustomOverlay({
                                 map: mapObj,
                                 position: pos,
@@ -12057,6 +12321,19 @@ async function updateRealEstateMapMarkers(radius = 1000) {
                             }
                             if (clusterIdx < housingClusters.length) {
                                 requestAnimationFrame(renderNextClusterBatch);
+                            } else {
+                                // 🌟 주택 상세가 열려 있을 때 해당 주택 핀의 플로팅 라벨을 자동으로 유지/노출
+                                const hp = document.getElementById('housingDetailPanel');
+                                const peekCard = document.getElementById('mobileItemPeekCard');
+                                const isHousingDetailOpen = Boolean((hp && hp.style.display !== 'none') || (window.currentMobilePeekItem && window.currentMobilePeekItem.type === 'housing'));
+                                const currentHousingName = (window.currentSelectedHousing && (window.currentSelectedHousing.name || window.currentSelectedHousing.complexName)) || (window.currentMobilePeekItem && window.currentMobilePeekItem.data?.name);
+                                if (isHousingDetailOpen && currentHousingName && typeof window.showHousingHoverFloatingOnMap === 'function') {
+                                    const hX = window.currentSelectedHousing?.x || window.currentSelectedHousing?.lng;
+                                    const hY = window.currentSelectedHousing?.y || window.currentSelectedHousing?.lat;
+                                    setTimeout(() => {
+                                        window.showHousingHoverFloatingOnMap(currentHousingName, hX, hY, true);
+                                    }, 60);
+                                }
                             }
                         }
                         renderNextClusterBatch();
@@ -18430,7 +18707,53 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    window.toggleFavoriteAcademy = function () {
+    // 🌟 파트너 대시보드 실시간 관심 등록/해제 회원 정보 전송 헬퍼
+    window.sendFavoriteTrackEvent = function (targetType, targetName, action, metadata = {}) {
+        try {
+            let currentUser = null;
+            try {
+                currentUser = (typeof authService !== 'undefined' && authService.currentUser) 
+                    || JSON.parse(localStorage.getItem('learnmap_current_user') || 'null');
+            } catch (e) {}
+
+            const cleanName = String(targetName || '').trim();
+            if (!cleanName) return;
+
+            const memberInfo = {
+                userId: currentUser?.id || currentUser?.uid || '',
+                userName: currentUser?.name || currentUser?.nickname || (currentUser?.email ? currentUser.email.split('@')[0] : '게스트 학부모'),
+                userEmail: currentUser?.email || '',
+                userPhone: currentUser?.phone || currentUser?.contact || '',
+                childGrade: currentUser?.childGrade || (currentUser?.children && currentUser.children[0] ? currentUser.children[0].grade : '') || '학부모 회원',
+                userAddress: currentUser?.address || ''
+            };
+
+            fetch('/api/favorites/track', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    targetType,
+                    targetName: cleanName,
+                    action, // 'add' | 'remove'
+                    member: memberInfo,
+                    metadata
+                })
+            }).then(res => res.json()).then(data => {
+                try {
+                    localStorage.setItem('learnmap_last_analytics_event', JSON.stringify({
+                        eventType: targetType === 'academy' ? 'academy_favorite' : 'housing_favorite',
+                        targetName: cleanName,
+                        action,
+                        ts: Date.now()
+                    }));
+                } catch (e) {}
+            }).catch(() => {});
+        } catch (e) {
+            console.warn('Favorite track error:', e);
+        }
+    };
+
+    window.toggleFavoriteAcademy = async function () {
         const acadName = window.currentAcademyForCommunity || (document.getElementById('communityAcademyName') ? document.getElementById('communityAcademyName').innerText : '');
         const address = window.currentAcademyAddress || '';
         if (!acadName || acadName === '학원명') {
@@ -18451,6 +18774,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const isCurrentlyFav = existingIdx !== -1;
 
+        if (!isCurrentlyFav && typeof window.isReviewUserLoggedIn === 'function' && !window.isReviewUserLoggedIn()) {
+            const wantLogin = await confirm('🔒 관심학원 등록 시 파트너 소식 및 입학 안내를 받으시려면 로그인이 권장됩니다.\n로그인 화면으로 이동하시겠습니까?\n(취소 시 비회원으로 등록됩니다)');
+            if (wantLogin) {
+                if (typeof window.openSidebarLogin === 'function') {
+                    window.openSidebarLogin();
+                } else if (typeof window.openAuthModal === 'function') {
+                    window.openAuthModal();
+                }
+                return;
+            }
+        }
+
         if (isCurrentlyFav) {
             favs.splice(existingIdx, 1);
             localStorage.setItem('learnmap_favorite_academies', JSON.stringify(favs));
@@ -18458,10 +18793,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof window.updateMypageFavoriteAcademiesUI === 'function') {
                 window.updateMypageFavoriteAcademiesUI();
             }
-            if (typeof showToastNoticeMsg === 'function') {
+
+            if (typeof window.updateMypageFavoriteHousingsUI === 'function') {
+                window.updateMypageFavoriteHousingsUI();
+            }
+
+            // 🌟 파트너 관심 해제 추적 전송
+            if (typeof window.sendFavoriteTrackEvent === 'function') {
+                window.sendFavoriteTrackEvent('academy', cleanName, 'remove', { address: cleanAddr });
+            }
+
+            if (typeof window.showFloatingToast === 'function') {
+                window.showFloatingToast(`'${cleanName}' 관심학원에서 해제되었습니다.`, 3200, false, '🤍');
+            } else if (typeof showToastNoticeMsg === 'function') {
                 showToastNoticeMsg(`'${cleanName}' 관심학원에서 해제되었습니다.`);
-            } else if (typeof window.showFloatingToast === 'function') {
-                window.showFloatingToast(`'${cleanName}' 관심학원에서 해제되었습니다.`);
             } else {
                 alert(`'${cleanName}' 관심학원에서 해제되었습니다.`);
             }
@@ -18489,12 +18834,29 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof window.updateMypageFavoriteAcademiesUI === 'function') {
                 window.updateMypageFavoriteAcademiesUI();
             }
-            if (typeof showToastNoticeMsg === 'function') {
-                showToastNoticeMsg(`🔖 '${cleanName}'이(가) 관심학원에 등록되었습니다.`);
-            } else if (typeof window.showFloatingToast === 'function') {
-                window.showFloatingToast(`🔖 '${cleanName}'이(가) 관심학원에 등록되었습니다.`);
+
+            if (typeof window.updateMypageFavoriteHousingsUI === 'function') {
+                window.updateMypageFavoriteHousingsUI();
+            }
+
+            // 🌟 파트너 관심 등록 추적 전송 (회원 정보 연계)
+            if (typeof window.sendFavoriteTrackEvent === 'function') {
+                window.sendFavoriteTrackEvent('academy', cleanName, 'add', {
+                    address: cleanAddr,
+                    phone: phone.replace('↗', '').trim(),
+                    subject: subj,
+                    type: type,
+                    x: curCoords.lng || '',
+                    y: curCoords.lat || ''
+                });
+            }
+
+            if (typeof window.showFloatingToast === 'function') {
+                window.showFloatingToast(`'${cleanName}'이(가) 관심학원에 등록되었습니다.`, 3200, false, '⭐');
+            } else if (typeof showToastNoticeMsg === 'function') {
+                showToastNoticeMsg(`'${cleanName}'이(가) 관심학원에 등록되었습니다.`);
             } else {
-                alert(`🔖 '${cleanName}'이(가) 관심학원에 등록되었습니다.`);
+                alert(`'${cleanName}'이(가) 관심학원에 등록되었습니다.`);
             }
         }
     };
@@ -18507,32 +18869,57 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof window.updateMypageFavoriteAcademiesUI === 'function') {
                 window.updateMypageFavoriteAcademiesUI();
             }
+
+            if (typeof window.updateMypageFavoriteHousingsUI === 'function') {
+                window.updateMypageFavoriteHousingsUI();
+            }
             alert('모든 관심 학원이 삭제되었습니다.');
         }
     };
 
-    // PC 관심 학교/학원 보관함 탭 전환
+    // PC 관심리스트 (학교/학원/주택) 탭 전환
     window.switchPCFavTab = function (tab) {
         const btnSchools = document.getElementById('btnTabFavSchoolsPC');
         const btnAcademies = document.getElementById('btnTabFavAcademiesPC');
+        const btnHousing = document.getElementById('btnTabFavHousingPC');
         const conSchools = document.getElementById('mypageFavSchoolsContainerPC');
         const conAcademies = document.getElementById('mypageFavAcademiesContainerPC');
+        const conHousing = document.getElementById('mypageFavHousingContainerPC');
 
-        if (tab === 'academies') {
-            if (btnSchools) {
-                btnSchools.style.background = '#f1f5f9';
-                btnSchools.style.color = '#475569';
-                btnSchools.style.border = '1px solid #cbd5e1';
-                btnSchools.style.fontWeight = '600';
+        [btnSchools, btnAcademies, btnHousing].forEach(btn => {
+            if (btn) {
+                btn.style.background = '#f1f5f9';
+                btn.style.color = '#475569';
+                btn.style.border = '1px solid #cbd5e1';
+                btn.style.fontWeight = '600';
             }
+        });
+        if (conSchools) conSchools.style.display = 'none';
+        if (conAcademies) conAcademies.style.display = 'none';
+        if (conHousing) conHousing.style.display = 'none';
+
+        if (tab === 'housing') {
+            if (btnHousing) {
+                btnHousing.style.background = '#0284c7';
+                btnHousing.style.color = 'white';
+                btnHousing.style.border = 'none';
+                btnHousing.style.fontWeight = '700';
+            }
+            if (conHousing) conHousing.style.display = 'block';
+            if (typeof window.updateMypageFavoriteHousingsUI === 'function') {
+                window.updateMypageFavoriteHousingsUI();
+            }
+        } else if (tab === 'academies') {
             if (btnAcademies) {
                 btnAcademies.style.background = '#e11d48';
                 btnAcademies.style.color = 'white';
                 btnAcademies.style.border = 'none';
                 btnAcademies.style.fontWeight = '700';
             }
-            if (conSchools) conSchools.style.display = 'none';
             if (conAcademies) conAcademies.style.display = 'block';
+            if (typeof window.updateMypageFavoriteAcademiesUI === 'function') {
+                window.updateMypageFavoriteAcademiesUI();
+            }
         } else {
             if (btnSchools) {
                 btnSchools.style.background = '#2563eb';
@@ -18540,14 +18927,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnSchools.style.border = 'none';
                 btnSchools.style.fontWeight = '700';
             }
-            if (btnAcademies) {
-                btnAcademies.style.background = '#f1f5f9';
-                btnAcademies.style.color = '#475569';
-                btnAcademies.style.border = '1px solid #cbd5e1';
-                btnAcademies.style.fontWeight = '600';
-            }
             if (conSchools) conSchools.style.display = 'block';
-            if (conAcademies) conAcademies.style.display = 'none';
+            if (typeof updateFavUI === 'function') {
+                updateFavUI();
+            }
         }
     };
 
@@ -18665,6 +19048,251 @@ document.addEventListener('DOMContentLoaded', () => {
         if (listPC) renderAcademyCards(listPC);
     };
 
+    // ==========================================
+    // 관심 주택 (Favorite Housings) 로컬 저장 및 동기화 시스템
+    // ==========================================
+    window.getFavoriteHousings = function () {
+        try {
+            return JSON.parse(localStorage.getItem('learnmap_favorite_housings') || '[]');
+        } catch (e) {
+            return [];
+        }
+    };
+
+    window.isHousingFavorite = function (housingName, address = '') {
+        if (!housingName) return false;
+        const favs = window.getFavoriteHousings();
+        const cleanName = String(housingName).trim();
+        const cleanAddr = String(address).trim();
+        return favs.some(f => {
+            if (f.name === cleanName) {
+                if (!cleanAddr || !f.address) return true;
+                return f.address.includes(cleanAddr) || cleanAddr.includes(f.address);
+            }
+            return false;
+        });
+    };
+
+    window.updateHousingFavButtonState = function (isFav) {
+        const btn = document.getElementById('btnFavHousingDetail');
+        const svg = document.getElementById('iconFavHousingDetail');
+        if (!btn || !svg) return;
+
+        btn.dataset.isFav = isFav ? 'true' : 'false';
+        if (isFav) {
+            btn.style.color = '#e11d48';
+            btn.style.background = '#ffe4e6';
+            btn.title = '관심주택 해제';
+            svg.setAttribute('fill', '#e11d48');
+            svg.setAttribute('stroke', '#e11d48');
+        } else {
+            btn.style.color = '#64748b';
+            btn.style.background = '#f1f5f9';
+            btn.title = '관심주택 등록';
+            svg.setAttribute('fill', 'none');
+            svg.setAttribute('stroke', 'currentColor');
+        }
+    };
+
+    window.toggleFavoriteHousing = async function () {
+        const place = window.currentSelectedHousing;
+        const hName = (place && place.name) || (document.getElementById('housingDetailName') ? document.getElementById('housingDetailName').innerText : '');
+        const address = (place && place.address) || '';
+        if (!hName || hName === '단지명') {
+            alert('선택된 주택이 없습니다.');
+            return;
+        }
+
+        const favs = window.getFavoriteHousings();
+        const cleanName = String(hName).trim();
+        const cleanAddr = String(address).trim();
+        const existingIdx = favs.findIndex(f => {
+            if (f.name === cleanName) {
+                if (!cleanAddr || !f.address) return true;
+                return f.address.includes(cleanAddr) || cleanAddr.includes(f.address);
+            }
+            return false;
+        });
+
+        const isCurrentlyFav = existingIdx !== -1;
+
+        if (!isCurrentlyFav && typeof window.isReviewUserLoggedIn === 'function' && !window.isReviewUserLoggedIn()) {
+            const wantLogin = await confirm('🔒 관심주택 등록 시 관할 파트너의 특별 혜택 및 단지 소식을 받아보실 수 있습니다.\n로그인 화면으로 이동하시겠습니까?\n(취소 시 비회원으로 등록됩니다)');
+            if (wantLogin) {
+                if (typeof window.openSidebarLogin === 'function') {
+                    window.openSidebarLogin();
+                } else if (typeof window.openAuthModal === 'function') {
+                    window.openAuthModal();
+                }
+                return;
+            }
+        }
+
+        if (isCurrentlyFav) {
+            favs.splice(existingIdx, 1);
+            localStorage.setItem('learnmap_favorite_housings', JSON.stringify(favs));
+            window.updateHousingFavButtonState(false);
+            if (typeof window.updateMypageFavoriteHousingsUI === 'function') {
+                window.updateMypageFavoriteHousingsUI();
+            }
+
+            // 🌟 파트너 관심 해제 추적 전송
+            if (typeof window.sendFavoriteTrackEvent === 'function') {
+                window.sendFavoriteTrackEvent('housing', cleanName, 'remove', { address: cleanAddr });
+            }
+
+            if (typeof window.showFloatingToast === 'function') {
+                window.showFloatingToast(`'${cleanName}' 관심주택에서 해제되었습니다.`, 3200, false, '🤍');
+            } else if (typeof showToastNoticeMsg === 'function') {
+                showToastNoticeMsg(`'${cleanName}' 관심주택에서 해제되었습니다.`);
+            } else {
+                alert(`'${cleanName}' 관심주택에서 해제되었습니다.`);
+            }
+        } else {
+            const shortPrice = (place && place.short_price && place.short_price !== '기본정보') ? place.short_price : (place && place.price_amount > 0 ? `${(place.price_amount / 10000).toFixed(1)}억` : (place && place.price_display ? place.price_display : ''));
+            const area = (place && place.area && place.area !== '-') ? place.area : ((place && Array.isArray(place.areaList) && place.areaList.length > 0 && place.areaList[0].area) ? place.areaList[0].area : '');
+            const type = (place && place.type) || 'apt';
+            const typeName = (place && place.type_name) || (type === 'apt' ? '아파트' : (type === 'rh' ? '연립·다세대' : (type === 'offi' ? '오피스텔' : '주택')));
+            const totalHouseholds = (place && place.householdCount) ? parseInt(place.householdCount, 10) : (Array.isArray(place && place.areaList) ? place.areaList.reduce((sum, item) => sum + (parseInt(item.householdCount, 10) || 0), 0) : 0);
+
+            favs.push({
+                name: cleanName,
+                address: cleanAddr,
+                type: type,
+                typeName: typeName,
+                price: shortPrice,
+                priceDisplay: (place && place.price_display) || '',
+                area: area,
+                householdCount: totalHouseholds,
+                buildYear: (place && place.buildYear) || '',
+                x: (place && (place.x || place.lng)) || '',
+                y: (place && (place.y || place.lat)) || '',
+                addedAt: new Date().toISOString()
+            });
+            localStorage.setItem('learnmap_favorite_housings', JSON.stringify(favs));
+            window.updateHousingFavButtonState(true);
+            if (typeof window.updateMypageFavoriteHousingsUI === 'function') {
+                window.updateMypageFavoriteHousingsUI();
+            }
+
+            // 🌟 파트너 관심 등록 추적 전송 (회원 정보 연계)
+            if (typeof window.sendFavoriteTrackEvent === 'function') {
+                window.sendFavoriteTrackEvent('housing', cleanName, 'add', {
+                    address: cleanAddr,
+                    type: type,
+                    typeName: typeName,
+                    price: shortPrice,
+                    area: area,
+                    householdCount: totalHouseholds,
+                    x: (place && (place.x || place.lng)) || '',
+                    y: (place && (place.y || place.lat)) || ''
+                });
+            }
+
+            if (typeof window.showFloatingToast === 'function') {
+                window.showFloatingToast(`'${cleanName}'이(가) 관심주택에 등록되었습니다.`, 3200, false, '⭐');
+            } else if (typeof showToastNoticeMsg === 'function') {
+                showToastNoticeMsg(`'${cleanName}'이(가) 관심주택에 등록되었습니다.`);
+            } else {
+                alert(`'${cleanName}'이(가) 관심주택에 등록되었습니다.`);
+            }
+        }
+    };
+
+    window.clearAllFavoriteHousings = async () => {
+        if (await confirm('관심 저장된 모든 주택 목록을 삭제하시겠습니까?')) {
+            localStorage.removeItem('learnmap_favorite_housings');
+            window.updateHousingFavButtonState(false);
+            if (typeof window.updateMypageFavoriteHousingsUI === 'function') {
+                window.updateMypageFavoriteHousingsUI();
+            }
+            alert('모든 관심 주택이 삭제되었습니다.');
+        }
+    };
+
+    // 관심 주택 목록 렌더링 함수 (PC 및 모바일)
+    window.updateMypageFavoriteHousingsUI = function () {
+        const housings = window.getFavoriteHousings();
+        const listMobile = document.getElementById('mypageFavoriteHousingList');
+        const listPC = document.getElementById('mypageFavoriteHousingListPC');
+
+        const renderHousingCards = (targetEl) => {
+            if (!targetEl) return;
+            targetEl.innerHTML = '';
+            if (!housings || housings.length === 0) {
+                targetEl.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 12px;">관심 등록된 주택이 없습니다.</div>';
+                return;
+            }
+
+            housings.forEach(h => {
+                const item = document.createElement('div');
+                item.style.cssText = 'padding: 10px 12px; font-size: 12px; font-weight: 600; text-align: left; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; color: var(--deep-blue); display: flex; flex-direction: column; gap: 4px; transition: all 0.2s; margin-bottom: 6px;';
+
+                const typeLabel = h.typeName || (h.type === 'apt' ? '아파트' : (h.type === 'rh' ? '연립·다세대' : (h.type === 'offi' ? '오피스텔' : '주택')));
+                const priceText = h.price || (h.priceDisplay && !h.priceDisplay.includes('기본') ? h.priceDisplay : '');
+                const areaText = h.area ? (String(h.area).includes('㎡') ? h.area : `전용 ${h.area}㎡`) : '';
+
+                item.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            <span style="font-weight: 700; color: #1e293b; font-size: 13px;">🏢 ${h.name}</span>
+                            <span style="font-size:10px; color:#0284c7; background:#e0f2fe; padding:2px 6px; border-radius:4px; font-weight:bold;">${typeLabel}</span>
+                        </div>
+                        <span style="font-size:10px; color:var(--text-muted); font-weight:bold; flex-shrink: 0;">이동 →</span>
+                    </div>
+                    ${h.address ? `<div style="font-size: 11px; font-weight: normal; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">📍 ${h.address}</div>` : ''}
+                    <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: normal; color: #64748b;">
+                        ${priceText ? `<span style="color: #2563eb; font-weight: 700;">${priceText}</span>` : ''}
+                        ${areaText ? `<span>${areaText}</span>` : ''}
+                        ${h.householdCount ? `<span>${h.householdCount}세대</span>` : ''}
+                    </div>
+                `;
+
+                item.onmouseover = () => item.style.borderColor = '#0284c7';
+                item.onmouseout = () => item.style.borderColor = 'var(--border-color)';
+
+                item.onclick = () => {
+                    if (window.innerWidth <= 1024 && typeof window.onMobileNavClick === 'function') {
+                        const mapTabBtn = document.querySelector('.mobile-bottom-nav .nav-item');
+                        window.onMobileNavClick('map', mapTabBtn);
+                    } else {
+                        const setModal = document.getElementById('settingsModal');
+                        if (setModal) setModal.style.display = 'none';
+                    }
+
+                    const targetLng = h.x || h.lng || '';
+                    const targetLat = h.y || h.lat || '';
+                    const fLng = parseFloat(targetLng);
+                    const fLat = parseFloat(targetLat);
+
+                    if (!isNaN(fLng) && !isNaN(fLat)) {
+                        if (typeof window.ensureNearestSchoolSelectedForAcademy === 'function') {
+                            window.ensureNearestSchoolSelectedForAcademy(fLng, fLat);
+                        }
+                        if (typeof window.checkAndAdjustMapForHousingPin === 'function') {
+                            window.checkAndAdjustMapForHousingPin(fLng, fLat);
+                        }
+                        if (typeof window.showHousingHoverFloatingOnMap === 'function') {
+                            window.showHousingHoverFloatingOnMap(h.name, fLng, fLat, false);
+                            setTimeout(() => {
+                                window.showHousingHoverFloatingOnMap(h.name, fLng, fLat, false);
+                            }, 120);
+                        }
+                    }
+
+                    if (typeof window.openHousingDetailModal === 'function') {
+                        window.openHousingDetailModal(h);
+                    }
+                };
+
+                targetEl.appendChild(item);
+            });
+        };
+
+        if (listMobile) renderHousingCards(listMobile);
+        if (listPC) renderHousingCards(listPC);
+    };
+
     // Globally expose toggleFavoriteSchool for inline HTML onclick handler
     window.toggleFavoriteSchool = async () => {
         // 1. 비로그인 시 로그인 유도 모달 오픈 (확인 시에만 로그인 페이지로 이동)
@@ -18682,10 +19310,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (!orchestrator.state.selectedSchool) {
-            if (typeof showToastNoticeMsg === 'function') {
-                showToastNoticeMsg('⚠️ 저장할 학교를 먼저 지도에서 선택해 주세요.');
-            } else if (typeof window.showFloatingToast === 'function') {
-                window.showFloatingToast('⚠️ 저장할 학교를 먼저 선택해 주세요.');
+            if (typeof window.showFloatingToast === 'function') {
+                window.showFloatingToast('저장할 학교를 먼저 선택해 주세요.', 3000, false, '⚠️');
+            } else if (typeof showToastNoticeMsg === 'function') {
+                showToastNoticeMsg('저장할 학교를 먼저 선택해 주세요.');
             } else {
                 alert('저장할 학교를 선택해 주세요.');
             }
@@ -21156,6 +21784,10 @@ window.onMobileNavClick = function (menu, btnEl) {
             if (typeof window.updateMypageFavoriteAcademiesUI === 'function') {
                 window.updateMypageFavoriteAcademiesUI();
             }
+
+            if (typeof window.updateMypageFavoriteHousingsUI === 'function') {
+                window.updateMypageFavoriteHousingsUI();
+            }
             if (typeof updateMypageComparisonUI === 'function') {
                 updateMypageComparisonUI();
             }
@@ -21213,6 +21845,10 @@ window.toggleMypageAccordion = function (sectionName) {
         if (sectionName === 'favorite-academies' && typeof window.updateMypageFavoriteAcademiesUI === 'function') {
             window.updateMypageFavoriteAcademiesUI();
         }
+        // 관심주택 아코디언 개방 시 최신 저장 데이터 렌더링 강제 매핑
+        if (sectionName === 'favorite-housing' && typeof window.updateMypageFavoriteHousingsUI === 'function') {
+            window.updateMypageFavoriteHousingsUI();
+        }
         // 시뮬레이션 보관함 아코디언 개방 시 최신 저장 데이터 렌더링 강제 매핑
         if (sectionName === 'simulation' && typeof updateMypageSimulationUI === 'function') {
             updateMypageSimulationUI();
@@ -21224,7 +21860,7 @@ window.toggleMypageAccordion = function (sectionName) {
 };
 
 window.switchMypageTab = function (tabName) {
-    const accordions = ['neis', 'child', 'favorites', 'favorite-academies', 'comparison', 'simulation', 'display', 'help'];
+    const accordions = ['neis', 'child', 'favorites', 'favorite-academies', 'favorite-housing', 'comparison', 'simulation', 'display', 'help'];
     accordions.forEach(name => {
         const content = document.getElementById('mypageAccordionContent-' + name);
         const arrow = document.getElementById('mypageAccordionArrow-' + name);
@@ -23846,6 +24482,13 @@ const initMobileAndZoneModules = () => {
 
             if (!acadName) return;
 
+            // 🌟 학원 좌표 기준 학교급 필터(초/중/고)에 부합하는 최근접 학교 자동 연동
+            const aLng = place ? (place.x || place.lng) : '';
+            const aLat = place ? (place.y || place.lat) : '';
+            if (aLng && aLat && typeof window.ensureNearestSchoolSelectedForAcademy === 'function') {
+                window.ensureNearestSchoolSelectedForAcademy(aLng, aLat);
+            }
+
             // 관심학원 이동 직후가 아니거나, 현재 열리는 학원이 관심학원으로 포커스된 학원과 다르면 기존 임시 마커/말풍선 해제
             if (!window.__isNavigatingFromFavoriteAcademy && acadName !== window.__justFocusedFavoriteAcademyName) {
                 if (typeof window.clearAcademyMarker === 'function') {
@@ -24207,6 +24850,14 @@ const initMobileAndZoneModules = () => {
             if (!propName) propName = isComplex ? '주택 단지' : '주택';
 
             if (!propName) return;
+
+            // 🌟 학교핀이 선택되지 않은 상태에서 주택 선택 시, 해당 주택 위치에서 가장 가까운 학교 자동 선택
+            const hLng = place ? (place.x || place.lng) : '';
+            const hLat = place ? (place.y || place.lat) : '';
+            if (hLng && hLat && typeof window.ensureNearestSchoolSelectedForAcademy === 'function') {
+                window.ensureNearestSchoolSelectedForAcademy(hLng, hLat);
+            }
+
             window.currentSelectedHousing = place;
             window.selectedHousingAreaIndex = 0;
 
@@ -24282,6 +24933,11 @@ const initMobileAndZoneModules = () => {
             // 타이틀 및 뱃지 업데이트
             const nameEl = document.getElementById('housingDetailName');
             if (nameEl) nameEl.innerText = propName;
+
+            // 🌟 관심주택 버튼 상태 업데이트
+            if (typeof window.updateHousingFavButtonState === 'function') {
+                window.updateHousingFavButtonState(window.isHousingFavorite(propName, address));
+            }
 
             const typeBadge = document.getElementById('housingDetailTypeBadge');
             if (typeBadge) {
@@ -24452,10 +25108,37 @@ const initMobileAndZoneModules = () => {
                 setTimeout(() => {
                     window.checkAndAdjustMapForHousingPin(xCoord, yCoord);
                 }, 160);
+                setTimeout(() => {
+                    window.checkAndAdjustMapForHousingPin(xCoord, yCoord);
+                }, 250);
+            }
+
+            // 6) 🌟 주택 상세가 노출되어 있을 때 해당 주택 핀의 마우스 오버 플로팅 라벨 자동 노출 (학원 핀과 동일)
+            if (typeof window.showHousingHoverFloatingOnMap === 'function') {
+                window.showHousingHoverFloatingOnMap(propName, xCoord, yCoord, false);
+                setTimeout(() => {
+                    const curName = window.currentSelectedHousing?.name || propName;
+                    if (typeof window.showHousingHoverFloatingOnMap === 'function') {
+                        window.showHousingHoverFloatingOnMap(curName, xCoord, yCoord, false);
+                    }
+                }, 120);
+                setTimeout(() => {
+                    const curName = window.currentSelectedHousing?.name || propName;
+                    if (typeof window.showHousingHoverFloatingOnMap === 'function') {
+                        window.showHousingHoverFloatingOnMap(curName, xCoord, yCoord, false);
+                    }
+                }, 350);
             }
         };
 
         window.closeHousingDetailModal = function () {
+            if (typeof window.updateHousingFavButtonState === 'function') {
+                window.updateHousingFavButtonState(false);
+            }
+            if (window.activeFloatingHousingContainer && typeof window.activeFloatingHousingContainer._hideFloatingLabel === 'function') {
+                try { window.activeFloatingHousingContainer._hideFloatingLabel(); } catch (e) {}
+            }
+            window.activeFloatingHousingContainer = null;
             const panel = document.getElementById('housingDetailPanel');
             if (panel) panel.style.display = 'none';
 
@@ -24734,6 +25417,11 @@ const initMobileAndZoneModules = () => {
             const numY = parseFloat(y);
             if (isNaN(numX) || isNaN(numY)) return;
 
+            // 🌟 학교핀이 선택되지 않은 상태에서 주택 위치 이동 시 가장 가까운 학교 자동 선택
+            if (typeof window.ensureNearestSchoolSelectedForAcademy === 'function') {
+                window.ensureNearestSchoolSelectedForAcademy(numX, numY);
+            }
+
             if (typeof window.checkAndAdjustMapForHousingPin === 'function') {
                 window.checkAndAdjustMapForHousingPin(numX, numY);
             } else if (typeof window.centerHousingPinWithSidebarOffset === 'function') {
@@ -24743,6 +25431,11 @@ const initMobileAndZoneModules = () => {
                 if (mapObj && typeof mapObj.panTo === 'function') {
                     mapObj.panTo(new kakao.maps.LatLng(numY, numX));
                 }
+            }
+
+            // 🌟 주택 핀 플로팅 라벨 노출
+            if (typeof window.showHousingHoverFloatingOnMap === 'function') {
+                window.showHousingHoverFloatingOnMap(name, numX, numY, false);
             }
         };
 
@@ -26277,6 +26970,11 @@ const initMobileAndZoneModules = () => {
     `;
 
             card.onclick = () => {
+                const targetX = place.x || place.lng;
+                const targetY = place.y || place.lat;
+                if (targetX && targetY && typeof window.checkAndAdjustMapForHousingPin === 'function') {
+                    window.checkAndAdjustMapForHousingPin(targetX, targetY);
+                }
                 window.__expandingMobileItemDetailExplicitly = true;
                 if (typeof window.openHousingDetailModal === 'function') {
                     window.openHousingDetailModal(place);

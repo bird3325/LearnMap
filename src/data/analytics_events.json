@@ -4206,5 +4206,1294 @@
       "lng": "126.882869"
     },
     "createdAt": "2026-11-27T06:56:16.284Z"
+  },
+  {
+    "id": "evt_1795762679840_6h0z",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:57:59.840Z"
+  },
+  {
+    "id": "evt_1795762679852_nt0c",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:57:59.852Z"
+  },
+  {
+    "id": "evt_1795762691516_5of4",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:58:11.516Z"
+  },
+  {
+    "id": "evt_1795762707003_xj68",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T06:58:27.003Z"
+  },
+  {
+    "id": "evt_1795764013830_5fyz",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T07:20:13.830Z"
+  },
+  {
+    "id": "evt_1795764024588_3hlj",
+    "businessId": null,
+    "academyName": "뮤엠영어 신원교습소",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "뮤엠영어 신원교습소",
+      "place_id": "1071211438",
+      "address": "경기 고양시 덕양구 신원3로 20",
+      "lat": "37.6682160061993",
+      "lng": "126.885077889767"
+    },
+    "createdAt": "2026-11-27T07:20:24.588Z"
+  },
+  {
+    "id": "evt_1795764024593_uvta",
+    "businessId": null,
+    "academyName": "뮤엠영어 신원교습소",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "뮤엠영어 신원교습소",
+      "place_id": "1071211438",
+      "address": "경기 고양시 덕양구 신원3로 20",
+      "lat": "37.6682160061993",
+      "lng": "126.885077889767"
+    },
+    "createdAt": "2026-11-27T07:20:24.593Z"
+  },
+  {
+    "id": "evt_1795764027922_pca5",
+    "businessId": null,
+    "academyName": "플레이팩토 신원7단지플팩",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "플레이팩토 신원7단지플팩",
+      "place_id": "1837715064",
+      "address": "경기 고양시 덕양구 신원2로 50",
+      "lat": "37.66579740537844",
+      "lng": "126.88469852753924"
+    },
+    "createdAt": "2026-11-27T07:20:27.922Z"
+  },
+  {
+    "id": "evt_1795764027926_jns5",
+    "businessId": null,
+    "academyName": "플레이팩토 신원7단지플팩",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "플레이팩토 신원7단지플팩",
+      "place_id": "1837715064",
+      "address": "경기 고양시 덕양구 신원2로 50",
+      "lat": "37.66579740537844",
+      "lng": "126.88469852753924"
+    },
+    "createdAt": "2026-11-27T07:20:27.926Z"
+  },
+  {
+    "id": "evt_1795764031761_yi85",
+    "businessId": null,
+    "academyName": "플레이팩토 신원7단지플팩",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "플레이팩토 신원7단지플팩",
+      "place_id": "1837715064",
+      "address": "경기 고양시 덕양구 신원2로 50",
+      "lat": "37.66579740537844",
+      "lng": "126.88469852753924"
+    },
+    "createdAt": "2026-11-27T07:20:31.761Z"
+  },
+  {
+    "id": "evt_1795764031772_f23f",
+    "businessId": null,
+    "academyName": "플레이팩토 신원7단지플팩",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "플레이팩토 신원7단지플팩",
+      "place_id": "1837715064",
+      "address": "경기 고양시 덕양구 신원2로 50",
+      "lat": "37.66579740537844",
+      "lng": "126.88469852753924"
+    },
+    "createdAt": "2026-11-27T07:20:31.772Z"
+  },
+  {
+    "id": "evt_1795764033065_lont",
+    "businessId": null,
+    "academyName": "빨간펜수학의달인 신원5단지우림필유점",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "빨간펜수학의달인 신원5단지우림필유점",
+      "place_id": "26556890",
+      "address": "경기 고양시 덕양구 신원로 55",
+      "lat": "37.6652152315106",
+      "lng": "126.886410858396"
+    },
+    "createdAt": "2026-11-27T07:20:33.065Z"
+  },
+  {
+    "id": "evt_1795764033078_ufll",
+    "businessId": null,
+    "academyName": "빨간펜수학의달인 신원5단지우림필유점",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "빨간펜수학의달인 신원5단지우림필유점",
+      "place_id": "26556890",
+      "address": "경기 고양시 덕양구 신원로 55",
+      "lat": "37.6652152315106",
+      "lng": "126.886410858396"
+    },
+    "createdAt": "2026-11-27T07:20:33.078Z"
+  },
+  {
+    "id": "evt_1795764034267_nvis",
+    "businessId": null,
+    "academyName": "꿈꾸는드로잉 미술교습소",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "꿈꾸는드로잉 미술교습소",
+      "place_id": "969884574",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "lat": "37.665352054782964",
+      "lng": "126.88721876383869"
+    },
+    "createdAt": "2026-11-27T07:20:34.267Z"
+  },
+  {
+    "id": "evt_1795764034272_dm0x",
+    "businessId": null,
+    "academyName": "꿈꾸는드로잉 미술교습소",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "꿈꾸는드로잉 미술교습소",
+      "place_id": "969884574",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "lat": "37.665352054782964",
+      "lng": "126.88721876383869"
+    },
+    "createdAt": "2026-11-27T07:20:34.272Z"
+  },
+  {
+    "id": "evt_1795764035401_8j1l",
+    "businessId": null,
+    "academyName": "웨이프캐나다잉글리쉬학원",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "웨이프캐나다잉글리쉬학원",
+      "place_id": "2019903497",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.6654905840032",
+      "lng": "126.884200305398"
+    },
+    "createdAt": "2026-11-27T07:20:35.401Z"
+  },
+  {
+    "id": "evt_1795764035405_brms",
+    "businessId": null,
+    "academyName": "웨이프캐나다잉글리쉬학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "웨이프캐나다잉글리쉬학원",
+      "place_id": "2019903497",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.6654905840032",
+      "lng": "126.884200305398"
+    },
+    "createdAt": "2026-11-27T07:20:35.405Z"
+  },
+  {
+    "id": "evt_1795764036210_it57",
+    "businessId": null,
+    "academyName": "디어잉글리쉬 영어도서관&영어학원",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "디어잉글리쉬 영어도서관&영어학원",
+      "place_id": "343424076",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.6654914916581",
+      "lng": "126.884207104399"
+    },
+    "createdAt": "2026-11-27T07:20:36.210Z"
+  },
+  {
+    "id": "evt_1795764036215_hzx7",
+    "businessId": null,
+    "academyName": "디어잉글리쉬 영어도서관&영어학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "디어잉글리쉬 영어도서관&영어학원",
+      "place_id": "343424076",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.6654914916581",
+      "lng": "126.884207104399"
+    },
+    "createdAt": "2026-11-27T07:20:36.215Z"
+  },
+  {
+    "id": "evt_1795764036910_r0fp",
+    "businessId": null,
+    "academyName": "키잉글리쉬영어교습소",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "키잉글리쉬영어교습소",
+      "place_id": "1118739296",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "lat": "37.665343085086",
+      "lng": "126.887260713192"
+    },
+    "createdAt": "2026-11-27T07:20:36.910Z"
+  },
+  {
+    "id": "evt_1795764036920_zjav",
+    "businessId": null,
+    "academyName": "키잉글리쉬영어교습소",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "키잉글리쉬영어교습소",
+      "place_id": "1118739296",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "lat": "37.665343085086",
+      "lng": "126.887260713192"
+    },
+    "createdAt": "2026-11-27T07:20:36.920Z"
+  },
+  {
+    "id": "evt_1795764037745_kclj",
+    "businessId": null,
+    "academyName": "삼성영어셀레나 잉글포레영어교습소",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "삼성영어셀레나 잉글포레영어교습소",
+      "place_id": "666770516",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T07:20:37.745Z"
+  },
+  {
+    "id": "evt_1795764037749_rwmn",
+    "businessId": null,
+    "academyName": "삼성영어셀레나 잉글포레영어교습소",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "삼성영어셀레나 잉글포레영어교습소",
+      "place_id": "666770516",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T07:20:37.749Z"
+  },
+  {
+    "id": "evt_1795764038567_2i5m",
+    "businessId": null,
+    "academyName": "단단수학학원",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "단단수학학원",
+      "place_id": "1775653020",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T07:20:38.567Z"
+  },
+  {
+    "id": "evt_1795764038573_3m33",
+    "businessId": null,
+    "academyName": "단단수학학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "단단수학학원",
+      "place_id": "1775653020",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T07:20:38.573Z"
+  },
+  {
+    "id": "evt_1795764578085_zpbw",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T07:29:38.085Z"
+  },
+  {
+    "id": "evt_1795764580776_f8es",
+    "businessId": null,
+    "academyName": "플레이팩토 신원7단지플팩",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "플레이팩토 신원7단지플팩",
+      "place_id": "1837715064",
+      "address": "경기 고양시 덕양구 신원2로 50",
+      "lat": "37.66579740537844",
+      "lng": "126.88469852753924"
+    },
+    "createdAt": "2026-11-27T07:29:40.776Z"
+  },
+  {
+    "id": "evt_1795764580780_9cew",
+    "businessId": null,
+    "academyName": "플레이팩토 신원7단지플팩",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "플레이팩토 신원7단지플팩",
+      "place_id": "1837715064",
+      "address": "경기 고양시 덕양구 신원2로 50",
+      "lat": "37.66579740537844",
+      "lng": "126.88469852753924"
+    },
+    "createdAt": "2026-11-27T07:29:40.780Z"
+  },
+  {
+    "id": "evt_1795764582744_5gzx",
+    "businessId": null,
+    "academyName": "빨간펜수학의달인 신원5단지우림필유점",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "빨간펜수학의달인 신원5단지우림필유점",
+      "place_id": "26556890",
+      "address": "경기 고양시 덕양구 신원로 55",
+      "lat": "37.6652152315106",
+      "lng": "126.886410858396"
+    },
+    "createdAt": "2026-11-27T07:29:42.744Z"
+  },
+  {
+    "id": "evt_1795764582748_c3ye",
+    "businessId": null,
+    "academyName": "빨간펜수학의달인 신원5단지우림필유점",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "빨간펜수학의달인 신원5단지우림필유점",
+      "place_id": "26556890",
+      "address": "경기 고양시 덕양구 신원로 55",
+      "lat": "37.6652152315106",
+      "lng": "126.886410858396"
+    },
+    "createdAt": "2026-11-27T07:29:42.748Z"
+  },
+  {
+    "id": "evt_1795764585099_sf7u",
+    "businessId": null,
+    "academyName": "꿈꾸는드로잉 미술교습소",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "꿈꾸는드로잉 미술교습소",
+      "place_id": "969884574",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "lat": "37.665352054782964",
+      "lng": "126.88721876383869"
+    },
+    "createdAt": "2026-11-27T07:29:45.099Z"
+  },
+  {
+    "id": "evt_1795764585102_mxdz",
+    "businessId": null,
+    "academyName": "꿈꾸는드로잉 미술교습소",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "꿈꾸는드로잉 미술교습소",
+      "place_id": "969884574",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "lat": "37.665352054782964",
+      "lng": "126.88721876383869"
+    },
+    "createdAt": "2026-11-27T07:29:45.102Z"
+  },
+  {
+    "id": "evt_1795764587149_hn5i",
+    "businessId": null,
+    "academyName": "꿈꾸는드로잉 미술교습소",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "꿈꾸는드로잉 미술교습소",
+      "place_id": "969884574",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "lat": "37.665352054782964",
+      "lng": "126.88721876383869"
+    },
+    "createdAt": "2026-11-27T07:29:47.149Z"
+  },
+  {
+    "id": "evt_1795764587154_841i",
+    "businessId": null,
+    "academyName": "꿈꾸는드로잉 미술교습소",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "꿈꾸는드로잉 미술교습소",
+      "place_id": "969884574",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "lat": "37.665352054782964",
+      "lng": "126.88721876383869"
+    },
+    "createdAt": "2026-11-27T07:29:47.154Z"
+  },
+  {
+    "id": "evt_1795764592046_mhyl",
+    "businessId": null,
+    "academyName": "웨이프캐나다잉글리쉬학원",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "웨이프캐나다잉글리쉬학원",
+      "place_id": "2019903497",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.6654905840032",
+      "lng": "126.884200305398"
+    },
+    "createdAt": "2026-11-27T07:29:52.046Z"
+  },
+  {
+    "id": "evt_1795764592052_qchm",
+    "businessId": null,
+    "academyName": "웨이프캐나다잉글리쉬학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "웨이프캐나다잉글리쉬학원",
+      "place_id": "2019903497",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.6654905840032",
+      "lng": "126.884200305398"
+    },
+    "createdAt": "2026-11-27T07:29:52.052Z"
+  },
+  {
+    "id": "evt_1795764817384_mrhz",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T07:33:37.384Z"
+  },
+  {
+    "id": "evt_1795764819652_gww0",
+    "businessId": null,
+    "academyName": "빨간펜수학의달인 신원5단지우림필유점",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "빨간펜수학의달인 신원5단지우림필유점",
+      "place_id": "26556890",
+      "address": "경기 고양시 덕양구 신원로 55",
+      "lat": "37.6652152315106",
+      "lng": "126.886410858396"
+    },
+    "createdAt": "2026-11-27T07:33:39.652Z"
+  },
+  {
+    "id": "evt_1795764819664_rzed",
+    "businessId": null,
+    "academyName": "빨간펜수학의달인 신원5단지우림필유점",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "빨간펜수학의달인 신원5단지우림필유점",
+      "place_id": "26556890",
+      "address": "경기 고양시 덕양구 신원로 55",
+      "lat": "37.6652152315106",
+      "lng": "126.886410858396"
+    },
+    "createdAt": "2026-11-27T07:33:39.664Z"
+  },
+  {
+    "id": "evt_1795764821597_70uc",
+    "businessId": null,
+    "academyName": "플레이팩토 신원7단지플팩",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "플레이팩토 신원7단지플팩",
+      "place_id": "1837715064",
+      "address": "경기 고양시 덕양구 신원2로 50",
+      "lat": "37.66579740537844",
+      "lng": "126.88469852753924"
+    },
+    "createdAt": "2026-11-27T07:33:41.597Z"
+  },
+  {
+    "id": "evt_1795764821604_qyyd",
+    "businessId": null,
+    "academyName": "플레이팩토 신원7단지플팩",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "플레이팩토 신원7단지플팩",
+      "place_id": "1837715064",
+      "address": "경기 고양시 덕양구 신원2로 50",
+      "lat": "37.66579740537844",
+      "lng": "126.88469852753924"
+    },
+    "createdAt": "2026-11-27T07:33:41.604Z"
+  },
+  {
+    "id": "evt_1795764822978_29wc",
+    "businessId": null,
+    "academyName": "뮤엠영어 신원교습소",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "뮤엠영어 신원교습소",
+      "place_id": "1071211438",
+      "address": "경기 고양시 덕양구 신원3로 20",
+      "lat": "37.6682160061993",
+      "lng": "126.885077889767"
+    },
+    "createdAt": "2026-11-27T07:33:42.978Z"
+  },
+  {
+    "id": "evt_1795764822985_ug2h",
+    "businessId": null,
+    "academyName": "뮤엠영어 신원교습소",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "뮤엠영어 신원교습소",
+      "place_id": "1071211438",
+      "address": "경기 고양시 덕양구 신원3로 20",
+      "lat": "37.6682160061993",
+      "lng": "126.885077889767"
+    },
+    "createdAt": "2026-11-27T07:33:42.985Z"
+  },
+  {
+    "id": "evt_1795764824965_p6tb",
+    "businessId": null,
+    "academyName": "웨이프캐나다잉글리쉬학원",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "웨이프캐나다잉글리쉬학원",
+      "place_id": "2019903497",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.6654905840032",
+      "lng": "126.884200305398"
+    },
+    "createdAt": "2026-11-27T07:33:44.965Z"
+  },
+  {
+    "id": "evt_1795764824975_1is1",
+    "businessId": null,
+    "academyName": "웨이프캐나다잉글리쉬학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "웨이프캐나다잉글리쉬학원",
+      "place_id": "2019903497",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.6654905840032",
+      "lng": "126.884200305398"
+    },
+    "createdAt": "2026-11-27T07:33:44.975Z"
+  },
+  {
+    "id": "evt_1795764827222_gehb",
+    "businessId": null,
+    "academyName": "삼성영어셀레나 잉글포레영어교습소",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "삼성영어셀레나 잉글포레영어교습소",
+      "place_id": "666770516",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T07:33:47.222Z"
+  },
+  {
+    "id": "evt_1795764827234_pxlb",
+    "businessId": null,
+    "academyName": "삼성영어셀레나 잉글포레영어교습소",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "삼성영어셀레나 잉글포레영어교습소",
+      "place_id": "666770516",
+      "address": "경기 고양시 덕양구 신원2로 45-1",
+      "lat": "37.665437439591294",
+      "lng": "126.88421398877371"
+    },
+    "createdAt": "2026-11-27T07:33:47.234Z"
+  },
+  {
+    "id": "evt_1795764829454_l27o",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T07:33:49.454Z"
+  },
+  {
+    "id": "evt_1795764829460_1ilb",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T07:33:49.460Z"
+  },
+  {
+    "id": "evt_1795764832668_0ilb",
+    "businessId": null,
+    "academyName": "솔라피데음악교습소",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "솔라피데음악교습소",
+      "place_id": "1097805720",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "lat": "37.6644494058477",
+      "lng": "126.88830591329692"
+    },
+    "createdAt": "2026-11-27T07:33:52.668Z"
+  },
+  {
+    "id": "evt_1795764832722_47yo",
+    "businessId": null,
+    "academyName": "솔라피데음악교습소",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "솔라피데음악교습소",
+      "place_id": "1097805720",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "lat": "37.6644494058477",
+      "lng": "126.88830591329692"
+    },
+    "createdAt": "2026-11-27T07:33:52.722Z"
+  },
+  {
+    "id": "evt_1795764834800_6grj",
+    "businessId": null,
+    "academyName": "이엘어학원 신원캠퍼스",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "이엘어학원 신원캠퍼스",
+      "place_id": "1719580323",
+      "address": "경기 고양시 덕양구 신원로 40",
+      "lat": "37.6640531251137",
+      "lng": "126.888465180278"
+    },
+    "createdAt": "2026-11-27T07:33:54.800Z"
+  },
+  {
+    "id": "evt_1795764834806_faxz",
+    "businessId": null,
+    "academyName": "이엘어학원 신원캠퍼스",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "이엘어학원 신원캠퍼스",
+      "place_id": "1719580323",
+      "address": "경기 고양시 덕양구 신원로 40",
+      "lat": "37.6640531251137",
+      "lng": "126.888465180278"
+    },
+    "createdAt": "2026-11-27T07:33:54.806Z"
+  },
+  {
+    "id": "evt_1795764835778_fjq4",
+    "businessId": null,
+    "academyName": "삼송예일음악학원",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "삼송예일음악학원",
+      "place_id": "20433995",
+      "address": "경기 고양시 덕양구 신원로 40",
+      "lat": "37.6639449636475",
+      "lng": "126.88841887360786"
+    },
+    "createdAt": "2026-11-27T07:33:55.778Z"
+  },
+  {
+    "id": "evt_1795764835789_8oyu",
+    "businessId": null,
+    "academyName": "삼송예일음악학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "삼송예일음악학원",
+      "place_id": "20433995",
+      "address": "경기 고양시 덕양구 신원로 40",
+      "lat": "37.6639449636475",
+      "lng": "126.88841887360786"
+    },
+    "createdAt": "2026-11-27T07:33:55.789Z"
+  },
+  {
+    "id": "evt_1795764837621_mm2k",
+    "businessId": null,
+    "academyName": "유클리드 수학학원",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "유클리드 수학학원",
+      "place_id": "1762034596",
+      "address": "경기 고양시 덕양구 신원로 40",
+      "lat": "37.6639765761552",
+      "lng": "126.888501562937"
+    },
+    "createdAt": "2026-11-27T07:33:57.621Z"
+  },
+  {
+    "id": "evt_1795764837626_vo5i",
+    "businessId": null,
+    "academyName": "유클리드 수학학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "유클리드 수학학원",
+      "place_id": "1762034596",
+      "address": "경기 고양시 덕양구 신원로 40",
+      "lat": "37.6639765761552",
+      "lng": "126.888501562937"
+    },
+    "createdAt": "2026-11-27T07:33:57.626Z"
+  },
+  {
+    "id": "evt_1795764839170_d9w8",
+    "businessId": null,
+    "academyName": "신선생영수학원",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "신선생영수학원",
+      "place_id": "752933250",
+      "address": "경기 고양시 덕양구 신원로 40",
+      "lat": "37.6639765761552",
+      "lng": "126.888501562937"
+    },
+    "createdAt": "2026-11-27T07:33:59.170Z"
+  },
+  {
+    "id": "evt_1795764839178_qaxd",
+    "businessId": null,
+    "academyName": "신선생영수학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "신선생영수학원",
+      "place_id": "752933250",
+      "address": "경기 고양시 덕양구 신원로 40",
+      "lat": "37.6639765761552",
+      "lng": "126.888501562937"
+    },
+    "createdAt": "2026-11-27T07:33:59.178Z"
+  },
+  {
+    "id": "evt_1795764842845_y2vm",
+    "businessId": null,
+    "academyName": "에꼴노르말음악학원",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "에꼴노르말음악학원",
+      "place_id": "26409314",
+      "address": "경기 고양시 덕양구 신원로 36",
+      "lat": "37.663772964470915",
+      "lng": "126.88851206787405"
+    },
+    "createdAt": "2026-11-27T07:34:02.845Z"
+  },
+  {
+    "id": "evt_1795764842849_qofd",
+    "businessId": null,
+    "academyName": "에꼴노르말음악학원",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "에꼴노르말음악학원",
+      "place_id": "26409314",
+      "address": "경기 고양시 덕양구 신원로 36",
+      "lat": "37.663772964470915",
+      "lng": "126.88851206787405"
+    },
+    "createdAt": "2026-11-27T07:34:02.849Z"
+  },
+  {
+    "id": "evt_1795764844782_soot",
+    "businessId": null,
+    "academyName": "플라톤아카데미 신원독서논술교습소",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "플라톤아카데미 신원독서논술교습소",
+      "place_id": "1689392429",
+      "address": "경기 고양시 덕양구 통일로 345",
+      "lat": "37.6651362000732",
+      "lng": "126.890491205797"
+    },
+    "createdAt": "2026-11-27T07:34:04.782Z"
+  },
+  {
+    "id": "evt_1795764844789_ugqm",
+    "businessId": null,
+    "academyName": "플라톤아카데미 신원독서논술교습소",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "플라톤아카데미 신원독서논술교습소",
+      "place_id": "1689392429",
+      "address": "경기 고양시 덕양구 통일로 345",
+      "lat": "37.6651362000732",
+      "lng": "126.890491205797"
+    },
+    "createdAt": "2026-11-27T07:34:04.789Z"
+  },
+  {
+    "id": "evt_1795764846171_gtld",
+    "businessId": null,
+    "academyName": "에델바이올린교습소",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "에델바이올린교습소",
+      "place_id": "2141685777",
+      "address": "경기 고양시 덕양구 통일로 345",
+      "lat": "37.6651470160326",
+      "lng": "126.890495723493"
+    },
+    "createdAt": "2026-11-27T07:34:06.171Z"
+  },
+  {
+    "id": "evt_1795764846184_5vzl",
+    "businessId": null,
+    "academyName": "에델바이올린교습소",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "에델바이올린교습소",
+      "place_id": "2141685777",
+      "address": "경기 고양시 덕양구 통일로 345",
+      "lat": "37.6651470160326",
+      "lng": "126.890495723493"
+    },
+    "createdAt": "2026-11-27T07:34:06.184Z"
+  },
+  {
+    "id": "evt_1795764879383_pngs",
+    "businessId": null,
+    "academyName": "신원마을 1단지 우남퍼스트빌",
+    "eventType": "housing_pin_click",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을 1단지 우남퍼스트빌",
+      "place_id": "master-hub-apt-1792721516135-rmm3k",
+      "address": "경기 고양시 덕양구 통일로 374",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6687796634012",
+      "lng": "126.8898029478"
+    },
+    "createdAt": "2026-11-27T07:34:39.383Z"
+  },
+  {
+    "id": "evt_1795764879388_dopf",
+    "businessId": null,
+    "academyName": "신원마을 1단지 우남퍼스트빌",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을 1단지 우남퍼스트빌",
+      "place_id": "master-hub-apt-1792721516135-rmm3k",
+      "address": "경기 고양시 덕양구 통일로 374",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6687796634012",
+      "lng": "126.8898029478"
+    },
+    "createdAt": "2026-11-27T07:34:39.388Z"
+  },
+  {
+    "id": "evt_1795765449723_86h6",
+    "businessId": null,
+    "academyName": "신원마을엘에이치2단지",
+    "eventType": "housing_pin_click",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을엘에이치2단지",
+      "place_id": "master-hub-apt-1792721516136-ck67g",
+      "address": "경기 고양시 덕양구 오금2로 26",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.666416156551",
+      "lng": "126.891589872094"
+    },
+    "createdAt": "2026-11-27T07:44:09.723Z"
+  },
+  {
+    "id": "evt_1795765449730_xukc",
+    "businessId": null,
+    "academyName": "신원마을엘에이치2단지",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을엘에이치2단지",
+      "place_id": "master-hub-apt-1792721516136-ck67g",
+      "address": "경기 고양시 덕양구 오금2로 26",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.666416156551",
+      "lng": "126.891589872094"
+    },
+    "createdAt": "2026-11-27T07:44:09.730Z"
+  },
+  {
+    "id": "evt_1795765589093_ulso",
+    "businessId": null,
+    "academyName": "신원마을 호반베르디움 9단지",
+    "eventType": "housing_pin_click",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을 호반베르디움 9단지",
+      "place_id": "master-hub-apt-1792721516136-vgdkz",
+      "address": "경기 고양시 덕양구 권율대로 831",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6615466975788",
+      "lng": "126.885004757845"
+    },
+    "createdAt": "2026-11-27T07:46:29.093Z"
+  },
+  {
+    "id": "evt_1795765589104_1t33",
+    "businessId": null,
+    "academyName": "신원마을 호반베르디움 9단지",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을 호반베르디움 9단지",
+      "place_id": "master-hub-apt-1792721516136-vgdkz",
+      "address": "경기 고양시 덕양구 권율대로 831",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6615466975788",
+      "lng": "126.885004757845"
+    },
+    "createdAt": "2026-11-27T07:46:29.104Z"
+  },
+  {
+    "id": "evt_1795768245483_j32s",
+    "businessId": null,
+    "academyName": "신원마을4단지",
+    "eventType": "housing_pin_click",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을4단지",
+      "place_id": "master-hub-apt-1792721516136-pyvzq",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6655408782092",
+      "lng": "126.888522457742"
+    },
+    "createdAt": "2026-11-27T08:30:45.483Z"
+  },
+  {
+    "id": "evt_1795768245487_5u7k",
+    "businessId": null,
+    "academyName": "신원마을4단지",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을4단지",
+      "place_id": "master-hub-apt-1792721516136-pyvzq",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6655408782092",
+      "lng": "126.888522457742"
+    },
+    "createdAt": "2026-11-27T08:30:45.487Z"
+  },
+  {
+    "id": "evt_1795768276841_85e2",
+    "businessId": null,
+    "academyName": "신원마을4단지",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을4단지",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 60",
+      "dong": "",
+      "sigungu": "",
+      "lat": "37.6655408782092",
+      "lng": "126.888522457742"
+    },
+    "createdAt": "2026-11-27T08:31:16.841Z"
+  },
+  {
+    "id": "evt_1795768338783_543h",
+    "businessId": null,
+    "academyName": "신원마을4단지",
+    "eventType": "housing_pin_click",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을4단지",
+      "place_id": "master-hub-apt-1792721516136-pyvzq",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6655408782092",
+      "lng": "126.888522457742"
+    },
+    "createdAt": "2026-11-27T08:32:18.783Z"
+  },
+  {
+    "id": "evt_1795768338787_xiha",
+    "businessId": null,
+    "academyName": "신원마을4단지",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을4단지",
+      "place_id": "master-hub-apt-1792721516136-pyvzq",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6655408782092",
+      "lng": "126.888522457742"
+    },
+    "createdAt": "2026-11-27T08:32:18.787Z"
+  },
+  {
+    "id": "evt_1795768377149_1r89",
+    "businessId": null,
+    "academyName": "신원마을 1단지 우남퍼스트빌",
+    "eventType": "housing_pin_click",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을 1단지 우남퍼스트빌",
+      "place_id": "master-hub-apt-1792721516135-rmm3k",
+      "address": "경기 고양시 덕양구 통일로 374",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6687796634012",
+      "lng": "126.8898029478"
+    },
+    "createdAt": "2026-11-27T08:32:57.149Z"
+  },
+  {
+    "id": "evt_1795768377155_9wur",
+    "businessId": null,
+    "academyName": "신원마을 1단지 우남퍼스트빌",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을 1단지 우남퍼스트빌",
+      "place_id": "master-hub-apt-1792721516135-rmm3k",
+      "address": "경기 고양시 덕양구 통일로 374",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6687796634012",
+      "lng": "126.8898029478"
+    },
+    "createdAt": "2026-11-27T08:32:57.155Z"
+  },
+  {
+    "id": "evt_1795769108119_juxp",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "pin_click",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T08:45:08.119Z"
+  },
+  {
+    "id": "evt_1795769108128_ekgn",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "partner_biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T08:45:08.128Z"
+  },
+  {
+    "id": "evt_1795769110515_mk56",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "academy_favorite",
+    "metadata": {
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "action": "remove",
+      "memberName": "조민기",
+      "memberEmail": "bird3325@daum.net"
+    },
+    "createdAt": "2026-11-27T08:45:10.512Z"
+  },
+  {
+    "id": "evt_1795769112330_u9mu",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "academy_favorite",
+    "metadata": {
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "phone": "010-6393-0923",
+      "subject": "국어 · 영어",
+      "type": "학원",
+      "x": "126.882869",
+      "y": "37.670003",
+      "action": "add",
+      "memberName": "조민기",
+      "memberEmail": "bird3325@daum.net"
+    },
+    "createdAt": "2026-11-27T08:45:12.326Z"
+  },
+  {
+    "id": "evt_1795769793976_kpc9",
+    "businessId": "biz_1795693060096",
+    "academyName": "미래탐구",
+    "eventType": "profile_view",
+    "metadata": {
+      "academy_name": "미래탐구",
+      "place_id": "biz_1795693060096",
+      "address": "경기 고양시 덕양구 신원로 109 (신원동, 힐스테이트 삼송더카운티) 10",
+      "lat": "37.670003",
+      "lng": "126.882869"
+    },
+    "createdAt": "2026-11-27T08:56:33.976Z"
+  },
+  {
+    "id": "evt_1795769818752_h78g",
+    "businessId": null,
+    "academyName": "신원마을4단지",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을4단지",
+      "place_id": null,
+      "address": "경기 고양시 덕양구 신원로 60",
+      "dong": "",
+      "sigungu": "",
+      "lat": "37.6655408782092",
+      "lng": "126.888522457742"
+    },
+    "createdAt": "2026-11-27T08:56:58.752Z"
+  },
+  {
+    "id": "evt_1795770204060_ffru",
+    "businessId": null,
+    "academyName": "신원마을4단지",
+    "eventType": "housing_pin_click",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을4단지",
+      "place_id": "master-hub-apt-1792721516136-pyvzq",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6655408782092",
+      "lng": "126.888522457742"
+    },
+    "createdAt": "2026-11-27T09:03:24.060Z"
+  },
+  {
+    "id": "evt_1795770204065_36kc",
+    "businessId": null,
+    "academyName": "신원마을4단지",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을4단지",
+      "place_id": "master-hub-apt-1792721516136-pyvzq",
+      "address": "경기 고양시 덕양구 신원로 60",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6655408782092",
+      "lng": "126.888522457742"
+    },
+    "createdAt": "2026-11-27T09:03:24.065Z"
+  },
+  {
+    "id": "evt_1795770206137_wqr2",
+    "businessId": null,
+    "academyName": "신원마을 5단지 우림필유아파트",
+    "eventType": "housing_pin_click",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을 5단지 우림필유아파트",
+      "place_id": "master-hub-apt-1792721516136-o3jio",
+      "address": "경기 고양시 덕양구 신원로 55",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6635512692018",
+      "lng": "126.886191253039"
+    },
+    "createdAt": "2026-11-27T09:03:26.137Z"
+  },
+  {
+    "id": "evt_1795770206142_rpve",
+    "businessId": null,
+    "academyName": "신원마을 5단지 우림필유아파트",
+    "eventType": "housing_view",
+    "metadata": {
+      "category": "housing",
+      "housing_name": "신원마을 5단지 우림필유아파트",
+      "place_id": "master-hub-apt-1792721516136-o3jio",
+      "address": "경기 고양시 덕양구 신원로 55",
+      "dong": "신원동",
+      "sigungu": "덕양구",
+      "lat": "37.6635512692018",
+      "lng": "126.886191253039"
+    },
+    "createdAt": "2026-11-27T09:03:26.142Z"
   }
 ]

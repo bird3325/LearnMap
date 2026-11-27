@@ -382,3 +382,38 @@ GRANT ALL ON TABLE public.analytics_events TO anon;
 GRANT ALL ON TABLE public.analytics_events TO authenticated;
 GRANT ALL ON TABLE public.analytics_events TO service_role;
 
+-- ==============================================================================
+-- 16. 파트너 관심 등록 회원 테이블 (partner_favorites)
+-- ==============================================================================
+-- 회원이 학원 또는 주택을 '관심리스트'에 등록했을 때 어떤 회원이 관심을 표현했는지 파트너 콘솔에 표시하기 위한 데이터 테이블
+CREATE TABLE IF NOT EXISTS public.partner_favorites (
+    id VARCHAR(100) PRIMARY KEY,
+    business_id VARCHAR(100), -- 매핑된 파트너 사업자 ID (biz_xxx, 미매핑 시 NULL)
+    target_type VARCHAR(50) NOT NULL, -- 'academy' | 'housing'
+    target_name VARCHAR(200) NOT NULL, -- 학원명 또는 주택단지명
+    user_id VARCHAR(100), -- 회원 고유 ID
+    user_name VARCHAR(100), -- 회원 이름/닉네임
+    user_email VARCHAR(150), -- 회원 이메일
+    user_phone VARCHAR(50), -- 회원 연락처
+    child_grade VARCHAR(50), -- 자녀 학년 정보
+    user_address TEXT, -- 회원 거주지 주소
+    status VARCHAR(20) DEFAULT 'active', -- 'active' (관심 등록 중) | 'cancelled' (해제)
+    metadata JSONB DEFAULT '{}'::jsonb, -- 주소, 좌표, 가격대, 전용면적 등
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_partner_fav_business_id ON public.partner_favorites(business_id);
+CREATE INDEX IF NOT EXISTS idx_partner_fav_target_name ON public.partner_favorites(target_name);
+CREATE INDEX IF NOT EXISTS idx_partner_fav_user_id ON public.partner_favorites(user_id);
+CREATE INDEX IF NOT EXISTS idx_partner_fav_created_at ON public.partner_favorites(created_at DESC);
+
+ALTER TABLE public.partner_favorites ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read access for partner_favorites" ON public.partner_favorites FOR SELECT USING (true);
+CREATE POLICY "Allow public insert access for partner_favorites" ON public.partner_favorites FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update access for partner_favorites" ON public.partner_favorites FOR UPDATE USING (true);
+GRANT ALL ON TABLE public.partner_favorites TO anon;
+GRANT ALL ON TABLE public.partner_favorites TO authenticated;
+GRANT ALL ON TABLE public.partner_favorites TO service_role;
+
+

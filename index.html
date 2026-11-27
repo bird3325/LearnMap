@@ -2655,8 +2655,8 @@
                                     <div style="min-width: 0;">
                                         <h3
                                             style="font-size: 15px; font-weight: 800; color: #1e293b; margin: 0; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                            관심 학교 및 학원 보관함</h3>
-                                        <div style="font-size: 11.5px; color: #64748b; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">즐겨찾는 학교와 관심 등록된 학원을 바로 확인하고 이동할 수 있습니다</div>
+                                            관심리스트</h3>
+                                        <div style="font-size: 11.5px; color: #64748b; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">즐겨찾는 학교, 학원, 주택을 바로 확인하고 이동할 수 있습니다</div>
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 4px; flex-shrink: 0; white-space: nowrap;">
@@ -2666,6 +2666,9 @@
                                     <button type="button" id="btnTabFavAcademiesPC"
                                         onclick="if(typeof window.switchPCFavTab === 'function') window.switchPCFavTab('academies');"
                                         style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px; font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap;">🔖 학원</button>
+                                    <button type="button" id="btnTabFavHousingPC"
+                                        onclick="if(typeof window.switchPCFavTab === 'function') window.switchPCFavTab('housing');"
+                                        style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px; font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap;">🏢 주택</button>
                                 </div>
                             </div>
 
@@ -2689,6 +2692,17 @@
                                         style="background: none; border: none; font-size: 11px; color: #ef4444; font-weight: 600; cursor: pointer; padding: 2px 4px;">전체 삭제</button>
                                 </div>
                                 <div id="mypageFavoriteAcademiesListPC" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                            </div>
+
+                            <!-- PC 관심주택 리스트 컨테이너 -->
+                            <div id="mypageFavHousingContainerPC" style="display: none;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 11.5px; color: #64748b; font-weight: 600;">등록된 관심 주택</span>
+                                    <button type="button"
+                                        onclick="if(typeof window.clearAllFavoriteHousings === 'function') window.clearAllFavoriteHousings();"
+                                        style="background: none; border: none; font-size: 11px; color: #ef4444; font-weight: 600; cursor: pointer; padding: 2px 4px;">전체 삭제</button>
+                                </div>
+                                <div id="mypageFavoriteHousingListPC" style="display: flex; flex-direction: column; gap: 8px;"></div>
                             </div>
                         </div>
 
@@ -3153,6 +3167,36 @@
                                         삭제</button>
                                 </div>
                                 <div id="mypageFavoriteAcademiesList"
+                                    style="display: flex; flex-direction: column; gap: 6px;"></div>
+                            </div>
+
+                            <!-- Divider -->
+                            <div style="height: 1px; background: var(--border-color); margin: 0 16px;"></div>
+
+                            <!-- Menu Item: 관심 주택 -->
+                            <div onclick="if(typeof window.toggleMypageAccordion === 'function') window.toggleMypageAccordion('favorite-housing');"
+                                style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; cursor: pointer; transition: background 0.2s; background: white;"
+                                onmouseover="this.style.background='#f8f9fa'"
+                                onmouseout="this.style.background='white'">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 16px;">🏢</span>
+                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">관심 주택</span>
+                                </div>
+                                <span style="font-size: 12px; color: var(--text-muted);"
+                                    id="mypageAccordionArrow-favorite-housing">▼</span>
+                            </div>
+                            <!-- Accordion Content: 관심 주택 리스트 -->
+                            <div id="mypageAccordionContent-favorite-housing"
+                                style="display: none; padding: 12px 16px; border-top: 1px dashed var(--border-color); background: #fcfcfc;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 11px; color: var(--text-muted);">관심 저장된 주택 목록</span>
+                                    <button
+                                        onclick="if(typeof window.clearAllFavoriteHousings === 'function') window.clearAllFavoriteHousings();"
+                                        style="background: none; border: none; font-size: 10px; color: var(--danger-red, #ff3b30); cursor: pointer; padding: 2px 4px; font-weight: 600;">전체
+                                        삭제</button>
+                                </div>
+                                <div id="mypageFavoriteHousingList"
                                     style="display: flex; flex-direction: column; gap: 6px;"></div>
                             </div>
 
@@ -6111,6 +6155,15 @@
                             style="font-size: 16px; font-weight: 800; color: #0f172a; letter-spacing: -0.3px; line-height: 1.2;">주택상세</span>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
+                        <button id="btnFavHousingDetail" onclick="window.toggleFavoriteHousing()"
+                            style="background: #f1f5f9; border: none; cursor: pointer; color: #64748b; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; padding: 0; transition: all 0.2s ease;"
+                            onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background=this.dataset.isFav === 'true' ? '#ffe4e6' : '#f1f5f9'"
+                            title="관심주택 등록">
+                            <svg id="iconFavHousingDetail" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                        </button>
                         <button onclick="window.shareHousingDetail()"
                             style="background: #f1f5f9; border: none; cursor: pointer; color: #64748b; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; padding: 0; transition: background 0.2s ease;"
                             onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'"
@@ -7754,10 +7807,10 @@
 
     <!-- 도보 뱃지 및 주소 안내 전용 플로팅 토스트 -->
     <div id="walkDistanceFloatingToast"
-        style="display: none; position: fixed; bottom: 175px; left: 50%; transform: translateX(-50%) translateY(12px) scale(0.96); background: #0f172a; color: #ffffff; padding: 10px 18px; border-radius: 9999px; font-size: 13px; font-weight: 700; box-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.45), 0 0 0 1px rgba(59, 130, 246, 0.4); z-index: 100080; pointer-events: auto; cursor: pointer; transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, background 0.15s ease; opacity: 0; white-space: nowrap; text-align: center; font-family: var(--font-primary); max-width: 92vw; box-sizing: border-box; align-items: center; gap: 8px;">
-        <span id="walkToastIcon" style="font-size: 15px; flex-shrink: 0;">💡</span>
+        style="display: none; position: fixed; bottom: 175px; left: 50%; transform: translateX(-50%) translateY(12px) scale(0.96); background: #0f172a; color: #ffffff; padding: 10px 18px; border-radius: 9999px; font-size: 13px; font-weight: 700; box-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.45), 0 0 0 1px rgba(59, 130, 246, 0.4); z-index: 100080; pointer-events: auto; cursor: pointer; transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, background 0.15s ease; opacity: 0; white-space: nowrap; text-align: center; font-family: var(--font-primary), 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; max-width: 92vw; box-sizing: border-box; align-items: center; gap: 8px;">
+        <span id="walkToastIcon" style="font-size: 15px; flex-shrink: 0; font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;">💡</span>
         <span id="walkToastMsg" style="color: #ffffff; letter-spacing: -0.2px; font-size: 13px; font-weight: 600; line-height: 1.2;">회원정보의 주소를 입력하면 도보 시간이 제대로 나옵니다.</span>
-        <span style="font-size: 11px; color: #60a5fa; margin-left: 2px; font-weight: 800;">→</span>
+        <span id="walkToastArrow" style="font-size: 11px; color: #60a5fa; margin-left: 2px; font-weight: 800; display: none;">→</span>
     </div>
 
     <!-- 모바일 하단 탭바 메뉴 -->
@@ -8278,7 +8331,7 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script type="module" src="app.js?v=20261127_fix_v14"></script>
+    <script type="module" src="app.js?v=20261127_fix_v23"></script>
 
     <!-- 이용약관 및 개인정보처리방침 통합 모달 -->
     <div id="termsModal"

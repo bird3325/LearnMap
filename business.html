@@ -2822,6 +2822,15 @@
                     </div>
                     <div class="metric-icon">💬</div>
                 </div>
+
+                <div class="metric-card" id="cardMetricFavorites" style="border-left: 4px solid #f59e0b;">
+                    <div class="metric-info">
+                        <h4 id="labelMetricFavorites">관심 등록 회원</h4>
+                        <div class="metric-value"><span id="metricFavoritesCount">0</span><span class="unit">명</span></div>
+                        <div class="metric-subtext" id="subtextMetricFavorites">내 학원을 관심리스트에 담은 회원</div>
+                    </div>
+                    <div class="metric-icon" style="color: #f59e0b;">⭐</div>
+                </div>
             </div>
 
             <!-- 노출 통계 그래프 & 구독 현황 요약 -->
@@ -2881,6 +2890,20 @@
                         <div style="font-weight: 600; color: #475569;">접수된 신규 학부모 상담 문의가 없습니다.</div>
                         <div style="font-size: 12.5px; margin-top: 4px;">프리미엄 광고를 활성화하면 더 많은 학부모 문의를 유치할 수 있습니다.</div>
                     </div>
+                </div>
+            </div>
+
+            <!-- ⭐ 관심 등록 회원 내역 패널 -->
+            <div class="panel-card" style="margin-top: 24px;">
+                <div class="panel-header">
+                    <div>
+                        <h3 id="labelPartnerFavoritesTitle">⭐ 관심 등록 회원 목록</h3>
+                        <p id="subtextPartnerFavorites">우리 학원/주택을 관심리스트에 추가하고 주목하고 있는 학부모 회원 목록입니다.</p>
+                    </div>
+                    <span class="badge badge-warning" id="favoriteMemberCountBadge" style="background: #fef3c7; color: #b45309; font-weight: 700;">0명 등록됨</span>
+                </div>
+                <div class="panel-body" id="favoriteMembersListContainer">
+                    <!-- Javascript 동적 렌더링 -->
                 </div>
             </div>
         </div>
@@ -6005,6 +6028,8 @@
                 document.getElementById('metricImpressions').innerText = (data.stats?.premium_impressions || 0).toLocaleString();
                 document.getElementById('metricPhoneClicks').innerText = (data.stats?.phone_clicks || 0).toLocaleString();
                 document.getElementById('metricInquiriesCount').innerText = (data.inquiries?.length || 0).toLocaleString();
+                const favCountEl = document.getElementById('metricFavoritesCount');
+                if (favCountEl) favCountEl.innerText = (data.stats?.favorites_count || (data.favorites || []).length || 0).toLocaleString();
 
                 // 파트너 유형(부동산 vs 학원)에 따른 KPI 라벨 동적 최적화
                 const isRe = (currentBiz && currentBiz.type === 'real_estate') || (currentBiz && currentBiz.name && currentBiz.name.includes('공인중개'));
@@ -6014,6 +6039,10 @@
                 const subView = document.getElementById('subtextMetricProfileViews');
                 const iconPin = document.getElementById('iconMetricPinClicks');
                 const iconView = document.getElementById('iconMetricProfileViews');
+                const labelFav = document.getElementById('labelMetricFavorites');
+                const subFav = document.getElementById('subtextMetricFavorites');
+                const labelFavTitle = document.getElementById('labelPartnerFavoritesTitle');
+                const subFavTitle = document.getElementById('subtextPartnerFavorites');
 
                 if (isRe) {
                     if (labelPin) labelPin.innerText = '주택·단지 핀 클릭수';
@@ -6021,12 +6050,20 @@
                     if (iconPin) iconPin.innerText = '🏢';
                     if (labelView) labelView.innerText = '단지 상세 조회수';
                     if (subView) subView.innerText = '학부모가 단지 상세 정보를 확인한 횟수';
+                    if (labelFav) labelFav.innerText = '관심 단지 등록 회원';
+                    if (subFav) subFav.innerText = '관할 주택을 관심리스트에 담은 회원';
+                    if (labelFavTitle) labelFavTitle.innerText = '⭐ 관심 등록 회원 목록 (주택·단지)';
+                    if (subFavTitle) subFavTitle.innerText = '관할 단지를 관심리스트에 등록한 회원 정보 및 연락처입니다.';
                 } else {
                     if (labelPin) labelPin.innerText = '학원 핀 클릭수';
                     if (subPin) subPin.innerText = '지도에서 학원 핀을 클릭한 횟수';
                     if (iconPin) iconPin.innerText = '📍';
                     if (labelView) labelView.innerText = '학원 상세 조회수';
                     if (subView) subView.innerText = '학부모가 상세 페이지를 확인한 횟수';
+                    if (labelFav) labelFav.innerText = '관심 등록 회원';
+                    if (subFav) subFav.innerText = '내 학원을 관심리스트에 담은 회원';
+                    if (labelFavTitle) labelFavTitle.innerText = '⭐ 관심 등록 회원 목록 (학원)';
+                    if (subFavTitle) subFavTitle.innerText = '우리 학원을 관심리스트에 추가한 학부모 회원 목록입니다.';
                 }
 
                 // 구독 요약 - 단일 진실 소스 (Single Source of Truth) 일치
@@ -6046,10 +6083,14 @@
 
                 // 문의 내역 렌더링
                 renderInquiries(data.inquiries || []);
+
+                // 관심 등록 회원 내역 렌더링
+                renderFavoriteMembers(data.favorites || []);
             } catch (err) {
                 console.warn('Dashboard load error fallback:', err);
                 // 통신 실패 또는 지연 시에도 빈 목록 및 차트를 즉시 렌더링하여 무한 로딩 방지
                 renderInquiries([]);
+                renderFavoriteMembers([]);
                 renderChart([]);
             }
         }
@@ -6170,6 +6211,72 @@
                     </div>
                 </div>
             `).join('');
+        }
+
+        // 🌟 관심 등록 회원 목록 렌더링 함수
+        function renderFavoriteMembers(list) {
+            const container = document.getElementById('favoriteMembersListContainer');
+            const badge = document.getElementById('favoriteMemberCountBadge');
+            if (badge) badge.innerText = `${(list || []).length}명 등록됨`;
+            if (!container) return;
+
+            if (!list || list.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: var(--text-muted); padding: 36px 20px;">
+                        <div style="font-size: 32px; margin-bottom: 8px;">⭐</div>
+                        <div style="font-weight: 600; color: #475569;">아직 관심 등록한 회원이 없습니다.</div>
+                        <div style="font-size: 12.5px; margin-top: 4px;">프리미엄 뱃지를 활성화하여 더 많은 학부모의 관심리스트에 진입해보세요.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = list.map(fav => {
+                const dateStr = (fav.createdAt || '').replace('T', ' ').slice(0, 16) || '최근';
+                const targetTypeBadge = fav.targetType === 'housing'
+                    ? '<span class="badge badge-success" style="font-size: 11px; padding: 2px 6px;">🏢 주택</span>'
+                    : '<span class="badge badge-primary" style="font-size: 11px; padding: 2px 6px;">🎓 학원</span>';
+                const phoneDisplay = fav.userPhone || '연락처 미등록';
+                const emailDisplay = fav.userEmail || '-';
+                const gradeDisplay = fav.childGrade || '학부모 회원';
+                const addrDisplay = fav.userAddress || fav.metadata?.address || '';
+
+                return `
+                    <div class="inquiry-item" style="border-left: 4px solid #f59e0b;">
+                        <div class="inquiry-head">
+                            <div class="inquiry-meta" style="gap: 8px; flex-wrap: wrap;">
+                                ${targetTypeBadge}
+                                <strong style="font-size: 14px; color: #1e293b;">${fav.userName || '학부모 회원'}</strong>
+                                <span style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 6px;">${gradeDisplay}</span>
+                                <span style="font-size: 11.5px; color: #94a3b8;">📅 ${dateStr} 관심 등록</span>
+                            </div>
+                            <span class="badge badge-warning" style="background: #fef3c7; color: #b45309; font-weight: 700;">
+                                ⭐ 관심 회원
+                            </span>
+                        </div>
+                        <div class="inquiry-body" style="font-size: 13px; color: #334155; margin-bottom: 8px;">
+                            관심 대상: <strong>${fav.targetName}</strong>
+                            ${addrDisplay ? `<span style="color: #64748b; font-size: 12px; margin-left: 8px;">(📍 ${addrDisplay})</span>` : ''}
+                        </div>
+                        <div class="inquiry-foot" style="background: #fafafa; border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                            <div style="font-size: 12.5px; color: #475569;">
+                                <span>📧 ${emailDisplay}</span>
+                                <span style="margin: 0 8px; color: #cbd5e1;">|</span>
+                                <span>📞 <strong>${phoneDisplay}</strong></span>
+                            </div>
+                            ${fav.userPhone ? `
+                            <div style="display: flex; gap: 6px;">
+                                <button class="btn-action btn-secondary-act" style="width: auto; padding: 5px 12px; font-size: 12px;" onclick="window.location.href='tel:${fav.userPhone}'">
+                                    📞 바로 전화
+                                </button>
+                                <button class="btn-action btn-secondary-act" style="width: auto; padding: 5px 12px; font-size: 12px;" onclick="window.location.href='sms:${fav.userPhone}'">
+                                    💬 문자 발송
+                                </button>
+                            </div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         
